@@ -139,6 +139,106 @@
 				</article>
 			</section>
 
+			<section v-if="readiness" data-testid="term-reporting-readiness" class="card-surface p-5">
+				<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+					<div class="min-w-0 space-y-2">
+						<div class="flex flex-wrap items-center gap-2">
+							<h2 class="type-h3 text-ink">Readiness</h2>
+							<span class="rounded-full px-2.5 py-1 type-caption" :class="readinessBadgeClass">
+								{{ readinessLabel }}
+							</span>
+						</div>
+						<p class="type-body text-slate-token/75">
+							Readiness checks the frozen Course Term Result snapshot for this cycle and filter.
+						</p>
+						<p v-if="actionMessage" class="type-caption text-canopy">{{ actionMessage }}</p>
+						<p v-if="actionError" class="type-caption text-flame">{{ actionError }}</p>
+					</div>
+
+					<div class="flex flex-wrap gap-2">
+						<button
+							type="button"
+							class="if-button if-button--secondary"
+							:disabled="loading || Boolean(actionLoading) || !readiness.actions.can_recalculate"
+							@click="queueAction('recalculate_course_results')"
+						>
+							<FeatherIcon name="refresh-ccw" class="h-4 w-4" />
+							<span>Recalculate</span>
+						</button>
+						<button
+							type="button"
+							class="if-button if-button--primary"
+							:disabled="
+								loading || Boolean(actionLoading) || !readiness.actions.can_generate_reports
+							"
+							@click="queueAction('generate_student_reports')"
+						>
+							<FeatherIcon name="file-check" class="h-4 w-4" />
+							<span>Generate Reports</span>
+						</button>
+					</div>
+				</div>
+
+				<div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+					<div
+						v-for="item in readinessCountItems"
+						:key="item.label"
+						class="rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2"
+					>
+						<p class="type-caption text-slate-token/70">{{ item.label }}</p>
+						<p class="type-body-strong text-ink">{{ item.value }}</p>
+					</div>
+				</div>
+
+				<div
+					v-if="
+						readiness.blocked_reasons.length ||
+						readiness.warnings.length ||
+						disabledActionReasons.length
+					"
+					class="mt-4 grid gap-3 lg:grid-cols-3"
+				>
+					<div v-if="readiness.blocked_reasons.length" class="space-y-2">
+						<p class="type-caption text-flame">Blocked</p>
+						<ul class="space-y-1">
+							<li
+								v-for="reason in readiness.blocked_reasons"
+								:key="reason"
+								class="type-caption text-ink"
+							>
+								{{ reason }}
+							</li>
+						</ul>
+					</div>
+
+					<div v-if="readiness.warnings.length" class="space-y-2">
+						<p class="type-caption text-amber-700">Review</p>
+						<ul class="space-y-1">
+							<li
+								v-for="warning in readiness.warnings"
+								:key="warning"
+								class="type-caption text-ink"
+							>
+								{{ warning }}
+							</li>
+						</ul>
+					</div>
+
+					<div v-if="disabledActionReasons.length" class="space-y-2">
+						<p class="type-caption text-slate-token/70">Actions</p>
+						<ul class="space-y-1">
+							<li
+								v-for="reason in disabledActionReasons"
+								:key="reason"
+								class="type-caption text-ink"
+							>
+								{{ reason }}
+							</li>
+						</ul>
+					</div>
+				</div>
+			</section>
+
 			<section v-if="!cycleOptions.length" class="card-surface p-5">
 				<p class="type-body-strong text-ink">
 					No reporting cycles are available in your current scope.
@@ -342,10 +442,14 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { FeatherIcon } from 'frappe-ui';
 
 import FiltersBar from '@/components/filters/FiltersBar.vue';
-import { getTermReportingReviewSurface } from '@/lib/services/termReporting/termReportingService';
+import {
+	getTermReportingReviewSurface,
+	queueTermReportingReviewAction,
+} from '@/lib/services/termReporting/termReportingService';
 
 import type {
 	CourseTermResultRow,
+	QueueReviewActionRequest,
 	ReportingCycleOption,
 	Request as GetTermReportingReviewSurfaceRequest,
 	Response as GetTermReportingReviewSurfaceResponse,
@@ -363,12 +467,19 @@ const filters = reactive({
 const surface = ref<GetTermReportingReviewSurfaceResponse | null>(null);
 const loading = ref(false);
 const pageError = ref<string | null>(null);
+const actionError = ref<string | null>(null);
+const actionMessage = ref<string | null>(null);
 const selectedResultName = ref<string | null>(null);
+const actionLoading = ref<QueueReviewActionRequest['action'] | null>(null);
 const start = ref(0);
 let requestVersion = 0;
 
 const cycle = computed(() => surface.value?.cycle ?? null);
 const cycleOptions = computed(() => surface.value?.cycles ?? []);
+const readiness = computed(() => surface.value?.readiness ?? null);
+const selectedReportingCycle = computed(
+	() => surface.value?.selected_reporting_cycle || filters.reporting_cycle
+);
 const selectedResult = computed(() => {
 	const rows = surface.value?.results.rows ?? [];
 	return rows.find(row => row.name === selectedResultName.value) ?? rows[0] ?? null;
@@ -397,6 +508,43 @@ const canGoNext = computed(() => {
 	const results = surface.value?.results;
 	if (!results) return false;
 	return results.start + results.page_count < results.total_count;
+});
+
+const readinessLabel = computed(() => {
+	const value = readiness.value?.status;
+	if (value === 'ready') return 'Ready';
+	if (value === 'attention') return 'Review Needed';
+	return 'Blocked';
+});
+
+const readinessBadgeClass = computed(() => {
+	const value = readiness.value?.status;
+	if (value === 'ready') return 'bg-canopy/10 text-canopy';
+	if (value === 'attention') return 'bg-amber-100 text-amber-800';
+	return 'bg-flame/10 text-flame';
+});
+
+const readinessCountItems = computed(() => {
+	const counts = readiness.value?.counts;
+	if (!counts) return [];
+	return [
+		{ label: 'Total Results', value: formatInteger(counts.total_results) },
+		{ label: 'No Counted Tasks', value: formatInteger(counts.zero_task_results) },
+		{ label: 'Missing Grades', value: formatInteger(counts.missing_grade_results) },
+		{ label: 'Overrides', value: formatInteger(counts.override_results) },
+		{ label: 'Missing Components', value: formatInteger(counts.missing_component_results) },
+		{ label: 'Missing Comments', value: formatInteger(counts.missing_teacher_comment_results) },
+	];
+});
+
+const disabledActionReasons = computed(() => {
+	const current = readiness.value;
+	if (!current) return [];
+	const reasons = [
+		current.actions.recalculate_block_reason,
+		current.actions.generate_reports_block_reason,
+	].filter((value): value is string => Boolean(value));
+	return Array.from(new Set(reasons));
 });
 
 function display(value: unknown): string {
@@ -460,6 +608,13 @@ function extractErrorMessage(error: unknown): string {
 	return 'Request failed.';
 }
 
+function actionSuccessMessage(action: QueueReviewActionRequest['action']): string {
+	if (action === 'recalculate_course_results') {
+		return 'Course result recalculation was queued. Refresh after the job completes.';
+	}
+	return 'Student term report generation was queued. Refresh after the job completes.';
+}
+
 function selectResult(name: string) {
 	selectedResultName.value = name;
 }
@@ -468,6 +623,7 @@ async function loadSurface() {
 	const version = ++requestVersion;
 	loading.value = true;
 	pageError.value = null;
+	actionError.value = null;
 	try {
 		const payload = await getTermReportingReviewSurface(buildPayload());
 		if (version !== requestVersion) return;
@@ -492,6 +648,26 @@ async function loadSurface() {
 		if (version === requestVersion) {
 			loading.value = false;
 		}
+	}
+}
+
+async function queueAction(action: QueueReviewActionRequest['action']) {
+	const reportingCycle = selectedReportingCycle.value;
+	if (!reportingCycle) {
+		actionError.value = 'Select a Reporting Cycle first.';
+		return;
+	}
+
+	actionLoading.value = action;
+	actionError.value = null;
+	actionMessage.value = null;
+	try {
+		await queueTermReportingReviewAction({ reporting_cycle: reportingCycle, action });
+		actionMessage.value = actionSuccessMessage(action);
+	} catch (error) {
+		actionError.value = extractErrorMessage(error);
+	} finally {
+		actionLoading.value = null;
 	}
 }
 

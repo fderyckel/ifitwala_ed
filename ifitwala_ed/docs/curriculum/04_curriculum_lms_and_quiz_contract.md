@@ -38,6 +38,7 @@ Current product behavior:
 - class-aware planning is the primary student reality
 - shared course-plan content is fallback only
 - the student sees explicit unavailable or fallback messaging instead of silent failure
+- active Class Delivery is the teacher-facing setup state that makes the class-aware student surface real for one Student Group
 - the learning-space bootstrap exposes only bounded class-update summary data, not an inline message feed
 - `CourseDetail.vue` stays learning-first and exposes a single `Class Updates` handoff into the filtered student Communication Center
 - the server resolves `learning.focus`, `learning.next_actions`, `learning.reflection_entries`, `learning.selected_context`, and `learning.unit_navigation`
@@ -72,6 +73,13 @@ The student learning space currently renders:
 - class-wide resources
 - shared course-plan resources
 - task-linked materials directly on assigned-work cards
+
+Resource shaping rule:
+
+- next-action, task-linked, and session resources should remain closest to the work they support
+- selected-unit resources should sit inside the current unit context
+- class-wide resources should stay available without crowding the immediate work area
+- shared course-plan references should remain available but visually secondary when class-owned context exists
 
 Current resource preview behavior in that workspace:
 
@@ -293,5 +301,6 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_quiz.
 - The student learning space and the quiz player remain separate runtime surfaces. `CourseDetail.vue` owns quiz launch, resume, and review entry points; `StudentQuiz.vue` stays the bounded runtime player.
 - Student assigned-work summary chips in `CourseDetail.vue` are server-owned operational labels and must not mirror raw `Task Outcome.grading_status`.
 - `get_student_learning_space` owns curriculum context. `api/quiz.py` plus `quiz_service.py` own quiz attempt workflows.
+- The student payload may expose `source = class_teaching_plan`, but portal copy must not show `Class Teaching Plan` or `Course Plan` as management labels. Staff UX may call the same delivery anchor `Class Delivery`.
 - Assessed feedback withholding is implemented in the server serializer, not by hiding fields in the SPA.
 - Any change to quiz payload secrecy, attempt rules, or LMS launch flow must update this contract in the same change.

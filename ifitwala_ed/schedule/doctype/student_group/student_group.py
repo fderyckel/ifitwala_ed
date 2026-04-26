@@ -179,6 +179,7 @@ class StudentGroup(Document):
             # meeting dates: nothing cached yet on first save
             self.flags._sg_meeting_dates_changed = False
             self.flags._sg_schedule_changed = bool(self.student_group_schedule)
+            self.flags._sg_class_delivery_context_changed = False
             return
 
         # ----- students (active only) -----
@@ -251,6 +252,10 @@ class StudentGroup(Document):
         curr_days = rotation_days_set(self)
 
         self.flags._sg_meeting_dates_changed = bool(sched_changed or ay_changed or (prev_days != curr_days))
+        self.flags._sg_class_delivery_context_changed = any(
+            (getattr(old, field, "") or "") != (getattr(self, field, "") or "")
+            for field in ("group_based_on", "status", "course", "academic_year")
+        )
 
     def after_save(self):
         """
@@ -258,6 +263,11 @@ class StudentGroup(Document):
         - students were added/removed, or
         - instructor set changed (mid-year teacher change)
         """
+        if bool(getattr(self.flags, "_sg_class_delivery_context_changed", False)):
+            from ifitwala_ed.curriculum import planning
+
+            planning.bootstrap_student_group_class_teaching_plan(self)
+
         added = getattr(self.flags, "_sg_students_added", set()) or set()
         removed = getattr(self.flags, "_sg_students_removed", set()) or set()
         instr_changed = bool(getattr(self.flags, "_sg_instructors_changed", False))
@@ -296,6 +306,7 @@ class StudentGroup(Document):
         self.flags._sg_instructors_to_sync = set()
         self.flags._sg_meeting_dates_changed = False
         self.flags._sg_schedule_changed = False
+        self.flags._sg_class_delivery_context_changed = False
 
     def on_update(self):
         # Rebuild bookings on every save for Active groups to keep materialized facts in sync.
@@ -1888,6 +1899,50 @@ def offering_course_query(doctype, txt, searchfield, start, page_len, filters):
     """
 
     return frappe.db.sql(sql, args)
+
+
+def _assert_class_delivery_setup_access(student_group: str) -> None:
+    from ifitwala_ed.api import student_groups as student_groups_api
+
+    user = frappe.session.user
+    if not user or user == "Guest":
+        frappe.throw(_("You need to sign in to set up Class Delivery."), frappe.AuthenticationError)
+
+    roles = set(frappe.get_roles(user) or [])
+    if roles & student_groups_api.TRIAGE_ROLES:
+        return
+    if student_group in student_groups_api._instructor_group_names(user):
+        return
+
+    frappe.throw(_("You do not have access to set up Class Delivery for this Student Group."), frappe.PermissionError)
+
+
+@frappe.whitelist()
+def get_class_delivery_setup(student_group: str) -> dict:
+    student_group_name = (student_group or "").strip()
+    if not student_group_name:
+        frappe.throw(_("Student Group is required."), frappe.ValidationError)
+
+    _assert_class_delivery_setup_access(student_group_name)
+    from ifitwala_ed.curriculum import planning
+
+    return planning.get_student_group_class_delivery_setup(student_group_name)
+
+
+@frappe.whitelist()
+def setup_class_delivery(student_group: str, course_plan: str | None = None, activate: int | str | None = 1) -> dict:
+    student_group_name = (student_group or "").strip()
+    if not student_group_name:
+        frappe.throw(_("Student Group is required."), frappe.ValidationError)
+
+    _assert_class_delivery_setup_access(student_group_name)
+    from ifitwala_ed.curriculum import planning
+
+    return planning.create_student_group_class_delivery(
+        student_group_name,
+        course_plan=course_plan,
+        activate=planning.normalize_flag(activate),
+    )
 
 
 ########################## Permissions ##########################

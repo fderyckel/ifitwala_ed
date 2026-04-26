@@ -37,6 +37,185 @@ function get_single_instructor_value(frm) {
 	return values.length === 1 ? values[0] : "";
 }
 
+function escapeHtml(value) {
+	if (frappe.utils && frappe.utils.escape_html) {
+		return frappe.utils.escape_html(String(value || ""));
+	}
+	return String(value || "")
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#039;");
+}
+
+function classDeliveryCoursePlanLabel(plan) {
+	const parts = [
+		plan.title || plan.course_plan,
+		plan.academic_year,
+		plan.cycle_label,
+		plan.plan_status,
+	].filter(Boolean);
+	return parts.join(" - ");
+}
+
+function classDeliverySetupHtml(setup) {
+	const group = setup.group || {};
+	const active = setup.active_class_delivery;
+	const activeCount = setup.active_class_delivery_count || 0;
+	const recommended = setup.recommended_course_plan;
+	const options = setup.course_plan_options || [];
+
+	if (active) {
+		return `
+			<div class="space-y-2">
+				<p>${escapeHtml(__("Student portal delivery is ready for this class."))}</p>
+				<p class="text-muted">${escapeHtml(active.title || active.class_teaching_plan)}</p>
+			</div>
+		`;
+	}
+
+	if (activeCount > 1) {
+		return `
+			<div class="space-y-2">
+				<p>${escapeHtml(__("This Student Group has more than one active Class Delivery."))}</p>
+				<p class="text-muted">${escapeHtml(__("Archive the extra delivery before changing student portal visibility."))}</p>
+			</div>
+		`;
+	}
+
+	if (group.group_based_on !== "Course" || !group.course) {
+		return `
+			<div class="space-y-2">
+				<p>${escapeHtml(__("Class Delivery is available for course-based Student Groups."))}</p>
+				<p class="text-muted">${escapeHtml(__("Select a course for this Student Group first."))}</p>
+			</div>
+		`;
+	}
+
+	if (!options.length) {
+		return `
+			<div class="space-y-2">
+				<p>${escapeHtml(__("No Course Plan is available for this Student Group course yet."))}</p>
+				<p class="text-muted">${escapeHtml(__("Create or copy a Course Plan first, then return here to create Class Delivery."))}</p>
+			</div>
+		`;
+	}
+
+	const recommendation = recommended
+		? `<p class="text-muted">${escapeHtml(__("Recommended Course Plan"))}: ${escapeHtml(classDeliveryCoursePlanLabel(recommended))}</p>`
+		: "";
+	return `
+		<div class="space-y-2">
+			<p>${escapeHtml(__("Create the live Class Delivery from a Course Plan."))}</p>
+			<p class="text-muted">${escapeHtml(__("Students see resources only after Class Delivery is active."))}</p>
+			${recommendation}
+		</div>
+	`;
+}
+
+function openClassDeliveryWorkspace(frm, classTeachingPlan) {
+	const base = `/hub/staff/class/${encodeURIComponent(frm.doc.name)}/planning`;
+	const query = classTeachingPlan
+		? `?class_teaching_plan=${encodeURIComponent(classTeachingPlan)}`
+		: "";
+	window.open(`${base}${query}`, "_blank");
+}
+
+async function openClassDeliverySetup(frm) {
+	const { message } = await frappe.call({
+		method: "ifitwala_ed.schedule.doctype.student_group.student_group.get_class_delivery_setup",
+		args: { student_group: frm.doc.name }
+	});
+	const setup = message || {};
+	const active = setup.active_class_delivery;
+	const activeCount = setup.active_class_delivery_count || 0;
+	const group = setup.group || {};
+	const options = setup.course_plan_options || [];
+	const recommended = setup.recommended_course_plan || options.find(option => option.is_recommended);
+	const canOpenCoursePlans = !active && !options.length && group.group_based_on === "Course" && group.course;
+	const primaryLabel = active
+		? __("Open Class Delivery")
+		: activeCount > 1
+			? __("Open Class Deliveries")
+			: options.length
+				? __("Create Class Delivery")
+				: canOpenCoursePlans
+					? __("Open Course Plans")
+					: __("Close");
+
+	const fields = [
+		{
+			fieldtype: "HTML",
+			fieldname: "status_html",
+			options: classDeliverySetupHtml(setup),
+		},
+	];
+	if (!active && options.length) {
+		fields.push({
+			fieldtype: "Link",
+			fieldname: "course_plan",
+			label: __("Course Plan"),
+			options: "Course Plan",
+			default: recommended ? recommended.course_plan : "",
+			reqd: 1,
+		});
+	}
+
+	const dialog = new frappe.ui.Dialog({
+		title: __("Class Delivery Setup"),
+		fields,
+		primary_action_label: primaryLabel,
+		primary_action: async values => {
+			if (active) {
+				dialog.hide();
+				openClassDeliveryWorkspace(frm, active.class_teaching_plan);
+				return;
+			}
+			if (activeCount > 1) {
+				dialog.hide();
+				openClassDeliveryWorkspace(frm);
+				return;
+			}
+			if (!options.length) {
+				dialog.hide();
+				if (canOpenCoursePlans) {
+					frappe.route_options = { course: frm.doc.course };
+					frappe.set_route("List", "Course Plan");
+				}
+				return;
+			}
+			const result = await frappe.call({
+				method: "ifitwala_ed.schedule.doctype.student_group.student_group.setup_class_delivery",
+				args: {
+					student_group: frm.doc.name,
+					course_plan: values.course_plan,
+					activate: 1,
+				}
+			});
+			const payload = result.message || {};
+			frappe.show_alert({
+				message: __("Class Delivery is ready for the student portal."),
+				indicator: "green",
+			});
+			dialog.hide();
+			if (payload.class_teaching_plan) {
+				openClassDeliveryWorkspace(frm, payload.class_teaching_plan);
+			}
+		}
+	});
+
+	dialog.show();
+	if (dialog.fields_dict.course_plan) {
+		dialog.fields_dict.course_plan.get_query = () => ({
+			filters: {
+				course: frm.doc.course,
+				plan_status: ["!=", "Archived"],
+			}
+		});
+	}
+}
+
 function applyDefaultInstructorToScheduleRow(frm, cdt, cdn) {
 	const row = locals[cdt]?.[cdn];
 	const defaultInstructor = get_single_instructor_value(frm);
@@ -194,6 +373,22 @@ frappe.ui.form.on("Student Group", {
 						frappe.set_route("List", "School Event");
 					}
 				);
+				if (frm.doc.group_based_on === "Course" && frm.doc.course) {
+					frm.add_custom_button(
+						__("Class Delivery Setup"),
+						function () {
+							openClassDeliverySetup(frm);
+						},
+						__("Teaching")
+					);
+					frm.add_custom_button(
+						__("Open Class Workspace"),
+						function () {
+							openClassDeliveryWorkspace(frm);
+						},
+						__("Teaching")
+					);
+				}
 			}
 		}
 

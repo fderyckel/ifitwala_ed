@@ -22,6 +22,8 @@ DEFAULT_BACKEND_SMOKE_MODULES = (
     "ifitwala_ed.hr.test_leave_permissions",
 )
 
+DETERMINISM_CANARY_MODULE = "ifitwala_ed.tests.test_deterministic_suite"
+
 E2E_PACK_SPECS = {
     "smoke": "cypress/e2e/{hub/staff-home.cy.js,hub/route-resolution.cy.js,admissions/profile-save.cy.js}",
     "critical": "cypress/e2e/**/*.cy.js",
@@ -88,6 +90,10 @@ def _backend_smoke_specs(site: str, modules: Sequence[str]) -> list[CommandSpec]
         CommandSpec(("bench", "--site", site, "run-tests", "--app", "ifitwala_ed", "--module", module))
         for module in modules
     ]
+
+
+def _determinism_canary_specs(site: str) -> list[CommandSpec]:
+    return _backend_smoke_specs(site, (DETERMINISM_CANARY_MODULE, DETERMINISM_CANARY_MODULE))
 
 
 def _desk_build_specs() -> list[CommandSpec]:
@@ -191,6 +197,14 @@ def cmd_backend_smoke(args: argparse.Namespace) -> int:
     modules = args.module or list(DEFAULT_BACKEND_SMOKE_MODULES)
     specs = _backend_smoke_specs(args.site, modules)
     return _run_specs(specs, dry_run=args.dry_run, fail_fast=args.fail_fast)
+
+
+def cmd_determinism_canary(args: argparse.Namespace) -> int:
+    if not args.site:
+        print("[codex] error: --site is required for determinism-canary.", file=sys.stderr)
+        return 2
+
+    return _run_specs(_determinism_canary_specs(args.site), dry_run=args.dry_run, fail_fast=args.fail_fast)
 
 
 def cmd_desk_build(args: argparse.Namespace) -> int:
@@ -301,6 +315,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="Python module to test. Repeatable. Defaults to CI smoke modules.",
     )
     backend_parser.set_defaults(func=cmd_backend_smoke)
+
+    canary_parser = subparsers.add_parser(
+        "determinism-canary",
+        help="Run the deterministic DB harness canary twice on the same site.",
+    )
+    _add_common_command_flags(canary_parser)
+    canary_parser.add_argument("--site", help="Frappe site name (required).")
+    canary_parser.set_defaults(func=cmd_determinism_canary)
 
     desk_parser = subparsers.add_parser("desk-build", help="Run unified Desk+SPA build.")
     _add_common_command_flags(desk_parser)

@@ -246,10 +246,13 @@ No UI logic. No permissions hacks. No side effects.
 The staff SPA review surface is read-only and bounded:
 
 * Route: `/staff/term-reporting`
-* API: `ifitwala_ed.api.term_reporting.get_review_surface`
-* Payload: available Reporting Cycles, selected cycle summary, paged Course Term Result rows, and component breakdowns
+* Read API: `ifitwala_ed.api.term_reporting.get_review_surface`
+* Action API: `ifitwala_ed.api.term_reporting.queue_review_action`
+* Payload: available Reporting Cycles, selected cycle summary, readiness checks, paged Course Term Result rows, and component breakdowns
+* Actions: recalculation and term-report generation are queued to long workers, not run in the request path
 
-This surface is for academic review and explainability only. It must not recalculate grades, mutate Course Term Result rows, or replace the Reporting Cycle lifecycle.
+This surface is for academic review and explainability. It must not calculate grades inline, mutate Course Term Result rows directly, or replace the Reporting Cycle lifecycle.
+Recalculation is blocked once a cycle is `Locked` or `Published`.
 
 ---
 

@@ -82,14 +82,15 @@ Product rule:
 ## Authoring Workflow
 
 Status: Implemented
-Code refs: `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`, `ifitwala_ed/ui-spa/src/components/planning/PlanningResourcePanel.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`
+Code refs: `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/curriculum/planning.py`, `ifitwala_ed/schedule/doctype/student_group/student_group.py`, `ifitwala_ed/schedule/doctype/student_group/student_group.js`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`, `ifitwala_ed/ui-spa/src/components/planning/PlanningResourcePanel.vue`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`, `ifitwala_ed/ui-spa/src/pages/staff/CoursePlanWorkspace.vue`
 Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/assessment/test_task_creation_service.py`
 
 Staff add materials where they already work:
 
 - task creation overlay for task-scoped materials
 - course-plan workspace for shared course-plan and unit resources
-- class-planning workspace for class-wide and session-specific resources
+- Class Delivery workspace for class-wide and session-specific resources
+- Student Group Class Delivery setup when a class needs its active delivery anchor before class-owned resources can become student-visible
 - file-upload authoring on those surfaces must show inline upload feedback while the browser is preparing/sending the selected file and must keep a visible finishing state until the governed response returns
 
 Current staff preview behavior:
@@ -125,6 +126,8 @@ Resolution rule:
 - class-owned resources resolve first
 - shared plan resources are fallback context
 - task materials travel with assigned work
+- shared course-plan and unit resources become student-visible through the student's resolved active Class Delivery or explicit shared-plan fallback; staff should not have to manually recreate shared resources on the class layer just to make them visible
+- class-wide and session resources require an active Class Delivery because those resources are specific to one student group
 
 Current student preview behavior:
 
@@ -177,11 +180,13 @@ Implemented now:
 - shared course-plan and unit resource authoring
 - class-wide and session-specific resource authoring
 - student LMS resource shelves with governed preview/open URLs and inline image or compact PDF preview where available
+- Student Group Class Delivery setup for resolving the active class anchor that governs class-specific resource visibility
 
 Not implemented now:
 
 - existing-file picker from Drive
 - a separate browse-first materials workspace replacing the current context-first flow
+- a consolidated student resource stream that reorders the existing buckets into immediacy groups such as needed now, this unit, class resources, and collapsed course references
 
 ## Related Docs
 

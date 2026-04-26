@@ -31,20 +31,24 @@ The wrapper invokes `python3 -m ifitwala_ed.codex_cli`.
 - Runs the default backend smoke modules (same baseline as CI), or custom modules with repeated `--module`.
 - Local bench/site should run on **Frappe v16** to stay CI-compatible.
 
-4. `desk-build`
+4. `determinism-canary --site <site>`
+- Runs `ifitwala_ed.tests.test_deterministic_suite` twice against the same site.
+- Use this after changing `IfitwalaEdTestSuite`, `IfitwalaBootstrapTestData`, or shared DB test fixtures.
+
+5. `desk-build`
 - Runs `yarn install --frozen-lockfile` then `yarn build`.
 
-5. `spa-typecheck`
+6. `spa-typecheck`
 - Runs SPA dependency install and `yarn type-check` in `ifitwala_ed/ui-spa`.
 
-6. `ci --site <site>`
+7. `ci --site <site>`
 - CI-aligned composite command:
   - lint phase
   - frontend phase (`desk-build` + `spa-typecheck`)
   - backend smoke phase
 - Phases can be skipped with `--skip-lint`, `--skip-frontend`, `--skip-backend`.
 
-7. `e2e --site <site> --base-url <url>`
+8. `e2e --site <site> --base-url <url>`
 - Prepares deterministic browser-test scenarios through `ifitwala_ed.tests.e2e.scenarios.prepare_pack`.
 - Runs the repo-root Cypress suite against the running site.
 - Supported packs:

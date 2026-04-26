@@ -86,7 +86,13 @@ Migration order:
 
 ## 6. CI Determinism Gate
 
-The canary module is:
+Run the canary through the repo CLI:
+
+```bash
+./scripts/codex determinism-canary --site test_site
+```
+
+Equivalent raw commands:
 
 ```bash
 bench --site test_site run-tests --app ifitwala_ed --module ifitwala_ed.tests.test_deterministic_suite

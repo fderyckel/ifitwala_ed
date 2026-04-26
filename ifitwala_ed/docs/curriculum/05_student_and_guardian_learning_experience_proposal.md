@@ -11,7 +11,7 @@ The student learning-first LMS framing, guardian home `learning_highlights`, and
 ## Current Product State
 
 Status: Implemented
-Code refs: `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianStudentShell.vue`
+Code refs: `ifitwala_ed/curriculum/planning.py`, `ifitwala_ed/schedule/doctype/student_group/student_group.py`, `ifitwala_ed/schedule/doctype/student_group/student_group.js`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianStudentShell.vue`
 Test refs: `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianHome.test.ts`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianStudentShell.test.ts`
 
 Current live behavior:
@@ -21,6 +21,7 @@ Current live behavior:
 - assigned-work cards now surface linked task materials and use `CourseDetail.vue` as the workspace entry for non-quiz work instead of forcing a second task page
 - student hub work-board and timeline links now preserve `class_session` context when available so students land on the right class experience directly
 - student-facing surfaces now hide shared-plan management labels and raw planning-state language
+- staff setup now treats Class Delivery as the live student-group delivery anchor, auto-created where possible from Student Group context and surfaced through Student Group setup when a Course Plan choice is needed
 - guardian home uses `learning_highlights` cards with a family-safe current theme, upcoming step, and a talk-at-home prompt
 - the guardian child brief now foregrounds current theme, next class experience, upcoming learning experiences, and helpful-at-home resources
 - student, guardian, and staff learning surfaces now default from the same server-owned current-curriculum resolver instead of opening the first unit by guess
@@ -448,9 +449,10 @@ Test refs: `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`
 Recommended order:
 
 1. Keep extending the student course workspace without reintroducing planning-heavy language or a second task page.
-2. Refine the bounded student read model only when the UI needs additional server-derived guidance.
-3. Improve guardian summaries and support prompts without turning guardian pages into a second LMS.
-4. Preserve permission and sibling-isolation rules for every guardian-facing curriculum field.
+2. Refine the student resource stream by grouping existing resources by learning need: needed now, this unit, class resources, and collapsed course references.
+3. Refine the bounded student read model only when the UI needs additional server-derived guidance.
+4. Improve guardian summaries and support prompts without turning guardian pages into a second LMS.
+5. Preserve permission and sibling-isolation rules for every guardian-facing curriculum field.
 
 ## Optional Future Authoring
 

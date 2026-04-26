@@ -681,8 +681,10 @@ class StudentApplicant(Document):
         if not self.student_joining_date:
             frappe.throw(_("Joining Date is required before promotion to Student."))
         self._validate_enrollment_plan_for_promotion()
+        self._validate_deposit_for_promotion()
 
         if self.student:
+            self._sync_account_holder_to_student(self.student)
             self._carry_guardians_to_promoted_student(self.student)
             hydrated_request = self._maybe_auto_hydrate_enrollment_request_after_promotion(self.student)
             self._copy_health_profile_to_student_patient(self.student, require_profile=False)
@@ -698,6 +700,7 @@ class StudentApplicant(Document):
 
         existing = frappe.db.get_value("Student", {"student_applicant": self.name}, "name")
         if existing:
+            self._sync_account_holder_to_student(existing)
             self._carry_guardians_to_promoted_student(existing)
             self._copy_health_profile_to_student_patient(existing, require_profile=False)
             self.flags.from_promotion = True
@@ -743,6 +746,7 @@ class StudentApplicant(Document):
                     "cohort": self.cohort,
                     "student_house": self.student_house,
                     "anchor_school": self.school,
+                    "account_holder": self.account_holder,
                     "student_applicant": self.name,
                 }
             )
@@ -894,6 +898,56 @@ class StudentApplicant(Document):
         if (plan.status or "").strip() in {"Offer Accepted", "Hydrated"}:
             return
         frappe.throw(_("Applicant Enrollment Plan must be Offer Accepted before promotion."))
+
+    def _validate_deposit_for_promotion(self):
+        try:
+            require_deposit = frappe.db.get_single_value("Admission Settings", "require_deposit_before_promotion")
+        except Exception:
+            require_deposit = 0
+        if not cint(require_deposit or 0):
+            return
+
+        from ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan import (
+            get_deposit_invoice_status_for_plan,
+            get_latest_applicant_enrollment_plan,
+        )
+
+        plan = get_latest_applicant_enrollment_plan(self.name)
+        if not plan:
+            return
+
+        summary = get_deposit_invoice_status_for_plan(plan)
+        if summary.get("requires_override_approval"):
+            frappe.throw(
+                _("Applicant deposit override must be approved before promotion: {label}.").format(
+                    label=summary.get("blocker_label") or _("approval pending")
+                )
+            )
+        if not summary.get("deposit_required"):
+            return
+        if summary.get("is_paid"):
+            return
+
+        frappe.throw(
+            _("Applicant deposit must be paid before promotion: {label}.").format(
+                label=summary.get("blocker_label") or _("deposit unpaid")
+            )
+        )
+
+    def _sync_account_holder_to_student(self, student_name: str):
+        account_holder = (self.account_holder or "").strip()
+        if not account_holder or not student_name:
+            return
+
+        student = frappe.get_doc("Student", student_name)
+        current_holder = (student.account_holder or "").strip()
+        if current_holder and current_holder != account_holder:
+            frappe.throw(_("Promoted Student already has a different Account Holder."))
+        if current_holder == account_holder:
+            return
+
+        student.account_holder = account_holder
+        student.save(ignore_permissions=True)
 
     def _maybe_auto_hydrate_enrollment_request_after_promotion(self, student_name: str) -> str | None:
         try:

@@ -42,6 +42,7 @@ from ifitwala_ed.admission.admission_utils import (
 from ifitwala_ed.admission.applicant_review_workflow import materialize_health_review_assignments
 from ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan import (
     get_applicant_enrollment_choice_state,
+    get_deposit_invoice_status_for_plan,
     get_latest_applicant_enrollment_plan,
 )
 from ifitwala_ed.api.attachment_previews import build_attachment_preview_item, extract_file_extension
@@ -1726,6 +1727,7 @@ def _serialize_enrollment_offer(plan) -> dict | None:
         "course_choice_blocking_reasons": list(choice_validation.get("reasons") or []),
         "course_choice_optional_count": cint(choice_summary.get("optional_course_count") or 0),
         "course_choice_selected_optional_count": cint(choice_summary.get("selected_optional_count") or 0),
+        "deposit": get_deposit_invoice_status_for_plan(plan),
     }
 
 

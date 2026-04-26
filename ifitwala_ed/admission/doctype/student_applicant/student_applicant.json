@@ -48,6 +48,8 @@
   "residency_status",
   "guardians_section",
   "guardians",
+  "billing_section",
+  "account_holder",
   "review_section",
   "review_snapshot",
   "review_assignments_summary",
@@ -208,6 +210,17 @@
    "options": "Student Applicant Guardian"
   },
   {
+   "fieldname": "billing_section",
+   "fieldtype": "Section Break",
+   "label": "Billing"
+  },
+  {
+   "fieldname": "account_holder",
+   "fieldtype": "Link",
+   "label": "Account Holder",
+   "options": "Account Holder"
+  },
+  {
    "fieldname": "review_section",
    "fieldtype": "Section Break",
    "label": "Review Snapshot"
@@ -366,7 +379,7 @@
  "image_field": "applicant_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-11 20:48:08.492567",
+ "modified": "2026-04-26 13:06:23.000000",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Student Applicant",

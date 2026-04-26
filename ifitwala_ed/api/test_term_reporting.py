@@ -104,6 +104,7 @@ class TestTermReportingApi(TestCase):
 
     def test_get_review_surface_returns_bounded_cycle_result_and_component_payload(self):
         calls: list[dict] = []
+        sql_calls: list[dict] = []
 
         with stubbed_frappe() as frappe:
             frappe.session.user = "academic.admin@example.com"
@@ -195,6 +196,23 @@ class TestTermReportingApi(TestCase):
             frappe.db.get_value = fake_get_value
             frappe.get_all = fake_get_all
 
+            def fake_sql(query, params=None, as_dict=False, **kwargs):
+                sql_calls.append({"query": query, "params": params, "as_dict": as_dict, "kwargs": kwargs})
+                if "LEFT JOIN `tabCourse Term Result Component`" in query:
+                    return [{"missing_component_results": 1}]
+                return [
+                    {
+                        "total_results": 7,
+                        "zero_task_results": 0,
+                        "missing_score_results": 0,
+                        "missing_grade_results": 0,
+                        "override_results": 2,
+                        "missing_teacher_comment_results": 0,
+                    }
+                ]
+
+            frappe.db.sql = fake_sql
+
             module = import_fresh("ifitwala_ed.api.term_reporting")
             module.get_user_visible_schools = lambda user: ["SCH-1", "SCH-CHILD"]
 
@@ -208,12 +226,20 @@ class TestTermReportingApi(TestCase):
         self.assertEqual(payload["results"]["limit"], 25)
         self.assertEqual(payload["results"]["start"], 5)
         self.assertEqual(payload["results"]["rows"][0]["components"][0]["label"], "Summative Evidence")
+        self.assertEqual(payload["readiness"]["status"], "attention")
+        self.assertTrue(payload["readiness"]["ready"])
+        self.assertEqual(payload["readiness"]["counts"]["override_results"], 2)
+        self.assertEqual(payload["readiness"]["counts"]["missing_component_results"], 1)
+        self.assertTrue(payload["readiness"]["actions"]["can_recalculate"])
+        self.assertTrue(payload["readiness"]["actions"]["can_generate_reports"])
         self.assertEqual(calls[0]["doctype"], "Reporting Cycle")
         self.assertEqual(calls[0]["filters"], {"school": ["in", ["SCH-1", "SCH-CHILD"]]})
         self.assertEqual(calls[1]["doctype"], "Course Term Result")
         self.assertEqual(calls[1]["filters"], {"reporting_cycle": "RC-1", "course": "COURSE-1"})
         self.assertEqual(calls[1]["kwargs"]["limit"], 25)
         self.assertEqual(calls[1]["kwargs"]["limit_start"], 5)
+        self.assertEqual(sql_calls[0]["params"]["course"], "COURSE-1")
+        self.assertTrue(sql_calls[0]["as_dict"])
 
     def test_get_review_surface_rejects_unscoped_reporting_cycle(self):
         with stubbed_frappe() as frappe:
@@ -249,3 +275,64 @@ class TestTermReportingApi(TestCase):
 
             with self.assertRaises(frappe.PermissionError):
                 module.get_review_surface()
+
+    def test_queue_review_action_queues_recalculation_for_action_roles(self):
+        queued: list[dict] = []
+
+        with stubbed_frappe() as frappe:
+            frappe.session.user = "academic.admin@example.com"
+            frappe.get_roles = lambda user: ["Academic Admin"]
+            frappe.db.get_value = lambda *args, **kwargs: types.SimpleNamespace(
+                name="RC-1",
+                school="SCH-1",
+                academic_year="AY-2026",
+                term="TERM-1",
+                program=None,
+                assessment_scheme=None,
+                assessment_calculation_method="Weighted Categories",
+                name_label="Semester 1 Report",
+                task_cutoff_date="2026-04-01",
+                status="Calculated",
+                require_teacher_comment=None,
+            )
+            frappe.enqueue = lambda method, **kwargs: queued.append({"method": method, "kwargs": kwargs})
+
+            module = import_fresh("ifitwala_ed.api.term_reporting")
+            module.get_user_visible_schools = lambda user: ["SCH-1"]
+
+            payload = module.queue_review_action("RC-1", "recalculate_course_results")
+
+        self.assertEqual(payload, {"queued": True, "action": "recalculate_course_results", "reporting_cycle": "RC-1"})
+        self.assertEqual(
+            queued,
+            [
+                {
+                    "method": "ifitwala_ed.assessment.term_reporting.recalculate_course_term_results",
+                    "kwargs": {"reporting_cycle": "RC-1", "queue": "long"},
+                }
+            ],
+        )
+
+    def test_queue_review_action_blocks_recalculation_after_lock(self):
+        with stubbed_frappe() as frappe:
+            frappe.session.user = "academic.admin@example.com"
+            frappe.get_roles = lambda user: ["Academic Admin"]
+            frappe.db.get_value = lambda *args, **kwargs: types.SimpleNamespace(
+                name="RC-1",
+                school="SCH-1",
+                academic_year="AY-2026",
+                term="TERM-1",
+                program=None,
+                assessment_scheme=None,
+                assessment_calculation_method="Weighted Categories",
+                name_label="Semester 1 Report",
+                task_cutoff_date="2026-04-01",
+                status="Locked",
+                require_teacher_comment=None,
+            )
+
+            module = import_fresh("ifitwala_ed.api.term_reporting")
+            module.get_user_visible_schools = lambda user: ["SCH-1"]
+
+            with self.assertRaises(frappe.PermissionError):
+                module.queue_review_action("RC-1", "recalculate_course_results")

@@ -5,11 +5,10 @@
 		>
 			<div>
 				<p class="type-body-strong text-ink">
-					Class Teaching Plan holds the class-wide pacing. Class Session is today&apos;s live
-					lesson.
+					Class Delivery holds the class-wide pacing. Class Session is today&apos;s live lesson.
 				</p>
 				<p class="type-caption text-ink/70">
-					Start or end the live session here. Open Class Planning when you need to change units,
+					Start or end the live session here. Open Class Delivery when you need to change units,
 					pacing, resources, or the session design itself.
 				</p>
 			</div>
@@ -21,7 +20,7 @@
 				}"
 				class="if-action inline-flex"
 			>
-				Open Class Planning
+				Open Class Delivery
 			</RouterLink>
 		</div>
 

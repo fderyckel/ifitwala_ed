@@ -28,6 +28,20 @@
   "offer_accepted_by",
   "offer_declined_on",
   "offer_declined_by",
+  "deposit_section",
+  "deposit_required",
+  "deposit_amount",
+  "deposit_due_date",
+  "deposit_billable_offering",
+  "deposit_column_break",
+  "deposit_terms_source",
+  "deposit_override_status",
+  "deposit_override_reason",
+  "deposit_academic_approved_by",
+  "deposit_academic_approved_on",
+  "deposit_finance_approved_by",
+  "deposit_finance_approved_on",
+  "deposit_invoice",
   "section_break_hydration",
   "program_enrollment_request",
   "hydrated_on",
@@ -177,6 +191,91 @@
    "read_only": 1
   },
   {
+   "fieldname": "deposit_section",
+   "fieldtype": "Section Break",
+   "label": "Admissions Deposit"
+  },
+  {
+   "default": "0",
+   "fieldname": "deposit_required",
+   "fieldtype": "Check",
+   "label": "Deposit Required"
+  },
+  {
+   "fieldname": "deposit_amount",
+   "fieldtype": "Currency",
+   "label": "Deposit Amount"
+  },
+  {
+   "fieldname": "deposit_due_date",
+   "fieldtype": "Date",
+   "label": "Deposit Due Date"
+  },
+  {
+   "fieldname": "deposit_billable_offering",
+   "fieldtype": "Link",
+   "label": "Deposit Billable Offering",
+   "options": "Billable Offering"
+  },
+  {
+   "fieldname": "deposit_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "School Default",
+   "fieldname": "deposit_terms_source",
+   "fieldtype": "Select",
+   "label": "Deposit Terms Source",
+   "options": "School Default\nManual Override",
+   "read_only": 1
+  },
+  {
+   "default": "Not Required",
+   "fieldname": "deposit_override_status",
+   "fieldtype": "Select",
+   "label": "Deposit Override Status",
+   "options": "Not Required\nPending\nApproved\nRejected",
+   "read_only": 1
+  },
+  {
+   "fieldname": "deposit_override_reason",
+   "fieldtype": "Small Text",
+   "label": "Deposit Override Reason"
+  },
+  {
+   "fieldname": "deposit_academic_approved_by",
+   "fieldtype": "Link",
+   "label": "Deposit Academic Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "deposit_academic_approved_on",
+   "fieldtype": "Datetime",
+   "label": "Deposit Academic Approved On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "deposit_finance_approved_by",
+   "fieldtype": "Link",
+   "label": "Deposit Finance Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "deposit_finance_approved_on",
+   "fieldtype": "Datetime",
+   "label": "Deposit Finance Approved On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "deposit_invoice",
+   "fieldtype": "Link",
+   "label": "Deposit Invoice",
+   "options": "Sales Invoice",
+   "read_only": 1
+  },
+  {
    "fieldname": "section_break_hydration",
    "fieldtype": "Section Break",
    "label": "Hydration"
@@ -205,7 +304,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-12 08:40:40.342288",
+ "modified": "2026-04-26 13:06:23.000000",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Enrollment Plan",

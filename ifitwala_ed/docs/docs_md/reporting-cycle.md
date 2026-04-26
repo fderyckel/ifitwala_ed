@@ -3,7 +3,7 @@ title: "Reporting Cycle: Controlling When Grades Become Official Term Truth"
 slug: reporting-cycle
 category: Assessment
 doc_order: 10
-version: "1.0.3"
+version: "1.0.4"
 last_change_date: "2026-04-25"
 summary: "Define reporting scope and lifecycle, then generate/freeze term results with explicit cutoffs and governance controls."
 seo_title: "Reporting Cycle: Controlling When Grades Become Official Term Truth"
@@ -33,6 +33,7 @@ A reporting cycle is where mutable grading activity becomes institutional record
   - `ifitwala_ed.api.term_reporting.get_cycle_summary`
   - `ifitwala_ed.api.term_reporting.get_course_term_results`
   - `ifitwala_ed.api.term_reporting.get_review_surface`
+  - `ifitwala_ed.api.term_reporting.queue_review_action`
 - Server orchestration:
   - `ifitwala_ed.assessment.term_reporting.recalculate_course_term_results`
   - `ifitwala_ed.assessment.term_reporting.generate_student_term_reports`
@@ -92,7 +93,9 @@ Treat status changes in reporting cycles as governance events with clear owners,
   - `generate_student_reports`
 - **Staff SPA review surface**:
   - `/staff/term-reporting` loads a bounded, school-scoped review payload from `api/term_reporting.py::get_review_surface()`
-  - the review surface displays frozen result rows and calculation components; it does not recalculate grades or mutate reporting truth
+  - the review surface displays frozen result rows, readiness checks, and calculation components
+  - approved actions queue long jobs for recalculation or term-report generation; they do not run heavy generation in the request path
+  - recalculation is blocked from this surface once a cycle is `Locked` or `Published`
 - **Indexing**:
   - index on (`school`, `academic_year`, `term`, `program`)
 - **Desk client script**: stub-only (`reporting_cycle.js`)

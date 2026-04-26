@@ -170,6 +170,16 @@
 									<span v-if="item.aep?.has_plan" :class="aepPillClass(item.aep?.status)">
 										AEP · {{ item.aep?.status || 'Plan' }}
 									</span>
+									<span
+										v-if="item.aep?.deposit?.deposit_required"
+										:class="depositPillClass(item.aep.deposit)"
+									>
+										{{
+											item.aep.deposit.is_paid
+												? 'Deposit paid'
+												: item.aep.deposit.blocker_label || 'Deposit required'
+										}}
+									</span>
 									<span :class="pillClass(item.readiness.profile_ok)">Profile</span>
 									<span :class="pillClass(item.readiness.documents_ok)">Docs</span>
 									<span :class="pillClass(item.readiness.recommendations_ok)"
@@ -253,6 +263,69 @@
 												class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
 											>
 												Open Plan
+											</a>
+										</div>
+									</div>
+								</div>
+
+								<div
+									v-if="item.aep?.deposit?.deposit_required"
+									class="mb-2 rounded-md border border-slate-200 bg-white px-3 py-2"
+								>
+									<div class="flex items-start justify-between gap-3">
+										<div class="min-w-0">
+											<p class="text-xs font-semibold text-slate-900">Deposit</p>
+											<p class="text-xs text-slate-token/80">
+												{{
+													formatAmount(item.aep.deposit.amount || item.aep.deposit.deposit_amount)
+												}}
+												<span
+													v-if="item.aep.deposit.due_date || item.aep.deposit.deposit_due_date"
+												>
+													· Due
+													{{
+														formatDateOnly(
+															item.aep.deposit.due_date || item.aep.deposit.deposit_due_date
+														)
+													}}
+												</span>
+											</p>
+											<p class="text-xs text-slate-token/80">
+												{{
+													item.aep.deposit.invoice
+														? `${item.aep.deposit.invoice} · ${item.aep.deposit.invoice_status || 'Draft'}`
+														: item.aep.deposit.blocker_label || 'Invoice not generated'
+												}}
+											</p>
+											<p
+												v-if="item.aep.deposit.requires_override_approval"
+												class="text-xs font-semibold text-amber-800"
+											>
+												Override approval required
+											</p>
+										</div>
+										<div class="flex flex-wrap justify-end gap-2">
+											<button
+												v-if="item.aep.deposit.can_generate_invoice"
+												type="button"
+												class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy disabled:cursor-not-allowed disabled:opacity-60"
+												:disabled="isAepActionPending(item.aep?.name, 'generate_deposit')"
+												@click="generateDepositInvoice(item)"
+											>
+												{{
+													isAepActionPending(item.aep?.name, 'generate_deposit')
+														? 'Generating...'
+														: 'Generate Invoice'
+												}}
+											</button>
+											<a
+												v-if="item.aep.deposit.invoice"
+												:href="`/desk/sales-invoice/${item.aep.deposit.invoice}`"
+												target="_blank"
+												rel="noopener noreferrer"
+												class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
+											>
+												Open Invoice
 											</a>
 										</div>
 									</div>
@@ -481,6 +554,7 @@ import KpiRow from '@/components/analytics/KpiRow.vue';
 import {
 	getAdmissionsCaseThread,
 	getAdmissionsCockpitData,
+	generateAdmissionsCockpitDepositInvoice,
 	hydrateAdmissionsCockpitRequest,
 	markAdmissionsCaseRead,
 	sendAdmissionsCockpitOffer,
@@ -547,6 +621,29 @@ type CockpitAepSummary = {
 	program_enrollment_request_url?: string | null;
 	can_send_offer: boolean;
 	can_hydrate_request: boolean;
+	deposit?: CockpitDepositSummary;
+};
+
+type CockpitDepositSummary = {
+	deposit_required: boolean;
+	deposit_amount: number;
+	deposit_due_date?: string | null;
+	terms_source: string;
+	override_status: string;
+	requires_override_approval: boolean;
+	academic_approved: boolean;
+	finance_approved: boolean;
+	invoice?: string | null;
+	invoice_status?: string | null;
+	docstatus?: number | null;
+	amount: number;
+	paid_amount: number;
+	outstanding_amount: number;
+	due_date?: string | null;
+	is_overdue: boolean;
+	is_paid: boolean;
+	blocker_label?: string | null;
+	can_generate_invoice: boolean;
 };
 
 type CockpitCard = {
@@ -726,6 +823,16 @@ function aepPillClass(status?: string | null) {
 	return 'rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-token';
 }
 
+function depositPillClass(deposit?: CockpitDepositSummary | null) {
+	if (deposit?.is_paid) {
+		return 'rounded-full border border-emerald-300 bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700';
+	}
+	if (deposit?.is_overdue || deposit?.requires_override_approval) {
+		return 'rounded-full border border-red-300 bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700';
+	}
+	return 'rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800';
+}
+
 function filteredItems(items: CockpitCard[]) {
 	if (!activeBlocker.value) {
 		return items;
@@ -776,18 +883,25 @@ function formatDateOnly(value?: string | null) {
 	return date.toLocaleDateString();
 }
 
-function aepActionKey(
-	planName?: string | null,
-	action: 'send_offer' | 'hydrate_request' = 'send_offer'
-) {
+type AepAction = 'send_offer' | 'hydrate_request' | 'generate_deposit';
+
+function aepActionKey(planName?: string | null, action: AepAction = 'send_offer') {
 	return `${String(planName || '').trim()}:${action}`;
 }
 
-function isAepActionPending(
-	planName?: string | null,
-	action: 'send_offer' | 'hydrate_request' = 'send_offer'
-) {
+function isAepActionPending(planName?: string | null, action: AepAction = 'send_offer') {
 	return pendingAepActionKey.value === aepActionKey(planName, action);
+}
+
+function formatAmount(value?: number | string | null) {
+	const amount = Number(value || 0);
+	if (Number.isNaN(amount)) {
+		return '0.00';
+	}
+	return amount.toLocaleString(undefined, {
+		minimumFractionDigits: 2,
+		maximumFractionDigits: 2,
+	});
 }
 
 function formatInterviewSchedule(interview?: CockpitInterviewLatest | null) {
@@ -961,6 +1075,29 @@ async function hydrateEnrollmentRequest(card: CockpitCard) {
 		await refreshNow();
 	} catch (err: any) {
 		error.value = err?.message || 'Could not hydrate the enrollment request.';
+	} finally {
+		if (pendingAepActionKey.value === key) {
+			pendingAepActionKey.value = '';
+		}
+	}
+}
+
+async function generateDepositInvoice(card: CockpitCard) {
+	const planName = String(card?.aep?.name || '').trim();
+	if (!planName) {
+		error.value = 'Enrollment plan reference is missing for deposit invoicing.';
+		return;
+	}
+
+	const key = aepActionKey(planName, 'generate_deposit');
+	pendingAepActionKey.value = key;
+	error.value = '';
+
+	try {
+		await generateAdmissionsCockpitDepositInvoice({ applicant_enrollment_plan: planName });
+		await refreshNow();
+	} catch (err: any) {
+		error.value = err?.message || 'Could not generate the deposit invoice.';
 	} finally {
 		if (pendingAepActionKey.value === key) {
 			pendingAepActionKey.value = '';

@@ -25,6 +25,28 @@ export type TermReportingCycleSummary = {
 	course_term_results: number
 }
 
+export type TermReportingReadiness = {
+	status: 'ready' | 'attention' | 'blocked'
+	ready: boolean
+	counts: {
+		total_results: number
+		zero_task_results: number
+		missing_score_results: number
+		missing_grade_results: number
+		override_results: number
+		missing_teacher_comment_results: number
+		missing_component_results: number
+	}
+	blocked_reasons: string[]
+	warnings: string[]
+	actions: {
+		can_recalculate: boolean
+		recalculate_block_reason: string | null
+		can_generate_reports: boolean
+		generate_reports_block_reason: string | null
+	}
+}
+
 export type CourseTermResultComponent = {
 	component_type: string | null
 	component_key: string | null
@@ -70,6 +92,17 @@ export type Request = {
 	start?: number
 }
 
+export type QueueReviewActionRequest = {
+	reporting_cycle: string
+	action: 'recalculate_course_results' | 'generate_student_reports'
+}
+
+export type QueueReviewActionResponse = {
+	queued: boolean
+	action: QueueReviewActionRequest['action']
+	reporting_cycle: string
+}
+
 export type Response = {
 	cycles: ReportingCycleOption[]
 	selected_reporting_cycle: string | null
@@ -87,4 +120,5 @@ export type Response = {
 		start: number
 		limit: number
 	}
+	readiness: TermReportingReadiness
 }

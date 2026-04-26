@@ -49,21 +49,13 @@ def create_course_plan_impl(api, payload=None, **kwargs) -> dict[str, Any]:
 
 def create_class_teaching_plan_impl(api, student_group: str, course_plan: str) -> dict[str, Any]:
     api._assert_staff_group_access(student_group)
-    group = api._group_context(student_group)
-    course_plan_row = api.planning.get_course_plan_row(course_plan)
-    if api.planning.normalize_text(course_plan_row.get("course")) != api.planning.normalize_text(group.get("course")):
-        api.frappe.throw(
-            api._("The selected course plan does not belong to this class course."),
-            api.frappe.ValidationError,
-        )
-
-    doc = api.frappe.new_doc("Class Teaching Plan")
-    doc.course_plan = course_plan
-    doc.student_group = student_group
-    doc.planning_status = "Active"
-    doc.insert(ignore_permissions=True)
+    result = api.planning.create_student_group_class_delivery(
+        student_group,
+        course_plan=course_plan,
+        activate=1,
+    )
     return {
-        "class_teaching_plan": doc.name,
+        "class_teaching_plan": result.get("class_teaching_plan"),
         "student_group": student_group,
     }
 

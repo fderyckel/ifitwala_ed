@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp, defineComponent, h, nextTick, type App } from 'vue'
 
-const { getSurfaceMock } = vi.hoisted(() => ({
+const { getSurfaceMock, queueActionMock } = vi.hoisted(() => ({
 	getSurfaceMock: vi.fn(),
+	queueActionMock: vi.fn(),
 }))
 
 vi.mock('frappe-ui', async () => {
@@ -34,6 +35,7 @@ vi.mock('@/components/filters/FiltersBar.vue', async () => {
 
 vi.mock('@/lib/services/termReporting/termReportingService', () => ({
 	getTermReportingReviewSurface: getSurfaceMock,
+	queueTermReportingReviewAction: queueActionMock,
 }))
 
 import router from '@/router'
@@ -119,6 +121,27 @@ const reviewSurface = {
 		start: 0,
 		limit: 50,
 	},
+	readiness: {
+		status: 'attention',
+		ready: true,
+		counts: {
+			total_results: 1,
+			zero_task_results: 0,
+			missing_score_results: 0,
+			missing_grade_results: 0,
+			override_results: 1,
+			missing_teacher_comment_results: 0,
+			missing_component_results: 0,
+		},
+		blocked_reasons: [],
+		warnings: ['1 result(s) contain grade overrides for review.'],
+		actions: {
+			can_recalculate: true,
+			recalculate_block_reason: null,
+			can_generate_reports: true,
+			generate_reports_block_reason: null,
+		},
+	},
 }
 
 async function flushUi() {
@@ -149,6 +172,7 @@ function mountPage() {
 
 afterEach(() => {
 	getSurfaceMock.mockReset()
+	queueActionMock.mockReset()
 	while (cleanupFns.length) cleanupFns.pop()?.()
 	document.body.innerHTML = ''
 })
@@ -176,6 +200,8 @@ describe('TermReportingReview page', () => {
 		expect(document.body.textContent || '').toContain('STU-1')
 		expect(document.body.textContent || '').toContain('COURSE-1')
 		expect(document.body.textContent || '').toContain('Summative Evidence')
+		expect(document.body.textContent || '').toContain('Readiness')
+		expect(document.body.textContent || '').toContain('Review Needed')
 
 		const courseInput = document.querySelector(
 			'[data-testid="term-reporting-course-filter"]'
@@ -195,5 +221,29 @@ describe('TermReportingReview page', () => {
 			limit: 50,
 			start: 0,
 		})
+	})
+
+	it('queues reporting actions from the readiness panel', async () => {
+		getSurfaceMock.mockResolvedValue(reviewSurface)
+		queueActionMock.mockResolvedValue({
+			queued: true,
+			action: 'recalculate_course_results',
+			reporting_cycle: 'RC-1',
+		})
+
+		mountPage()
+		await flushUi()
+
+		const recalculateButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Recalculate')
+		) as HTMLButtonElement
+		recalculateButton.click()
+		await flushUi()
+
+		expect(queueActionMock).toHaveBeenCalledWith({
+			reporting_cycle: 'RC-1',
+			action: 'recalculate_course_results',
+		})
+		expect(document.body.textContent || '').toContain('Course result recalculation was queued')
 	})
 })

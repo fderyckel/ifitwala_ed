@@ -7,6 +7,7 @@ Code refs:
 - `ifitwala_ed/ui-spa/src/lib/datetime.ts`
 - `ifitwala_ed/hooks.py`
 - `scripts/i18n/audit.py`
+- `scripts/i18n/check.sh`
 - `ifitwala_ed/docs/audit/i18n_phase_02a_batch_plan.md`
 - `ifitwala_ed/docs/audit/i18n_phase_02a_normalization_decisions.md`
 
@@ -33,6 +34,7 @@ Implemented:
 - The Vue SPA has a runtime bridge at `ifitwala_ed/ui-spa/src/lib/i18n.ts`.
 - SPA date formatting has a shared helper at `ifitwala_ed/ui-spa/src/lib/datetime.ts`.
 - A repo-owned source audit script exists at `scripts/i18n/audit.py`.
+- A repo-owned critical i18n guardrail exists at `scripts/i18n/check.sh` and runs in CI.
 - Previous audit follow-up docs exist under `ifitwala_ed/docs/audit/`.
 
 Not implemented:
@@ -44,7 +46,7 @@ Not implemented:
 - No tracked `ifitwala_ed/locale/th.po`.
 - No repo-owned PO validation script.
 - No repo-owned translation automation script.
-- No CI guardrail for unsafe source-string patterns.
+- No complete CI guardrail for PO placeholder/tag validation.
 - No complete Arabic RTL validation path.
 
 Decision: bulk translation must not start until the source audit and catalog pipeline are reproducible.
@@ -190,6 +192,10 @@ Command:
 
 - `python3 scripts/i18n/audit.py`
 
+Critical guardrail command:
+
+- `bash scripts/i18n/check.sh`
+
 Expected output path:
 
 - `.i18n-audit/current.json`
@@ -265,6 +271,11 @@ Required surfaces for Arabic smoke testing:
 ### Phase 6: CI Guardrails
 
 Add validation to the contract guardrail path.
+
+Implemented:
+
+- `bash scripts/i18n/check.sh` runs `scripts/i18n/audit.py --fail-on-critical`.
+- `.github/workflows/ci.yml` runs the i18n guardrail in the `lint` job.
 
 The guardrail must fail on critical i18n defects:
 

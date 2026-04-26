@@ -227,7 +227,17 @@ def get_student_group_row(student_group: str) -> dict:
     row = frappe.db.get_value(
         "Student Group",
         student_group,
-        ["name", "student_group_name", "student_group_abbreviation", "course", "academic_year", "school", "term"],
+        [
+            "name",
+            "student_group_name",
+            "student_group_abbreviation",
+            "group_based_on",
+            "status",
+            "course",
+            "academic_year",
+            "school",
+            "term",
+        ],
         as_dict=True,
     )
     if not row:
@@ -434,6 +444,262 @@ def _resolve_bootstrap_course_plan_for_group(course: str, academic_year: str | N
     if len(fallback_rows) > 1:
         return {"course_plan": None, "reason": "multiple_course_plans"}
     return {"course_plan": None, "reason": "missing_course_plan"}
+
+
+def _class_delivery_group_title(group_row: dict) -> str:
+    return (
+        normalize_text(group_row.get("student_group_name"))
+        or normalize_text(group_row.get("student_group_abbreviation"))
+        or normalize_text(group_row.get("name"))
+    )
+
+
+def _class_delivery_course_plan_options(group_row: dict) -> list[dict[str, object]]:
+    course = normalize_text(group_row.get("course"))
+    if not course:
+        return []
+
+    rows = frappe.get_all(
+        "Course Plan",
+        filters={"course": course, "plan_status": ["!=", "Archived"]},
+        fields=["name", "title", "course", "academic_year", "cycle_label", "plan_status", "modified"],
+        order_by="academic_year desc, modified desc, creation desc",
+        limit=20,
+        ignore_permissions=True,
+    )
+    if not rows:
+        return []
+
+    class_rows = frappe.get_all(
+        "Class Teaching Plan",
+        filters={"student_group": group_row.get("name")},
+        fields=["name", "title", "course_plan", "planning_status"],
+        order_by="modified desc, creation desc",
+        limit=0,
+        ignore_permissions=True,
+    )
+    existing_by_course_plan = {
+        normalize_text(row.get("course_plan")): row
+        for row in class_rows or []
+        if normalize_text(row.get("course_plan"))
+    }
+    academic_year = normalize_text(group_row.get("academic_year"))
+
+    active_exact = [
+        row
+        for row in rows
+        if normalize_text(row.get("plan_status")) == "Active"
+        and academic_year
+        and normalize_text(row.get("academic_year")) == academic_year
+    ]
+    active_any = [row for row in rows if normalize_text(row.get("plan_status")) == "Active"]
+    recommended = active_exact[0] if active_exact else (active_any[0] if active_any else rows[0])
+    recommended_name = normalize_text(recommended.get("name")) if recommended else ""
+
+    options: list[dict[str, object]] = []
+    for row in rows:
+        course_plan_name = normalize_text(row.get("name"))
+        existing = existing_by_course_plan.get(course_plan_name)
+        recommendation_reason = None
+        if course_plan_name == recommended_name:
+            if active_exact and normalize_text(row.get("academic_year")) == academic_year:
+                recommendation_reason = "active_same_academic_year"
+            elif normalize_text(row.get("plan_status")) == "Active":
+                recommendation_reason = "latest_active_for_course"
+            else:
+                recommendation_reason = "latest_available_for_course"
+
+        options.append(
+            {
+                "course_plan": course_plan_name,
+                "title": row.get("title") or course_plan_name,
+                "academic_year": row.get("academic_year"),
+                "cycle_label": row.get("cycle_label"),
+                "plan_status": row.get("plan_status"),
+                "modified": normalize_record_modified(row.get("modified")),
+                "is_recommended": int(course_plan_name == recommended_name),
+                "recommendation_reason": recommendation_reason,
+                "existing_class_delivery": (
+                    {
+                        "class_teaching_plan": existing.get("name"),
+                        "title": existing.get("title") or existing.get("name"),
+                        "planning_status": existing.get("planning_status"),
+                    }
+                    if existing
+                    else None
+                ),
+            }
+        )
+    return options
+
+
+def get_student_group_class_delivery_setup(student_group: str) -> dict[str, object]:
+    group = get_student_group_row(student_group)
+    class_rows = frappe.get_all(
+        "Class Teaching Plan",
+        filters={"student_group": group.get("name")},
+        fields=["name", "title", "course_plan", "planning_status"],
+        order_by="modified desc, creation desc",
+        limit=50,
+        ignore_permissions=True,
+    )
+    active_rows = [row for row in class_rows or [] if normalize_text(row.get("planning_status")) == "Active"]
+    options = _class_delivery_course_plan_options(group)
+    recommended = next((row for row in options if row.get("is_recommended")), None)
+
+    return {
+        "group": {
+            "student_group": group.get("name"),
+            "title": _class_delivery_group_title(group),
+            "group_based_on": group.get("group_based_on"),
+            "status": group.get("status"),
+            "course": group.get("course"),
+            "academic_year": group.get("academic_year"),
+        },
+        "active_class_delivery": (
+            {
+                "class_teaching_plan": active_rows[0].get("name"),
+                "title": active_rows[0].get("title") or active_rows[0].get("name"),
+                "course_plan": active_rows[0].get("course_plan"),
+                "planning_status": active_rows[0].get("planning_status"),
+            }
+            if len(active_rows) == 1
+            else None
+        ),
+        "active_class_delivery_count": len(active_rows),
+        "class_deliveries": [
+            {
+                "class_teaching_plan": row.get("name"),
+                "title": row.get("title") or row.get("name"),
+                "course_plan": row.get("course_plan"),
+                "planning_status": row.get("planning_status"),
+            }
+            for row in class_rows or []
+        ],
+        "recommended_course_plan": recommended,
+        "course_plan_options": options,
+        "can_create": int(
+            normalize_text(group.get("group_based_on")) == "Course"
+            and normalize_text(group.get("status") or "Active") == "Active"
+            and bool(normalize_text(group.get("course")))
+            and bool(options)
+        ),
+    }
+
+
+def create_student_group_class_delivery(
+    student_group: str,
+    *,
+    course_plan: str | None = None,
+    activate: int | bool = 1,
+) -> dict[str, object]:
+    group = get_student_group_row(student_group)
+    if normalize_text(group.get("group_based_on")) != "Course":
+        frappe.throw(_("Class Delivery can only be created for course-based Student Groups."))
+    if normalize_text(group.get("status") or "Active") != "Active":
+        frappe.throw(_("Class Delivery can only be created for active Student Groups."))
+    if not normalize_text(group.get("course")):
+        frappe.throw(_("This Student Group is not linked to a course."))
+
+    selected_course_plan = normalize_text(course_plan)
+    if not selected_course_plan:
+        setup = get_student_group_class_delivery_setup(student_group)
+        selected_course_plan = normalize_text((setup.get("recommended_course_plan") or {}).get("course_plan"))
+    if not selected_course_plan:
+        frappe.throw(_("Choose a Course Plan before creating Class Delivery."))
+
+    course_plan_row = get_course_plan_row(selected_course_plan)
+    if normalize_text(course_plan_row.get("course")) != normalize_text(group.get("course")):
+        frappe.throw(_("The selected Course Plan does not belong to this Student Group course."))
+
+    existing_plan = normalize_text(
+        frappe.db.get_value(
+            "Class Teaching Plan",
+            {
+                "student_group": group.get("name"),
+                "course_plan": selected_course_plan,
+            },
+            "name",
+        )
+    )
+    activate_delivery = bool(normalize_flag(activate))
+    active_other = [
+        row
+        for row in (
+            frappe.get_all(
+                "Class Teaching Plan",
+                filters={"student_group": group.get("name"), "planning_status": "Active"},
+                fields=["name", "title", "course_plan"],
+                order_by="modified desc, creation desc",
+                limit=2,
+                ignore_permissions=True,
+            )
+            or []
+        )
+        if normalize_text(row.get("course_plan")) != selected_course_plan
+    ]
+    if activate_delivery and active_other:
+        frappe.throw(
+            _(
+                "This Student Group already has an active Class Delivery. Open it or archive it before activating another Course Plan."
+            ),
+            frappe.ValidationError,
+        )
+
+    if existing_plan:
+        doc = frappe.get_doc("Class Teaching Plan", existing_plan)
+        status = "existing"
+        if activate_delivery and normalize_text(doc.planning_status) != "Active":
+            doc.planning_status = "Active"
+            doc.save(ignore_permissions=True)
+            status = "activated"
+        return {
+            "status": status,
+            "student_group": group.get("name"),
+            "course_plan": selected_course_plan,
+            "class_teaching_plan": doc.name,
+            "planning_status": doc.planning_status,
+        }
+
+    doc = frappe.new_doc("Class Teaching Plan")
+    doc.student_group = group.get("name")
+    doc.course_plan = selected_course_plan
+    doc.planning_status = "Active" if activate_delivery else "Draft"
+    try:
+        doc.insert(ignore_permissions=True)
+    except frappe.ValidationError:
+        existing_plan = normalize_text(
+            frappe.db.get_value(
+                "Class Teaching Plan",
+                {
+                    "student_group": group.get("name"),
+                    "course_plan": selected_course_plan,
+                },
+                "name",
+            )
+        )
+        if existing_plan:
+            doc = frappe.get_doc("Class Teaching Plan", existing_plan)
+            status = "existing"
+            if activate_delivery and normalize_text(doc.planning_status) != "Active":
+                doc.planning_status = "Active"
+                doc.save(ignore_permissions=True)
+                status = "activated"
+            return {
+                "status": status,
+                "student_group": group.get("name"),
+                "course_plan": selected_course_plan,
+                "class_teaching_plan": doc.name,
+                "planning_status": doc.planning_status,
+            }
+        raise
+    return {
+        "status": "created",
+        "student_group": group.get("name"),
+        "course_plan": selected_course_plan,
+        "class_teaching_plan": doc.name,
+        "planning_status": doc.planning_status,
+    }
 
 
 def bootstrap_student_group_class_teaching_plan(student_group_doc) -> dict[str, str | None]:

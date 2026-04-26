@@ -22,6 +22,19 @@ TERM_REPORTING_REVIEW_ROLES = {
 
 UNRESTRICTED_REVIEW_ROLES = {"Administrator", "System Manager"}
 
+TERM_REPORTING_ACTION_ROLES = {
+    "Academic Admin",
+    "Academic Assistant",
+    "Administrator",
+    "Curriculum Coordinator",
+    "System Manager",
+}
+
+READINESS_STATUSES = {"Calculated", "Locked", "Published"}
+REPORT_GENERATION_STATUSES = {"Calculated", "Locked", "Published"}
+RECALCULATION_BLOCKED_STATUSES = {"Locked", "Published"}
+REVIEW_ACTIONS = {"recalculate_course_results", "generate_student_reports"}
+
 REPORTING_CYCLE_FIELDS = [
     "name",
     "school",
@@ -33,6 +46,7 @@ REPORTING_CYCLE_FIELDS = [
     "name_label",
     "task_cutoff_date",
     "status",
+    "require_teacher_comment",
 ]
 
 COURSE_TERM_RESULT_FIELDS = [
@@ -172,6 +186,20 @@ def _course_term_result_filters(reporting_cycle, course=None, student=None, prog
     return filters
 
 
+def _result_where_clause(filters: dict, *, table_alias: str = "ctr") -> tuple[str, dict]:
+    conditions = [f"{table_alias}.reporting_cycle = %(reporting_cycle)s"]
+    params = {"reporting_cycle": filters["reporting_cycle"]}
+
+    for fieldname in ("course", "student", "program"):
+        value = filters.get(fieldname)
+        if not value:
+            continue
+        conditions.append(f"{table_alias}.{fieldname} = %({fieldname})s")
+        params[fieldname] = value
+
+    return " AND ".join(conditions), params
+
+
 def _load_course_term_results(filters: dict, *, limit: int, start: int) -> list[dict]:
     rows = frappe.get_all(
         "Course Term Result",
@@ -210,6 +238,179 @@ def _load_course_term_results(filters: dict, *, limit: int, start: int) -> list[
         row["components"] = components_by_parent.get(row["name"], [])
 
     return normalized_rows
+
+
+def _flag_enabled(value) -> bool:
+    cleaned = _clean_link(value)
+    if not cleaned:
+        return False
+    return cleaned.lower() not in {"0", "false", "no", "none", "not required", "optional"}
+
+
+def _as_int(row: dict, key: str) -> int:
+    try:
+        return int(row.get(key) or 0)
+    except Exception:
+        return 0
+
+
+def _load_result_readiness_counts(filters: dict, *, requires_teacher_comment: bool) -> dict:
+    where_clause, params = _result_where_clause(filters)
+    params["requires_teacher_comment"] = 1 if requires_teacher_comment else 0
+
+    rows = frappe.db.sql(
+        f"""
+        SELECT
+            COUNT(*) AS total_results,
+            COALESCE(SUM(CASE WHEN IFNULL(ctr.task_counted, 0) <= 0 THEN 1 ELSE 0 END), 0) AS zero_task_results,
+            COALESCE(SUM(CASE WHEN ctr.numeric_score IS NULL THEN 1 ELSE 0 END), 0) AS missing_score_results,
+            COALESCE(SUM(
+                CASE
+                    WHEN IFNULL(TRIM(ctr.grade_value), '') = ''
+                     AND IFNULL(TRIM(ctr.override_grade_value), '') = ''
+                    THEN 1 ELSE 0
+                END
+            ), 0) AS missing_grade_results,
+            COALESCE(SUM(
+                CASE
+                    WHEN IFNULL(TRIM(ctr.override_grade_value), '') != ''
+                      OR IFNULL(ctr.is_override, 0) = 1
+                    THEN 1 ELSE 0
+                END
+            ), 0) AS override_results,
+            COALESCE(SUM(
+                CASE
+                    WHEN %(requires_teacher_comment)s = 1
+                     AND IFNULL(TRIM(ctr.teacher_comment), '') = ''
+                    THEN 1 ELSE 0
+                END
+            ), 0) AS missing_teacher_comment_results
+        FROM `tabCourse Term Result` ctr
+        WHERE {where_clause}
+        """,
+        params,
+        as_dict=True,
+    )
+    row = rows[0] if rows else {}
+
+    component_rows = frappe.db.sql(
+        f"""
+        SELECT COUNT(*) AS missing_component_results
+        FROM `tabCourse Term Result` ctr
+        LEFT JOIN `tabCourse Term Result Component` component
+          ON component.parent = ctr.name
+         AND component.parenttype = 'Course Term Result'
+         AND component.parentfield = 'components'
+        WHERE {where_clause}
+          AND component.name IS NULL
+        """,
+        params,
+        as_dict=True,
+    )
+    component_row = component_rows[0] if component_rows else {}
+
+    return {
+        "total_results": _as_int(row, "total_results"),
+        "zero_task_results": _as_int(row, "zero_task_results"),
+        "missing_score_results": _as_int(row, "missing_score_results"),
+        "missing_grade_results": _as_int(row, "missing_grade_results"),
+        "override_results": _as_int(row, "override_results"),
+        "missing_teacher_comment_results": _as_int(row, "missing_teacher_comment_results"),
+        "missing_component_results": _as_int(component_row, "missing_component_results"),
+    }
+
+
+def _build_readiness(cycle: dict | None, filters: dict, roles: set[str]) -> dict:
+    if not cycle:
+        return {
+            "status": "blocked",
+            "ready": False,
+            "counts": {
+                "total_results": 0,
+                "zero_task_results": 0,
+                "missing_score_results": 0,
+                "missing_grade_results": 0,
+                "override_results": 0,
+                "missing_teacher_comment_results": 0,
+                "missing_component_results": 0,
+            },
+            "blocked_reasons": [_("Select a Reporting Cycle before reviewing readiness.")],
+            "warnings": [],
+            "actions": _review_action_state(cycle, roles, blocked_reasons=[_("Select a Reporting Cycle.")]),
+        }
+
+    counts = _load_result_readiness_counts(
+        filters,
+        requires_teacher_comment=_flag_enabled(cycle.get("require_teacher_comment")),
+    )
+    blocked_reasons = []
+    warnings = []
+    status = cycle.get("status")
+
+    if status not in READINESS_STATUSES:
+        blocked_reasons.append(_("Cycle status must be Calculated, Locked, or Published before report review."))
+    if not counts["total_results"]:
+        blocked_reasons.append(_("No Course Term Results have been generated for this selection."))
+    if counts["zero_task_results"]:
+        blocked_reasons.append(_("{0} result(s) have no counted assessment tasks.").format(counts["zero_task_results"]))
+    if counts["missing_grade_results"]:
+        blocked_reasons.append(_("{0} result(s) are missing a grade value.").format(counts["missing_grade_results"]))
+    if counts["missing_teacher_comment_results"]:
+        blocked_reasons.append(
+            _("{0} result(s) are missing required teacher comments.").format(counts["missing_teacher_comment_results"])
+        )
+
+    if counts["missing_score_results"]:
+        warnings.append(_("{0} result(s) are missing numeric scores.").format(counts["missing_score_results"]))
+    if counts["missing_component_results"]:
+        warnings.append(
+            _("{0} result(s) have no stored calculation components.").format(counts["missing_component_results"])
+        )
+    if counts["override_results"]:
+        warnings.append(_("{0} result(s) contain grade overrides for review.").format(counts["override_results"]))
+
+    ready = not blocked_reasons
+    readiness_status = "blocked" if blocked_reasons else "attention" if warnings else "ready"
+    return {
+        "status": readiness_status,
+        "ready": ready,
+        "counts": counts,
+        "blocked_reasons": blocked_reasons,
+        "warnings": warnings,
+        "actions": _review_action_state(cycle, roles, blocked_reasons=blocked_reasons),
+    }
+
+
+def _review_action_state(cycle: dict | None, roles: set[str], *, blocked_reasons: list[str]) -> dict:
+    has_action_role = bool(roles & TERM_REPORTING_ACTION_ROLES)
+    status = cycle.get("status") if cycle else None
+    cycle_name = cycle.get("name") if cycle else None
+    action_role_message = _("Ask an academic administrator to run reporting actions.")
+
+    recalculate_block_reason = None
+    if not cycle_name:
+        recalculate_block_reason = _("Select a Reporting Cycle first.")
+    elif not has_action_role:
+        recalculate_block_reason = action_role_message
+    elif status in RECALCULATION_BLOCKED_STATUSES:
+        recalculate_block_reason = _("Recalculation is blocked once a cycle is Locked or Published.")
+
+    generate_block_reason = None
+    if not cycle_name:
+        generate_block_reason = _("Select a Reporting Cycle first.")
+    elif not has_action_role:
+        generate_block_reason = action_role_message
+    elif status not in REPORT_GENERATION_STATUSES:
+        generate_block_reason = _("Generate reports after the cycle has been calculated.")
+    elif blocked_reasons:
+        generate_block_reason = blocked_reasons[0]
+
+    return {
+        "can_recalculate": recalculate_block_reason is None,
+        "recalculate_block_reason": recalculate_block_reason,
+        "can_generate_reports": generate_block_reason is None,
+        "generate_reports_block_reason": generate_block_reason,
+    }
 
 
 def _cycle_summary(cycle: dict, *, result_count: int) -> dict:
@@ -274,7 +475,7 @@ def get_course_term_results(reporting_cycle, course=None, student=None, program=
 
 @frappe.whitelist()
 def get_review_surface(reporting_cycle=None, course=None, student=None, program=None, limit=50, start=0):
-    _user, _roles, school_scope = _ensure_review_access()
+    _user, roles, school_scope = _ensure_review_access()
     limit = _normalize_int(limit, 50, minimum=1, maximum=100)
     start = _normalize_int(start, 0, minimum=0)
 
@@ -294,6 +495,12 @@ def get_review_surface(reporting_cycle=None, course=None, student=None, program=
         cycles = [selected_cycle, *cycles]
 
     if not selected_cycle:
+        result_filters = _course_term_result_filters(
+            None,
+            course=_clean_link(course),
+            student=_clean_link(student),
+            program=_clean_link(program),
+        )
         return {
             "cycles": cycles,
             "selected_reporting_cycle": None,
@@ -311,6 +518,7 @@ def get_review_surface(reporting_cycle=None, course=None, student=None, program=
                 "start": start,
                 "limit": limit,
             },
+            "readiness": _build_readiness(None, result_filters, roles),
         }
 
     result_filters = _course_term_result_filters(
@@ -339,4 +547,51 @@ def get_review_surface(reporting_cycle=None, course=None, student=None, program=
             "start": start,
             "limit": limit,
         },
+        "readiness": _build_readiness(selected_cycle, result_filters, roles),
     }
+
+
+def _get_action_cycle(reporting_cycle: str) -> tuple[set[str], dict]:
+    _user, roles, school_scope = _ensure_review_access()
+    if not roles & TERM_REPORTING_ACTION_ROLES:
+        frappe.throw(_("You do not have permission to run reporting actions."), frappe.PermissionError)
+
+    cycle = _load_reporting_cycle(reporting_cycle, school_scope)
+    if not cycle:
+        frappe.throw(_("Reporting Cycle not found."))
+    return roles, cycle
+
+
+@frappe.whitelist()
+def queue_review_action(reporting_cycle, action):
+    reporting_cycle = _clean_link(reporting_cycle)
+    action = _clean_link(action)
+    if not reporting_cycle:
+        frappe.throw(_("Reporting Cycle is required."))
+    if action not in REVIEW_ACTIONS:
+        frappe.throw(_("Unsupported reporting action."))
+
+    _roles, cycle = _get_action_cycle(reporting_cycle)
+    status = cycle.get("status")
+    if action == "recalculate_course_results":
+        if status in RECALCULATION_BLOCKED_STATUSES:
+            frappe.throw(_("Recalculation is blocked once a cycle is Locked or Published."), frappe.PermissionError)
+        frappe.enqueue(
+            "ifitwala_ed.assessment.term_reporting.recalculate_course_term_results",
+            reporting_cycle=cycle["name"],
+            queue="long",
+        )
+    elif action == "generate_student_reports":
+        if status not in REPORT_GENERATION_STATUSES:
+            frappe.throw(_("Generate reports after the cycle has been calculated."), frappe.PermissionError)
+        filters = _course_term_result_filters(cycle["name"])
+        readiness = _build_readiness(cycle, filters, TERM_REPORTING_ACTION_ROLES)
+        if not readiness["ready"]:
+            frappe.throw(readiness["blocked_reasons"][0], frappe.PermissionError)
+        frappe.enqueue(
+            "ifitwala_ed.assessment.term_reporting.generate_student_term_reports",
+            reporting_cycle=cycle["name"],
+            queue="long",
+        )
+
+    return {"queued": True, "action": action, "reporting_cycle": cycle["name"]}

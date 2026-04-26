@@ -56,6 +56,52 @@
 				{{ enrollmentOffer.offer_message }}
 			</p>
 
+			<div v-if="deposit?.deposit_required" class="mt-3 admissions-detail-card">
+				<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+					<div>
+						<p class="type-body text-ink">{{ __('Deposit') }}</p>
+						<p class="mt-1 type-caption text-ink/70">
+							{{ formatAmount(deposit.amount || deposit.deposit_amount) }}
+							<span v-if="deposit.due_date || deposit.deposit_due_date">
+								·
+								{{
+									__('Due {0}').replace(
+										'{0}',
+										formatDate(deposit.due_date || deposit.deposit_due_date)
+									)
+								}}
+							</span>
+						</p>
+						<p class="mt-1 type-caption text-ink/70">
+							{{
+								deposit.invoice
+									? __('Invoice {0} · {1}')
+											.replace('{0}', deposit.invoice)
+											.replace('{1}', deposit.invoice_status || __('Draft'))
+									: deposit.blocker_label || __('Deposit invoice has not been issued yet.')
+							}}
+						</p>
+						<p v-if="deposit.outstanding_amount > 0" class="mt-1 type-caption text-clay">
+							{{ __('Outstanding {0}').replace('{0}', formatAmount(deposit.outstanding_amount)) }}
+						</p>
+					</div>
+					<span
+						class="admissions-status-pill type-caption"
+						:class="
+							deposit.is_paid ? 'admissions-status-pill--success' : 'admissions-status-pill--quiet'
+						"
+					>
+						{{ deposit.is_paid ? __('Paid') : deposit.blocker_label || __('Pending') }}
+					</span>
+				</div>
+				<p
+					v-if="deposit.payment_instructions"
+					class="mt-3 type-caption text-ink/75 whitespace-pre-wrap"
+				>
+					{{ deposit.payment_instructions }}
+				</p>
+			</div>
+
 			<div v-if="enrollmentOffer.course_choices_available" class="mt-3 admissions-detail-card">
 				<div class="flex flex-wrap items-center justify-between gap-3">
 					<div>
@@ -181,6 +227,7 @@ const readOnlyReason = computed(() => session.value?.applicant?.read_only_reason
 const enrollmentOffer = computed(
 	() => snapshot.value?.enrollment_offer || session.value?.enrollment_offer || null
 );
+const deposit = computed(() => enrollmentOffer.value?.deposit || null);
 const needsCourseChoices = computed(
 	() =>
 		Boolean(enrollmentOffer.value?.course_choices_available) &&
@@ -228,6 +275,15 @@ function formatDate(value?: string | null) {
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) return value;
 	return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date);
+}
+
+function formatAmount(value?: number | string | null) {
+	const amount = Number(value || 0);
+	if (Number.isNaN(amount)) return '0.00';
+	return amount.toLocaleString(undefined, {
+		minimumFractionDigits: 2,
+		maximumFractionDigits: 2,
+	});
 }
 
 async function acceptOffer() {

@@ -8,7 +8,10 @@ vi.mock('@/resources/frappe', () => ({
 	apiMethod: apiMethodMock,
 }))
 
-import { getTermReportingReviewSurface } from '@/lib/services/termReporting/termReportingService'
+import {
+	getTermReportingReviewSurface,
+	queueTermReportingReviewAction,
+} from '@/lib/services/termReporting/termReportingService'
 
 describe('termReportingService', () => {
 	afterEach(() => {
@@ -30,6 +33,24 @@ describe('termReportingService', () => {
 			course: 'COURSE-1',
 			limit: 50,
 			start: 0,
+		})
+	})
+
+	it('queues review actions through the canonical action endpoint', async () => {
+		apiMethodMock.mockResolvedValue({
+			queued: true,
+			action: 'recalculate_course_results',
+			reporting_cycle: 'RC-1',
+		})
+
+		await queueTermReportingReviewAction({
+			reporting_cycle: 'RC-1',
+			action: 'recalculate_course_results',
+		})
+
+		expect(apiMethodMock).toHaveBeenCalledWith('ifitwala_ed.api.term_reporting.queue_review_action', {
+			reporting_cycle: 'RC-1',
+			action: 'recalculate_course_results',
 		})
 	})
 })

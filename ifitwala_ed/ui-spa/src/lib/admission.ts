@@ -8,6 +8,8 @@ export const ADMISSION_API = {
 	admissionsCockpitSendOffer: 'ifitwala_ed.api.admission_cockpit.send_admissions_cockpit_offer',
 	admissionsCockpitHydrateRequest:
 		'ifitwala_ed.api.admission_cockpit.hydrate_admissions_cockpit_request',
+	admissionsCockpitGenerateDepositInvoice:
+		'ifitwala_ed.api.admission_cockpit.generate_admissions_cockpit_deposit_invoice',
 	admissionsCaseThread: 'ifitwala_ed.api.admissions_communication.get_admissions_case_thread',
 	admissionsCaseMessageSend:
 		'ifitwala_ed.api.admissions_communication.send_admissions_case_message',
@@ -61,11 +63,13 @@ export type AdmissionsCockpitAepActionRequest = {
 export type AdmissionsCockpitAepActionResponse = {
 	ok: boolean;
 	applicant_enrollment_plan: string;
-	status: string;
+	status?: string;
 	open_url?: string | null;
 	program_enrollment_request?: string | null;
 	program_enrollment_request_url?: string | null;
 	created?: boolean;
+	deposit?: Record<string, unknown>;
+	invoice?: Record<string, unknown>;
 };
 
 export function sendAdmissionsCockpitOffer(payload: AdmissionsCockpitAepActionRequest) {
@@ -78,6 +82,13 @@ export function sendAdmissionsCockpitOffer(payload: AdmissionsCockpitAepActionRe
 export function hydrateAdmissionsCockpitRequest(payload: AdmissionsCockpitAepActionRequest) {
 	return api(
 		ADMISSION_API.admissionsCockpitHydrateRequest,
+		payload
+	) as Promise<AdmissionsCockpitAepActionResponse>;
+}
+
+export function generateAdmissionsCockpitDepositInvoice(payload: AdmissionsCockpitAepActionRequest) {
+	return api(
+		ADMISSION_API.admissionsCockpitGenerateDepositInvoice,
 		payload
 	) as Promise<AdmissionsCockpitAepActionResponse>;
 }

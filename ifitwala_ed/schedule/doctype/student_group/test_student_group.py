@@ -134,6 +134,30 @@ class TestStudentGroup(TestCase):
 
         mock_bootstrap.assert_called_once_with(group)
 
+    @patch("ifitwala_ed.curriculum.planning.bootstrap_student_group_class_teaching_plan")
+    def test_after_save_bootstraps_class_delivery_when_context_changes(self, mock_bootstrap):
+        group = object.__new__(StudentGroup)
+        group.flags = frappe._dict(
+            {
+                "_sg_class_delivery_context_changed": True,
+                "_sg_students_added": set(),
+                "_sg_students_removed": set(),
+                "_sg_instructors_changed": False,
+                "_sg_schedule_changed": False,
+                "_sg_instructor_log_sync_needed": False,
+                "_sg_instructors_to_sync": set(),
+                "_sg_meeting_dates_changed": False,
+            }
+        )
+        group.academic_year = "AY-2026"
+        group.students = []
+        group.name = "SG-1"
+
+        group.after_save()
+
+        mock_bootstrap.assert_called_once_with(group)
+        self.assertFalse(group.flags._sg_class_delivery_context_changed)
+
     def test_normalize_group_anchor_fields_clears_course_for_non_course_groups(self):
         group = object.__new__(StudentGroup)
         group.group_based_on = "Activity"
@@ -248,6 +272,155 @@ class TestStudentGroup(TestCase):
                 "student_group": "SG-1",
                 "course_plan": None,
                 "class_teaching_plan": None,
+            },
+        )
+
+    @patch("ifitwala_ed.curriculum.planning.frappe.get_all")
+    @patch("ifitwala_ed.curriculum.planning.frappe.db.get_value")
+    def test_get_student_group_class_delivery_setup_recommends_active_course_plan_for_academic_year(
+        self,
+        mock_get_value,
+        mock_get_all,
+    ):
+        class_rows = [
+            {
+                "name": "CLASS-PLAN-1",
+                "title": "Grade 8 Biology - Group A",
+                "course_plan": "COURSE-PLAN-2026",
+                "planning_status": "Active",
+            }
+        ]
+        mock_get_value.return_value = frappe._dict(
+            {
+                "name": "SG-1",
+                "student_group_name": "Grade 8 Biology - Group A",
+                "student_group_abbreviation": "G8 BIO A",
+                "group_based_on": "Course",
+                "status": "Active",
+                "course": "BIO-8",
+                "academic_year": "AY-2026",
+                "school": "SCHOOL-1",
+                "term": None,
+            }
+        )
+        mock_get_all.side_effect = [
+            class_rows,
+            [
+                {
+                    "name": "COURSE-PLAN-2026",
+                    "title": "Grade 8 Biology 2026",
+                    "course": "BIO-8",
+                    "academic_year": "AY-2026",
+                    "cycle_label": "Term 1",
+                    "plan_status": "Active",
+                    "modified": "2026-04-01 10:00:00",
+                },
+                {
+                    "name": "COURSE-PLAN-2025",
+                    "title": "Grade 8 Biology 2025",
+                    "course": "BIO-8",
+                    "academic_year": "AY-2025",
+                    "cycle_label": "Term 1",
+                    "plan_status": "Active",
+                    "modified": "2025-04-01 10:00:00",
+                },
+            ],
+            class_rows,
+        ]
+
+        result = planning.get_student_group_class_delivery_setup("SG-1")
+
+        self.assertEqual(result["group"]["title"], "Grade 8 Biology - Group A")
+        self.assertEqual(result["active_class_delivery"]["class_teaching_plan"], "CLASS-PLAN-1")
+        self.assertEqual(result["recommended_course_plan"]["course_plan"], "COURSE-PLAN-2026")
+        self.assertEqual(result["recommended_course_plan"]["recommendation_reason"], "active_same_academic_year")
+        self.assertEqual(
+            result["course_plan_options"][0]["existing_class_delivery"]["class_teaching_plan"],
+            "CLASS-PLAN-1",
+        )
+        self.assertEqual(result["can_create"], 1)
+        self.assertTrue(all(call.kwargs.get("ignore_permissions") is True for call in mock_get_all.call_args_list))
+
+    @patch("ifitwala_ed.curriculum.planning.frappe.new_doc")
+    @patch("ifitwala_ed.curriculum.planning.frappe.get_all")
+    @patch("ifitwala_ed.curriculum.planning.frappe.db.get_value")
+    @patch("ifitwala_ed.curriculum.planning.get_course_plan_row")
+    @patch("ifitwala_ed.curriculum.planning.get_student_group_row")
+    def test_create_student_group_class_delivery_blocks_second_active_course_plan(
+        self,
+        mock_group_row,
+        mock_course_plan_row,
+        mock_get_value,
+        mock_get_all,
+        mock_new_doc,
+    ):
+        mock_group_row.return_value = {
+            "name": "SG-1",
+            "group_based_on": "Course",
+            "status": "Active",
+            "course": "BIO-8",
+        }
+        mock_course_plan_row.return_value = {"name": "COURSE-PLAN-NEW", "course": "BIO-8"}
+        mock_get_value.return_value = None
+        mock_get_all.return_value = [{"name": "CLASS-PLAN-OLD", "course_plan": "COURSE-PLAN-OLD"}]
+
+        with self.assertRaises(frappe.ValidationError) as exc:
+            planning.create_student_group_class_delivery("SG-1", course_plan="COURSE-PLAN-NEW", activate=1)
+
+        self.assertIn("already has an active Class Delivery", str(exc.exception))
+        mock_new_doc.assert_not_called()
+
+    @patch("ifitwala_ed.curriculum.planning.frappe.new_doc")
+    @patch("ifitwala_ed.curriculum.planning.frappe.get_all")
+    @patch("ifitwala_ed.curriculum.planning.frappe.db.get_value")
+    @patch("ifitwala_ed.curriculum.planning.get_course_plan_row")
+    @patch("ifitwala_ed.curriculum.planning.get_student_group_row")
+    def test_create_student_group_class_delivery_creates_active_delivery(
+        self,
+        mock_group_row,
+        mock_course_plan_row,
+        mock_get_value,
+        mock_get_all,
+        mock_new_doc,
+    ):
+        class FakePlan:
+            def __init__(self):
+                self.name = "CLASS-PLAN-1"
+                self.student_group = None
+                self.course_plan = None
+                self.planning_status = None
+                self.insert_calls = []
+
+            def insert(self, ignore_permissions=False):
+                self.insert_calls.append(ignore_permissions)
+
+        class_plan = FakePlan()
+        mock_group_row.return_value = {
+            "name": "SG-1",
+            "group_based_on": "Course",
+            "status": "Active",
+            "course": "BIO-8",
+        }
+        mock_course_plan_row.return_value = {"name": "COURSE-PLAN-1", "course": "BIO-8"}
+        mock_get_value.return_value = None
+        mock_get_all.return_value = []
+        mock_new_doc.return_value = class_plan
+
+        result = planning.create_student_group_class_delivery("SG-1", course_plan="COURSE-PLAN-1", activate=1)
+
+        mock_new_doc.assert_called_once_with("Class Teaching Plan")
+        self.assertEqual(class_plan.student_group, "SG-1")
+        self.assertEqual(class_plan.course_plan, "COURSE-PLAN-1")
+        self.assertEqual(class_plan.planning_status, "Active")
+        self.assertEqual(class_plan.insert_calls, [True])
+        self.assertEqual(
+            result,
+            {
+                "status": "created",
+                "student_group": "SG-1",
+                "course_plan": "COURSE-PLAN-1",
+                "class_teaching_plan": "CLASS-PLAN-1",
+                "planning_status": "Active",
             },
         )
 

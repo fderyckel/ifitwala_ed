@@ -23,7 +23,11 @@ The live curriculum model is split into three layers:
 - Assigned work:
   reusable `Task` plus class-scoped `Task Delivery`
 
-This split is locked.
+This split is locked, but teacher-facing language should reduce cognitive load:
+
+- `Course Plan` is the reusable course blueprint.
+- `Class Teaching Plan` remains the current DocType name.
+- Staff UX should present that DocType as `Class Delivery` or the `Class Workspace` because it is the live delivery document for one real student group, not a second curriculum blueprint teachers must discover manually.
 
 - Shared curriculum defines the governed backbone.
 - Class planning adapts that backbone for one real class.
@@ -71,17 +75,19 @@ Ownership rule:
 ## Class Planning Layer
 
 Status: Implemented
-Code refs: `ifitwala_ed/curriculum/doctype/class_teaching_plan/class_teaching_plan.json`, `ifitwala_ed/curriculum/doctype/class_teaching_plan_unit/class_teaching_plan_unit.json`, `ifitwala_ed/curriculum/doctype/class_session/class_session.json`, `ifitwala_ed/curriculum/doctype/class_session_activity/class_session_activity.json`, `ifitwala_ed/curriculum/planning.py`, `ifitwala_ed/schedule/doctype/student_group/student_group.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`
+Code refs: `ifitwala_ed/curriculum/doctype/class_teaching_plan/class_teaching_plan.json`, `ifitwala_ed/curriculum/doctype/class_teaching_plan_unit/class_teaching_plan_unit.json`, `ifitwala_ed/curriculum/doctype/class_session/class_session.json`, `ifitwala_ed/curriculum/doctype/class_session_activity/class_session_activity.json`, `ifitwala_ed/curriculum/planning.py`, `ifitwala_ed/schedule/doctype/student_group/student_group.py`, `ifitwala_ed/schedule/doctype/student_group/student_group.js`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`
 Test refs: `ifitwala_ed/schedule/doctype/student_group/test_student_group.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/lib/services/staff/__tests__/staffTeachingService.test.ts`
 
-- `Class Teaching Plan` is the class-owned planning layer for one teaching group.
+- `Class Teaching Plan` is the class-owned planning layer for one teaching group. In teacher-facing UX, this layer is `Class Delivery`.
 - Every class teaching plan must point to exactly one governing `Course Plan`.
-- Creating an active course-based `Student Group` auto-provisions one active `Class Teaching Plan` when exactly one active governing `Course Plan` can be resolved for that course and academic-year context. Draft rollover plans must not become governing class truth before activation. If course-plan resolution is missing or ambiguous, class-plan creation remains an explicit Class Planning step, and that manual Class Planning create-plan action also initializes the plan as `Active`.
+- Creating or updating an active course-based `Student Group` auto-provisions one active `Class Teaching Plan` when exactly one active governing `Course Plan` can be resolved for that course and academic-year context. Draft rollover plans must not become governing class truth before activation.
+- When course-plan resolution is missing or ambiguous, `Student Group` must surface a low-friction Class Delivery setup action. That action recommends the best matching Course Plan, allows selecting another non-archived Course Plan for the same course, creates the Class Delivery, activates it, and sends staff to the class workspace.
 - `Class Session` is the educator-facing lifecycle object for a real teaching event.
 - `Class Session Activity` is the ordered session flow inside one class session.
 
 Class-planning rule:
 
+- Class Delivery is a top-tier curriculum document for the class. It is not a hidden technical setup record.
 - teachers adapt pacing, activity sequence, examples, and class-owned resources in the class layer
 - they do not mutate the shared backbone just to teach one class
 - sibling classes must not see each other's class-owned planning or resources
@@ -197,7 +203,7 @@ Test refs: None
 ## Technical Notes (IT)
 
 Status: Canonical
-Code refs: `ifitwala_ed/curriculum/planning.py`, `ifitwala_ed/schedule/doctype/student_group/student_group.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/assessment/task_delivery_service.py`
+Code refs: `ifitwala_ed/curriculum/planning.py`, `ifitwala_ed/schedule/doctype/student_group/student_group.py`, `ifitwala_ed/schedule/doctype/student_group/student_group.js`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/assessment/task_creation_service.py`, `ifitwala_ed/assessment/task_delivery_service.py`
 Test refs: `ifitwala_ed/schedule/doctype/student_group/test_student_group.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/assessment/test_task_creation_service.py`, `ifitwala_ed/assessment/test_task_delivery_service.py`
 
 - `get_student_learning_space` is the student bootstrap. Do not rebuild the student curriculum reader on `api/courses.py` lesson-tree payloads.
@@ -205,7 +211,8 @@ Test refs: `ifitwala_ed/schedule/doctype/student_group/test_student_group.py`, `
 - The staff course-plan workspace may be split into reusable section components and shared planning helpers, but `CoursePlanWorkspace.vue` plus `get_staff_course_plan_surface` remain the sole route/bootstrap/read-model owners. Future analytics or adjunct panels must compose onto that bounded surface instead of adding independent curriculum waterfalls.
 - `create_course_plan` is the canonical mutation for starting a new governed course plan from the SPA index.
 - Desk `Course Plan` also owns the year-handover action for creating the next academic-year governed plan. That Desk flow creates a draft target plan, duplicates governed units, reuses shared material placements on the new anchors, and may schedule activation for the linked academic-year start date.
-- `StudentGroup.after_insert()` calls `planning.bootstrap_student_group_class_teaching_plan(...)` so course-based class setup can create the default class-plan anchor in one save when course-plan resolution is unambiguous.
+- `StudentGroup.after_insert()` and relevant existing-record context changes call `planning.bootstrap_student_group_class_teaching_plan(...)` so course-based class setup can create the default class-plan anchor when course-plan resolution is unambiguous.
+- `Student Group` exposes Class Delivery setup through `get_class_delivery_setup` and `setup_class_delivery`; those functions are workflow actions and must preserve the server-side group-access check before creating or activating the delivery anchor.
 - Shared course-plan editing rights are not derived from static DocType role writes; they are resolved from active teaching assignments on `Student Group`.
 - `Task Delivery` remains the live doctype name. Educator-facing language can evolve, but workflow invariants and schema claims must be grounded in the current files.
 - Any future change that alters plan ownership, read-order, or class-scoped assignment rules must update this document and the LMS/resource contracts in the same change.

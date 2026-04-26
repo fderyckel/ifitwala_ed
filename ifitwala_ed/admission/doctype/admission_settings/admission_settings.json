@@ -18,7 +18,10 @@
   "admissions_access_mode",
   "show_guardians_in_admissions_profile",
   "enrollment_section",
-  "auto_hydrate_enrollment_request_after_promotion"
+  "auto_hydrate_enrollment_request_after_promotion",
+  "deposit_defaults_section",
+  "deposit_defaults",
+  "require_deposit_before_promotion"
  ],
  "fields": [
   {
@@ -92,13 +95,31 @@
    "fieldname": "auto_hydrate_enrollment_request_after_promotion",
    "fieldtype": "Check",
    "label": "Auto Hydrate Enrollment Request After Promotion"
+  },
+  {
+   "fieldname": "deposit_defaults_section",
+   "fieldtype": "Section Break",
+   "label": "Admissions Deposit Defaults"
+  },
+  {
+   "fieldname": "deposit_defaults",
+   "fieldtype": "Table",
+   "label": "Deposit Defaults",
+   "options": "Admission Deposit Default"
+  },
+  {
+   "default": "0",
+   "description": "If enabled, applicant promotion is blocked until any required admissions deposit invoice is paid.",
+   "fieldname": "require_deposit_before_promotion",
+   "fieldtype": "Check",
+   "label": "Require Deposit Before Promotion"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-03-12 11:43:41.000000",
+ "modified": "2026-04-26 13:06:23.000000",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Admission Settings",

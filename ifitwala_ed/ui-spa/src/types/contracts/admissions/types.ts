@@ -34,6 +34,29 @@ export type ApplicantApplicationContext = {
   program_offering?: string | null
 }
 
+export type AdmissionsDepositSummary = {
+  deposit_required: boolean
+  deposit_amount: number
+  deposit_due_date?: string | null
+  deposit_billable_offering?: string | null
+  terms_source: 'School Default' | 'Manual Override' | string
+  override_status: 'Not Required' | 'Pending' | 'Approved' | 'Rejected' | string
+  requires_override_approval: boolean
+  academic_approved: boolean
+  finance_approved: boolean
+  payment_instructions?: string | null
+  invoice?: string | null
+  invoice_status?: string | null
+  docstatus?: number | null
+  amount: number
+  paid_amount: number
+  outstanding_amount: number
+  due_date?: string | null
+  is_overdue: boolean
+  is_paid: boolean
+  blocker_label?: string | null
+}
+
 export type AdmissionsEnrollmentOffer = {
   name: string
   status: string
@@ -54,6 +77,7 @@ export type AdmissionsEnrollmentOffer = {
   course_choice_blocking_reasons?: string[]
   course_choice_optional_count?: number
   course_choice_selected_optional_count?: number
+  deposit?: AdmissionsDepositSummary | null
 }
 
 export type AdmissionsSessionApplicant = {

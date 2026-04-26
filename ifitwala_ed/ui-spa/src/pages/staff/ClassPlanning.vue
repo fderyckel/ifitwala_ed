@@ -11,13 +11,13 @@
 				</RouterLink>
 				<div class="page-header">
 					<div class="page-header__intro">
-						<p class="type-overline text-ink/60">Curriculum Planning</p>
+						<p class="type-overline text-ink/60">Class Delivery</p>
 						<h1 class="mt-2 type-h1 text-canopy">
-							{{ surface?.group.title || studentGroup || 'Class Planning' }}
+							{{ surface?.group.title || studentGroup || 'Class Delivery' }}
 						</h1>
 						<p class="mt-2 max-w-3xl type-meta text-slate-token/80">
 							Keep the shared unit backbone intact while adapting pacing, session design, and
-							teaching moves for this class.
+							student-visible delivery for this class.
 						</p>
 					</div>
 					<div class="page-header__actions">
@@ -39,7 +39,7 @@
 			v-if="errorMessage"
 			class="rounded-2xl border border-flame/30 bg-[var(--flame)]/5 px-5 py-4"
 		>
-			<p class="type-body-strong text-flame">Could not load the class teaching plan.</p>
+			<p class="type-body-strong text-flame">Could not load Class Delivery.</p>
 			<p class="mt-1 type-caption text-ink/70">{{ errorMessage }}</p>
 		</section>
 
@@ -47,7 +47,7 @@
 			v-else-if="loading && !surface"
 			class="rounded-2xl border border-line-soft bg-white px-5 py-8"
 		>
-			<p class="type-body text-ink/70">Loading class planning surface...</p>
+			<p class="type-body text-ink/70">Loading Class Delivery...</p>
 		</section>
 
 		<template v-else-if="surface">
@@ -57,10 +57,10 @@
 			>
 				<div class="space-y-3">
 					<p class="type-overline text-ink/60">Step 1</p>
-					<h2 class="type-h2 text-ink">Create the class teaching plan</h2>
+					<h2 class="type-h2 text-ink">Create Class Delivery</h2>
 					<p class="type-body text-ink/80">
-						Select the governing course plan for this class. Teachers will then plan within the
-						shared unit backbone instead of editing the curriculum master.
+						Select the Course Plan this class will use. The shared unit backbone stays intact,
+						while pacing, sessions, assigned work, and class resources become class-owned.
 					</p>
 				</div>
 
@@ -71,7 +71,7 @@
 					>
 						<p class="type-body-strong text-ink">No course plans are available yet.</p>
 						<p class="mt-2 type-caption text-ink/70">
-							Create the shared course plan and unit backbone before starting class planning.
+							Create the shared course plan and unit backbone before creating Class Delivery.
 						</p>
 					</div>
 
@@ -116,10 +116,10 @@
 								:disabled="!draftCoursePlan || createPending"
 								@click="handleCreatePlan"
 							>
-								{{ createPending ? 'Creating...' : 'Create Class Teaching Plan' }}
+								{{ createPending ? 'Creating...' : 'Create Class Delivery' }}
 							</button>
 							<p class="type-caption text-ink/70">
-								The unit backbone stays governed. Pacing and sessions stay class-owned.
+								Students see shared resources once Class Delivery is active.
 							</p>
 						</div>
 					</template>
@@ -135,7 +135,7 @@
 						<div class="space-y-4">
 							<div class="flex items-center justify-between gap-3">
 								<div>
-									<p class="type-overline text-ink/60">Class Teaching Plan</p>
+									<p class="type-overline text-ink/60">Class Delivery</p>
 									<h2 class="mt-1 type-h3 text-ink">{{ surface.teaching_plan.title }}</h2>
 								</div>
 								<span class="chip">{{ surface.teaching_plan.planning_status || 'Draft' }}</span>
@@ -159,7 +159,7 @@
 							</label>
 
 							<label class="block space-y-2">
-								<span class="type-caption text-ink/70">Publishing status</span>
+								<span class="type-caption text-ink/70">Student portal status</span>
 								<select v-model="planForm.planning_status" class="if-input w-full">
 									<option value="Draft">Draft</option>
 									<option value="Active">Active</option>
@@ -183,7 +183,7 @@
 								:disabled="planPending"
 								@click="handleSavePlan"
 							>
-								{{ planPending ? 'Saving...' : 'Save Plan Overview' }}
+								{{ planPending ? 'Saving...' : 'Save Delivery Overview' }}
 							</button>
 
 							<RouterLink
@@ -582,10 +582,10 @@
 							anchor-doctype="Class Teaching Plan"
 							:anchor-name="surface.teaching_plan.class_teaching_plan"
 							eyebrow="Class-Owned Resources"
-							title="Shared across this class plan"
+							title="Shared across this class delivery"
 							description="Keep class-wide links, files, and exemplars where the teaching team already plans."
 							empty-message="No class-wide resources shared yet."
-							blocked-message="Create the class teaching plan before sharing class resources."
+							blocked-message="Create Class Delivery before sharing class resources."
 							:resources="surface.resources.class_resources"
 							enable-attachment-preview
 							@changed="loadSurface"
@@ -1185,11 +1185,11 @@ function openAssignedWorkOverlay(options?: {
 	classSession?: string | null;
 }) {
 	if (!surface.value?.teaching_plan?.class_teaching_plan) {
-		toast.error('Create the class teaching plan before assigning work.');
+		toast.error('Create Class Delivery before assigning work.');
 		return;
 	}
 	if (String(surface.value.teaching_plan.planning_status || '').trim() !== 'Active') {
-		toast.error('Set this class teaching plan to Active before assigning work.');
+		toast.error('Set Class Delivery to Active before assigning work.');
 		return;
 	}
 	overlay.open('create-task', {
@@ -1301,11 +1301,9 @@ async function handleCreatePlan() {
 				class_teaching_plan: result.class_teaching_plan,
 			},
 		});
-		toast.success('Class teaching plan created.');
+		toast.success('Class Delivery created.');
 	} catch (error) {
-		toast.error(
-			error instanceof Error ? error.message : 'Could not create the class teaching plan.'
-		);
+		toast.error(error instanceof Error ? error.message : 'Could not create Class Delivery.');
 	} finally {
 		createPending.value = false;
 	}
@@ -1321,11 +1319,9 @@ async function handleSavePlan() {
 			team_note: planForm.team_note,
 		});
 		await loadSurface();
-		toast.success('Class teaching plan updated.');
+		toast.success('Class Delivery updated.');
 	} catch (error) {
-		toast.error(
-			error instanceof Error ? error.message : 'Could not save the class teaching plan.'
-		);
+		toast.error(error instanceof Error ? error.message : 'Could not save Class Delivery.');
 	} finally {
 		planPending.value = false;
 	}
