@@ -3,7 +3,7 @@ title: "Inquiry: Managing Website Visitor Intake"
 slug: inquiry
 category: Admission
 doc_order: 2
-version: "1.4.7"
+version: "1.4.8"
 last_change_date: "2026-04-26"
 summary: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
 seo_title: "Inquiry: Managing Website Visitor Intake"
@@ -66,7 +66,7 @@ Allowed transitions are strictly server-validated:
 - **Desk form + list view**:
   - custom action buttons (`Assign`, `Reassign`, `Mark Contacted`, `Qualify`, `Archive`, `Invite to Apply`)
   - `School` field link picker is client-filtered by selected `Organization` (includes descendant organizations)
-  - assignee picker in `Assign`/`Reassign` is server-scoped to active `Employee.user_id` within the Inquiry organization chain and school chain (selected node plus ancestors and descendants; siblings excluded)
+  - assignee picker in `Assign`/`Reassign` is server-scoped to active `Employee.user_id` within the Inquiry organization chain and school chain (selected node plus ancestors and descendants; sibling organizations/schools excluded; organization-level employees with no school follow the organization chain)
   - `Mark Contacted` is available in `Assigned` state for both `Admission Officer` and `Admission Manager`
   - when the current session user is the assigned owner, `Mark Contacted` is also available even without admissions roles
   - list defaults to active pipeline (`workflow_state != Archived`)
@@ -200,7 +200,7 @@ Action-level guard in server code: assignment/reassignment require admissions pe
   - Organization/School hierarchy consistency check
   - strict workflow transition guard
   - `student_applicant` link immutability
-  - assignee scope guard for assignment/reassignment (`Employee` active + Inquiry organization chain and school chain: selected node plus ancestors and descendants; sibling organizations/schools excluded)
+  - assignee scope guard for assignment/reassignment (`Employee` active + Inquiry organization chain and school chain: selected node plus ancestors and descendants; sibling organizations/schools excluded; organization-level employees with no school follow the organization chain)
 - **Whitelisted methods on document**:
   - `mark_qualified`
   - `archive`

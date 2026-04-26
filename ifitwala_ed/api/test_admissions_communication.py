@@ -2,7 +2,7 @@
 
 from datetime import timedelta
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
@@ -160,6 +160,28 @@ class TestAdmissionsCommunicationAuthGuards(FrappeTestCase):
 
 
 class TestAdmissionsCommunicationCanonicalWriters(FrappeTestCase):
+    def test_create_thread_keeps_case_container_out_of_generic_audience_feeds(self):
+        fake_doc = SimpleNamespace(name="COMM-0001", audiences=[])
+        fake_doc.insert = MagicMock()
+
+        with (
+            patch("ifitwala_ed.api.admissions_communication.frappe.db.exists", return_value=False),
+            patch("ifitwala_ed.api.admissions_communication.frappe.new_doc", return_value=fake_doc),
+        ):
+            thread_name = admissions_communication._create_thread(
+                context_doctype="Student Applicant",
+                context_name="APP-0001",
+                context_row={"organization": "ORG-1", "school": "SCH-1"},
+            )
+
+        self.assertEqual(thread_name, "COMM-0001")
+        self.assertEqual(fake_doc.status, "Draft")
+        self.assertEqual(fake_doc.portal_surface, "Desk")
+        self.assertEqual(fake_doc.admission_context_doctype, "Student Applicant")
+        self.assertEqual(fake_doc.admission_context_name, "APP-0001")
+        self.assertEqual(fake_doc.audiences, [])
+        fake_doc.insert.assert_called_once_with(ignore_permissions=True)
+
     def test_send_message_uses_canonical_entry_writer(self):
         created_at = now_datetime()
         actor_ctx = {

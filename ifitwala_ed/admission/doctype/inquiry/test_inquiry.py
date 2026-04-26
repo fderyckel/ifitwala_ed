@@ -130,10 +130,12 @@ class TestInquiry(FrappeTestCase):
         inquiry = self._make_inquiry(organization=organization, school=branch_school)
         parent_assignee = self._make_employee_user(school=root_school)
         child_assignee = self._make_employee_user(school=leaf_school)
+        organization_assignee = self._make_employee_user(organization=organization)
         sibling_assignee = self._make_employee_user(school=sibling_school)
 
         _validate_inquiry_assignee_scope(parent_assignee.name, inquiry)
         _validate_inquiry_assignee_scope(child_assignee.name, inquiry)
+        _validate_inquiry_assignee_scope(organization_assignee.name, inquiry)
         with self.assertRaises(frappe.ValidationError):
             _validate_inquiry_assignee_scope(sibling_assignee.name, inquiry)
 
@@ -170,6 +172,7 @@ class TestInquiry(FrappeTestCase):
         root_user = self._make_employee_user(school=root_school)
         branch_user = self._make_employee_user(school=branch_school)
         leaf_user = self._make_employee_user(school=leaf_school)
+        organization_user = self._make_employee_user(organization=organization)
         sibling_user = self._make_employee_user(school=sibling_school)
 
         with patch("ifitwala_ed.admission.admission_utils.ensure_admissions_permission", return_value="Administrator"):
@@ -179,6 +182,7 @@ class TestInquiry(FrappeTestCase):
         self.assertIn(root_user.name, names)
         self.assertIn(branch_user.name, names)
         self.assertIn(leaf_user.name, names)
+        self.assertIn(organization_user.name, names)
         self.assertNotIn(sibling_user.name, names)
 
     def test_get_inquiry_assignees_includes_organization_ancestors_descendants_and_excludes_siblings(self):
@@ -407,7 +411,11 @@ class TestInquiry(FrappeTestCase):
         doc.insert(ignore_permissions=True)
         return doc.name
 
-    def _make_employee_user(self, *, school: str, organization: str | None = None):
+    def _make_employee_user(self, *, school: str | None = None, organization: str | None = None):
+        resolved_organization = organization or frappe.db.get_value("School", school, "organization")
+        if not resolved_organization:
+            raise ValueError("organization is required when school is not provided")
+
         user = make_user()
         frappe.get_doc(
             {
@@ -416,7 +424,7 @@ class TestInquiry(FrappeTestCase):
                 "employee_last_name": f"Assignee-{frappe.generate_hash(length=6)}",
                 "employee_gender": "Prefer not to say",
                 "employee_professional_email": user.name,
-                "organization": organization or frappe.db.get_value("School", school, "organization"),
+                "organization": resolved_organization,
                 "school": school,
                 "user_id": user.name,
                 "date_of_joining": frappe.utils.nowdate(),

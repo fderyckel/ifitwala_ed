@@ -535,11 +535,14 @@ def _validate_inquiry_assignee_scope(user: str, inquiry_doc) -> dict:
         school_scope = _get_inquiry_assignment_school_scope(inquiry_school)
         if not school_scope:
             frappe.throw(_("Invalid Inquiry School scope: {0}.").format(inquiry_school))
-        if (employee.get("school") or "").strip() not in set(school_scope):
+        employee_school = (employee.get("school") or "").strip()
+        if employee_school and employee_school not in set(school_scope):
             message = _("Assignee must belong to School {school}, an ancestor school, or a descendant school.").format(
                 school=frappe.bold(inquiry_school)
             )
             frappe.throw(message)
+        if not employee_school and not inquiry_org:
+            frappe.throw(_("Assignee must have a School scope when the Inquiry has no Organization scope."))
 
     return employee
 
@@ -1405,7 +1408,10 @@ def get_inquiry_assignees(doctype=None, txt=None, searchfield=None, start=0, pag
         where.append("e.organization IN %(org_scope)s")
         params["org_scope"] = tuple(org_scope)
     if school_scope:
-        where.append("e.school IN %(school_scope)s")
+        if org_scope:
+            where.append("(ifnull(e.school, '') = '' OR e.school IN %(school_scope)s)")
+        else:
+            where.append("e.school IN %(school_scope)s")
         params["school_scope"] = tuple(school_scope)
 
     rows = frappe.db.sql(

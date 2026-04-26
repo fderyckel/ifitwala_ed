@@ -33,7 +33,8 @@ SUPPORTED_CONTEXT_DOCTYPES = {"Student Applicant"}
 MESSAGE_LIMIT = 300
 THREAD_COMMUNICATION_TYPE = "Information"
 THREAD_INTERACTION_MODE = "Structured Feedback"
-THREAD_STATUS = "Published"
+# Admissions threads are context-guarded containers, not generic published audience announcements.
+THREAD_STATUS = "Draft"
 THREAD_PORTAL_SURFACE = "Desk"
 INVALID_SESSION_USERS = {"guest", "none", "null", "undefined"}
 READ_RECEIPT_REFERENCE_DOCTYPE = "Org Communication"
@@ -184,17 +185,6 @@ def _create_thread(*, context_doctype: str, context_name: str, context_row: dict
     doc.admission_context_doctype = context_doctype
     doc.admission_context_name = context_name
     doc.message = _("Admissions case communication thread for {context_name}.").format(context_name=context_name)
-    doc.append(
-        "audiences",
-        {
-            "target_mode": "School Scope",
-            "school": school,
-            "include_descendants": 0,
-            "to_students": 1,
-            "to_staff": 0,
-            "to_guardians": 0,
-        },
-    )
     doc.insert(ignore_permissions=True)
     return doc.name
 
