@@ -1570,11 +1570,32 @@ Frontend must treat read-only as **absolute**.
 
 ---
 
-### C.1 Invite Applicant Workflow (MANDATORY)
+### C.1 Admissions Portal Invite Workflow (MANDATORY)
 
 User creation **must never be manual**.
 
-A single server method is authoritative:
+Desk must first resolve server invite options:
+
+```python
+get_admissions_portal_invite_options(
+  student_applicant: str
+) -> dict
+```
+
+The Staff Desk form must make the staff user choose who the login represents:
+
+1. `Applicant Self`
+   * for applicant/future-student identity
+   * creates or reuses an `Admissions Applicant` user
+   * links `Student Applicant.applicant_user`
+2. `Family Collaborator`
+   * for a parent, guardian, or adult helping with the application
+   * creates or reuses an `Admissions Family` user
+   * links through an explicit primary `Student Applicant Guardian` row
+
+The inquiry contact is only the person who inquired. It must not silently determine whether the invite is an applicant-self login or family-collaborator login.
+
+Applicant-self invites are performed by:
 
 ```python
 invite_applicant(
@@ -1590,6 +1611,19 @@ invite_applicant(
 3. Link User ↔ Student Applicant
 4. Send invite communication (Phase 4 dependency)
 5. Enforce one-user-per-applicant invariant
+6. Block when required applicant-scoped policies use `Family Acknowledgement`, because an applicant-self login cannot satisfy family-context evidence
+
+Family-collaborator invites are performed by:
+
+```python
+invite_family_collaborator(
+  student_applicant: str,
+  guardian_row: str,
+  email: str
+) -> None
+```
+
+This method requires `Admission Settings.admissions_access_mode = Family Workspace`, and the selected `Student Applicant Guardian` row must be primary and signer-authorized.
 
 **No Desk-based user creation is allowed.**
 

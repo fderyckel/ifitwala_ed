@@ -18,6 +18,7 @@ from ifitwala_ed.api.admissions_portal import (
     accept_enrollment_offer,
     acknowledge_policy,
     decline_enrollment_offer,
+    get_admissions_portal_invite_options,
     get_applicant_enrollment_choices,
     get_applicant_policies,
     get_applicant_profile,
@@ -479,6 +480,42 @@ class TestInviteApplicant(FrappeTestCase):
         self.assertIn("Admissions Family", user_roles)
         self.assertNotIn("Desk User", user_roles)
 
+    def test_applicant_self_invite_blocks_family_acknowledgement_policy_in_single_mode(self):
+        if not _policy_schema_available():
+            self.skipTest("Institutional Policy applies_to storage is required for family acknowledgement tests.")
+        if not _admission_settings_has_field("admissions_access_mode"):
+            self.skipTest("Admission Settings.admissions_access_mode is required for family workspace tests.")
+        if not institutional_policy_db_has_column("admissions_acknowledgement_mode"):
+            self.skipTest(
+                "Institutional Policy.admissions_acknowledgement_mode is required for family acknowledgement tests."
+            )
+
+        self._set_admissions_access_mode("Single Applicant Workspace")
+        self._create_required_applicant_policy_version(
+            organization=self.organization,
+            school=self.school,
+            admissions_acknowledgement_mode="Family Acknowledgement",
+        )
+
+        with patch(
+            "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
+            return_value=self.staff_user,
+        ):
+            options = get_admissions_portal_invite_options(student_applicant=self.applicant.name)
+            with self.assertRaises(frappe.ValidationError) as exc:
+                invite_applicant(
+                    student_applicant=self.applicant.name,
+                    email=f"applicant-{frappe.generate_hash(length=8)}@example.com",
+                )
+
+        applicant_invite = options.get("applicant_invite") or {}
+        family_invite = options.get("family_invite") or {}
+        self.assertFalse(bool(applicant_invite.get("enabled")))
+        self.assertIn("Family Acknowledgement", applicant_invite.get("disabled_reason") or "")
+        self.assertFalse(bool(family_invite.get("enabled")))
+        self.assertIn("Family Workspace", family_invite.get("disabled_reason") or "")
+        self.assertIn("Family Acknowledgement", str(exc.exception))
+
     def _create_organization(self) -> str:
         organization_name = f"Org {frappe.generate_hash(length=6)}"
         doc = frappe.get_doc(
@@ -517,6 +554,42 @@ class TestInviteApplicant(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("Student Applicant", doc.name))
         return doc
+
+    def _create_required_applicant_policy_version(
+        self,
+        *,
+        organization: str,
+        school: str,
+        admissions_acknowledgement_mode: str,
+    ) -> str:
+        ensure_policy_audience_records()
+        policy_payload = {
+            "doctype": "Institutional Policy",
+            "policy_key": f"invite_policy_{frappe.generate_hash(length=8)}",
+            "policy_title": f"Invite Policy {frappe.generate_hash(length=6)}",
+            "policy_category": "Admissions",
+            "applies_to": [{"policy_audience": "Applicant"}],
+            "organization": organization,
+            "school": school,
+            "is_active": 1,
+        }
+        if institutional_policy_db_has_column("admissions_acknowledgement_mode"):
+            policy_payload["admissions_acknowledgement_mode"] = admissions_acknowledgement_mode
+
+        policy = frappe.get_doc(policy_payload).insert(ignore_permissions=True)
+        self._created.append(("Institutional Policy", policy.name))
+
+        version = frappe.get_doc(
+            {
+                "doctype": "Policy Version",
+                "institutional_policy": policy.name,
+                "version_label": "v1",
+                "policy_text": "<p>Applicant family acknowledgement text.</p>",
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Policy Version", version.name))
+        return version.name
 
     def _create_contact(self, *, primary_email: str, other_email: str | None = None):
         doc = frappe.get_doc(

@@ -8,6 +8,7 @@ from frappe.utils import flt, getdate, now_datetime, nowdate
 
 from ifitwala_ed.accounting.fiscal_year_utils import clear_fiscal_year_cache
 from ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan import (
+    create_account_holder_for_applicant,
     generate_deposit_invoice_from_offer,
 )
 from ifitwala_ed.tests.base import IfitwalaEdTestSuite
@@ -42,6 +43,56 @@ class TestApplicantEnrollmentPlanDepositBridge(IfitwalaEdTestSuite):
         self.assertEqual(invoice.organization, ctx["organization"])
         self.assertEqual(flt(invoice.grand_total), 500)
         self.assertEqual(frappe.db.count("Sales Invoice", {"name": plan.deposit_invoice}), 1)
+
+    def test_admission_manager_creates_account_holder_from_financial_guardian_once(self):
+        ctx = self._make_context()
+        applicant = self._add_financial_guardian(ctx)
+
+        with self.set_user(ctx["admission_manager"].name):
+            first = create_account_holder_for_applicant(applicant.name)
+            second = create_account_holder_for_applicant(applicant.name)
+
+        self.assertTrue(first.get("created"))
+        self.assertFalse(second.get("created"))
+        self.assertEqual(first.get("account_holder", {}).get("name"), second.get("account_holder", {}).get("name"))
+
+        applicant.reload()
+        account_holder = frappe.get_doc("Account Holder", applicant.account_holder)
+        self.assertEqual(account_holder.organization, ctx["organization"])
+        self.assertEqual(account_holder.account_holder_name, "Finance Guardian")
+        self.assertEqual(account_holder.account_holder_type, "Individual")
+        self.assertEqual(account_holder.status, "Active")
+        self.assertEqual(account_holder.primary_email, "finance.guardian@example.com")
+        self.assertEqual(account_holder.primary_phone, "+66000000000")
+
+    def test_admission_officer_cannot_create_applicant_account_holder(self):
+        ctx = self._make_context()
+        officer = self._make_user("Admissions", "Officer", ["Admission Officer"])
+        self._make_employee(
+            officer.name,
+            organization=ctx["organization"],
+            school=ctx["school"],
+            first_name="Admissions",
+            last_name="Officer",
+        )
+
+        with self.set_user(officer.name):
+            with self.assertRaises(frappe.PermissionError):
+                create_account_holder_for_applicant(ctx["applicant"].name)
+
+        ctx["applicant"].reload()
+        self.assertFalse((ctx["applicant"].account_holder or "").strip())
+
+    def test_terminal_applicant_cannot_create_account_holder(self):
+        ctx = self._make_context()
+        ctx["applicant"].db_set("application_status", "Rejected", update_modified=False)
+
+        with self.set_user(ctx["admission_manager"].name):
+            with self.assertRaises(frappe.ValidationError):
+                create_account_holder_for_applicant(ctx["applicant"].name)
+
+        ctx["applicant"].reload()
+        self.assertFalse((ctx["applicant"].account_holder or "").strip())
 
     def test_non_accepted_offer_cannot_generate_deposit_invoice(self):
         ctx = self._make_context()
@@ -213,6 +264,26 @@ class TestApplicantEnrollmentPlanDepositBridge(IfitwalaEdTestSuite):
                 }
             ).insert(ignore_permissions=True)
         applicant.db_set("application_status", "Approved", update_modified=False)
+        applicant.reload()
+        return applicant
+
+    def _add_financial_guardian(self, ctx: dict):
+        applicant = frappe.get_doc("Student Applicant", ctx["applicant"].name)
+        applicant.append(
+            "guardians",
+            {
+                "relationship": "Mother",
+                "guardian_first_name": "Finance",
+                "guardian_last_name": "Guardian",
+                "guardian_email": "finance.guardian@example.com",
+                "guardian_mobile_phone": "+66000000000",
+                "is_financial_guardian": 1,
+                "is_primary": 1,
+                "is_primary_guardian": 1,
+            },
+        )
+        with self.set_user(ctx["admission_manager"].name):
+            applicant.save(ignore_permissions=True)
         applicant.reload()
         return applicant
 

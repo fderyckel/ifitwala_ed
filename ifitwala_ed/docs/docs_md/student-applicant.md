@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.20.4"
-last_change_date: "2026-04-25"
+version: "1.20.5"
+last_change_date: "2026-04-27"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
@@ -139,19 +139,23 @@ Current runtime split:
   - derives `Student Applicant.applicant_email` from Contact email rows
   - does **not** by itself guarantee portal login access until an applicant `User` is linked
 
-### How Admissions Invites the Applicant (Portal Login Invite)
+### How Admissions Chooses the Portal Login Type
 
 Portal login invite is done directly from Desk on the `Student Applicant` form:
 
 1. Open the applicant record.
-2. Click `Actions` -> `Invite Applicant Portal` (or `Resend Portal Invite` if already linked) when `Admission Settings.admissions_access_mode = Single Applicant Workspace`.
-3. Click `Actions` -> `Invite Family Collaborator` when `Admission Settings.admissions_access_mode = Family Workspace`.
-4. Pick an email from Contact email options, or enter a new one in the same dialog.
+2. Click `Actions` -> `Invite Admissions Portal` or `Manage Admissions Portal Invite`.
+3. Choose who the login represents:
+   - `Applicant self` when the invited person is the applicant/future student.
+   - `Family collaborator` when the invited person is a parent, guardian, or other adult helping with the application.
+4. Pick an eligible email from the dialog, or enter a new one when allowed.
 
-This triggers the server flow `invite_applicant` and requires:
+The inquiry contact is only the person who inquired. In K-12 admissions that person is often a parent or adult family collaborator; in college or university admissions that person may be the applicant self. Staff must make the identity choice explicitly during invite.
+
+Applicant-self invite triggers the server flow `invite_applicant` and requires:
 
 1. `student_applicant` (the Student Applicant document name)
-2. `email` (the applicant login email to invite; always upserted to Contact Email)
+2. `email` (the applicant/future-student login email to invite; always upserted to Contact Email)
 
 Behavior in code:
 
@@ -165,7 +169,17 @@ Behavior in code:
 - `Student Applicant.applicant_user` is set to that user identity
 - `Student Applicant.portal_account_email` is set to the chosen invite email
 - if applicant is already linked to a different email/user, invite is blocked
-- family collaborator eligibility is limited to guardian rows marked `is_primary_guardian = 1`, which in turn derive `can_consent = 1`, and a guardian personal email exists
+- applicant-self invite is blocked when required applicant-scoped policies use `Family Acknowledgement`, because applicant-context access cannot produce family-context acknowledgement evidence
+
+Family-collaborator invite triggers `invite_family_collaborator` and requires:
+
+- `Admission Settings.admissions_access_mode = Family Workspace`
+- a `Student Applicant Guardian` row for the selected adult
+- `is_primary_guardian = 1`
+- derived `can_consent = 1`
+- a personal email for that row
+
+That flow assigns role `Admissions Family` and links the login through the selected family collaborator row. It does not write `Student Applicant.applicant_user`.
 
 ### Family Workspace Login and Collaboration
 
@@ -181,16 +195,16 @@ When `Admission Settings.admissions_access_mode = Family Workspace`, `/admission
 - child identity field `Student Applicant.applicant_user` remains reserved for the future student identity and is not reused as a family workspace identity
 - applicant profile and health saves use optimistic concurrency tokens (`record_modified` / `expected_modified`) so one adult cannot silently overwrite another adult's more recent save
 
-<Callout type="warning" title="Login identity source of truth">
-The applicant username/email is `Student Applicant.portal_account_email` (set by `invite_applicant` from the selected Contact email). This is the identity used to sign in to the admissions portal.
+<Callout type="warning" title="Applicant self login identity">
+For applicant-self invites, the username/email is `Student Applicant.portal_account_email` (set by `invite_applicant` from the selected Contact email). Family collaborator logins use their own invited `Admissions Family` user email instead.
 </Callout>
 
 <Callout type="info" title="If applicant did not receive the invite email">
-Use `Actions` -> `Resend Portal Invite` on the same applicant and submit the same email again. This re-sends the portal invite email for the linked applicant user and keeps the same portal identity.
+Use `Actions` -> `Manage Admissions Portal Invite` on the same applicant and choose the same invite type/email again. This re-sends the invite email for the linked portal identity.
 </Callout>
 
 <Callout type="warning" title="Invite email failure handling">
-If email delivery fails, portal linkage still succeeds (`User` + role + applicant link). Family can use `Forgot Password` on `/login` and sign in with `portal_account_email`.
+If email delivery fails, portal linkage still succeeds (`User` + role + applicant or family-collaborator link). The invited person can use `Forgot Password` on `/login` with the invited email.
 </Callout>
 
 ### How Applicant Login Works

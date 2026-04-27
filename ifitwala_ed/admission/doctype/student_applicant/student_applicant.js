@@ -63,9 +63,9 @@ frappe.ui.form.on("Student Applicant", {
 		frm.trigger("setup_governed_drive_link");
 		render_review_sections(frm);
 		add_decision_actions(frm);
-		add_portal_invite_action(frm);
-		add_family_portal_invite_action(frm);
+		add_admissions_portal_invite_action(frm);
 		add_enrollment_plan_action(frm);
+		add_account_holder_action(frm);
 		add_recommendation_actions(frm);
 		add_create_interview_action(frm);
 		add_schedule_interview_action(frm);
@@ -167,6 +167,7 @@ frappe.ui.form.on("Student Applicant", {
 
 const TERMINAL_PORTAL_INVITE_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);
 const TERMINAL_INTERVIEW_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);
+const TERMINAL_ACCOUNT_HOLDER_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);
 
 function add_enrollment_plan_action(frm) {
 	frm.remove_custom_button(__("Manage Enrollment Plan"), __("Actions"));
@@ -196,6 +197,88 @@ function add_enrollment_plan_action(frm) {
 			frappe.msgprint(err?.message || __("Unable to open the enrollment plan."));
 		});
 	}, __("Actions"));
+}
+
+function add_account_holder_action(frm) {
+	frm.remove_custom_button(__("Create Account Holder"), __("Actions"));
+	frm.remove_custom_button(__("Create Account Holder"));
+	frm.remove_custom_button(__("Open Account Holder"), __("Actions"));
+	frm.remove_custom_button(__("Open Account Holder"));
+
+	const field = frm.get_field("account_holder");
+	const wrapper = field?.$wrapper;
+	if (wrapper?.length) {
+		wrapper.find(".create-account-holder-btn").remove();
+	}
+
+	if (!frm.doc || frm.is_new()) {
+		return;
+	}
+
+	const accountHolder = String(frm.doc.account_holder || "").trim();
+	if (accountHolder) {
+		frm.add_custom_button(__("Open Account Holder"), () => {
+			frappe.set_route("Form", "Account Holder", accountHolder);
+		}, __("Actions"));
+		return;
+	}
+
+	const status = String(frm.doc.application_status || "").trim();
+	if (TERMINAL_ACCOUNT_HOLDER_STATUSES.has(status)) {
+		return;
+	}
+
+	const createAccountHolder = () => create_account_holder_for_applicant(frm);
+	frm.add_custom_button(__("Create Account Holder"), createAccountHolder, __("Actions"));
+
+	if (!wrapper?.length) {
+		return;
+	}
+
+	const $container = wrapper.find(".control-input").length ? wrapper.find(".control-input") : wrapper;
+	const $btn = $(
+		`<button type="button" class="btn btn-xs btn-secondary create-account-holder-btn">
+			${__("Create Account Holder")}
+		</button>`
+	);
+	$btn.on("click", createAccountHolder);
+	$container.append($btn);
+}
+
+function create_account_holder_for_applicant(frm) {
+	if (frm.is_new()) {
+		frappe.msgprint(__("Please save the Student Applicant before creating an Account Holder."));
+		return;
+	}
+
+	if (frm.is_dirty()) {
+		frappe.msgprint(__("Please save your changes before creating an Account Holder."));
+		return;
+	}
+
+	frappe.call({
+		method: "ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan.create_account_holder_for_applicant",
+		args: { student_applicant: frm.doc.name },
+		freeze: true,
+		freeze_message: __("Creating account holder..."),
+	}).then((res) => {
+		const accountHolder = res?.message?.account_holder?.name;
+		if (!accountHolder) {
+			frappe.msgprint(__("Account Holder creation did not return a linked record."));
+			return;
+		}
+
+		frm.set_value("account_holder", accountHolder);
+		frm.refresh_field("account_holder");
+
+		const message = res?.message?.created
+			? __("Account Holder created and linked.")
+			: __("Existing Account Holder is already linked.");
+		frappe.show_alert({ message, indicator: "green" });
+		frm.reload_doc();
+	}).catch((err) => {
+		frappe.msgprint(err?.message || __("Unable to create Account Holder."));
+	});
 }
 
 function add_create_interview_action(frm) {
@@ -586,27 +669,13 @@ function format_conflict_lines(conflicts) {
 	return `<ul style="margin-top: 8px; padding-left: 18px;">${items}</ul>`;
 }
 
-function add_portal_invite_action(frm) {
+function add_admissions_portal_invite_action(frm) {
+	frm.remove_custom_button(__("Invite Admissions Portal"), __("Actions"));
+	frm.remove_custom_button(__("Invite Admissions Portal"));
 	frm.remove_custom_button(__("Invite Applicant Portal"), __("Actions"));
 	frm.remove_custom_button(__("Resend Portal Invite"), __("Actions"));
 	frm.remove_custom_button(__("Invite Applicant Portal"));
 	frm.remove_custom_button(__("Resend Portal Invite"));
-
-	if (!frm.doc || frm.is_new()) {
-		return;
-	}
-
-	const status = String(frm.doc.application_status || "").trim();
-	if (TERMINAL_PORTAL_INVITE_STATUSES.has(status)) {
-		return;
-	}
-
-	const hasLinkedUser = Boolean(String(frm.doc.applicant_user || "").trim());
-	const label = hasLinkedUser ? __("Resend Portal Invite") : __("Invite Applicant Portal");
-	frm.add_custom_button(label, () => prompt_portal_invite(frm), __("Actions"));
-}
-
-function add_family_portal_invite_action(frm) {
 	frm.remove_custom_button(__("Invite Family Collaborator"), __("Actions"));
 	frm.remove_custom_button(__("Invite Family Collaborator"));
 
@@ -619,202 +688,268 @@ function add_family_portal_invite_action(frm) {
 		return;
 	}
 
-	frm.add_custom_button(__("Invite Family Collaborator"), () => prompt_family_portal_invite(frm), __("Actions"));
+	const hasLinkedUser = Boolean(String(frm.doc.applicant_user || "").trim());
+	const label = hasLinkedUser ? __("Manage Admissions Portal Invite") : __("Invite Admissions Portal");
+	frm.add_custom_button(label, () => prompt_admissions_portal_invite(frm), __("Actions"));
 }
 
-function prompt_portal_invite(frm) {
-	const linkedEmail = String(frm.doc.applicant_user || "").trim().toLowerCase();
-	const hasLinkedUser = Boolean(linkedEmail);
-
+function prompt_admissions_portal_invite(frm) {
 	frappe.call({
-		method: "ifitwala_ed.api.admissions_portal.get_invite_email_options",
+		method: "ifitwala_ed.api.admissions_portal.get_admissions_portal_invite_options",
 		args: {
 			student_applicant: frm.doc.name,
 		},
 	})
 		.then((res) => {
 			const payload = res?.message || {};
-			const emails = Array.isArray(payload.emails) ? payload.emails : [];
-			const selectedEmail = String(payload.selected_email || "").trim().toLowerCase();
-
-			const fields = [];
-			if (emails.length) {
-				fields.push({
-					label: __("Contact Email"),
-					fieldname: "selected_email",
-					fieldtype: "Select",
-					reqd: 0,
-					options: emails.join("\n"),
-					default: selectedEmail || emails[0],
-					description: __("Select an existing Contact email."),
-				});
-			}
-
-			fields.push({
-				label: __("New Email"),
-				fieldname: "new_email",
-				fieldtype: "Data",
-				options: "Email",
-				reqd: !emails.length,
-				description: emails.length
-					? __("Optional: enter a new email to add to Contact and invite.")
-					: __("Enter applicant email to create/link Contact and invite."),
-			});
-
-			frappe.prompt(
-				fields,
-				(values) => {
-					const newEmail = String(values.new_email || "").trim().toLowerCase();
-					const pickedEmail = String(values.selected_email || "").trim().toLowerCase();
-					const email = newEmail || pickedEmail;
-					if (!email) {
-						frappe.msgprint(__("Please select or enter an applicant email."));
-						return;
-					}
-
-					frappe.call({
-						method: "ifitwala_ed.api.admissions_portal.invite_applicant",
-						args: {
-							student_applicant: frm.doc.name,
-							email,
-						},
-						freeze: true,
-						freeze_message: hasLinkedUser
-							? __("Re-sending applicant portal invite...")
-							: __("Inviting applicant to portal..."),
-					})
-						.then((inviteRes) => {
-							const message = inviteRes?.message || {};
-							const resent = Boolean(message.resent);
-							const emailSent = message.email_sent !== false;
-							frappe.show_alert({
-								message: emailSent
-									? (resent ? __("Portal invite email re-sent.") : __("Portal invite email sent."))
-									: __("Portal access linked, but invite email could not be sent."),
-								indicator: "green",
-							});
-							if (!emailSent) {
-								frappe.msgprint(__("Applicant user and role were created/linked, but email sending failed. Ask family to use Forgot Password on /login or click Resend Portal Invite later."));
-							}
-							frm.reload_doc();
-						})
-						.catch((err) => {
-							frappe.msgprint(err?.message || __("Unable to send applicant portal invite."));
-						});
-				},
-				hasLinkedUser ? __("Resend Portal Invite") : __("Invite Applicant Portal"),
-				hasLinkedUser ? __("Resend") : __("Invite")
-			);
-		})
-		.catch((err) => {
-			frappe.msgprint(err?.message || __("Unable to load applicant invite email options."));
-		});
-}
-
-function prompt_family_portal_invite(frm) {
-	frappe.call({
-		method: "ifitwala_ed.api.admissions_portal.get_family_invite_options",
-		args: {
-			student_applicant: frm.doc.name,
-		},
-	})
-		.then((res) => {
-			const payload = res?.message || {};
-			const guardians = Array.isArray(payload.guardians) ? payload.guardians : [];
-			if (!guardians.length) {
-				frappe.msgprint(__("Add at least one guardian row before inviting family workspace access."));
-				return;
-			}
-
-			const eligible = guardians.filter(row => Boolean(row?.eligible));
-			if (!eligible.length) {
-				const reasons = guardians
-					.map(row => String(row?.reason || "").trim())
-					.filter(Boolean);
-				frappe.msgprint(
-					reasons.length
-						? reasons.join("<br>")
-						: __("No guardian row is currently eligible for family workspace access.")
-				);
-				return;
-			}
-
-			const optionMap = new Map();
-			const options = eligible.map((row) => {
-				const label = `${String(row.label || __("Guardian")).trim()} (${String(row.relationship || __("Guardian")).trim()})${row.email ? ` - ${String(row.email).trim()}` : ""}`;
-				optionMap.set(label, row);
-				return label;
-			});
-			const defaultRow = eligible[0] || {};
+			const applicantInvite = payload.applicant_invite || {};
+			const familyInvite = payload.family_invite || {};
+			const recommendedMode = String(payload.recommended_invite_mode || "Applicant Self");
+			const modeOptions = [__("Applicant self"), __("Family collaborator")];
 
 			frappe.prompt(
 				[
 					{
-						label: __("Guardian"),
-						fieldname: "guardian_option",
-						fieldtype: "Select",
-						reqd: 1,
-						options: options.join("\n"),
-						default: options[0],
+						fieldname: "invite_context",
+						fieldtype: "HTML",
+						options: render_invite_context_help(payload),
 					},
 					{
-						label: __("Email"),
-						fieldname: "new_email",
-						fieldtype: "Data",
-						options: "Email",
-						reqd: !defaultRow.email,
-						default: defaultRow.email || "",
-						description: __("Use the guardian personal email for this collaborator."),
+						label: __("Invite recipient"),
+						fieldname: "invite_mode",
+						fieldtype: "Select",
+						reqd: 1,
+						options: modeOptions.join("\n"),
+						default: recommendedMode === "Family Collaborator" ? __("Family collaborator") : __("Applicant self"),
+						description: __("Choose whether this login represents the applicant self or an admissions family collaborator."),
 					},
 				],
 				(values) => {
-					const selected = optionMap.get(String(values.guardian_option || "").trim());
-					if (!selected?.name) {
-						frappe.msgprint(__("Select a guardian row to invite."));
-						return;
-					}
-					const email = String(values.new_email || selected.email || "").trim().toLowerCase();
-					if (!email) {
-						frappe.msgprint(__("Enter a guardian email before sending the invite."));
+					const selectedMode = String(values.invite_mode || "").trim();
+					if (selectedMode === __("Family collaborator")) {
+						if (familyInvite.enabled === false) {
+							frappe.msgprint(familyInvite.disabled_reason || __("Family collaborator invite is not available for this applicant."));
+							return;
+						}
+						prompt_family_portal_invite(frm, familyInvite);
 						return;
 					}
 
-					frappe.call({
-						method: "ifitwala_ed.api.admissions_portal.invite_family_collaborator",
-						args: {
-							student_applicant: frm.doc.name,
-							guardian_row: selected.name,
-							email,
-						},
-						freeze: true,
-						freeze_message: __("Inviting family collaborator..."),
-					})
-						.then((inviteRes) => {
-							const message = inviteRes?.message || {};
-							const resent = Boolean(message.resent);
-							const emailSent = message.email_sent !== false;
-							frappe.show_alert({
-								message: emailSent
-									? (resent ? __("Family invite email re-sent.") : __("Family invite email sent."))
-									: __("Family access linked, but invite email could not be sent."),
-								indicator: "green",
-							});
-							if (!emailSent) {
-								frappe.msgprint(__("Family collaborator access was linked, but email sending failed. Ask them to use Forgot Password on /login or resend the invite later."));
-							}
-							frm.reload_doc();
-						})
-						.catch((err) => {
-							frappe.msgprint(err?.message || __("Unable to send family collaborator invite."));
-						});
+					if (applicantInvite.enabled === false) {
+						frappe.msgprint(applicantInvite.disabled_reason || __("Applicant-self invite is not available for this applicant."));
+						return;
+					}
+					prompt_applicant_self_portal_invite(frm, applicantInvite);
 				},
-				__("Invite Family Collaborator"),
-				__("Invite")
+				__("Invite Admissions Portal"),
+				__("Continue")
 			);
 		})
 		.catch((err) => {
-			frappe.msgprint(err?.message || __("Unable to load family invite options."));
+			frappe.msgprint(err?.message || __("Unable to load admissions portal invite options."));
 		});
+}
+
+function render_invite_context_help(payload) {
+	const accessMode = escape_html(String(payload?.access_mode || ""));
+	const applicantInvite = payload?.applicant_invite || {};
+	const familyInvite = payload?.family_invite || {};
+	const applicantState = applicantInvite.enabled === false
+		? `<span class="text-danger">${escape_html(applicantInvite.disabled_reason || __("Unavailable"))}</span>`
+		: `<span class="text-success">${escape_html(__("Available"))}</span>`;
+	const familyState = familyInvite.enabled === false
+		? `<span class="text-danger">${escape_html(familyInvite.disabled_reason || __("Unavailable"))}</span>`
+		: `<span class="text-success">${escape_html(__("Available"))}</span>`;
+
+	return `
+		<div style="margin-bottom: 10px;">
+			<div style="font-weight:600;margin-bottom:4px;">${escape_html(__("Confirm who this admissions login represents."))}</div>
+			<div class="text-muted">${escape_html(__("For K-12, the inquiry contact is often a parent or adult collaborator. For higher education, it may be the applicant self."))}</div>
+			<div class="text-muted" style="margin-top:6px;">${escape_html(__("Admission access mode"))}: <strong>${accessMode}</strong></div>
+		</div>
+		<div style="display:grid;gap:8px;margin-bottom:10px;">
+			<div style="border:1px solid #d7dce2;border-radius:8px;padding:8px 10px;">
+				<div style="font-weight:600;">${escape_html(__("Applicant self"))}</div>
+				<div class="text-muted">${escape_html(__("Use when the invited person is the applicant/future student."))}</div>
+				<div style="margin-top:4px;">${applicantState}</div>
+			</div>
+			<div style="border:1px solid #d7dce2;border-radius:8px;padding:8px 10px;">
+				<div style="font-weight:600;">${escape_html(__("Family collaborator"))}</div>
+				<div class="text-muted">${escape_html(__("Use when the invited person is a parent, guardian, or adult helping with the application."))}</div>
+				<div style="margin-top:4px;">${familyState}</div>
+			</div>
+		</div>
+	`;
+}
+
+function prompt_applicant_self_portal_invite(frm, inviteOptions) {
+	const linkedEmail = String(frm.doc.applicant_user || "").trim().toLowerCase();
+	const hasLinkedUser = Boolean(linkedEmail);
+	const emails = Array.isArray(inviteOptions?.emails) ? inviteOptions.emails : [];
+	const selectedEmail = String(inviteOptions?.selected_email || "").trim().toLowerCase();
+
+	const fields = [];
+	if (emails.length) {
+		fields.push({
+			label: __("Applicant Self Email"),
+			fieldname: "selected_email",
+			fieldtype: "Select",
+			reqd: 0,
+			options: emails.join("\n"),
+			default: selectedEmail || emails[0],
+			description: __("Select the applicant/future-student email."),
+		});
+	}
+
+	fields.push({
+		label: __("New Applicant Self Email"),
+		fieldname: "new_email",
+		fieldtype: "Data",
+		options: "Email",
+		reqd: !emails.length,
+		description: emails.length
+			? __("Optional: enter a new applicant/future-student email to add to Contact and invite.")
+			: __("Enter the applicant/future-student email to create/link Contact and invite."),
+	});
+
+	frappe.prompt(
+		fields,
+		(values) => {
+			const newEmail = String(values.new_email || "").trim().toLowerCase();
+			const pickedEmail = String(values.selected_email || "").trim().toLowerCase();
+			const email = newEmail || pickedEmail;
+			if (!email) {
+				frappe.msgprint(__("Please select or enter an applicant self email."));
+				return;
+			}
+
+			frappe.call({
+				method: "ifitwala_ed.api.admissions_portal.invite_applicant",
+				args: {
+					student_applicant: frm.doc.name,
+					email,
+				},
+				freeze: true,
+				freeze_message: hasLinkedUser
+					? __("Re-sending applicant-self portal invite...")
+					: __("Inviting applicant self to portal..."),
+			})
+				.then((inviteRes) => {
+					const message = inviteRes?.message || {};
+					const resent = Boolean(message.resent);
+					const emailSent = message.email_sent !== false;
+					frappe.show_alert({
+						message: emailSent
+							? (resent ? __("Applicant-self invite email re-sent.") : __("Applicant-self invite email sent."))
+							: __("Applicant-self access linked, but invite email could not be sent."),
+						indicator: "green",
+					});
+					if (!emailSent) {
+						frappe.msgprint(__("Applicant-self user and role were created/linked, but email sending failed. Ask them to use Forgot Password on /login or click Manage Admissions Portal Invite later."));
+					}
+					frm.reload_doc();
+				})
+				.catch((err) => {
+					frappe.msgprint(err?.message || __("Unable to send applicant-self portal invite."));
+				});
+		},
+		hasLinkedUser ? __("Resend Applicant Self Invite") : __("Invite Applicant Self"),
+		hasLinkedUser ? __("Resend") : __("Invite")
+	);
+}
+
+function prompt_family_portal_invite(frm, inviteOptions) {
+	const guardians = Array.isArray(inviteOptions?.guardians) ? inviteOptions.guardians : [];
+	if (!guardians.length) {
+		frappe.msgprint(__("Add at least one family collaborator row before inviting admissions family access."));
+		return;
+	}
+
+	const eligible = guardians.filter(row => Boolean(row?.eligible));
+	if (!eligible.length) {
+		const reasons = guardians
+			.map(row => String(row?.reason || "").trim())
+			.filter(Boolean);
+		frappe.msgprint(
+			reasons.length
+				? reasons.join("<br>")
+				: __("No family collaborator row is currently eligible for admissions family access.")
+		);
+		return;
+	}
+
+	const optionMap = new Map();
+	const options = eligible.map((row) => {
+		const label = `${String(row.label || __("Family collaborator")).trim()} (${String(row.relationship || __("Family")).trim()})${row.email ? ` - ${String(row.email).trim()}` : ""}`;
+		optionMap.set(label, row);
+		return label;
+	});
+	const defaultRow = eligible[0] || {};
+
+	frappe.prompt(
+		[
+			{
+				label: __("Family collaborator"),
+				fieldname: "guardian_option",
+				fieldtype: "Select",
+				reqd: 1,
+				options: options.join("\n"),
+				default: options[0],
+			},
+			{
+				label: __("Family Collaborator Email"),
+				fieldname: "new_email",
+				fieldtype: "Data",
+				options: "Email",
+				reqd: !defaultRow.email,
+				default: defaultRow.email || "",
+				description: __("Use the personal email for this admissions family collaborator."),
+			},
+		],
+		(values) => {
+			const selected = optionMap.get(String(values.guardian_option || "").trim());
+			if (!selected?.name) {
+				frappe.msgprint(__("Select a family collaborator row to invite."));
+				return;
+			}
+			const email = String(values.new_email || selected.email || "").trim().toLowerCase();
+			if (!email) {
+				frappe.msgprint(__("Enter a family collaborator email before sending the invite."));
+				return;
+			}
+
+			frappe.call({
+				method: "ifitwala_ed.api.admissions_portal.invite_family_collaborator",
+				args: {
+					student_applicant: frm.doc.name,
+					guardian_row: selected.name,
+					email,
+				},
+				freeze: true,
+				freeze_message: __("Inviting family collaborator..."),
+			})
+				.then((inviteRes) => {
+					const message = inviteRes?.message || {};
+					const resent = Boolean(message.resent);
+					const emailSent = message.email_sent !== false;
+					frappe.show_alert({
+						message: emailSent
+							? (resent ? __("Family collaborator invite email re-sent.") : __("Family collaborator invite email sent."))
+							: __("Family collaborator access linked, but invite email could not be sent."),
+						indicator: "green",
+					});
+					if (!emailSent) {
+						frappe.msgprint(__("Admissions Family collaborator access was linked, but email sending failed. Ask them to use Forgot Password on /login or resend the invite later."));
+					}
+					frm.reload_doc();
+				})
+				.catch((err) => {
+					frappe.msgprint(err?.message || __("Unable to send family collaborator invite."));
+				});
+		},
+		__("Invite Family Collaborator"),
+		__("Invite")
+	);
 }
 
 const TERMINAL_RECOMMENDATION_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);

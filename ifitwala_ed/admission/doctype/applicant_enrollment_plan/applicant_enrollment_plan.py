@@ -1225,6 +1225,75 @@ def get_or_create_account_holder_for_applicant(student_applicant) -> str:
     return account_holder.name
 
 
+def _account_holder_summary(account_holder: str) -> dict:
+    row = frappe.db.get_value(
+        "Account Holder",
+        account_holder,
+        [
+            "name",
+            "organization",
+            "account_holder_name",
+            "account_holder_type",
+            "status",
+            "primary_email",
+            "primary_phone",
+        ],
+        as_dict=True,
+    )
+    if not row:
+        frappe.throw(_("Account Holder {0} was not found.").format(account_holder))
+    return dict(row)
+
+
+def _ensure_account_holder_create_actor(applicant) -> None:
+    user = _as_clean_text(frappe.session.user)
+    roles = set(frappe.get_roles(user))
+    if user == "Administrator" or roles & {"System Manager"}:
+        return
+    if not (roles & DEPOSIT_INVOICE_ROLES):
+        frappe.throw(
+            _("You do not have permission to create Account Holders for applicants."),
+            frappe.PermissionError,
+        )
+    if not has_scoped_staff_access_to_student_applicant(user=user, student_applicant=applicant.name):
+        frappe.throw(
+            _("You do not have permission to create an Account Holder for this applicant."),
+            frappe.PermissionError,
+        )
+
+
+@frappe.whitelist()
+def create_account_holder_for_applicant(student_applicant: str):
+    applicant_name = _as_clean_text(student_applicant)
+    if not applicant_name:
+        frappe.throw(_("Student Applicant is required."))
+
+    locked = frappe.db.sql(
+        "select name from `tabStudent Applicant` where name = %s for update",
+        (applicant_name,),
+        as_dict=True,
+    )
+    if not locked:
+        frappe.throw(_("Student Applicant {0} was not found.").format(applicant_name))
+
+    applicant = frappe.get_doc("Student Applicant", applicant_name)
+    _ensure_account_holder_create_actor(applicant)
+
+    if _as_clean_text(getattr(applicant, "application_status", "")) in {"Rejected", "Withdrawn", "Promoted"}:
+        frappe.throw(
+            _("Account Holder cannot be created when the applicant is {0}.").format(applicant.application_status)
+        )
+
+    existing = _as_clean_text(getattr(applicant, "account_holder", ""))
+    account_holder = get_or_create_account_holder_for_applicant(applicant)
+    return {
+        "ok": True,
+        "created": not bool(existing),
+        "student_applicant": applicant.name,
+        "account_holder": _account_holder_summary(account_holder),
+    }
+
+
 def _ensure_deposit_invoice_actor(plan) -> None:
     user = _as_clean_text(frappe.session.user)
     roles = set(frappe.get_roles(user))

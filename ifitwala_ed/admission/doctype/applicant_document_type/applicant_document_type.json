@@ -60,11 +60,13 @@
    "options": "School"
   },
   {
+   "description": "What kind of document applicants will upload for this requirement, such as a passport, birth certificate, or school report. This helps the system place the file in the right part of the applicant record and know when a newer upload should replace an older one.",
    "fieldname": "classification_slot",
    "fieldtype": "Data",
    "label": "Classification Slot"
   },
   {
+   "description": "The broad type of information in this document, such as legal, academic, safeguarding, or administrative. This helps admissions and school staff handle the file with the right level of care and privacy.",
    "fieldname": "classification_data_class",
    "fieldtype": "Select",
    "in_list_view": 1,
@@ -72,6 +74,7 @@
    "options": "academic\nassessment\nsafeguarding\nadministrative\nidentity_image\nlegal\noperational"
   },
   {
+   "description": "Why the school is asking for this file, such as confirming identity, reviewing previous school results, or recording medical information. Choose the purpose that best matches how admissions staff will use the document.",
    "fieldname": "classification_purpose",
    "fieldtype": "Select",
    "label": "Classification Purpose",
@@ -122,7 +125,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-15 20:28:00.000000",
+ "modified": "2026-04-27 11:39:06.000000",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Document Type",

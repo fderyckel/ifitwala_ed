@@ -244,6 +244,7 @@ class TestContactPermissions(FrappeTestCase):
                 "ifitwala_ed.utilities.contact_utils._resolve_academic_contact_school_scope",
                 return_value=["SCH-ROOT", "SCH-CHILD"],
             ),
+            patch("ifitwala_ed.utilities.contact_utils._resolve_education_contact_school_scope", return_value=[]),
         ):
             condition = contact_utils.contact_permission_query_conditions("academic.assistant@example.com")
 
@@ -259,12 +260,73 @@ class TestContactPermissions(FrappeTestCase):
                 "ifitwala_ed.utilities.contact_utils._resolve_academic_contact_org_scope",
                 return_value=["ORG-ROOT", "ORG-CHILD"],
             ),
+            patch("ifitwala_ed.utilities.contact_utils._resolve_education_contact_school_scope", return_value=[]),
         ):
             condition = contact_utils.contact_permission_query_conditions("academic.admin@example.com")
 
         self.assertIn("ORG-ROOT", condition)
         self.assertIn("ORG-CHILD", condition)
         self.assertIn("NOT", condition)
+
+    def test_contact_permission_query_conditions_scope_student_applicant_contacts_for_admissions(self):
+        with (
+            patch("ifitwala_ed.utilities.contact_utils.frappe.get_roles", return_value=["Admission Manager"]),
+            patch(
+                "ifitwala_ed.utilities.contact_utils._resolve_education_contact_school_scope",
+                return_value=["SCH-ROOT", "SCH-CHILD"],
+            ),
+        ):
+            condition = contact_utils.contact_permission_query_conditions("admissions.manager@example.com")
+
+        self.assertIn("Student Applicant", condition)
+        self.assertIn("Student", condition)
+        self.assertIn("Guardian", condition)
+        self.assertIn("SCH-ROOT", condition)
+        self.assertIn("SCH-CHILD", condition)
+        self.assertIn("NOT", condition)
+
+    def test_education_contact_scope_matches_scoped_student_applicant_for_admissions(self):
+        with (
+            patch("ifitwala_ed.utilities.contact_utils.frappe.get_roles", return_value=["Admission Manager"]),
+            patch(
+                "ifitwala_ed.utilities.contact_utils._resolve_education_contact_school_scope",
+                return_value=["SCH-CHILD"],
+            ),
+            patch(
+                "ifitwala_ed.utilities.contact_utils.frappe.get_all",
+                side_effect=[
+                    [frappe._dict(link_doctype="Student Applicant", link_name="APP-0001")],
+                    [frappe._dict(name="APP-0001", school="SCH-CHILD", student=None)],
+                ],
+            ),
+        ):
+            self.assertTrue(
+                contact_utils._education_contact_scope_matches(
+                    "CONTACT-0001",
+                    "admissions.manager@example.com",
+                )
+            )
+
+    def test_contact_has_permission_allows_scoped_student_applicant_contact_when_core_denies(self):
+        doc = frappe._dict(name="CONTACT-0001")
+
+        with (
+            patch("ifitwala_ed.utilities.contact_utils._core_has_permission", return_value=False),
+            patch("ifitwala_ed.utilities.contact_utils.frappe.get_roles", return_value=["Admission Manager"]),
+            patch("ifitwala_ed.utilities.contact_utils._education_contact_scope_matches", return_value=True),
+            patch("ifitwala_ed.utilities.contact_utils._employee_contact_scope_matches", return_value=None),
+        ):
+            self.assertTrue(contact_utils.contact_has_permission(doc, "read", "admissions.manager@example.com"))
+
+    def test_contact_has_permission_blocks_out_of_scope_student_applicant_contact(self):
+        doc = frappe._dict(name="CONTACT-0001")
+
+        with (
+            patch("ifitwala_ed.utilities.contact_utils._core_has_permission", return_value=True),
+            patch("ifitwala_ed.utilities.contact_utils.frappe.get_roles", return_value=["Admission Manager"]),
+            patch("ifitwala_ed.utilities.contact_utils._education_contact_scope_matches", return_value=False),
+        ):
+            self.assertFalse(contact_utils.contact_has_permission(doc, "read", "admissions.manager@example.com"))
 
     def test_employee_contact_scope_matches_academic_org_tree_when_no_school(self):
         with (
@@ -322,6 +384,7 @@ class TestContactPermissions(FrappeTestCase):
 
         with (
             patch("ifitwala_ed.utilities.contact_utils._core_has_permission", return_value=True) as mocked,
+            patch("ifitwala_ed.utilities.contact_utils._education_contact_scope_matches", return_value=None),
             patch("ifitwala_ed.utilities.contact_utils._employee_contact_scope_matches", return_value=None),
         ):
             self.assertTrue(contact_utils.contact_has_permission(doc, "write", "staff@example.com"))

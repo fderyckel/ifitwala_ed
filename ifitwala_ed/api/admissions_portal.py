@@ -3723,6 +3723,112 @@ def _invite_contact_primary_email(contact_name: str | None) -> str | None:
     return get_contact_primary_email(contact_name)
 
 
+def _applicant_invite_options_payload(applicant) -> dict:
+    contact_name = _canonical_applicant_contact_for_invite(
+        applicant,
+        user_doc=frappe.get_doc("User", applicant.applicant_user)
+        if applicant.applicant_user and frappe.db.exists("User", applicant.applicant_user)
+        else None,
+        contact_name=_resolve_applicant_contact(applicant, allow_create=False),
+        invite_email=normalize_email_value(applicant.get("portal_account_email"))
+        or normalize_email_value(applicant.get("applicant_email"))
+        or normalize_email_value(applicant.get("applicant_user")),
+        allow_create=False,
+    )
+
+    emails: list[str] = []
+    seen: set[str] = set()
+    for value in (
+        normalize_email_value(applicant.get("portal_account_email")),
+        normalize_email_value(applicant.get("applicant_email")),
+        normalize_email_value(applicant.get("applicant_user")),
+    ):
+        if value and value not in seen:
+            seen.add(value)
+            emails.append(value)
+
+    for value in _invite_contact_email_options(contact_name):
+        if value and value not in seen:
+            seen.add(value)
+            emails.append(value)
+
+    selected = (
+        normalize_email_value(applicant.get("portal_account_email"))
+        or normalize_email_value(applicant.get("applicant_user"))
+        or normalize_email_value(applicant.get("applicant_email"))
+        or (emails[0] if emails else None)
+    )
+
+    return {
+        "contact": contact_name,
+        "emails": emails,
+        "selected_email": selected,
+        "has_linked_user": bool(_as_text(applicant.get("applicant_user")).strip()),
+    }
+
+
+def _family_invite_options_payload(applicant) -> dict:
+    guardian_payload = []
+    for row in applicant.get("guardians") or []:
+        email = normalize_email_value(row.get("guardian_email"))
+        is_primary_guardian = bool(cint(row.get("is_primary_guardian") or 0))
+        eligible = bool(email and cint(row.get("can_consent")) and is_primary_guardian)
+        reason = ""
+        if not is_primary_guardian:
+            reason = _("Mark this family collaborator as the primary guardian before inviting admissions access.")
+        elif not cint(row.get("can_consent")):
+            reason = _("Only the primary guardian may be invited as the authorized family signer.")
+        elif not email:
+            reason = _("Add a family collaborator email before inviting admissions access.")
+        guardian_payload.append(
+            {
+                "name": row.name,
+                "label": _guardian_row_display_name(row),
+                "relationship": _as_text(row.get("relationship")).strip(),
+                "email": email,
+                "user": _as_text(row.get("user")).strip() or None,
+                "guardian": _as_text(row.get("guardian")).strip() or None,
+                "can_consent": bool(cint(row.get("can_consent"))),
+                "eligible": eligible,
+                "reason": reason or None,
+            }
+        )
+
+    return {"guardians": guardian_payload}
+
+
+def _required_family_acknowledgement_policy_labels(applicant) -> list[str]:
+    policy_status = get_applicant_policy_status(
+        student_applicant=applicant.name,
+        organization=applicant.get("organization"),
+        school=applicant.get("school"),
+    )
+    labels: list[str] = []
+    for row_policy in policy_status.get("rows") or []:
+        if row_policy.get("admissions_acknowledgement_mode") != ADMISSIONS_POLICY_MODE_FAMILY:
+            continue
+        if not row_policy.get("is_required"):
+            continue
+        label = _as_text(row_policy.get("label") or row_policy.get("policy_title") or row_policy.get("policy_key"))
+        labels.append(label.strip() or _as_text(row_policy.get("policy_version")).strip())
+    return [label for label in labels if label]
+
+
+def _applicant_self_invite_blocked_reason(applicant) -> str:
+    if is_family_workspace_enabled():
+        return _("Applicant-self invites are disabled while Family Workspace mode is enabled.")
+
+    family_policy_labels = _required_family_acknowledgement_policy_labels(applicant)
+    if family_policy_labels:
+        return _(
+            "Applicant-self invite cannot satisfy Family Acknowledgement policies: {policies}. "
+            "Change those admissions policies to Child Acknowledgement, or enable Family Workspace and invite an "
+            "Admissions Family collaborator."
+        ).format(policies=", ".join(family_policy_labels))
+
+    return ""
+
+
 def _require_family_workspace_mode() -> None:
     if not is_family_workspace_enabled():
         frappe.throw(
@@ -3817,33 +3923,7 @@ def get_family_invite_options(*, student_applicant: str | None = None) -> dict:
         frappe.throw(_("student_applicant is required."))
 
     applicant = frappe.get_doc("Student Applicant", student_applicant)
-    guardian_payload = []
-    for row in applicant.get("guardians") or []:
-        email = normalize_email_value(row.get("guardian_email"))
-        is_primary_guardian = bool(cint(row.get("is_primary_guardian") or 0))
-        eligible = bool(email and cint(row.get("can_consent")) and is_primary_guardian)
-        reason = ""
-        if not is_primary_guardian:
-            reason = _("Mark this guardian as the primary guardian before inviting portal access.")
-        elif not cint(row.get("can_consent")):
-            reason = _("Only the primary guardian may be invited as the authorized signer.")
-        elif not email:
-            reason = _("Add a guardian personal email before inviting portal access.")
-        guardian_payload.append(
-            {
-                "name": row.name,
-                "label": _guardian_row_display_name(row),
-                "relationship": _as_text(row.get("relationship")).strip(),
-                "email": email,
-                "user": _as_text(row.get("user")).strip() or None,
-                "guardian": _as_text(row.get("guardian")).strip() or None,
-                "can_consent": bool(cint(row.get("can_consent"))),
-                "eligible": eligible,
-                "reason": reason or None,
-            }
-        )
-
-    return {"guardians": guardian_payload}
+    return _family_invite_options_payload(applicant)
 
 
 @frappe.whitelist()
@@ -3862,9 +3942,11 @@ def invite_family_collaborator(
     applicant = frappe.get_doc("Student Applicant", student_applicant)
     target_row = _get_applicant_guardian_row(applicant, guardian_row or "")
     if not cint(target_row.get("is_primary_guardian") or 0):
-        frappe.throw(_("Only primary guardian rows may be invited to the family workspace as signers."))
+        frappe.throw(_("Only primary family collaborator rows may be invited to the family workspace as signers."))
     if not cint(target_row.get("can_consent")):
-        frappe.throw(_("Only guardian rows marked as authorized signers may be invited to the family workspace."))
+        frappe.throw(
+            _("Only family collaborator rows marked as authorized signers may be invited to the family workspace.")
+        )
 
     invite_email = normalize_email_value(email or target_row.get("guardian_email"))
     if not invite_email:
@@ -3932,45 +4014,49 @@ def get_invite_email_options(*, student_applicant: str | None = None) -> dict:
         frappe.throw(_("student_applicant is required."))
 
     applicant = frappe.get_doc("Student Applicant", student_applicant)
-    contact_name = _canonical_applicant_contact_for_invite(
-        applicant,
-        user_doc=frappe.get_doc("User", applicant.applicant_user)
-        if applicant.applicant_user and frappe.db.exists("User", applicant.applicant_user)
-        else None,
-        contact_name=_resolve_applicant_contact(applicant, allow_create=False),
-        invite_email=normalize_email_value(applicant.get("portal_account_email"))
-        or normalize_email_value(applicant.get("applicant_email"))
-        or normalize_email_value(applicant.get("applicant_user")),
-        allow_create=False,
-    )
+    blocked_reason = _applicant_self_invite_blocked_reason(applicant)
+    if blocked_reason:
+        frappe.throw(blocked_reason, frappe.ValidationError)
 
-    emails: list[str] = []
-    seen: set[str] = set()
-    for value in (
-        normalize_email_value(applicant.get("portal_account_email")),
-        normalize_email_value(applicant.get("applicant_email")),
-        normalize_email_value(applicant.get("applicant_user")),
-    ):
-        if value and value not in seen:
-            seen.add(value)
-            emails.append(value)
+    return _applicant_invite_options_payload(applicant)
 
-    for value in _invite_contact_email_options(contact_name):
-        if value and value not in seen:
-            seen.add(value)
-            emails.append(value)
 
-    selected = (
-        normalize_email_value(applicant.get("portal_account_email"))
-        or normalize_email_value(applicant.get("applicant_user"))
-        or normalize_email_value(applicant.get("applicant_email"))
-        or (emails[0] if emails else None)
-    )
+@frappe.whitelist()
+def get_admissions_portal_invite_options(*, student_applicant: str | None = None) -> dict:
+    ensure_admissions_permission()
+
+    if not student_applicant:
+        frappe.throw(_("student_applicant is required."))
+
+    applicant = frappe.get_doc("Student Applicant", student_applicant)
+    access_mode = get_admissions_access_mode()
+    family_workspace_enabled = bool(access_mode == ADMISSIONS_ACCESS_MODE_FAMILY)
+    applicant_invite = _applicant_invite_options_payload(applicant)
+    family_invite = _family_invite_options_payload(applicant)
+
+    applicant_blocked_reason = _applicant_self_invite_blocked_reason(applicant)
+    family_blocked_reason = ""
+    if not family_workspace_enabled:
+        family_blocked_reason = _(
+            "Family collaborator invites require Admission Settings to use Family Workspace mode."
+        )
+    elif not any(bool(row.get("eligible")) for row in family_invite.get("guardians") or []):
+        family_blocked_reason = _(
+            "Add a primary family collaborator row with signer authority and a personal email before inviting an Admissions "
+            "Family collaborator."
+        )
+
+    applicant_invite["enabled"] = not bool(applicant_blocked_reason)
+    applicant_invite["disabled_reason"] = applicant_blocked_reason or None
+    family_invite["enabled"] = not bool(family_blocked_reason)
+    family_invite["disabled_reason"] = family_blocked_reason or None
 
     return {
-        "contact": contact_name,
-        "emails": emails,
-        "selected_email": selected,
+        "access_mode": access_mode,
+        "family_workspace_enabled": family_workspace_enabled,
+        "recommended_invite_mode": "Family Collaborator" if family_workspace_enabled else "Applicant Self",
+        "applicant_invite": applicant_invite,
+        "family_invite": family_invite,
     }
 
 
@@ -3979,7 +4065,7 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
     ensure_admissions_permission()
     if is_family_workspace_enabled():
         frappe.throw(
-            _("Use Invite Family Collaborator while Family Workspace mode is enabled."),
+            _("Use the Family collaborator invite while Family Workspace mode is enabled."),
             frappe.ValidationError,
         )
 
@@ -3993,6 +4079,9 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
         frappe.throw(_("email is required."))
 
     applicant = frappe.get_doc("Student Applicant", student_applicant)
+    blocked_reason = _applicant_self_invite_blocked_reason(applicant)
+    if blocked_reason:
+        frappe.throw(blocked_reason, frappe.ValidationError)
 
     if applicant.applicant_user:
         linked_user = normalize_email_value(applicant.applicant_user)
