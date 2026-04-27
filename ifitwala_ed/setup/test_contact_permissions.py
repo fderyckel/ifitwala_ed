@@ -275,13 +275,21 @@ class TestContactPermissions(FrappeTestCase):
                 "ifitwala_ed.utilities.contact_utils._resolve_education_contact_school_scope",
                 return_value=["SCH-ROOT", "SCH-CHILD"],
             ),
+            patch(
+                "ifitwala_ed.utilities.contact_utils._resolve_education_contact_org_scope",
+                return_value=["ORG-ROOT", "ORG-CHILD"],
+            ),
         ):
             condition = contact_utils.contact_permission_query_conditions("admissions.manager@example.com")
 
+        self.assertIn("Inquiry", condition)
+        self.assertIn("contact = `tabContact`.name", condition)
         self.assertIn("Student Applicant", condition)
         self.assertIn("applicant_contact", condition)
         self.assertIn("Student", condition)
         self.assertIn("Guardian", condition)
+        self.assertIn("ORG-ROOT", condition)
+        self.assertIn("ORG-CHILD", condition)
         self.assertIn("SCH-ROOT", condition)
         self.assertIn("SCH-CHILD", condition)
         self.assertIn("NOT", condition)
@@ -293,6 +301,7 @@ class TestContactPermissions(FrappeTestCase):
                 "ifitwala_ed.utilities.contact_utils._resolve_education_contact_school_scope",
                 return_value=["SCH-CHILD"],
             ),
+            patch("ifitwala_ed.utilities.contact_utils._resolve_education_contact_org_scope", return_value=[]),
             patch(
                 "ifitwala_ed.utilities.contact_utils.frappe.get_all",
                 side_effect=[
@@ -308,7 +317,7 @@ class TestContactPermissions(FrappeTestCase):
                 )
             )
 
-    def test_education_contact_scope_matches_reverse_student_applicant_contact_for_admissions(self):
+    def test_education_contact_scope_matches_reverse_inquiry_contact_for_admissions(self):
         with (
             patch("ifitwala_ed.utilities.contact_utils.frappe.get_roles", return_value=["Admission Manager"]),
             patch(
@@ -316,8 +325,36 @@ class TestContactPermissions(FrappeTestCase):
                 return_value=["SCH-CHILD"],
             ),
             patch(
+                "ifitwala_ed.utilities.contact_utils._resolve_education_contact_org_scope",
+                return_value=["ORG-ROOT", "ORG-CHILD"],
+            ),
+            patch(
                 "ifitwala_ed.utilities.contact_utils.frappe.get_all",
                 side_effect=[
+                    [],
+                    [frappe._dict(name="INQ-0001", organization="ORG-CHILD", school="", student_applicant="")],
+                ],
+            ),
+        ):
+            self.assertTrue(
+                contact_utils._education_contact_scope_matches(
+                    "Marcus Vance-INQ-26-03-24-002",
+                    "admissions.manager@example.com",
+                )
+            )
+
+    def test_education_contact_scope_matches_reverse_student_applicant_contact_for_admissions(self):
+        with (
+            patch("ifitwala_ed.utilities.contact_utils.frappe.get_roles", return_value=["Admission Manager"]),
+            patch(
+                "ifitwala_ed.utilities.contact_utils._resolve_education_contact_school_scope",
+                return_value=["SCH-CHILD"],
+            ),
+            patch("ifitwala_ed.utilities.contact_utils._resolve_education_contact_org_scope", return_value=[]),
+            patch(
+                "ifitwala_ed.utilities.contact_utils.frappe.get_all",
+                side_effect=[
+                    [],
                     [],
                     [frappe._dict(name="APP-0001", school="SCH-CHILD", student=None)],
                 ],

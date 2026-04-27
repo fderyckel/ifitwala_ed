@@ -27,7 +27,7 @@ Rules:
 6. The permission seed must create any missing canonical roles before inserting `Custom DocPerm` rows, so migrate/setup never fails on a missing role record.
 7. App-level Contact permission hooks may further restrict linked contacts through server-owned scope contracts:
    - employee-linked contacts use the Employee visibility contract
-   - Student Applicant, active Student, and Guardian contacts use staff school visibility scope for `Academic Admin`, `Academic Assistant`, `Admission Officer`, and `Admission Manager`; Student Applicant contacts are recognized both through Contact Dynamic Link rows and the canonical `Student Applicant.applicant_contact` field
+   - Inquiry, Student Applicant, active Student, and Guardian contacts use staff organization/school visibility scope for `Academic Admin`, `Academic Assistant`, `Admission Officer`, and `Admission Manager`; Inquiry contacts are recognized through Contact Dynamic Link rows and `Inquiry.contact`, and Student Applicant contacts are recognized through Contact Dynamic Link rows and `Student Applicant.applicant_contact`
    - unrelated contacts continue to defer to the seeded DocPerm contract
 8. Student-form Contact and Address details are a read-only Student-context projection. A user who can read the Student may see the linked Contact summary and linked Address lines on the Student form even when native `Contact` or `Address` DocType opening/editing is not available.
 9. Native `Contact` and `Address` open/edit affordances remain gated by the native DocType role-permission contract. The read-only Student projection must not call `frappe.has_permission("Contact" | "Address", ...)` during Student form load, because a negative native permission probe can add noisy role-permission messages to an otherwise successful Student page refresh.
@@ -56,7 +56,7 @@ Rules:
    - `Academic Admin` / `Academic Assistant`: effective school + descendant-school scope, where Academic Admin resolves school from the active Employee profile before persisted defaults
    - `Academic Admin` only: when no school scope resolves, or the active Employee profile exists with a blank `school`, organization descendants
    - `Employee`: own linked employee contact only
-   - `Academic Admin`, `Academic Assistant`, `Admission Officer`, and `Admission Manager`: Student Applicant, active Student, and Guardian contacts within the user's visible schools; visible schools are the user's school descendants, or when no school is set, every school in the user's organization descendants. Student Applicant contact visibility must check both Contact Dynamic Links and reverse references from `Student Applicant.applicant_contact`.
+   - `Academic Admin`, `Academic Assistant`, `Admission Officer`, and `Admission Manager`: Inquiry, Student Applicant, active Student, and Guardian contacts within the user's visible organization/school scope; visible schools are the user's school descendants, or when no school is set, every school in the user's organization descendants. Inquiry contact visibility must check both Contact Dynamic Links and reverse references from `Inquiry.contact`. Student Applicant contact visibility must check both Contact Dynamic Links and reverse references from `Student Applicant.applicant_contact`.
 
 ## 3. Contract Matrix
 

@@ -101,6 +101,21 @@ def _resolve_education_contact_school_scope(user: str) -> list[str]:
     return list(dict.fromkeys(get_user_visible_schools(user) or []))
 
 
+def _resolve_education_contact_org_scope(user: str) -> list[str]:
+    from ifitwala_ed.utilities.employee_utils import get_descendant_organizations, get_user_base_org
+
+    organization = cstr(get_user_base_org(user)).strip()
+    if not organization:
+        try:
+            organization = cstr(frappe.defaults.get_user_default("organization", user=user)).strip()
+        except TypeError:
+            organization = cstr(frappe.defaults.get_user_default("organization", user)).strip()
+    if not organization:
+        return []
+
+    return list(dict.fromkeys(get_descendant_organizations(organization) or [organization]))
+
+
 def _student_scope_condition_sql(student_alias: str, school_values: str) -> str:
     return f"""
         IFNULL({student_alias}.enabled, 0) = 1
@@ -129,14 +144,48 @@ def _student_applicant_scope_condition_sql(applicant_alias: str, school_values: 
     """
 
 
+def _inquiry_scope_condition_sql(inquiry_alias: str, school_values: str, org_values: str) -> str:
+    conditions = []
+    if org_values:
+        conditions.append(f"{inquiry_alias}.organization IN ({org_values})")
+    if school_values:
+        conditions.append(f"{inquiry_alias}.school IN ({school_values})")
+        conditions.append(
+            f"""
+            EXISTS (
+                SELECT 1
+                FROM `tabStudent Applicant` inquiry_applicant
+                WHERE inquiry_applicant.name = {inquiry_alias}.student_applicant
+                    AND ({_student_applicant_scope_condition_sql("inquiry_applicant", school_values)})
+            )
+            """
+        )
+    return " OR ".join(f"({condition})" for condition in conditions) if conditions else "1=0"
+
+
 def _education_contact_scope_sql(user: str) -> str:
     schools = _resolve_education_contact_school_scope(user)
-    if not schools:
+    orgs = _resolve_education_contact_org_scope(user)
+    if not schools and not orgs:
         return "1=0"
 
     school_values = ", ".join(frappe.db.escape(school, percent=False) for school in schools)
-    return f"""
-        (
+    org_values = ", ".join(frappe.db.escape(org, percent=False) for org in orgs)
+    conditions = [
+        f"""
+        scoped_education_link.link_doctype = 'Inquiry'
+        AND EXISTS (
+            SELECT 1
+            FROM `tabInquiry` scoped_inquiry
+            WHERE scoped_inquiry.name = scoped_education_link.link_name
+                AND ({_inquiry_scope_condition_sql("scoped_inquiry", school_values, org_values)})
+        )
+        """
+    ]
+    if school_values:
+        conditions.extend(
+            [
+                f"""
             scoped_education_link.link_doctype = 'Student Applicant'
             AND EXISTS (
                 SELECT 1
@@ -144,8 +193,8 @@ def _education_contact_scope_sql(user: str) -> str:
                 WHERE scoped_applicant.name = scoped_education_link.link_name
                     AND ({_student_applicant_scope_condition_sql("scoped_applicant", school_values)})
             )
-        )
-        OR (
+            """,
+                f"""
             scoped_education_link.link_doctype = 'Student'
             AND EXISTS (
                 SELECT 1
@@ -153,8 +202,8 @@ def _education_contact_scope_sql(user: str) -> str:
                 WHERE scoped_student.name = scoped_education_link.link_name
                     AND {_student_scope_condition_sql("scoped_student", school_values)}
             )
-        )
-        OR (
+            """,
+                f"""
             scoped_education_link.link_doctype = 'Guardian'
             AND EXISTS (
                 SELECT 1
@@ -166,8 +215,8 @@ def _education_contact_scope_sql(user: str) -> str:
                     AND student_guardian.guardian = scoped_education_link.link_name
                     AND {_student_scope_condition_sql("guardian_student", school_values)}
             )
-        )
-        OR (
+            """,
+                f"""
             scoped_education_link.link_doctype = 'Guardian'
             AND EXISTS (
                 SELECT 1
@@ -178,8 +227,10 @@ def _education_contact_scope_sql(user: str) -> str:
                     AND guardian_student_link.parent = scoped_education_link.link_name
                     AND {_student_scope_condition_sql("guardian_link_student", school_values)}
             )
+            """,
+            ]
         )
-    """
+    return " OR ".join(f"({condition})" for condition in conditions)
 
 
 def _reverse_student_applicant_contact_scope_sql(user: str) -> str:
@@ -198,6 +249,24 @@ def _reverse_student_applicant_contact_scope_sql(user: str) -> str:
     """
 
 
+def _reverse_inquiry_contact_scope_sql(user: str) -> str:
+    schools = _resolve_education_contact_school_scope(user)
+    orgs = _resolve_education_contact_org_scope(user)
+    if not schools and not orgs:
+        return "1=0"
+
+    school_values = ", ".join(frappe.db.escape(school, percent=False) for school in schools)
+    org_values = ", ".join(frappe.db.escape(org, percent=False) for org in orgs)
+    return f"""
+        EXISTS (
+            SELECT 1
+            FROM `tabInquiry` reverse_scoped_inquiry
+            WHERE reverse_scoped_inquiry.contact = `tabContact`.name
+                AND ({_inquiry_scope_condition_sql("reverse_scoped_inquiry", school_values, org_values)})
+        )
+    """
+
+
 def _education_contact_scope_matches(contact_name: str | None, user: str, roles: set[str] | None = None) -> bool | None:
     if not contact_name:
         return None
@@ -211,7 +280,7 @@ def _education_contact_scope_matches(contact_name: str | None, user: str, roles:
         filters={
             "parenttype": "Contact",
             "parent": contact_name,
-            "link_doctype": ["in", ["Student Applicant", "Student", "Guardian"]],
+            "link_doctype": ["in", ["Inquiry", "Student Applicant", "Student", "Guardian"]],
         },
         fields=["link_doctype", "link_name"],
         limit=200,
@@ -225,16 +294,20 @@ def _education_contact_scope_matches(contact_name: str | None, user: str, roles:
         if cstr(row.get("link_doctype")).strip() and cstr(row.get("link_name")).strip()
     ]
     if not linked_rows:
-        return _reverse_student_applicant_contact_scope_matches(contact_name, user)
+        return _reverse_education_contact_scope_matches(contact_name, user)
 
     schools = set(_resolve_education_contact_school_scope(user))
-    if not schools:
+    orgs = set(_resolve_education_contact_org_scope(user))
+    if not schools and not orgs:
         return False
 
+    inquiry_names = [row.link_name for row in linked_rows if row.link_doctype == "Inquiry"]
     applicant_names = [row.link_name for row in linked_rows if row.link_doctype == "Student Applicant"]
     student_names = [row.link_name for row in linked_rows if row.link_doctype == "Student"]
     guardian_names = [row.link_name for row in linked_rows if row.link_doctype == "Guardian"]
 
+    if inquiry_names and _any_scoped_inquiry(inquiry_names, schools, orgs):
+        return True
     if applicant_names and _any_scoped_student_applicant(applicant_names, schools):
         return True
     if student_names and _any_scoped_student(student_names, schools):
@@ -245,9 +318,21 @@ def _education_contact_scope_matches(contact_name: str | None, user: str, roles:
     return False
 
 
-def _reverse_student_applicant_contact_scope_matches(contact_name: str, user: str) -> bool | None:
+def _reverse_education_contact_scope_matches(contact_name: str, user: str) -> bool | None:
     schools = set(_resolve_education_contact_school_scope(user))
-    if not schools:
+    orgs = set(_resolve_education_contact_org_scope(user))
+    if not schools and not orgs:
+        return False
+
+    inquiry_rows = frappe.get_all(
+        "Inquiry",
+        filters={"contact": contact_name},
+        fields=["name", "organization", "school", "student_applicant"],
+        limit=200,
+    )
+    if inquiry_rows:
+        if _any_scoped_inquiry_rows(inquiry_rows, schools, orgs):
+            return True
         return False
 
     applicant_rows = frappe.get_all(
@@ -268,6 +353,30 @@ def _reverse_student_applicant_contact_scope_matches(contact_name: str, user: st
         return True
 
     return False
+
+
+def _any_scoped_inquiry(inquiry_names: list[str], schools: set[str], orgs: set[str]) -> bool:
+    rows = frappe.get_all(
+        "Inquiry",
+        filters={"name": ["in", inquiry_names]},
+        fields=["name", "organization", "school", "student_applicant"],
+        limit=len(inquiry_names),
+    )
+    return _any_scoped_inquiry_rows(rows, schools, orgs)
+
+
+def _any_scoped_inquiry_rows(rows, schools: set[str], orgs: set[str]) -> bool:
+    applicant_names = []
+    for row in rows:
+        if cstr(row.get("organization")).strip() in orgs:
+            return True
+        if cstr(row.get("school")).strip() in schools:
+            return True
+        applicant_name = cstr(row.get("student_applicant")).strip()
+        if applicant_name:
+            applicant_names.append(applicant_name)
+
+    return bool(applicant_names and _any_scoped_student_applicant(applicant_names, schools))
 
 
 def _any_scoped_student_applicant(applicant_names: list[str], schools: set[str]) -> bool:
@@ -508,9 +617,16 @@ def contact_permission_query_conditions(user):
 
     if roles & EDUCATION_CONTACT_ROLES:
         education_scope_sql = _education_contact_scope_sql(user)
+        reverse_inquiry_scope_sql = _reverse_inquiry_contact_scope_sql(user)
         reverse_student_applicant_scope_sql = _reverse_student_applicant_contact_scope_sql(user)
         education_link_exists = """
             (
+                EXISTS (
+                    SELECT 1
+                    FROM `tabInquiry` reverse_contact_inquiry
+                    WHERE reverse_contact_inquiry.contact = `tabContact`.name
+                )
+                OR
                 EXISTS (
                     SELECT 1
                     FROM `tabStudent Applicant` reverse_contact_applicant
@@ -521,19 +637,20 @@ def contact_permission_query_conditions(user):
                 FROM `tabDynamic Link` contact_education_link
                 WHERE contact_education_link.parenttype = 'Contact'
                     AND contact_education_link.parent = `tabContact`.name
-                    AND contact_education_link.link_doctype IN ('Student Applicant', 'Student', 'Guardian')
+                    AND contact_education_link.link_doctype IN ('Inquiry', 'Student Applicant', 'Student', 'Guardian')
                 )
             )
         """
         scoped_education_link_exists = f"""
             (
-                {reverse_student_applicant_scope_sql}
+                {reverse_inquiry_scope_sql}
+                OR {reverse_student_applicant_scope_sql}
                 OR EXISTS (
                     SELECT 1
                     FROM `tabDynamic Link` scoped_education_link
                     WHERE scoped_education_link.parenttype = 'Contact'
                         AND scoped_education_link.parent = `tabContact`.name
-                        AND scoped_education_link.link_doctype IN ('Student Applicant', 'Student', 'Guardian')
+                        AND scoped_education_link.link_doctype IN ('Inquiry', 'Student Applicant', 'Student', 'Guardian')
                         AND ({education_scope_sql})
                 )
             )

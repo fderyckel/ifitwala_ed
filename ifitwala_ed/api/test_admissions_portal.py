@@ -595,6 +595,79 @@ class TestInviteApplicant(FrappeTestCase):
             )
         )
 
+    def test_family_invite_reuses_applicant_contact_for_existing_signer_row(self):
+        if not _admission_settings_has_field("admissions_access_mode"):
+            self.skipTest("Admission Settings.admissions_access_mode is required for family workspace tests.")
+
+        self._ensure_role("Admissions Applicant")
+        self._set_admissions_access_mode("Family Workspace")
+        invite_email = f"father-existing-{frappe.generate_hash(length=8)}@example.com"
+        contact = self._create_contact(
+            primary_email=invite_email,
+            first_name="Marcus",
+            last_name="Vance",
+            phone="+14155550126",
+        )
+        user = frappe.get_doc(
+            {
+                "doctype": "User",
+                "email": invite_email,
+                "first_name": "Marcus",
+                "last_name": "Vance",
+                "enabled": 1,
+                "roles": [{"role": "Admissions Applicant"}],
+            }
+        )
+        user.flags.no_welcome_mail = True
+        _insert_user_without_notifications(user)
+        self._created.append(("User", user.name))
+
+        self.applicant.db_set("applicant_contact", contact.name, update_modified=False)
+        self.applicant.db_set("applicant_user", invite_email, update_modified=False)
+        self.applicant.db_set("portal_account_email", invite_email, update_modified=False)
+        self.applicant.append(
+            "guardians",
+            {
+                "relationship": "Father",
+                "can_consent": 1,
+                "is_primary": 1,
+                "is_primary_guardian": 1,
+                "user": invite_email,
+            },
+        )
+        self.applicant.save(ignore_permissions=True)
+        guardian_row_name = self.applicant.get("guardians")[0].name
+
+        with patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email", return_value=True):
+            options = get_admissions_portal_invite_options(student_applicant=self.applicant.name)
+            payload = invite_family_collaborator(
+                student_applicant=self.applicant.name,
+                guardian_row=guardian_row_name,
+                email=invite_email,
+            )
+
+        family_rows = options.get("family_invite", {}).get("guardians") or []
+        self.assertEqual(family_rows[0].get("email"), invite_email)
+        self.assertTrue(bool(family_rows[0].get("eligible")))
+        self.assertTrue(bool(family_rows[0].get("bootstrap_from_applicant_contact")))
+        self.assertTrue(bool(payload.get("converted_applicant_login")))
+
+        self.applicant.reload()
+        self.assertFalse(bool((self.applicant.applicant_user or "").strip()))
+        self.assertFalse(bool((self.applicant.portal_account_email or "").strip()))
+        row = self.applicant.get("guardians")[0]
+        self.assertEqual(row.contact, contact.name)
+        self.assertEqual(row.guardian_first_name, "Marcus")
+        self.assertEqual(row.guardian_last_name, "Vance")
+        self.assertEqual(row.guardian_email, invite_email)
+        self.assertEqual(row.guardian_mobile_phone, "+14155550126")
+        self.assertEqual((row.user or "").strip(), invite_email)
+        self._created.append(("Guardian", row.guardian))
+
+        roles = set(frappe.get_roles(invite_email))
+        self.assertIn("Admissions Family", roles)
+        self.assertNotIn("Admissions Applicant", roles)
+
     def test_applicant_self_invite_blocks_family_acknowledgement_policy_in_single_mode(self):
         if not _policy_schema_available():
             self.skipTest("Institutional Policy applies_to storage is required for family acknowledgement tests.")
@@ -1727,6 +1800,52 @@ class TestSubmitApplication(FrappeTestCase):
                     }
                 ],
             )
+
+    def test_update_applicant_profile_preserves_existing_guardian_image_when_thumbnail_pending(self):
+        self._set_guardians_section_setting(1)
+        guardian_email = f"guardian-thumbnail-{frappe.generate_hash(length=8)}@example.com"
+        persisted_image = "/private/files/guardian-thumbnail-pending.jpg"
+        guardian_row = self.applicant.append(
+            "guardians",
+            {
+                "relationship": "Mother",
+                "can_consent": 1,
+                "is_primary": 1,
+                "is_primary_guardian": 1,
+                "guardian_first_name": "Mina",
+                "guardian_last_name": "Portal",
+                "guardian_email": guardian_email,
+                "guardian_mobile_phone": "+14155550101",
+                "guardian_image": persisted_image,
+            },
+        )
+        self.applicant.save(ignore_permissions=True)
+        guardian_row_name = guardian_row.name
+
+        frappe.set_user(self.applicant_user)
+        payload = update_applicant_profile(
+            student_applicant=self.applicant.name,
+            guardians=[
+                {
+                    "name": guardian_row_name,
+                    "relationship": "Mother",
+                    "can_consent": 1,
+                    "is_primary": 1,
+                    "is_primary_guardian": 1,
+                    "guardian_first_name": "Mina",
+                    "guardian_last_name": "Portal",
+                    "guardian_email": guardian_email,
+                    "guardian_mobile_phone": "+14155550101",
+                    "guardian_image": "",
+                }
+            ],
+        )
+
+        self.assertTrue(payload.get("ok"))
+        self.applicant.reload()
+        rows = self.applicant.get("guardians") or []
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].guardian_image, persisted_image)
 
     def test_update_applicant_profile_preserves_guardian_image_attachment_scope_on_guardian_row(self):
         self._set_guardians_section_setting(1)

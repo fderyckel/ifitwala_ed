@@ -1581,6 +1581,9 @@ def _apply_guardians_to_applicant(*, applicant, guardians_payload: list[dict]):
         if _as_check(row.get("use_applicant_contact")):
             row = _hydrate_guardian_row_from_applicant_contact(applicant=applicant, row_payload=row)
 
+        if existing_row and not _as_text(row.get("guardian_image")).strip():
+            row["guardian_image"] = _as_text(existing_row.get("guardian_image")).strip()
+
         if _guardian_row_is_empty(row):
             continue
         row = _validate_guardian_profile_row(row)
@@ -3797,9 +3800,29 @@ def _applicant_invite_options_payload(applicant) -> dict:
 
 def _family_invite_options_payload(applicant) -> dict:
     guardian_payload = []
+    contact_payload = _applicant_contact_prefill_payload(applicant)
+    contact_email = normalize_email_value(contact_payload.get("email"))
+    applicant_user_email = normalize_email_value(applicant.get("applicant_user"))
+    portal_account_email = normalize_email_value(applicant.get("portal_account_email"))
+
     for row in applicant.get("guardians") or []:
         email = normalize_email_value(row.get("guardian_email"))
         is_primary_guardian = bool(cint(row.get("is_primary_guardian") or 0))
+        can_consent = bool(cint(row.get("can_consent")))
+        can_hydrate_from_applicant_contact = False
+        if not email and is_primary_guardian and can_consent and contact_payload.get("available"):
+            row_contact = _as_text(row.get("contact")).strip()
+            row_user = normalize_email_value(row.get("user"))
+            contact_matches_row = not row_contact or row_contact == _as_text(contact_payload.get("contact")).strip()
+            user_matches_contact = not row_user or row_user in {
+                contact_email,
+                applicant_user_email,
+                portal_account_email,
+            }
+            can_hydrate_from_applicant_contact = bool(contact_matches_row and user_matches_contact)
+            if can_hydrate_from_applicant_contact:
+                email = contact_email
+
         eligible = bool(email and cint(row.get("can_consent")) and is_primary_guardian)
         reason = ""
         if not is_primary_guardian:
@@ -3819,12 +3842,11 @@ def _family_invite_options_payload(applicant) -> dict:
                 "can_consent": bool(cint(row.get("can_consent"))),
                 "eligible": eligible,
                 "reason": reason or None,
-                "bootstrap_from_applicant_contact": False,
+                "bootstrap_from_applicant_contact": can_hydrate_from_applicant_contact,
             }
         )
 
     if not guardian_payload:
-        contact_payload = _applicant_contact_prefill_payload(applicant)
         if contact_payload.get("available"):
             guardian_payload.append(
                 {
@@ -3986,7 +4008,7 @@ def _ensure_family_guardian_user(*, guardian, email: str, applicant_name: str, r
         frappe.throw(_("This email is already linked to a different Guardian account."))
 
     existing_applicant = frappe.db.get_value("Student Applicant", {"applicant_user": resolved_email}, "name")
-    if existing_applicant:
+    if existing_applicant and existing_applicant != applicant_name:
         frappe.throw(
             _(
                 "This email is already reserved as an Applicant login ({applicant}). Use a different family collaborator email."
@@ -4026,6 +4048,31 @@ def _ensure_family_guardian_user(*, guardian, email: str, applicant_name: str, r
         frappe.throw(_("Guardian is already linked to a different user account."))
 
     return user_doc, resent
+
+
+def _remove_admissions_applicant_role(user_doc) -> None:
+    roles = []
+    changed = False
+    for row in user_doc.roles or []:
+        role = (row.role or "").strip()
+        if role == ADMISSIONS_ROLE:
+            changed = True
+            continue
+        if role:
+            roles.append({"role": role})
+    if changed:
+        user_doc.set("roles", roles)
+        user_doc.save(ignore_permissions=True)
+
+
+def _clear_applicant_self_login_for_family_conversion(*, applicant, invite_email: str, user_doc) -> bool:
+    if normalize_email_value(applicant.get("applicant_user")) != normalize_email_value(invite_email):
+        return False
+
+    applicant.applicant_user = None
+    applicant.portal_account_email = None
+    _remove_admissions_applicant_role(user_doc)
+    return True
 
 
 @frappe.whitelist()
@@ -4072,6 +4119,9 @@ def invite_family_collaborator(
 
     row_payload = dict(target_row.as_dict())
     row_payload["guardian_email"] = invite_email
+    if not _as_text(target_row.get("guardian_email")).strip():
+        row_payload = _hydrate_guardian_row_from_applicant_contact(applicant=applicant, row_payload=row_payload)
+        row_payload["guardian_email"] = invite_email
     row_payload = _validate_guardian_profile_row(_normalize_guardian_row(row_payload), require_photo=False)
     contact_name = _create_or_update_guardian_contact(
         applicant=applicant,
@@ -4092,6 +4142,11 @@ def invite_family_collaborator(
         applicant_name=applicant.name,
         row_payload=row_payload,
     )
+    converted_applicant_login = _clear_applicant_self_login_for_family_conversion(
+        applicant=applicant,
+        invite_email=invite_email,
+        user_doc=user_doc,
+    )
 
     if contact_name:
         ensure_contact_dynamic_link(contact_name=contact_name, link_doctype="Guardian", link_name=guardian_doc.name)
@@ -4104,6 +4159,9 @@ def invite_family_collaborator(
     target_row.user = user_doc.name
     target_row.guardian_email = invite_email
     target_row.guardian_full_name = _guardian_row_display_name(row_payload)
+    target_row.guardian_first_name = row_payload.get("guardian_first_name")
+    target_row.guardian_last_name = row_payload.get("guardian_last_name")
+    target_row.guardian_mobile_phone = row_payload.get("guardian_mobile_phone")
     applicant.save(ignore_permissions=True)
     if _as_text(applicant.get("applicant_contact")).strip():
         sync_student_applicant_contact_binding(
@@ -4121,7 +4179,13 @@ def invite_family_collaborator(
         ),
     )
 
-    return {"ok": True, "user": user_doc.name, "resent": resent, "email_sent": email_sent}
+    return {
+        "ok": True,
+        "user": user_doc.name,
+        "resent": resent,
+        "email_sent": email_sent,
+        "converted_applicant_login": converted_applicant_login,
+    }
 
 
 @frappe.whitelist()
@@ -4170,8 +4234,8 @@ def get_admissions_portal_invite_options(*, student_applicant: str | None = None
             )
         else:
             family_blocked_reason = _(
-                "Complete a primary family collaborator row with signer authority and a personal email before inviting an "
-                "Admissions Family collaborator."
+                "Complete a primary family collaborator row with signer authority and a personal email, or link a "
+                "complete Inquiry/Applicant Contact that can prefill that row."
             )
 
     applicant_invite["enabled"] = not bool(applicant_blocked_reason)

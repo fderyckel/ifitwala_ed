@@ -1630,6 +1630,12 @@ invite_family_collaborator(
 
 This method requires `Admission Settings.admissions_access_mode = Family Workspace`, and the selected `Student Applicant Guardian` row must be primary and signer-authorized.
 
+When the inquiry/applicant `Contact` is the parent/adult being invited, the invite workflow must reuse that Contact instead of forcing re-entry:
+
+* if no family-collaborator row exists, the workflow may create the first `Student Applicant Guardian` row from the Contact
+* if a primary signer row already exists but its profile fields are blank, the workflow may hydrate that row from the same applicant Contact
+* converting a mistaken applicant-self invite for the same email into an `Admissions Family` collaborator must clear `Student Applicant.applicant_user` / `portal_account_email` and remove the `Admissions Applicant` role from that user
+
 **No Desk-based user creation is allowed.**
 
 ---

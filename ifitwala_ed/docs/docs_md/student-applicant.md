@@ -174,11 +174,11 @@ Behavior in code:
 Family-collaborator invite triggers `invite_family_collaborator` and requires:
 
 - `Admission Settings.admissions_access_mode = Family Workspace`
-- either a complete primary/signing `Student Applicant Guardian` row for the selected adult, or no guardian rows yet and a complete linked Inquiry/Applicant Contact
-- for an existing row: `is_primary_guardian = 1`, derived `can_consent = 1`, and a personal email
+- either a complete primary/signing `Student Applicant Guardian` row for the selected adult, or a reusable linked Inquiry/Applicant Contact
+- for an existing row: `is_primary_guardian = 1`, derived `can_consent = 1`, and either a personal email on the row or a matching linked Inquiry/Applicant Contact email
 - for Contact bootstrap: Contact first name, last name, primary email, and primary mobile phone
 
-That flow assigns role `Admissions Family` and links the login through the selected or bootstrapped family collaborator row. Contact bootstrap creates the first `Student Applicant Guardian` row during the invite so the parent does not have to retype inquiry contact details. It does not write `Student Applicant.applicant_user`.
+That flow assigns role `Admissions Family` and links the login through the selected or bootstrapped family collaborator row. Contact bootstrap can create the first `Student Applicant Guardian` row or complete an existing primary signer row during the invite so the parent does not have to retype inquiry contact details. It does not write `Student Applicant.applicant_user`; if the same adult was mistakenly invited as applicant self, the family invite converts that login by clearing `Student Applicant.applicant_user` / `portal_account_email` and removing the `Admissions Applicant` role.
 
 ### Family Workspace Login and Collaboration
 
