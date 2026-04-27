@@ -209,6 +209,7 @@ function add_account_holder_action(frm) {
 	const wrapper = field?.$wrapper;
 	if (wrapper?.length) {
 		wrapper.find(".create-account-holder-btn").remove();
+		wrapper.closest(".section-body").find(".account-holder-action-column").remove();
 	}
 
 	if (!frm.doc || frm.is_new()) {
@@ -235,14 +236,31 @@ function add_account_holder_action(frm) {
 		return;
 	}
 
-	const $container = wrapper.find(".control-input").length ? wrapper.find(".control-input") : wrapper;
-	const $btn = $(
-		`<button type="button" class="btn btn-xs btn-secondary create-account-holder-btn">
-			${__("Create Account Holder")}
-		</button>`
-	);
+	const $fieldColumn = wrapper.closest(".form-column");
+	if (!$fieldColumn.length) {
+		return;
+	}
+
+	$fieldColumn.removeClass("col-sm-12").addClass("col-sm-6");
+	const $actionColumn = $(`
+		<div class="form-column col-sm-6 account-holder-action-column">
+			<div class="frappe-control input-max-width">
+				<div class="form-group">
+					<div class="clearfix">
+						<label class="control-label" style="padding-right: 0;"></label>
+					</div>
+					<div class="control-input-wrapper">
+						<button type="button" class="btn btn-xs btn-primary create-account-holder-btn">
+							${__("Create Account Holder")}
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	`);
+	const $btn = $actionColumn.find(".create-account-holder-btn");
 	$btn.on("click", createAccountHolder);
-	$container.append($btn);
+	$fieldColumn.after($actionColumn);
 }
 
 function create_account_holder_for_applicant(frm) {

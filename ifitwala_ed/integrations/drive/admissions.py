@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import frappe
@@ -16,6 +17,21 @@ _ADMISSIONS_HEALTH_RETENTION_POLICY = "until_school_exit_plus_6m"
 _ADMISSIONS_PROFILE_IMAGE_DATA_CLASS = "identity_image"
 _ADMISSIONS_PROFILE_IMAGE_PURPOSE = "applicant_profile_display"
 _ADMISSIONS_PROFILE_IMAGE_RETENTION_POLICY = "until_school_exit_plus_6m"
+_SLOT_FRAGMENT_INVALID_CHARS = re.compile(r"[^a-z0-9_.-]+")
+_SLOT_FRAGMENT_UNDERSCORES = re.compile(r"_+")
+
+
+def _safe_slot_fragment(value: str | None, *, fallback: str) -> str:
+    raw_value = str(value or "").strip()
+    try:
+        scrubbed = frappe.scrub(raw_value)
+    except Exception:
+        scrubbed = raw_value
+
+    normalized = str(scrubbed or raw_value or "").strip().lower()
+    normalized = _SLOT_FRAGMENT_INVALID_CHARS.sub("_", normalized)
+    normalized = _SLOT_FRAGMENT_UNDERSCORES.sub("_", normalized).strip("_.-")
+    return (normalized or fallback)[:80]
 
 
 def _build_health_vaccination_slot(
@@ -25,10 +41,14 @@ def _build_health_vaccination_slot(
     row_index: int | None = None,
 ) -> str:
     base = "_".join(part for part in [(vaccine_name or "").strip(), (date_value or "").strip()] if part).strip()
-    if not base:
+    try:
         index = int(row_index or 0)
-        base = f"row_{index + 1}"
-    return f"{_HEALTH_VACCINATION_SLOT_PREFIX}{frappe.scrub(base)[:80]}"
+    except (TypeError, ValueError):
+        index = 0
+    fallback = f"row_{index + 1}"
+    if not base:
+        base = fallback
+    return f"{_HEALTH_VACCINATION_SLOT_PREFIX}{_safe_slot_fragment(base, fallback=fallback)}"
 
 
 def _get_student_applicant_scope(student_applicant: str) -> dict[str, Any]:
