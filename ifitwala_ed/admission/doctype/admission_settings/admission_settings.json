@@ -16,6 +16,7 @@
   "sla_check_interval_hours",
   "portal_section",
   "admissions_access_mode",
+  "column_break_xnws",
   "show_guardians_in_admissions_profile",
   "enrollment_section",
   "auto_hydrate_enrollment_request_after_promotion",
@@ -113,13 +114,17 @@
    "fieldname": "require_deposit_before_promotion",
    "fieldtype": "Check",
    "label": "Require Deposit Before Promotion"
+  },
+  {
+   "fieldname": "column_break_xnws",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-04-26 13:06:23.000000",
+ "modified": "2026-04-27 13:14:58.080619",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Admission Settings",
