@@ -669,6 +669,54 @@ def _profile_completeness(profile_payload: dict) -> dict:
     return {"ok": not missing, "missing": missing, "required": required}
 
 
+def _contact_primary_mobile(contact_doc) -> str:
+    for row in contact_doc.get("phone_nos") or []:
+        if cint(row.get("is_primary_mobile_no") or 0):
+            phone = _as_text(row.get("phone")).strip()
+            if phone:
+                return phone
+
+    mobile = _as_text(contact_doc.get("mobile_no")).strip()
+    if mobile:
+        return mobile
+
+    for row in contact_doc.get("phone_nos") or []:
+        phone = _as_text(row.get("phone")).strip()
+        if phone:
+            return phone
+
+    return ""
+
+
+def _applicant_contact_prefill_payload(applicant) -> dict:
+    contact_name = _as_text(applicant.get("applicant_contact")).strip()
+    payload = {
+        "available": False,
+        "contact": contact_name,
+        "first_name": "",
+        "last_name": "",
+        "email": "",
+        "mobile_phone": "",
+    }
+    if not contact_name or not frappe.db.exists("Contact", contact_name):
+        payload["contact"] = ""
+        return payload
+
+    contact_doc = frappe.get_doc("Contact", contact_name)
+    payload.update(
+        {
+            "first_name": _as_text(contact_doc.get("first_name")).strip(),
+            "last_name": _as_text(contact_doc.get("last_name")).strip(),
+            "email": normalize_email_value(get_contact_primary_email(contact_name)) or "",
+            "mobile_phone": _contact_primary_mobile(contact_doc),
+        }
+    )
+    payload["available"] = bool(
+        payload["first_name"] and payload["last_name"] and payload["email"] and payload["mobile_phone"]
+    )
+    return payload
+
+
 def _build_profile_payload(applicant) -> dict:
     profile = _serialize_applicant_profile(applicant)
     completeness = _profile_completeness(profile)
@@ -703,6 +751,7 @@ def _build_profile_payload(applicant) -> dict:
         "applicant_image_open_url": applicant_image_urls["open_url"],
         "record_modified": _as_text(applicant.get("modified")).strip(),
         "guardian_section_enabled": guardians_enabled,
+        "applicant_contact_prefill": _applicant_contact_prefill_payload(applicant),
         "guardians": _serialize_applicant_guardians(
             applicant,
             authority_map=guardian_image_authority,
@@ -1270,6 +1319,30 @@ def _set_contact_primary_mobile(contact_doc, mobile: str) -> bool:
     return changed
 
 
+def _set_contact_primary_email(contact_name: str, email: str) -> None:
+    contact_name = _as_text(contact_name).strip()
+    email = normalize_email_value(email)
+    if not contact_name or not email:
+        return
+
+    upsert_contact_email(contact_name, email, set_primary_if_missing=True)
+    contact_doc = frappe.get_doc("Contact", contact_name)
+    changed = False
+    primary_set = False
+    for row in contact_doc.get("email_ids") or []:
+        row_email = normalize_email_value(row.get("email_id"))
+        should_be_primary = row_email == email and not primary_set
+        if should_be_primary:
+            primary_set = True
+        desired = 1 if should_be_primary else 0
+        if cint(row.get("is_primary") or 0) != desired:
+            row.is_primary = desired
+            changed = True
+
+    if changed:
+        contact_doc.save(ignore_permissions=True)
+
+
 def _guardian_contact_name_from_guardian_email(email: str) -> str:
     normalized = normalize_email_value(email)
     if not normalized:
@@ -1330,6 +1403,57 @@ def _hydrate_guardian_row_from_guardian_doc(*, row_payload: dict, guardian_doc) 
     return row
 
 
+def _hydrate_guardian_row_from_applicant_contact(*, applicant, row_payload: dict) -> dict:
+    row = dict(row_payload)
+    contact_payload = _applicant_contact_prefill_payload(applicant)
+    if not contact_payload.get("contact"):
+        frappe.throw(_("Applicant Contact is required before using it for guardian contact tracking."))
+
+    row["contact"] = contact_payload["contact"]
+    row["guardian_first_name"] = row.get("guardian_first_name") or contact_payload.get("first_name") or ""
+    row["guardian_last_name"] = row.get("guardian_last_name") or contact_payload.get("last_name") or ""
+    row["guardian_email"] = row.get("guardian_email") or contact_payload.get("email") or ""
+    row["guardian_mobile_phone"] = row.get("guardian_mobile_phone") or contact_payload.get("mobile_phone") or ""
+    if not _as_text(row.get("guardian_full_name")).strip():
+        row["guardian_full_name"] = " ".join(
+            part
+            for part in [
+                _as_text(row.get("guardian_first_name")).strip(),
+                _as_text(row.get("guardian_last_name")).strip(),
+            ]
+            if part
+        )
+    return row
+
+
+def _update_contact_identity_from_guardian_row(*, contact_name: str, row_payload: dict) -> None:
+    contact_name = _as_text(contact_name).strip()
+    if not contact_name:
+        frappe.throw(_("Contact is required."))
+
+    contact_doc = frappe.get_doc("Contact", contact_name)
+    changed = False
+
+    first_name = _as_text(row_payload.get("guardian_first_name")).strip()
+    last_name = _as_text(row_payload.get("guardian_last_name")).strip()
+    mobile = _as_text(row_payload.get("guardian_mobile_phone")).strip()
+    email = normalize_email_value(row_payload.get("guardian_email"))
+
+    if first_name and _as_text(contact_doc.get("first_name")).strip() != first_name:
+        contact_doc.first_name = first_name
+        changed = True
+    if last_name and _as_text(contact_doc.get("last_name")).strip() != last_name:
+        contact_doc.last_name = last_name
+        changed = True
+    if mobile and _set_contact_primary_mobile(contact_doc, mobile):
+        changed = True
+
+    if changed:
+        contact_doc.save(ignore_permissions=True)
+    if email:
+        _set_contact_primary_email(contact_name, email)
+
+
 def _create_or_update_guardian_contact(
     *,
     applicant,
@@ -1346,6 +1470,7 @@ def _create_or_update_guardian_contact(
             link_doctype="Student Applicant",
             link_name=applicant.name,
         )
+        _update_contact_identity_from_guardian_row(contact_name=applicant_contact, row_payload=row_payload)
         return applicant_contact
 
     first_name = _as_text(row_payload.get("guardian_first_name")).strip()
@@ -1437,15 +1562,17 @@ def _apply_guardians_to_applicant(*, applicant, guardians_payload: list[dict]):
         row = _normalize_guardian_row(row_payload)
         existing_row = existing_by_name.get(_as_text(row.get("name")).strip())
 
-        if _guardian_row_is_empty(row):
-            continue
-
         guardian_name = _as_text(row.get("guardian")).strip()
         if guardian_name:
             if not frappe.db.exists("Guardian", guardian_name):
                 frappe.throw(_("Invalid Guardian: {guardian}.").format(guardian=guardian_name))
             guardian_doc = frappe.get_doc("Guardian", guardian_name)
             row = _hydrate_guardian_row_from_guardian_doc(row_payload=row, guardian_doc=guardian_doc)
+        if _as_check(row.get("use_applicant_contact")):
+            row = _hydrate_guardian_row_from_applicant_contact(applicant=applicant, row_payload=row)
+
+        if _guardian_row_is_empty(row):
+            continue
         row = _validate_guardian_profile_row(row)
 
         existing_contact_name = _as_text(row.get("contact")).strip()
@@ -1625,7 +1752,7 @@ def _applicant_summary_payload(row: dict) -> dict:
     }
 
 
-def _resolve_family_guardian_context(*, student_applicant: str, user: str) -> str:
+def _find_family_guardian_context(*, student_applicant: str, user: str) -> str:
     direct_rows = frappe.get_all(
         "Student Applicant Guardian",
         filters={
@@ -1666,8 +1793,39 @@ def _resolve_family_guardian_context(*, student_applicant: str, user: str) -> st
             if guardian_name:
                 return guardian_name
 
+    return ""
+
+
+def _family_policy_blocked_reason(*, student_applicant: str, user: str) -> str:
+    if _find_family_guardian_context(student_applicant=student_applicant, user=user):
+        return ""
+
+    roles = set(frappe.get_roles(user))
+    if ADMISSIONS_ROLE in roles and ADMISSIONS_FAMILY_ROLE not in roles:
+        if get_admissions_access_mode() != ADMISSIONS_ACCESS_MODE_FAMILY:
+            return _(
+                "This policy must be signed by an authorized family signer. Admissions is in single-applicant mode, "
+                "so ask admissions staff to configure this policy as Child Acknowledgement or invite a family "
+                "collaborator after enabling Family Workspace."
+            )
+        return _(
+            "This policy must be signed by an authorized family collaborator. Ask admissions staff to invite your "
+            "Admissions Family collaborator account for this applicant."
+        )
+
+    return _(
+        "This policy must be signed by an authorized family collaborator. Ask admissions staff to check the "
+        "Admissions Family collaborator signer link for this applicant."
+    )
+
+
+def _resolve_family_guardian_context(*, student_applicant: str, user: str) -> str:
+    guardian_name = _find_family_guardian_context(student_applicant=student_applicant, user=user)
+    if guardian_name:
+        return guardian_name
+
     frappe.throw(
-        _("Your account is not linked to a consenting family collaborator record for this Applicant."),
+        _family_policy_blocked_reason(student_applicant=student_applicant, user=user),
         frappe.PermissionError,
     )
 
@@ -3166,20 +3324,32 @@ def get_applicant_policies(student_applicant: str | None = None):
         if (row_version.get("name") or "").strip()
     }
     clauses_by_version = get_policy_version_acknowledgement_clauses_map(versions)
+    family_guardian_context: str | None = None
 
     payload = []
     for row_policy in policy_rows:
         policy_version = row_policy.get("policy_version")
+        acknowledgement_mode = row_policy.get("admissions_acknowledgement_mode")
+        can_acknowledge = True
+        blocked_reason = ""
+        if acknowledgement_mode == ADMISSIONS_POLICY_MODE_FAMILY:
+            if family_guardian_context is None:
+                family_guardian_context = _find_family_guardian_context(student_applicant=row.get("name"), user=user)
+            can_acknowledge = bool(family_guardian_context)
+            if not can_acknowledge:
+                blocked_reason = _family_policy_blocked_reason(student_applicant=row.get("name"), user=user)
         payload.append(
             {
                 "name": row_policy.get("label"),
                 "policy_version": policy_version,
                 "content_html": sanitize_html(policy_text_by_version.get(policy_version, ""), allow_headings_from="h2"),
                 "is_required": bool(row_policy.get("is_required")),
-                "acknowledgement_mode": row_policy.get("admissions_acknowledgement_mode"),
+                "acknowledgement_mode": acknowledgement_mode,
                 "is_acknowledged": bool(row_policy.get("is_acknowledged")),
                 "acknowledged_at": row_policy.get("acknowledged_at"),
                 "acknowledged_by": row_policy.get("acknowledged_by"),
+                "can_acknowledge": can_acknowledge,
+                "blocked_reason": blocked_reason,
                 "expected_signature_name": row_policy.get("expected_signature_name") or "",
                 "acknowledgement_clauses": clauses_by_version.get((policy_version or "").strip(), []),
             }

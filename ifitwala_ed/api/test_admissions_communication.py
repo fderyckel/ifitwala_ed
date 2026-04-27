@@ -160,7 +160,7 @@ class TestAdmissionsCommunicationAuthGuards(FrappeTestCase):
 
 
 class TestAdmissionsCommunicationCanonicalWriters(FrappeTestCase):
-    def test_create_thread_keeps_case_container_out_of_generic_audience_feeds(self):
+    def test_create_thread_uses_portal_feed_case_container_without_generic_audience(self):
         fake_doc = SimpleNamespace(name="COMM-0001", audiences=[])
         fake_doc.insert = MagicMock()
 
@@ -176,7 +176,7 @@ class TestAdmissionsCommunicationCanonicalWriters(FrappeTestCase):
 
         self.assertEqual(thread_name, "COMM-0001")
         self.assertEqual(fake_doc.status, "Draft")
-        self.assertEqual(fake_doc.portal_surface, "Desk")
+        self.assertEqual(fake_doc.portal_surface, "Portal Feed")
         self.assertEqual(fake_doc.admission_context_doctype, "Student Applicant")
         self.assertEqual(fake_doc.admission_context_name, "APP-0001")
         self.assertEqual(fake_doc.audiences, [])

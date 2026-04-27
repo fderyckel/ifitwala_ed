@@ -1055,6 +1055,48 @@ class TestSubmitApplication(FrappeTestCase):
         self._created.append(("Policy Acknowledgement", ack.get("name")))
         self.assertEqual((ack.get("acknowledged_by") or "").strip(), family_user.name)
 
+    def test_family_mode_policy_is_actionably_blocked_for_single_applicant_user(self):
+        if not _policy_schema_available():
+            self.skipTest("Institutional Policy applies_to storage is required for family acknowledgement tests.")
+        if not _admission_settings_has_field("admissions_access_mode"):
+            self.skipTest("Admission Settings.admissions_access_mode is required for family workspace tests.")
+        if not institutional_policy_db_has_column("admissions_acknowledgement_mode"):
+            self.skipTest(
+                "Institutional Policy.admissions_acknowledgement_mode is required for family acknowledgement tests."
+            )
+
+        self._set_admissions_access_mode("Single Applicant Workspace")
+        family_policy_version = self._create_required_applicant_policy_version(
+            organization=self.organization,
+            school=self.school,
+            admissions_acknowledgement_mode="Family Acknowledgement",
+        )
+
+        frappe.set_user(self.applicant_user)
+        policies = get_applicant_policies(student_applicant=self.applicant.name)
+        target = next(
+            (
+                row
+                for row in (policies.get("policies") or [])
+                if (row.get("policy_version") or "").strip() == family_policy_version
+            ),
+            None,
+        )
+        self.assertTrue(bool(target))
+        self.assertFalse(bool(target.get("can_acknowledge")))
+        self.assertIn("single-applicant mode", target.get("blocked_reason") or "")
+        self.assertNotIn("Guardian Portal", target.get("blocked_reason") or "")
+
+        expected_name = f"{self.applicant.first_name} {self.applicant.last_name}".strip()
+        with self.assertRaises(frappe.PermissionError) as exc:
+            acknowledge_policy(
+                student_applicant=self.applicant.name,
+                policy_version=family_policy_version,
+                typed_signature_name=expected_name,
+                attestation_confirmed=1,
+            )
+        self.assertIn("single-applicant mode", str(exc.exception))
+
     def test_acknowledge_policy_family_mode_rejects_non_primary_guardian(self):
         if not _policy_schema_available():
             self.skipTest("Institutional Policy applies_to storage is required for family acknowledgement tests.")
@@ -1185,6 +1227,128 @@ class TestSubmitApplication(FrappeTestCase):
                 )
             )
         )
+
+    def test_get_applicant_profile_exposes_applicant_contact_prefill_when_complete(self):
+        self._set_guardians_section_setting(1)
+        contact = self._create_applicant_contact(
+            first_name="Mina",
+            last_name="Portal",
+            email=f"prefill-{frappe.generate_hash(length=8)}@example.com",
+            phone="+14155550101",
+        )
+        self.applicant.db_set("applicant_contact", contact.name, update_modified=False)
+
+        frappe.set_user(self.applicant_user)
+        payload = get_applicant_profile(student_applicant=self.applicant.name)
+
+        prefill = payload.get("applicant_contact_prefill") or {}
+        self.assertTrue(bool(prefill.get("available")))
+        self.assertEqual(prefill.get("contact"), contact.name)
+        self.assertEqual(prefill.get("first_name"), "Mina")
+        self.assertEqual(prefill.get("last_name"), "Portal")
+        self.assertEqual(prefill.get("email"), contact.email_ids[0].email_id)
+        self.assertEqual(prefill.get("mobile_phone"), "+14155550101")
+
+    def test_get_applicant_profile_marks_applicant_contact_prefill_unavailable_when_incomplete(self):
+        self._set_guardians_section_setting(1)
+        contact = self._create_applicant_contact(
+            first_name="Mina",
+            last_name="Portal",
+            email=f"incomplete-{frappe.generate_hash(length=8)}@example.com",
+            phone="",
+        )
+        self.applicant.db_set("applicant_contact", contact.name, update_modified=False)
+
+        frappe.set_user(self.applicant_user)
+        payload = get_applicant_profile(student_applicant=self.applicant.name)
+
+        prefill = payload.get("applicant_contact_prefill") or {}
+        self.assertFalse(bool(prefill.get("available")))
+        self.assertEqual(prefill.get("contact"), contact.name)
+
+    def test_update_applicant_profile_hydrates_guardian_from_applicant_contact_when_checked(self):
+        self._set_guardians_section_setting(1)
+        contact_email = f"reuse-{frappe.generate_hash(length=8)}@example.com"
+        contact = self._create_applicant_contact(
+            first_name="Mina",
+            last_name="Portal",
+            email=contact_email,
+            phone="+14155550101",
+        )
+        self.applicant.db_set("applicant_contact", contact.name, update_modified=False)
+
+        frappe.set_user(self.applicant_user)
+        payload = update_applicant_profile(
+            student_applicant=self.applicant.name,
+            guardians=[
+                {
+                    "relationship": "Mother",
+                    "use_applicant_contact": 1,
+                    "is_primary": 1,
+                    "is_primary_guardian": 1,
+                    "guardian_image": "/private/files/guardian-mina.png",
+                }
+            ],
+        )
+
+        guardians = payload.get("guardians") or []
+        self.assertEqual(len(guardians), 1)
+        self.assertEqual(guardians[0].get("contact"), contact.name)
+        self.assertEqual(guardians[0].get("guardian_first_name"), "Mina")
+        self.assertEqual(guardians[0].get("guardian_last_name"), "Portal")
+        self.assertEqual(guardians[0].get("guardian_email"), contact_email)
+        self.assertEqual(guardians[0].get("guardian_mobile_phone"), "+14155550101")
+
+        self.applicant.reload()
+        row = self.applicant.get("guardians")[0]
+        self.assertEqual(row.contact, contact.name)
+        self.assertEqual(row.guardian_first_name, "Mina")
+        self.assertEqual(row.guardian_last_name, "Portal")
+        self.assertEqual(row.guardian_email, contact_email)
+        self.assertEqual(row.guardian_mobile_phone, "+14155550101")
+
+    def test_update_applicant_profile_checked_applicant_contact_keeps_user_edits(self):
+        self._set_guardians_section_setting(1)
+        original_email = f"reuse-edit-{frappe.generate_hash(length=8)}@example.com"
+        edited_email = f"reuse-edited-{frappe.generate_hash(length=8)}@example.com"
+        contact = self._create_applicant_contact(
+            first_name="Mina",
+            last_name="Portal",
+            email=original_email,
+            phone="+14155550101",
+        )
+        self.applicant.db_set("applicant_contact", contact.name, update_modified=False)
+
+        frappe.set_user(self.applicant_user)
+        payload = update_applicant_profile(
+            student_applicant=self.applicant.name,
+            guardians=[
+                {
+                    "relationship": "Mother",
+                    "use_applicant_contact": 1,
+                    "is_primary": 1,
+                    "is_primary_guardian": 1,
+                    "guardian_first_name": "Mina Edited",
+                    "guardian_email": edited_email,
+                    "guardian_mobile_phone": "+14155550102",
+                    "guardian_image": "/private/files/guardian-mina.png",
+                }
+            ],
+        )
+
+        guardians = payload.get("guardians") or []
+        self.assertEqual(guardians[0].get("guardian_first_name"), "Mina Edited")
+        self.assertEqual(guardians[0].get("guardian_last_name"), "Portal")
+        self.assertEqual(guardians[0].get("guardian_email"), edited_email)
+        self.assertEqual(guardians[0].get("guardian_mobile_phone"), "+14155550102")
+
+        contact.reload()
+        self.assertEqual(contact.first_name, "Mina Edited")
+        self.assertEqual(contact.mobile_no, "+14155550102")
+        contact_emails = {row.email_id for row in contact.get("email_ids") or []}
+        self.assertIn(edited_email, contact_emails)
+        primary_emails = [row.email_id for row in contact.get("email_ids") or [] if int(row.is_primary or 0)]
+        self.assertEqual(primary_emails, [edited_email])
 
     def test_update_applicant_profile_rejects_unlinked_contact_email_for_guardian(self):
         self._set_guardians_section_setting(1)
@@ -1957,6 +2121,21 @@ class TestSubmitApplication(FrappeTestCase):
         doc.reload()
         self._created.append(("Student Applicant", doc.name))
         return doc
+
+    def _create_applicant_contact(self, *, first_name: str, last_name: str, email: str, phone: str):
+        contact_payload = {
+            "doctype": "Contact",
+            "first_name": first_name,
+            "last_name": last_name,
+        }
+        if email:
+            contact_payload["email_ids"] = [{"email_id": email, "is_primary": 1}]
+        if phone:
+            contact_payload["phone_nos"] = [{"phone": phone, "is_primary_mobile_no": 1}]
+            contact_payload["mobile_no"] = phone
+        contact = frappe.get_doc(contact_payload).insert(ignore_permissions=True)
+        self._created.append(("Contact", contact.name))
+        return contact
 
     def _set_guardians_section_setting(self, value: int):
         frappe.db.set_single_value(

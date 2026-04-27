@@ -2,6 +2,7 @@
 
 import type {
   ApplicantApplicationContext,
+  ApplicantContactPrefill,
   ApplicantGuardianProfile,
   ApplicantProfile,
   ApplicantProfileCompleteness,
@@ -22,6 +23,7 @@ export type Response = {
   applicant_image_open_url?: string
   record_modified?: string
   guardian_section_enabled?: boolean
+  applicant_contact_prefill?: ApplicantContactPrefill
   guardians?: ApplicantGuardianProfile[]
   options: {
     genders: string[]

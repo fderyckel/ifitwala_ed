@@ -35,7 +35,7 @@ THREAD_COMMUNICATION_TYPE = "Information"
 THREAD_INTERACTION_MODE = "Structured Feedback"
 # Admissions threads are context-guarded containers, not generic published audience announcements.
 THREAD_STATUS = "Draft"
-THREAD_PORTAL_SURFACE = "Desk"
+THREAD_PORTAL_SURFACE = "Portal Feed"
 INVALID_SESSION_USERS = {"guest", "none", "null", "undefined"}
 READ_RECEIPT_REFERENCE_DOCTYPE = "Org Communication"
 

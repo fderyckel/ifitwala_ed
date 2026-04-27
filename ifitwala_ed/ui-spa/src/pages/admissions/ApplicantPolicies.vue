@@ -43,16 +43,34 @@
 							class="mt-1 type-caption"
 							:class="policy.is_acknowledged ? 'text-leaf' : 'text-clay'"
 						>
-							{{ policy.is_acknowledged ? __('Acknowledged') : __('Pending acknowledgement') }}
+							{{
+								policy.is_acknowledged
+									? __('Acknowledged')
+									: policyBlockedReason(policy)
+										? __('Needs family signer')
+										: __('Pending acknowledgement')
+							}}
+						</p>
+						<p
+							v-if="!policy.is_acknowledged && policyBlockedReason(policy)"
+							class="mt-2 type-caption text-ink/65"
+						>
+							{{ policyBlockedReason(policy) }}
 						</p>
 					</div>
 					<button
 						type="button"
 						class="if-button if-button--primary"
-						:disabled="policy.is_acknowledged || isReadOnly"
+						:disabled="policy.is_acknowledged || isReadOnly || !canPolicyAcknowledge(policy)"
 						@click="openPolicy(policy)"
 					>
-						{{ policy.is_acknowledged ? __('Acknowledged') : __('Review & acknowledge') }}
+						{{
+							policy.is_acknowledged
+								? __('Acknowledged')
+								: canPolicyAcknowledge(policy)
+									? __('Review & acknowledge')
+									: __('Unavailable')
+						}}
 					</button>
 				</div>
 			</div>
@@ -110,6 +128,11 @@ function openPolicy(policy: ApplicantPolicy) {
 		actionError.value = __('This application is read-only.');
 		return;
 	}
+	const blockedReason = policyBlockedReason(policy);
+	if (!canPolicyAcknowledge(policy)) {
+		actionError.value = blockedReason || __('This policy is not available for your account.');
+		return;
+	}
 	actionError.value = '';
 	overlay.open('admissions-policy-ack', {
 		policy: {
@@ -122,6 +145,14 @@ function openPolicy(policy: ApplicantPolicy) {
 		},
 		readOnly: isReadOnly.value,
 	});
+}
+
+function policyBlockedReason(policy: ApplicantPolicy): string {
+	return String(policy.blocked_reason || '').trim();
+}
+
+function canPolicyAcknowledge(policy: ApplicantPolicy): boolean {
+	return policy.can_acknowledge !== false && !policyBlockedReason(policy);
 }
 
 let unsubscribe: (() => void) | null = null;

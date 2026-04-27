@@ -555,6 +555,14 @@ ApplicantProfilePayload {
   application_context: ApplicantApplicationContext
   applicant_image: string   // server-owned admissions thumbnail URL or ""
   applicant_image_open_url: string
+  applicant_contact_prefill: {
+    available: boolean
+    contact: string
+    first_name: string
+    last_name: string
+    email: string
+    mobile_phone: string
+  }
   options: {
     genders: string[]
     residency_statuses: string[]
@@ -571,6 +579,10 @@ ApplicantProfilePayload {
   * required per row: first name, last name, personal email, mobile phone, photo
   * personal/work emails must pass email validation
   * mobile/work phones must pass phone validation
+  * `use_applicant_contact` may only reuse the server-owned `Student Applicant.applicant_contact`; the portal must not guess or search arbitrary contacts
+  * applicant-contact reuse hydrates missing guardian first name, last name, personal email, and mobile phone from the linked Contact before validation
+  * the checkbox is shown only when the linked applicant Contact has first name, last name, primary email, and primary mobile available
+  * guardian photo remains required because Inquiry/Contact does not provide governed guardian photo evidence
 * Profile image upload is applicant-scoped and mutable-status only.
 * Profile image upload must route through the admissions Drive-governed upload contract:
   * `data_class = identity_image`
@@ -834,6 +846,7 @@ POST /api/method/ifitwala_ed.api.admissions_communication.mark_admissions_case_t
 * Read state is tracked per user/thread through `Portal Read Receipt`.
 * Storage contract:
   * `Org Communication` = case thread/container
+  * Admissions case thread containers use `portal_surface = "Portal Feed"` and no generic audience rows; applicant visibility is enforced by admissions context guards, not broad feed targeting.
   * `Communication Interaction Entry` = applicant/staff message ledger
   * `Portal Read Receipt` = per-user read state
 * Canonical cross-surface messaging rules live in `docs/spa/07_org_communication_messaging_contract.md`.
@@ -1484,8 +1497,14 @@ export type ApplicantPolicy = {
   name: string
   policy_version: string
   content_html: string
+  is_required?: boolean
+  acknowledgement_mode?: 'Child Acknowledgement' | 'Family Acknowledgement' | 'Child Optional Consent'
   is_acknowledged: boolean
   acknowledged_at?: string
+  acknowledged_by?: string
+  can_acknowledge?: boolean
+  blocked_reason?: string | null
+  expected_signature_name: string
 }
 ```
 
@@ -1494,6 +1513,7 @@ export type ApplicantPolicy = {
 * `content_html` is authoritative policy text
 * UI must not fetch policy content elsewhere
 * Acknowledgement is version-specific
+* Blocked acknowledgements must expose `can_acknowledge=false` and an actionable `blocked_reason`
 
 ---
 

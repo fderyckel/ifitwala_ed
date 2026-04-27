@@ -405,12 +405,13 @@
 								</select>
 							</label>
 
-							<label class="flex items-center gap-2 md:col-span-2">
+							<label v-if="canUseApplicantContact" class="flex items-center gap-2 md:col-span-2">
 								<input
 									v-model="guardian.use_applicant_contact"
 									type="checkbox"
 									class="admissions-checkbox"
 									:disabled="isReadOnly || saving"
+									@change="onUseApplicantContactChanged(idx)"
 								/>
 								<span class="type-caption text-ink/70">{{
 									__('Use applicant contact for this guardian')
@@ -705,6 +706,7 @@ import { uiSignals, SIGNAL_ADMISSIONS_PORTAL_INVALIDATE } from '@/lib/uiSignals'
 import type { Response as ApplicantProfileResponse } from '@/types/contracts/admissions/get_applicant_profile';
 import type { Request as UpdateApplicantProfileRequest } from '@/types/contracts/admissions/update_applicant_profile';
 import type {
+	ApplicantContactPrefill,
 	ApplicantGuardianProfile,
 	ApplicantProfile,
 } from '@/types/contracts/admissions/types';
@@ -743,6 +745,7 @@ const savedGuardians = ref<ApplicantGuardianProfile[]>([]);
 const profile = ref<ApplicantProfile>(createEmptyProfile());
 const guardians = ref<ApplicantGuardianProfile[]>([]);
 const guardiansEnabled = ref(false);
+const applicantContactPrefill = ref<ApplicantContactPrefill>(createEmptyApplicantContactPrefill());
 const options = ref<ApplicantProfileResponse['options']>(createEmptyOptions());
 const completeness = ref<ApplicantProfileResponse['completeness']>(createEmptyCompleteness());
 const applicationContext = ref<ApplicantProfileResponse['application_context']>(
@@ -758,6 +761,7 @@ const imageUploadProgressLabel = computed(() =>
 		? __('Uploading {0}').replace('{0}', selectedImageFile.value.name)
 		: __('Uploading image')
 );
+const canUseApplicantContact = computed(() => Boolean(applicantContactPrefill.value.available));
 
 function createEmptyProfile(): ApplicantProfile {
 	return {
@@ -806,6 +810,17 @@ function createEmptyApplicationContext(): ApplicantProfileResponse['application_
 	};
 }
 
+function createEmptyApplicantContactPrefill(): ApplicantContactPrefill {
+	return {
+		available: false,
+		contact: '',
+		first_name: '',
+		last_name: '',
+		email: '',
+		mobile_phone: '',
+	};
+}
+
 function displayText(value: unknown): string {
 	const text = typeof value === 'string' ? value.trim() : String(value || '').trim();
 	return text || __('Not provided');
@@ -833,6 +848,29 @@ function removeGuardianRow(index: number) {
 	}
 	guardians.value = guardians.value.filter((_item, idx) => idx !== index);
 	clearGuardianImageUploadState();
+}
+
+function onUseApplicantContactChanged(index: number) {
+	const row = guardians.value[index];
+	if (!row?.use_applicant_contact) return;
+	const prefill = applicantContactPrefill.value;
+	if (!prefill.available) {
+		actionError.value = __('Applicant contact information is unavailable.');
+		guardians.value[index] = normalizeGuardianRow({
+			...row,
+			use_applicant_contact: false,
+		});
+		return;
+	}
+	actionError.value = '';
+	guardians.value[index] = normalizeGuardianRow({
+		...row,
+		contact: row.contact || prefill.contact || '',
+		guardian_first_name: row.guardian_first_name || prefill.first_name || '',
+		guardian_last_name: row.guardian_last_name || prefill.last_name || '',
+		guardian_email: row.guardian_email || prefill.email || '',
+		guardian_mobile_phone: row.guardian_mobile_phone || prefill.mobile_phone || '',
+	});
 }
 
 function setGuardianImageInputRef(index: number, element: unknown) {
@@ -978,6 +1016,8 @@ function applyPayload(payload: ApplicantProfileResponse) {
 	completeness.value = payload.completeness || createEmptyCompleteness();
 	applicationContext.value = payload.application_context || createEmptyApplicationContext();
 	guardiansEnabled.value = Boolean(payload.guardian_section_enabled);
+	applicantContactPrefill.value =
+		payload.applicant_contact_prefill || createEmptyApplicantContactPrefill();
 	guardians.value = ((payload.guardians || []) as ApplicantGuardianProfile[]).map(row =>
 		normalizeGuardianRow(row)
 	);
@@ -998,6 +1038,7 @@ async function loadProfile() {
 		options.value = createEmptyOptions();
 		completeness.value = createEmptyCompleteness();
 		applicationContext.value = createEmptyApplicationContext();
+		applicantContactPrefill.value = createEmptyApplicantContactPrefill();
 		applicantImage.value = '';
 		applicantImageOpenUrl.value = '';
 		recordModified.value = '';

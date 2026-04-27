@@ -135,6 +135,15 @@ export type ApplicantGuardianProfile = {
   guardian_designation?: string | null
 }
 
+export type ApplicantContactPrefill = {
+  available: boolean
+  contact?: string | null
+  first_name?: string | null
+  last_name?: string | null
+  email?: string | null
+  mobile_phone?: string | null
+}
+
 export type ApplicantProfileCompleteness = {
   ok: boolean
   missing: string[]
@@ -200,6 +209,8 @@ export type ApplicantPolicy = {
   is_acknowledged: boolean
   acknowledged_at?: string | null
   acknowledged_by?: string | null
+  can_acknowledge?: boolean
+  blocked_reason?: string | null
   expected_signature_name: string
   acknowledgement_clauses?: Array<{
     name: string
