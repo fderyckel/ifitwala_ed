@@ -96,7 +96,7 @@ frappe.ui.form.on("Inquiry", {
 		) {
 			frm.add_custom_button(
 				__('Invite to Apply'),
-				() => frm.trigger('invite_to_apply'),
+				() => frm.trigger('convert_to_applicant'),
 				__('Admissions')
 			);
 		}
@@ -124,7 +124,7 @@ frappe.ui.form.on("Inquiry", {
 	// --------------------------------------------------
 	// Invite to Apply
 	// --------------------------------------------------
-	invite_to_apply(frm) {
+	convert_to_applicant(frm) {
 		let dialog = null;
 		const schoolQuery = () => {
 			const organization = String((dialog && dialog.get_value('organization')) || '').trim();

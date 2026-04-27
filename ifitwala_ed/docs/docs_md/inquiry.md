@@ -3,8 +3,8 @@ title: "Inquiry: Managing Website Visitor Intake"
 slug: inquiry
 category: Admission
 doc_order: 2
-version: "1.4.8"
-last_change_date: "2026-04-26"
+version: "1.4.9"
+last_change_date: "2026-04-27"
 summary: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
 seo_title: "Inquiry: Managing Website Visitor Intake"
 seo_description: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
@@ -168,7 +168,7 @@ Action-level guard in server code: assignment/reassignment require admissions pe
 - **Manual lead fields**: `source` (`Website`, `WhatsApp`, `Line`, `Facebook`, `Open Day`, `Referral`, `Agent`, `Other`) and `next_action_note`.
 - **Indexed lookup fields**: `email`, `phone_number`, `source`, `workflow_state`, `first_contact_due_on`, `followup_due_on`.
 - **Lifecycle hooks in controller**: `validate`, `before_insert`, `after_insert`, `before_save`
-- **Operational/public methods**: `mark_assigned`, `mark_qualified`, `archive`, `invite_to_apply`, `set_contact_metrics`, `create_contact_from_inquiry`, `mark_contacted`
+- **Operational/public methods**: `mark_assigned`, `mark_qualified`, `archive`, `set_contact_metrics`, `create_contact_from_inquiry`, `mark_contacted`
 - **Workflow-state contract**: only canonical Inquiry states are accepted (`New`, `Assigned`, `Contacted`, `Qualified`, `Archived`); no legacy state alias normalization in Inquiry controller or Inquiry Desk/list scripts.
 - **Assignment contract**: `assigned_to` is retained as the latest assignee across workflow states (including `Contacted`) and changes only through assignment/reassignment actions.
 - **Source contract**: public web-form inserts default missing `source` to `Website`; staff-created inquiries may set the appropriate manual lead source.
@@ -204,12 +204,10 @@ Action-level guard in server code: assignment/reassignment require admissions pe
 - **Whitelisted methods on document**:
   - `mark_qualified`
   - `archive`
-  - `invite_to_apply`
   - `create_contact_from_inquiry`
   - `mark_contacted`
 - **Conversion nuance**:
-  - document method `invite_to_apply` enforces `Qualified` state
-  - Desk quick action currently uses `from_inquiry_invite`, available from `Contacted` and `Qualified` in client logic
+  - Desk quick action uses `from_inquiry_invite`, available from `Contacted` and `Qualified` in client logic
   - Invite payload validation enforces selected School belongs to selected Organization (Organization NestedSet ancestry)
   - `from_inquiry_invite` now serializes per-Inquiry conversion with a cache lock and always binds `Inquiry.student_applicant` to the resolved applicant
 - **Utility endpoints** (`ifitwala_ed/admission/admission_utils.py`):

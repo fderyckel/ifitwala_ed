@@ -579,10 +579,15 @@ ApplicantProfilePayload {
   * required per row: first name, last name, personal email, mobile phone, photo
   * personal/work emails must pass email validation
   * mobile/work phones must pass phone validation
-  * `use_applicant_contact` may only reuse the server-owned `Student Applicant.applicant_contact`; the portal must not guess or search arbitrary contacts
+  * `use_applicant_contact` may only reuse the server-owned `Student Applicant.applicant_contact` or the explicit linked `Inquiry.contact`; the portal must not guess or search arbitrary contacts
   * applicant-contact reuse hydrates missing guardian first name, last name, personal email, and mobile phone from the linked Contact before validation
   * the checkbox is shown only when the linked applicant Contact has first name, last name, primary email, and primary mobile available
   * guardian photo remains required because Inquiry/Contact does not provide governed guardian photo evidence
+* Family Workspace staff invite may bootstrap the first primary family collaborator row from the explicit `Student Applicant.applicant_contact` or linked `Inquiry.contact` when no guardian row exists yet:
+  * bootstrap requires Contact first name, last name, primary email, and primary mobile
+  * bootstrap creates the real `Student Applicant Guardian` row during `invite_family_collaborator`
+  * bootstrap marks the row as primary/signing and reuses the Contact through `use_applicant_contact`
+  * guardian photo is not required before sending the family invite; it remains required when the family completes the portal profile
 * Profile image upload is applicant-scoped and mutable-status only.
 * Profile image upload must route through the admissions Drive-governed upload contract:
   * `data_class = identity_image`

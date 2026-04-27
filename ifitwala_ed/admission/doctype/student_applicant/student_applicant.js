@@ -861,7 +861,7 @@ function prompt_applicant_self_portal_invite(frm, inviteOptions) {
 function prompt_family_portal_invite(frm, inviteOptions) {
 	const guardians = Array.isArray(inviteOptions?.guardians) ? inviteOptions.guardians : [];
 	if (!guardians.length) {
-		frappe.msgprint(__("Add at least one family collaborator row before inviting admissions family access."));
+		frappe.msgprint(__("Complete the Inquiry Contact first: first name, last name, personal email, and mobile phone are required."));
 		return;
 	}
 

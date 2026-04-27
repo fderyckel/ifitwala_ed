@@ -195,40 +195,6 @@ class Inquiry(Document):
         )
         return {"ok": True, "changed": changed}
 
-    @frappe.whitelist()
-    def invite_to_apply(self) -> str:
-        ensure_admissions_permission()
-
-        current_state = _normalize_inquiry_state(self.workflow_state)
-        if current_state != "Qualified":
-            frappe.throw(_("Inquiry must be in the Qualified state before inviting to apply."))
-
-        if self.student_applicant:
-            return self.student_applicant
-
-        existing = frappe.db.get_value("Student Applicant", {"inquiry": self.name}, "name")
-        if existing:
-            self.db_set("student_applicant", existing, update_modified=False)
-            self.student_applicant = existing
-            return existing
-
-        applicant = frappe.new_doc("Student Applicant")
-        applicant.flags.from_inquiry_invite = True
-        applicant.first_name = self.first_name
-        applicant.last_name = self.last_name
-        applicant.inquiry = self.name
-        applicant.application_status = "Invited"
-        applicant.insert(ignore_permissions=True)
-
-        self.db_set("student_applicant", applicant.name, update_modified=False)
-        self.student_applicant = applicant.name
-
-        self.add_comment(
-            "Comment",
-            text=_("Applicant invited by {0}.").format(frappe.bold(frappe.session.user)),
-        )
-        return applicant.name
-
     def before_insert(self):
         if not self.submitted_at:
             self.submitted_at = frappe.utils.now()

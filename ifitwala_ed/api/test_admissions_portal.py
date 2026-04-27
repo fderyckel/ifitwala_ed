@@ -480,6 +480,121 @@ class TestInviteApplicant(FrappeTestCase):
         self.assertIn("Admissions Family", user_roles)
         self.assertNotIn("Desk User", user_roles)
 
+    def test_family_invite_options_bootstrap_from_inquiry_contact_without_applicant_contact(self):
+        if not _admission_settings_has_field("admissions_access_mode"):
+            self.skipTest("Admission Settings.admissions_access_mode is required for family workspace tests.")
+
+        self._set_admissions_access_mode("Family Workspace")
+        invite_email = f"father-{frappe.generate_hash(length=8)}@example.com"
+        contact = self._create_contact(
+            primary_email=invite_email,
+            first_name="Father",
+            last_name="Inquiry",
+            phone="+14155550124",
+        )
+        inquiry = frappe.get_doc(
+            {
+                "doctype": "Inquiry",
+                "first_name": "Father",
+                "last_name": "Inquiry",
+                "email": invite_email,
+                "phone_number": "+14155550124",
+                "type_of_inquiry": "Admission",
+                "organization": self.organization,
+                "school": self.school,
+                "contact": contact.name,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Inquiry", inquiry.name))
+        self.applicant.db_set("inquiry", inquiry.name, update_modified=False)
+        self.applicant.db_set("applicant_contact", "", update_modified=False)
+
+        options = get_admissions_portal_invite_options(student_applicant=self.applicant.name)
+
+        family_invite = options.get("family_invite") or {}
+        guardians = family_invite.get("guardians") or []
+        self.assertTrue(bool(family_invite.get("enabled")))
+        self.assertEqual(len(guardians), 1)
+        self.assertEqual(guardians[0].get("name"), admissions_portal_api.APPLICANT_CONTACT_GUARDIAN_ROW)
+        self.assertEqual(guardians[0].get("email"), invite_email)
+        self.assertTrue(bool(guardians[0].get("bootstrap_from_applicant_contact")))
+
+        self.applicant.reload()
+        self.assertFalse(bool((self.applicant.applicant_contact or "").strip()))
+        self.assertEqual(len(self.applicant.get("guardians") or []), 0)
+
+    def test_invite_family_collaborator_bootstraps_guardian_row_from_inquiry_contact(self):
+        if not _admission_settings_has_field("admissions_access_mode"):
+            self.skipTest("Admission Settings.admissions_access_mode is required for family workspace tests.")
+
+        self._set_admissions_access_mode("Family Workspace")
+        invite_email = f"family-bootstrap-{frappe.generate_hash(length=8)}@example.com"
+        contact = self._create_contact(
+            primary_email=invite_email,
+            first_name="Father",
+            last_name="Bootstrap",
+            phone="+14155550125",
+        )
+        inquiry = frappe.get_doc(
+            {
+                "doctype": "Inquiry",
+                "first_name": "Father",
+                "last_name": "Bootstrap",
+                "email": invite_email,
+                "phone_number": "+14155550125",
+                "type_of_inquiry": "Admission",
+                "organization": self.organization,
+                "school": self.school,
+                "contact": contact.name,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Inquiry", inquiry.name))
+        self.applicant.db_set("inquiry", inquiry.name, update_modified=False)
+        self.applicant.db_set("applicant_contact", "", update_modified=False)
+
+        payload = invite_family_collaborator(
+            student_applicant=self.applicant.name,
+            guardian_row=admissions_portal_api.APPLICANT_CONTACT_GUARDIAN_ROW,
+            email=invite_email,
+        )
+        self._created.append(("User", invite_email))
+
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual(payload.get("user"), invite_email)
+
+        self.applicant.reload()
+        self.assertEqual(self.applicant.applicant_contact, contact.name)
+        rows = self.applicant.get("guardians") or []
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row.contact, contact.name)
+        self.assertEqual(row.guardian_first_name, "Father")
+        self.assertEqual(row.guardian_last_name, "Bootstrap")
+        self.assertEqual(row.guardian_email, invite_email)
+        self.assertEqual(row.guardian_mobile_phone, "+14155550125")
+        self.assertEqual(int(row.use_applicant_contact or 0), 1)
+        self.assertEqual(int(row.is_primary_guardian or 0), 1)
+        self.assertEqual(int(row.can_consent or 0), 1)
+        self.assertFalse(bool((row.guardian_image or "").strip()))
+        self.assertTrue(bool((row.guardian or "").strip()))
+        self.assertEqual((row.user or "").strip(), invite_email)
+        self._created.append(("Guardian", row.guardian))
+
+        self.assertTrue(
+            bool(
+                frappe.db.exists(
+                    "Dynamic Link",
+                    {
+                        "parenttype": "Contact",
+                        "parentfield": "links",
+                        "parent": contact.name,
+                        "link_doctype": "Student Applicant",
+                        "link_name": self.applicant.name,
+                    },
+                )
+            )
+        )
+
     def test_applicant_self_invite_blocks_family_acknowledgement_policy_in_single_mode(self):
         if not _policy_schema_available():
             self.skipTest("Institutional Policy applies_to storage is required for family acknowledgement tests.")
@@ -591,17 +706,28 @@ class TestInviteApplicant(FrappeTestCase):
         self._created.append(("Policy Version", version.name))
         return version.name
 
-    def _create_contact(self, *, primary_email: str, other_email: str | None = None):
+    def _create_contact(
+        self,
+        *,
+        primary_email: str,
+        other_email: str | None = None,
+        first_name: str = "Portal",
+        last_name: str | None = None,
+        phone: str | None = None,
+    ):
         doc = frappe.get_doc(
             {
                 "doctype": "Contact",
-                "first_name": "Portal",
-                "last_name": f"Contact-{frappe.generate_hash(length=6)}",
+                "first_name": first_name,
+                "last_name": last_name or f"Contact-{frappe.generate_hash(length=6)}",
                 "email_ids": [{"email_id": primary_email, "is_primary": 1}],
             }
         )
         if other_email:
             doc.append("email_ids", {"email_id": other_email, "is_primary": 0})
+        if phone:
+            doc.mobile_no = phone
+            doc.append("phone_nos", {"phone": phone, "is_primary_mobile_no": 1})
         doc.insert(ignore_permissions=True)
         self._created.append(("Contact", doc.name))
         return doc
@@ -1321,6 +1447,46 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual(prefill.get("last_name"), "Portal")
         self.assertEqual(prefill.get("email"), contact.email_ids[0].email_id)
         self.assertEqual(prefill.get("mobile_phone"), "+14155550101")
+
+    def test_get_applicant_profile_exposes_prefill_from_linked_inquiry_contact(self):
+        self._set_guardians_section_setting(1)
+        contact_email = f"inquiry-prefill-{frappe.generate_hash(length=8)}@example.com"
+        contact = self._create_applicant_contact(
+            first_name="Father",
+            last_name="Inquiry",
+            email=contact_email,
+            phone="+14155550109",
+        )
+        inquiry = frappe.get_doc(
+            {
+                "doctype": "Inquiry",
+                "first_name": "Father",
+                "last_name": "Inquiry",
+                "email": contact_email,
+                "phone_number": "+14155550109",
+                "type_of_inquiry": "Admission",
+                "organization": self.organization,
+                "school": self.school,
+                "contact": contact.name,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Inquiry", inquiry.name))
+        self.applicant.db_set("inquiry", inquiry.name, update_modified=False)
+        self.applicant.db_set("applicant_contact", "", update_modified=False)
+
+        frappe.set_user(self.applicant_user)
+        payload = get_applicant_profile(student_applicant=self.applicant.name)
+
+        prefill = payload.get("applicant_contact_prefill") or {}
+        self.assertTrue(bool(prefill.get("available")))
+        self.assertEqual(prefill.get("contact"), contact.name)
+        self.assertEqual(prefill.get("first_name"), "Father")
+        self.assertEqual(prefill.get("last_name"), "Inquiry")
+        self.assertEqual(prefill.get("email"), contact_email)
+        self.assertEqual(prefill.get("mobile_phone"), "+14155550109")
+
+        self.applicant.reload()
+        self.assertFalse(bool((self.applicant.applicant_contact or "").strip()))
 
     def test_get_applicant_profile_marks_applicant_contact_prefill_unavailable_when_incomplete(self):
         self._set_guardians_section_setting(1)

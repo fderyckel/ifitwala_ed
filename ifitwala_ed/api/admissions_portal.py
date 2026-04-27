@@ -30,7 +30,6 @@ from ifitwala_ed.admission.admission_utils import (
     ensure_admissions_permission,
     ensure_contact_dynamic_link,
     ensure_contact_for_email,
-    ensure_inquiry_contact,
     get_applicant_scope_ancestors,
     get_contact_primary_email,
     has_complete_applicant_document_type_classification,
@@ -237,6 +236,13 @@ APPLICANT_GUARDIAN_REQUIRED_FIELDS = (
     "guardian_mobile_phone",
     "guardian_image",
 )
+APPLICANT_GUARDIAN_INVITE_REQUIRED_FIELDS = (
+    "guardian_first_name",
+    "guardian_last_name",
+    "guardian_email",
+    "guardian_mobile_phone",
+)
+APPLICANT_CONTACT_GUARDIAN_ROW = "__applicant_contact_guardian__"
 _CURRENT_PROFILE_IMAGE_STATUSES = ("active", "processing", "blocked")
 
 
@@ -689,7 +695,7 @@ def _contact_primary_mobile(contact_doc) -> str:
 
 
 def _applicant_contact_prefill_payload(applicant) -> dict:
-    contact_name = _as_text(applicant.get("applicant_contact")).strip()
+    contact_name = _as_text(_resolve_applicant_contact(applicant, allow_create=False)).strip()
     payload = {
         "available": False,
         "contact": contact_name,
@@ -1226,10 +1232,11 @@ def _applicant_guardian_required_field_label(fieldname: str) -> str:
     return fieldname
 
 
-def _validate_guardian_profile_row(row: dict) -> dict:
+def _validate_guardian_profile_row(row: dict, *, require_photo: bool = True) -> dict:
+    required_fields = APPLICANT_GUARDIAN_REQUIRED_FIELDS if require_photo else APPLICANT_GUARDIAN_INVITE_REQUIRED_FIELDS
     missing_labels = [
         _applicant_guardian_required_field_label(fieldname)
-        for fieldname in APPLICANT_GUARDIAN_REQUIRED_FIELDS
+        for fieldname in required_fields
         if not _as_text(row.get(fieldname)).strip()
     ]
     if missing_labels:
@@ -1405,6 +1412,7 @@ def _hydrate_guardian_row_from_guardian_doc(*, row_payload: dict, guardian_doc) 
 
 def _hydrate_guardian_row_from_applicant_contact(*, applicant, row_payload: dict) -> dict:
     row = dict(row_payload)
+    _resolve_applicant_contact(applicant, allow_create=False, bind_to_applicant=True)
     contact_payload = _applicant_contact_prefill_payload(applicant)
     if not contact_payload.get("contact"):
         frappe.throw(_("Applicant Contact is required before using it for guardian contact tracking."))
@@ -1461,7 +1469,9 @@ def _create_or_update_guardian_contact(
     existing_contact_name: str | None = None,
 ) -> str:
     use_applicant_contact = _as_bool(row_payload.get("use_applicant_contact"))
-    applicant_contact = _as_text(applicant.get("applicant_contact")).strip()
+    applicant_contact = _as_text(
+        _resolve_applicant_contact(applicant, allow_create=False, bind_to_applicant=use_applicant_contact)
+    ).strip()
     if use_applicant_contact:
         if not applicant_contact:
             frappe.throw(_("Applicant Contact is required before using it for guardian contact tracking."))
@@ -3575,14 +3585,22 @@ def _get_inquiry_contact_for_applicant(applicant_doc) -> str | None:
     inquiry_name = (applicant_doc.get("inquiry") or "").strip()
     if not inquiry_name:
         return None
-    inquiry = frappe.get_doc("Inquiry", inquiry_name)
-    return ensure_inquiry_contact(inquiry)
+    contact_name = (frappe.db.get_value("Inquiry", inquiry_name, "contact") or "").strip()
+    if contact_name and frappe.db.exists("Contact", contact_name):
+        return contact_name
+    return None
 
 
 def _resolve_applicant_contact(
-    applicant_doc, invite_email: str | None = None, *, allow_create: bool = False
+    applicant_doc,
+    invite_email: str | None = None,
+    *,
+    allow_create: bool = False,
+    bind_to_applicant: bool = False,
 ) -> str | None:
     contact_name = (applicant_doc.get("applicant_contact") or "").strip()
+    if contact_name and not frappe.db.exists("Contact", contact_name):
+        frappe.throw(_("Invalid Applicant Contact: {0}").format(contact_name))
     if not contact_name:
         contact_name = _get_inquiry_contact_for_applicant(applicant_doc) or ""
 
@@ -3601,6 +3619,16 @@ def _resolve_applicant_contact(
 
         if contact_name:
             upsert_contact_email(contact_name, invite_email, set_primary_if_missing=True)
+
+    if contact_name and bind_to_applicant:
+        if (applicant_doc.get("applicant_contact") or "").strip() != contact_name:
+            applicant_doc.flags.from_contact_sync = True
+            applicant_doc.applicant_contact = contact_name
+        ensure_contact_dynamic_link(
+            contact_name=contact_name,
+            link_doctype="Student Applicant",
+            link_name=applicant_doc.name,
+        )
 
     return contact_name or None
 
@@ -3791,8 +3819,34 @@ def _family_invite_options_payload(applicant) -> dict:
                 "can_consent": bool(cint(row.get("can_consent"))),
                 "eligible": eligible,
                 "reason": reason or None,
+                "bootstrap_from_applicant_contact": False,
             }
         )
+
+    if not guardian_payload:
+        contact_payload = _applicant_contact_prefill_payload(applicant)
+        if contact_payload.get("available"):
+            guardian_payload.append(
+                {
+                    "name": APPLICANT_CONTACT_GUARDIAN_ROW,
+                    "label": " ".join(
+                        part
+                        for part in [
+                            _as_text(contact_payload.get("first_name")).strip(),
+                            _as_text(contact_payload.get("last_name")).strip(),
+                        ]
+                        if part
+                    ),
+                    "relationship": "Other",
+                    "email": normalize_email_value(contact_payload.get("email")),
+                    "user": None,
+                    "guardian": None,
+                    "can_consent": True,
+                    "eligible": True,
+                    "reason": None,
+                    "bootstrap_from_applicant_contact": True,
+                }
+            )
 
     return {"guardians": guardian_payload}
 
@@ -3860,6 +3914,66 @@ def _get_applicant_guardian_row(applicant, guardian_row_name: str):
         _("Guardian row {guardian_row} was not found on this Applicant.").format(guardian_row=target_name),
         frappe.DoesNotExistError,
     )
+
+
+def _bootstrap_applicant_contact_guardian_row(*, applicant, email: str | None = None):
+    if applicant.get("guardians"):
+        frappe.throw(_("Select an existing family collaborator row for this applicant."))
+
+    contact_name = _resolve_applicant_contact(applicant, allow_create=False, bind_to_applicant=True)
+    contact_payload = _applicant_contact_prefill_payload(applicant)
+    if not contact_name or not contact_payload.get("available"):
+        frappe.throw(
+            _(
+                "Complete the Inquiry Contact first: first name, last name, personal email, and mobile phone are required."
+            )
+        )
+
+    invite_email = normalize_email_value(email or contact_payload.get("email"))
+    if not invite_email:
+        frappe.throw(_("email is required."))
+    contact_emails = set(_invite_contact_email_options(contact_name))
+    if invite_email not in contact_emails:
+        frappe.throw(_("Invite email must belong to the Inquiry Contact."))
+
+    row_payload = _validate_guardian_profile_row(
+        _normalize_guardian_row(
+            {
+                "contact": contact_name,
+                "use_applicant_contact": 1,
+                "relationship": "Other",
+                "is_primary": 1,
+                "is_primary_guardian": 1,
+                "guardian_first_name": contact_payload.get("first_name"),
+                "guardian_last_name": contact_payload.get("last_name"),
+                "guardian_email": invite_email,
+                "guardian_mobile_phone": contact_payload.get("mobile_phone"),
+            }
+        ),
+        require_photo=False,
+    )
+    row_payload["contact"] = contact_name
+    row_payload["guardian_full_name"] = _guardian_row_display_name(row_payload)
+
+    target_row = applicant.append(
+        "guardians",
+        {
+            "contact": contact_name,
+            "use_applicant_contact": 1,
+            "relationship": "Other",
+            "is_primary": 1,
+            "can_consent": 1,
+            "guardian_full_name": row_payload.get("guardian_full_name") or None,
+            "guardian_first_name": row_payload.get("guardian_first_name") or None,
+            "guardian_last_name": row_payload.get("guardian_last_name") or None,
+            "guardian_mobile_phone": row_payload.get("guardian_mobile_phone") or None,
+            "guardian_email": row_payload.get("guardian_email") or None,
+            "is_primary_guardian": 1,
+        },
+    )
+    applicant.save(ignore_permissions=True)
+    sync_student_applicant_contact_binding(student_applicant=applicant.name, contact_name=contact_name)
+    return target_row
 
 
 def _ensure_family_guardian_user(*, guardian, email: str, applicant_name: str, row_payload: dict):
@@ -3940,7 +4054,11 @@ def invite_family_collaborator(
         frappe.throw(_("student_applicant is required."))
 
     applicant = frappe.get_doc("Student Applicant", student_applicant)
-    target_row = _get_applicant_guardian_row(applicant, guardian_row or "")
+    requested_guardian_row = (guardian_row or "").strip()
+    if requested_guardian_row == APPLICANT_CONTACT_GUARDIAN_ROW:
+        target_row = _bootstrap_applicant_contact_guardian_row(applicant=applicant, email=email)
+    else:
+        target_row = _get_applicant_guardian_row(applicant, requested_guardian_row)
     if not cint(target_row.get("is_primary_guardian") or 0):
         frappe.throw(_("Only primary family collaborator rows may be invited to the family workspace as signers."))
     if not cint(target_row.get("can_consent")):
@@ -3954,7 +4072,7 @@ def invite_family_collaborator(
 
     row_payload = dict(target_row.as_dict())
     row_payload["guardian_email"] = invite_email
-    row_payload = _validate_guardian_profile_row(_normalize_guardian_row(row_payload))
+    row_payload = _validate_guardian_profile_row(_normalize_guardian_row(row_payload), require_photo=False)
     contact_name = _create_or_update_guardian_contact(
         applicant=applicant,
         row_payload=row_payload,
@@ -3987,6 +4105,11 @@ def invite_family_collaborator(
     target_row.guardian_email = invite_email
     target_row.guardian_full_name = _guardian_row_display_name(row_payload)
     applicant.save(ignore_permissions=True)
+    if _as_text(applicant.get("applicant_contact")).strip():
+        sync_student_applicant_contact_binding(
+            student_applicant=applicant.name,
+            contact_name=_as_text(applicant.get("applicant_contact")).strip(),
+        )
 
     email_sent = _send_applicant_invite_email(user_doc, invite_email)
     applicant.add_comment(
@@ -4041,10 +4164,15 @@ def get_admissions_portal_invite_options(*, student_applicant: str | None = None
             "Family collaborator invites require Admission Settings to use Family Workspace mode."
         )
     elif not any(bool(row.get("eligible")) for row in family_invite.get("guardians") or []):
-        family_blocked_reason = _(
-            "Add a primary family collaborator row with signer authority and a personal email before inviting an Admissions "
-            "Family collaborator."
-        )
+        if not applicant.get("guardians"):
+            family_blocked_reason = _(
+                "Complete the Inquiry Contact first: first name, last name, personal email, and mobile phone are required."
+            )
+        else:
+            family_blocked_reason = _(
+                "Complete a primary family collaborator row with signer authority and a personal email before inviting an "
+                "Admissions Family collaborator."
+            )
 
     applicant_invite["enabled"] = not bool(applicant_blocked_reason)
     applicant_invite["disabled_reason"] = applicant_blocked_reason or None

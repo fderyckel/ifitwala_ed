@@ -3,7 +3,7 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.20.5"
+version: "1.20.6"
 last_change_date: "2026-04-27"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
 seo_title: "Student Applicant: The Admission Record of Truth"
@@ -131,7 +131,7 @@ Current runtime split:
   - links `Student Applicant.applicant_user`
   - moves status `Draft -> Invited` (when currently `Draft`)
   - sends welcome/password email using framework-supported email methods
-- **Inquiry conversion flow** (`invite_to_apply` / `from_inquiry_invite`):
+- **Inquiry conversion flow** (`from_inquiry_invite`):
   - creates `Student Applicant` directly in `Invited`
   - pre-fills identity and inquiry intent fields
   - ensures Inquiry has a linked `Contact` and carries it to `Student Applicant.applicant_contact`
@@ -174,12 +174,11 @@ Behavior in code:
 Family-collaborator invite triggers `invite_family_collaborator` and requires:
 
 - `Admission Settings.admissions_access_mode = Family Workspace`
-- a `Student Applicant Guardian` row for the selected adult
-- `is_primary_guardian = 1`
-- derived `can_consent = 1`
-- a personal email for that row
+- either a complete primary/signing `Student Applicant Guardian` row for the selected adult, or no guardian rows yet and a complete linked Inquiry/Applicant Contact
+- for an existing row: `is_primary_guardian = 1`, derived `can_consent = 1`, and a personal email
+- for Contact bootstrap: Contact first name, last name, primary email, and primary mobile phone
 
-That flow assigns role `Admissions Family` and links the login through the selected family collaborator row. It does not write `Student Applicant.applicant_user`.
+That flow assigns role `Admissions Family` and links the login through the selected or bootstrapped family collaborator row. Contact bootstrap creates the first `Student Applicant Guardian` row during the invite so the parent does not have to retype inquiry contact details. It does not write `Student Applicant.applicant_user`.
 
 ### Family Workspace Login and Collaboration
 
@@ -554,7 +553,7 @@ Runtime controller rules (server):
   - requires an active `Program Enrollment` for the promoted student
   - the same server-owned logic is reachable from the named `upgrade_identity` action and from the first active `Program Enrollment` transition
   - provisions the applicant user as `Student` access and removes `Admissions Applicant`
-  - provisions guardians only from explicit applicant guardian rows; there is no applicant-contact fallback guardian creation
+  - provisions guardians only from explicit applicant guardian rows; inquiry/applicant-contact bootstrap is allowed only in the admissions family invite flow, where it creates a real guardian row before promotion
   - applicant user is reserved for the student identity and cannot be reused as a guardian user
   - links guardians to Student in canonical Student guardian rows when guardian rows exist
   - carries primary-guardian signer authority from `Student Applicant Guardian` into `Student Guardian.can_consent` so enrolled guardian policy workflows stay limited to primary guardians
