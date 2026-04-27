@@ -313,10 +313,129 @@ class TestStudentApplicant(FrappeTestCase):
         applicant.db_set("application_status", "Approved", update_modified=False)
         applicant.reload()
 
-        student_name = applicant.promote_to_student()
+        upload_calls = []
+
+        def fake_upload_content_via_drive(**kwargs):
+            upload_calls.append(kwargs)
+            workflow_payload = kwargs.get("workflow_payload") or {}
+            student_id = workflow_payload.get("student")
+            source_item = workflow_payload.get("source_applicant_document_item")
+            content = kwargs.get("content") or b""
+            filename = kwargs.get("file_name") or "supporting.txt"
+            storage_key = f"test/promoted/{frappe.generate_hash(length=10)}/{filename}"
+
+            session = frappe.get_doc(
+                {
+                    "doctype": "Drive Upload Session",
+                    "session_key": f"test-promoted-{frappe.generate_hash(length=12)}",
+                    "status": "completed",
+                    "upload_source": "API",
+                    "created_by_user": frappe.session.user,
+                    "attached_doctype": "Student",
+                    "attached_name": student_id,
+                    "owner_doctype": "Student",
+                    "owner_name": student_id,
+                    "organization": self.org,
+                    "school": self.leaf_school,
+                    "intended_primary_subject_type": "Student",
+                    "intended_primary_subject_id": student_id,
+                    "intended_data_class": "administrative",
+                    "intended_purpose": "administrative",
+                    "intended_retention_policy": "until_program_end_plus_1y",
+                    "intended_slot": f"admissions_application_form_{frappe.scrub(source_item)}",
+                    "filename_original": filename,
+                    "mime_type_hint": "text/plain",
+                    "is_private": 1,
+                    "expected_size_bytes": len(content),
+                    "received_size_bytes": len(content),
+                    "storage_backend": "test",
+                    "tmp_object_key": storage_key,
+                    "upload_contract_json": "{}",
+                }
+            ).insert(ignore_permissions=True)
+            self._created.append(("Drive Upload Session", session.name))
+
+            file_doc = frappe.get_doc(
+                {
+                    "doctype": "File",
+                    "attached_to_doctype": "Student",
+                    "attached_to_name": student_id,
+                    "file_name": filename,
+                    "is_private": 1,
+                    "content": content,
+                }
+            ).insert(ignore_permissions=True)
+            self._created.append(("File", file_doc.name))
+
+            drive_file = frappe.get_doc(
+                {
+                    "doctype": "Drive File",
+                    "file": file_doc.name,
+                    "source_upload_session": session.name,
+                    "canonical_ref": f"drv:{self.org}:{frappe.generate_hash(length=12)}",
+                    "display_name": filename,
+                    "attached_doctype": "Student",
+                    "attached_name": student_id,
+                    "owner_doctype": "Student",
+                    "owner_name": student_id,
+                    "organization": self.org,
+                    "school": self.leaf_school,
+                    "primary_subject_type": "Student",
+                    "primary_subject_id": student_id,
+                    "data_class": "administrative",
+                    "purpose": "administrative",
+                    "retention_policy": "until_program_end_plus_1y",
+                    "slot": f"admissions_application_form_{frappe.scrub(source_item)}",
+                    "current_version_no": 1,
+                    "storage_backend": "test",
+                    "storage_object_key": storage_key,
+                    "upload_source": "API",
+                    "is_private": 1,
+                }
+            ).insert(ignore_permissions=True)
+            self._created.append(("Drive File", drive_file.name))
+
+            drive_version = frappe.get_doc(
+                {
+                    "doctype": "Drive File Version",
+                    "drive_file": drive_file.name,
+                    "version_no": 1,
+                    "file": file_doc.name,
+                    "is_current": 1,
+                    "version_reason": "initial_upload",
+                    "storage_object_key": storage_key,
+                    "size_bytes": len(content),
+                    "mime_type": "text/plain",
+                }
+            ).insert(ignore_permissions=True)
+            self._created.append(("Drive File Version", drive_version.name))
+            frappe.db.set_value(
+                "Drive File",
+                drive_file.name,
+                {"current_version": drive_version.name, "current_version_no": 1},
+                update_modified=False,
+            )
+
+            return (
+                {"upload_session_id": session.name},
+                {"file_id": file_doc.name, "drive_file_id": drive_file.name},
+                file_doc,
+            )
+
+        with patch(
+            "ifitwala_ed.integrations.drive.content_uploads.upload_content_via_drive",
+            side_effect=fake_upload_content_via_drive,
+        ):
+            student_name = applicant.promote_to_student()
         self._created.append(("Student", student_name))
         applicant.reload()
         self.assertEqual(applicant.application_status, "Promoted")
+        self.assertEqual(len(upload_calls), 1)
+        self.assertEqual(upload_calls[0].get("workflow_id"), "student.promoted_admissions_document")
+        self.assertEqual(
+            (upload_calls[0].get("workflow_payload") or {}).get("source_applicant_document_item"),
+            item.name,
+        )
 
         copied_files = frappe.get_all(
             "File",

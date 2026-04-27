@@ -1,9 +1,9 @@
 # Cross-Portal Governed Attachment Preview Contract
 
 Status: Canonical current runtime contract
-Date: 2026-04-25
-Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/gradebook_reads.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/student_log_attachments.py`, `ifitwala_ed/api/org_communication_archive.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/task_submission.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/api/student_log.py`, `ifitwala_ed/api/guardian_monitoring.py`, `ifitwala_ed/api/focus_context.py`, `ifitwala_ed/ui-spa/AGENTS.md`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentLogs.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianMonitoring.vue`, `ifitwala_ed/ui-spa/src/overlays/student/StudentLogFollowUpOverlay.vue`
-Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_gradebook.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_task_submission.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/students/doctype/student_log/test_student_log_evidence_unit.py`, `ifitwala_ed/ui-spa/src/components/tasks/__tests__/CreateTaskDeliveryOverlay.test.ts`
+Date: 2026-04-27
+Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/api/gradebook_reads.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/student_log_attachments.py`, `ifitwala_ed/api/org_communication_archive.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/task_submission.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/api/student_log.py`, `ifitwala_ed/api/guardian_monitoring.py`, `ifitwala_ed/api/focus_context.py`, `ifitwala_ed/integrations/drive/admissions.py`, `ifitwala_ed/ui-spa/AGENTS.md`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentLogs.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianMonitoring.vue`, `ifitwala_ed/ui-spa/src/overlays/student/StudentLogFollowUpOverlay.vue`
+Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_file_access_unit.py`, `ifitwala_ed/api/test_admissions_document_items.py`, `ifitwala_ed/api/test_gradebook.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_task_submission.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/students/doctype/student_log/test_student_log_evidence_unit.py`, `ifitwala_ed/ui-spa/src/components/tasks/__tests__/CreateTaskDeliveryOverlay.test.ts`
 Related current-state docs:
 
 - `ifitwala_ed/docs/high_concurrency_contract.md`
@@ -22,8 +22,8 @@ Related current-state docs:
 ## Current Implemented Baseline
 
 Status: Implemented current-state baseline
-Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/student_log_attachments.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/api/student_log.py`, `ifitwala_ed/api/guardian_monitoring.py`, `ifitwala_ed/api/focus_context.py`, `ifitwala_ed/ui-spa/src/components/attachments/AttachmentPreviewCard.vue`, `ifitwala_ed/ui-spa/src/components/communication/CommunicationAttachmentPreviewList.vue`, `ifitwala_ed/ui-spa/src/components/planning/PlanningResourcePanel.vue`, `ifitwala_ed/ui-spa/src/components/learning/StudentLearningResourceCard.vue`, `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookStudentDrawer.vue`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentLogs.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianMonitoring.vue`, `ifitwala_ed/ui-spa/src/overlays/student/StudentLogFollowUpOverlay.vue`
-Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/students/doctype/student_log/test_student_log_evidence_unit.py`, `ifitwala_ed/ui-spa/src/components/attachments/__tests__/AttachmentPreviewCard.test.ts`, `ifitwala_ed/ui-spa/src/components/communication/__tests__/CommunicationAttachmentPreviewList.test.ts`, `ifitwala_ed/ui-spa/src/components/planning/__tests__/PlanningResourcePanel.test.ts`, `ifitwala_ed/ui-spa/src/components/tasks/__tests__/CreateTaskDeliveryOverlay.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/OrgCommunicationArchive.test.ts`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianCommunicationCenter.test.ts`
+Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/student_log_attachments.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/api/student_log.py`, `ifitwala_ed/api/guardian_monitoring.py`, `ifitwala_ed/api/focus_context.py`, `ifitwala_ed/integrations/drive/admissions.py`, `ifitwala_ed/ui-spa/src/components/attachments/AttachmentPreviewCard.vue`, `ifitwala_ed/ui-spa/src/components/communication/CommunicationAttachmentPreviewList.vue`, `ifitwala_ed/ui-spa/src/components/planning/PlanningResourcePanel.vue`, `ifitwala_ed/ui-spa/src/components/learning/StudentLearningResourceCard.vue`, `ifitwala_ed/ui-spa/src/pages/staff/gradebook/components/GradebookStudentDrawer.vue`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`, `ifitwala_ed/ui-spa/src/pages/student/CourseDetail.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentLogs.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianMonitoring.vue`, `ifitwala_ed/ui-spa/src/overlays/student/StudentLogFollowUpOverlay.vue`
+Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_file_access_unit.py`, `ifitwala_ed/api/test_admissions_document_items.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/students/doctype/student_log/test_student_log_evidence_unit.py`, `ifitwala_ed/ui-spa/src/components/attachments/__tests__/AttachmentPreviewCard.test.ts`, `ifitwala_ed/ui-spa/src/components/communication/__tests__/CommunicationAttachmentPreviewList.test.ts`, `ifitwala_ed/ui-spa/src/components/planning/__tests__/PlanningResourcePanel.test.ts`, `ifitwala_ed/ui-spa/src/components/tasks/__tests__/CreateTaskDeliveryOverlay.test.ts`, `ifitwala_ed/ui-spa/src/pages/student/__tests__/CourseDetail.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/OrgCommunicationArchive.test.ts`, `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianCommunicationCenter.test.ts`
 
 Today Ifitwala_Ed already enforces the correct broad shape for governed reads:
 
@@ -36,6 +36,7 @@ Today Ifitwala_Ed already enforces the correct broad shape for governed reads:
 - the staff task creation overlay now lets teachers queue task attachments during task composition and uses the shared preview card for current task attachments when a created task remains open for attachment recovery
 - planning-material surfaces now also expose stable `preview_url` routes for governed file resources in the staff course-plan and class-planning workspaces
 - planning-material preview and thumbnail routes now resolve governed grants through a material-scoped Drive wrapper after Ed authorizes the placement/material context, so `Material Placement` visibility no longer depends on direct `Supporting Material` DocType read permission
+- admissions open, preview, and thumbnail routes now resolve governed grants through an admissions-scoped Drive wrapper after Ed authorizes the applicant/family/staff context, so admissions portal reads do not depend on broad `Student Applicant` DocPerm
 - the student learning space now also exposes stable `preview_url` routes for governed file resources on `CourseDetail.vue`
 - current target surfaces now consume the nested `attachment_preview` DTO through one shared display-only SPA card layer, with thin communication, planning, student-learning, and evidence adapters around it
 - student task attachments now render inside the assigned-work brief through the shared learning attachment card, with preview and download actions driven by the governed preview DTO
@@ -274,9 +275,9 @@ For every governed file surface:
 
 ## Surface Endpoint Rule
 
-Status: Proposed target contract
-Code refs: `ifitwala_ed/api/org_communication_archive.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/docs/high_concurrency_contract.md`
-Test refs: `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_teaching_plans.py`
+Status: Implemented for active governed attachment surfaces; still binding for future surfaces
+Code refs: `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/api/org_communication_archive.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans.py`, `ifitwala_ed/docs/high_concurrency_contract.md`
+Test refs: `ifitwala_ed/api/test_admissions_document_items.py`, `ifitwala_ed/api/test_file_access_unit.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_teaching_plans.py`
 
 The correct Ed contract is surface-owned read models, not a generic file-preview API.
 
@@ -293,68 +294,79 @@ Forbidden patterns:
 
 Examples of acceptable surface owners:
 
+- admissions applicant-document list/upload responses
 - org communication archive/detail
 - staff Morning Brief announcement detail, which consumes the same org-communication attachment DTO and must resolve preview/open routes from the governed attachment slot rather than from a compatibility `File` lookup
 - student learning space resource shelves
 - future task-submission review detail
 - future guardian-facing reporting/document surfaces
 
+Current Phase 6 guard:
+
+- active read models must batch Drive attachment rows, thumbnail readiness, and MIME/version metadata once per surface payload instead of resolving one attachment per request
+
 ## Portal Authorization Rule
 
-Status: Proposed target contract
-Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/org_comm_utils.py`, `ifitwala_ed/curriculum/materials.py`
-Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_teaching_plans.py`
+Status: Implemented for active governed attachment routes; still binding for future routes
+Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/integrations/drive/admissions.py`, `ifitwala_ed/api/org_comm_utils.py`, `ifitwala_ed/curriculum/materials.py`
+Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_file_access_unit.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_teaching_plans.py`
 
 Authorization remains surface-specific and server-side:
 
 - staff access follows the owning workflow and operational permissions
 - student access is limited to student-visible records and released artifacts
 - guardian access is limited to guardian-authorized family/student surfaces with no sibling leakage unless explicitly documented
+- admissions access follows explicit applicant, family, scoped staff, and review business authorization; broad `Student Applicant` DocPerm must not be required for portal file reads
+- Drive grant services for Ed-owned surfaces must call the matching Ed surface delegate before resolving the Drive File; generic Drive owner DocPerm checks are not the admissions portal contract
 
 The frontend is presentation only. It must never widen or infer access.
 
 ## Cross-App Implementation Plan
 
-Status: Proposed phased plan
-Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/org_communication_archive.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans.py`
-Test refs: None yet for preview-specific rollout
+Status: Implemented through Phase 6 for active governed attachment surfaces
+Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/api/org_communication_archive.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans.py`
+Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_file_access_unit.py`, `ifitwala_ed/api/test_admissions_document_items.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_teaching_plans.py`
 
-Phase 1: documentation and contract lock
+Phase 1: documentation and contract lock - implemented
 
 - keep current `open_url` behavior as baseline
 - lock the Ed/Drive ownership split in canonical docs in both repos
 - forbid portal-direct Drive grant calls for Ed-owned surfaces
 - keep Phase 1 media scope narrow: image preview plus first-page PDF preview, no broad media ambitions
 
-Phase 2: Drive dependency foundation
+Phase 2: Drive dependency foundation - implemented for the narrow image/PDF scope
 
 - use the existing Drive image/PDF derivative lifecycle and derivative-role grant resolution as the first foundation
 - keep wider media support beyond images and first-page PDFs deferred until the narrow path is stable
 
-Phase 3: Ed service foundation
+Phase 3: Ed service foundation - implemented for active governed surfaces
 
 - add a shared Ed attachment preview builder service
 - add stable thumbnail/preview/open/download routes that re-check surface authorization and then resolve Drive grants
 - allow short-lived Ed-side caching only for resolved thumbnail redirect targets; do not embed provider grant URLs in bootstrap DTOs
 - keep route ownership explicit by surface or shared Ed file-access helpers
 
-Phase 4: shared SPA layer
+Phase 4: shared SPA layer - implemented additively
 
 - add display-only attachment preview components and local interaction composables
 - lazy load rich previews; do not dominate routed pages with giant viewers
 
-Phase 5: rollout order
+Phase 5: rollout order - implemented for current active target surfaces
 
 - Org Communication first
 - supporting-material planning surfaces next, specifically course-plan, unit-plan, and class-planning cards via the existing shared planning resource panel
 - task materials after the planning surface contract is stable
 - task submissions, feedback, and stricter version-aware evidence surfaces after the foundation is stable
 
-Phase 6: regression protection
+Phase 6: regression protection - implemented for active governed attachment surfaces
 
 - add permission-matrix tests per surface
 - add route tests for preview/open/download behaviors
 - validate that page-init remains bounded and does not introduce attachment waterfalls
+- admissions specifically locks download, preview, and thumbnail routes to the admissions-scoped Drive grant wrappers, plus applicant/family/staff/reviewer business authorization
+- admissions applicant-document listing locks Drive attachment row lookup, thumbnail readiness, and MIME/version lookup to batched surface reads
+
+Remaining items are future scope, not unfinished Phase 6 work: the top-level shared row contract across all surfaces, broad preview routes for every governed file surface, and one unified gallery/drawer system.
 
 ## Important Non-Goals
 

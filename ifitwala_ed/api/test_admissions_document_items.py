@@ -171,6 +171,106 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
         self.assertIn("AISL transcript 2019", labels)
         self.assertIn("ISL transcript 2020", labels)
 
+    def test_list_applicant_documents_batches_drive_preview_metadata(self):
+        frappe.set_user(self.applicant_user)
+        with self._patched_drive_admissions_bridge():
+            first_upload = upload_applicant_document(
+                student_applicant=self.applicant.name,
+                document_type=self.document_type,
+                item_key="aisl_2019",
+                item_label="AISL transcript 2019",
+                file_name="aisl-2019.pdf",
+                content=self._tiny_file_base64(),
+            )
+            second_upload = upload_applicant_document(
+                student_applicant=self.applicant.name,
+                document_type=self.document_type,
+                item_key="isl_2020",
+                item_label="ISL transcript 2020",
+                file_name="isl-2020.pdf",
+                content=self._tiny_file_base64(),
+            )
+
+        item_names = [
+            first_upload.get("applicant_document_item"),
+            second_upload.get("applicant_document_item"),
+        ]
+        drive_queries: list[dict] = []
+        thumbnail_queries: list[list[str]] = []
+        version_queries: list[list[str]] = []
+
+        def fake_current_drive_files_for_attachments(*, attached_doctype, attached_names, fields, statuses):
+            drive_queries.append(
+                {
+                    "attached_doctype": attached_doctype,
+                    "attached_names": list(attached_names or []),
+                    "fields": list(fields or []),
+                    "statuses": tuple(statuses or ()),
+                }
+            )
+            return [
+                {
+                    "name": "DRV-ADM-DOC-1",
+                    "attached_name": item_names[0],
+                    "file": "FILE-ADM-DOC-1",
+                    "canonical_ref": f"drv:{self.organization}:DRV-ADM-DOC-1",
+                    "display_name": "aisl-2019.pdf",
+                    "preview_status": "ready",
+                    "current_version": "VER-ADM-DOC-1",
+                    "creation": "2026-04-27 08:00:00",
+                },
+                {
+                    "name": "DRV-ADM-DOC-2",
+                    "attached_name": item_names[1],
+                    "file": "FILE-ADM-DOC-2",
+                    "canonical_ref": f"drv:{self.organization}:DRV-ADM-DOC-2",
+                    "display_name": "isl-2020.pdf",
+                    "preview_status": "processing",
+                    "current_version": "VER-ADM-DOC-2",
+                    "creation": "2026-04-27 08:01:00",
+                },
+            ]
+
+        def fake_thumbnail_ready_map(drive_file_ids):
+            thumbnail_queries.append(list(drive_file_ids or []))
+            return {"DRV-ADM-DOC-1": True, "DRV-ADM-DOC-2": False}
+
+        def fake_version_mime_map(version_ids):
+            version_queries.append(list(version_ids or []))
+            return {"VER-ADM-DOC-1": "application/pdf", "VER-ADM-DOC-2": "application/pdf"}
+
+        with (
+            patch(
+                "ifitwala_ed.api.admissions_portal.get_current_drive_files_for_attachments",
+                side_effect=fake_current_drive_files_for_attachments,
+            ),
+            patch(
+                "ifitwala_ed.api.admissions_portal.get_drive_file_thumbnail_ready_map",
+                side_effect=fake_thumbnail_ready_map,
+            ),
+            patch(
+                "ifitwala_ed.api.admissions_portal._load_drive_version_mime_map",
+                side_effect=fake_version_mime_map,
+            ),
+        ):
+            payload = list_applicant_documents(student_applicant=self.applicant.name)
+
+        self.assertEqual(len(drive_queries), 1)
+        self.assertEqual(drive_queries[0]["attached_doctype"], "Applicant Document Item")
+        self.assertCountEqual(drive_queries[0]["attached_names"], item_names)
+        self.assertIn("current_version", drive_queries[0]["fields"])
+        self.assertEqual(drive_queries[0]["statuses"], ("active", "processing", "blocked"))
+        self.assertEqual(thumbnail_queries, [["DRV-ADM-DOC-1", "DRV-ADM-DOC-2"]])
+        self.assertEqual(version_queries, [["VER-ADM-DOC-1", "VER-ADM-DOC-2"]])
+
+        documents = payload.get("documents") or []
+        self.assertEqual(len(documents), 1)
+        items_by_name = {row.get("name"): row for row in documents[0].get("items") or []}
+        self.assertIn("thumbnail_admissions_file", str(items_by_name[item_names[0]].get("thumbnail_url") or ""))
+        self.assertIn("preview_admissions_file", str(items_by_name[item_names[0]].get("preview_url") or ""))
+        self.assertIsNone(items_by_name[item_names[1]].get("thumbnail_url"))
+        self.assertIsNone(items_by_name[item_names[1]].get("preview_url"))
+
     def test_upload_without_item_description_uses_server_generated_submission_label(self):
         frappe.set_user(self.applicant_user)
         with self._patched_drive_admissions_bridge():

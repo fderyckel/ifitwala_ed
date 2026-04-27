@@ -823,7 +823,7 @@ class TestFileAccessUnit(TestCase):
                 },
                 {"name": "DRIVE-FILE-ADM-1"},
             )
-            file_access._resolve_drive_download_grant_url = lambda *args, **kwargs: (
+            file_access._resolve_admissions_drive_download_grant_url = lambda *args, **kwargs: (
                 "/private/files/ifitwala_drive/files/aa/bb/admissions.pdf"
             )
             file_access._respond_with_delivery_target = lambda **kwargs: delivery_requests.append(kwargs) or True
@@ -837,6 +837,116 @@ class TestFileAccessUnit(TestCase):
         self.assertEqual(
             delivery_requests,
             [{"target_url": "/private/files/ifitwala_drive/files/aa/bb/admissions.pdf"}],
+        )
+
+    def test_download_admissions_file_uses_admissions_drive_grant_surface(self):
+        with _file_access_module() as (file_access, frappe):
+            grant_calls: list[tuple[str, dict]] = []
+            delivery_requests: list[dict] = []
+            frappe.local.response = {}
+            frappe.session.user = "family@example.com"
+            file_access._resolve_authorized_admissions_file_target = lambda **kwargs: (
+                {
+                    "name": "FILE-ADM-1",
+                    "file_url": "/private/files/admissions.pdf",
+                    "file_name": "admissions.pdf",
+                    "is_private": 1,
+                },
+                {"name": "DRIVE-FILE-ADM-1", "file": "FILE-ADM-1"},
+            )
+            file_access._load_drive_access_callable = lambda attribute: self.fail("generic Drive grant was used")
+
+            def _admissions_callable(attribute):
+                def _grant(**payload):
+                    grant_calls.append((attribute, payload))
+                    return {"url": "/private/files/ifitwala_drive/files/aa/bb/admissions.pdf"}
+
+                return _grant
+
+            file_access._load_drive_admissions_callable = _admissions_callable
+            file_access._respond_with_delivery_target = lambda **kwargs: delivery_requests.append(kwargs) or True
+
+            file_access.download_admissions_file(
+                file="FILE-ADM-1",
+                drive_file_id="DRIVE-FILE-ADM-1",
+                canonical_ref="drv:ORG-1:DRIVE-FILE-ADM-1",
+                context_doctype="Student Applicant",
+                context_name="APPL-0001",
+            )
+
+        self.assertEqual(
+            grant_calls,
+            [
+                (
+                    "issue_admissions_file_download_grant",
+                    {
+                        "file_id": "FILE-ADM-1",
+                        "drive_file_id": "DRIVE-FILE-ADM-1",
+                        "canonical_ref": "drv:ORG-1:DRIVE-FILE-ADM-1",
+                        "context_doctype": "Student Applicant",
+                        "context_name": "APPL-0001",
+                    },
+                )
+            ],
+        )
+        self.assertEqual(
+            delivery_requests,
+            [{"target_url": "/private/files/ifitwala_drive/files/aa/bb/admissions.pdf"}],
+        )
+
+    def test_preview_admissions_file_uses_admissions_drive_grant_surface(self):
+        with _file_access_module() as (file_access, frappe):
+            grant_calls: list[tuple[str, dict]] = []
+            delivery_requests: list[dict] = []
+            frappe.local.response = {}
+            frappe.session.user = "family@example.com"
+            file_access._resolve_authorized_admissions_file_target = lambda **kwargs: (
+                {
+                    "name": "FILE-ADM-1",
+                    "file_url": "/private/files/admissions.pdf",
+                    "file_name": "admissions.pdf",
+                    "is_private": 1,
+                },
+                {"name": "DRIVE-FILE-ADM-1", "file": "FILE-ADM-1"},
+            )
+            file_access._load_drive_access_callable = lambda attribute: self.fail("generic Drive grant was used")
+
+            def _admissions_callable(attribute):
+                def _grant(**payload):
+                    grant_calls.append((attribute, payload))
+                    return {"url": "/private/files/ifitwala_drive/previews/aa/bb/admissions.pdf"}
+
+                return _grant
+
+            file_access._load_drive_admissions_callable = _admissions_callable
+            file_access._respond_with_delivery_target = lambda **kwargs: delivery_requests.append(kwargs) or True
+
+            file_access.preview_admissions_file(
+                file="FILE-ADM-1",
+                drive_file_id="DRIVE-FILE-ADM-1",
+                canonical_ref="drv:ORG-1:DRIVE-FILE-ADM-1",
+                context_doctype="Student Applicant",
+                context_name="APPL-0001",
+            )
+
+        self.assertEqual(
+            grant_calls,
+            [
+                (
+                    "issue_admissions_file_preview_grant",
+                    {
+                        "file_id": "FILE-ADM-1",
+                        "drive_file_id": "DRIVE-FILE-ADM-1",
+                        "canonical_ref": "drv:ORG-1:DRIVE-FILE-ADM-1",
+                        "context_doctype": "Student Applicant",
+                        "context_name": "APPL-0001",
+                    },
+                )
+            ],
+        )
+        self.assertEqual(
+            delivery_requests,
+            [{"target_url": "/private/files/ifitwala_drive/previews/aa/bb/admissions.pdf"}],
         )
 
     def test_thumbnail_admissions_file_accepts_local_drive_delivery_target(self):
@@ -873,6 +983,107 @@ class TestFileAccessUnit(TestCase):
                 }
             ],
         )
+
+    def test_thumbnail_admissions_file_uses_admissions_drive_grant_surface(self):
+        with _file_access_module() as (file_access, frappe):
+            grant_calls: list[tuple[str, dict]] = []
+            delivery_requests: list[dict] = []
+            frappe.local.response = {}
+            frappe.session.user = "family@example.com"
+            file_access._resolve_authorized_admissions_file_target = lambda **kwargs: (
+                {
+                    "name": "FILE-ADM-1",
+                    "file_url": "/private/files/admissions.png",
+                    "file_name": "admissions.png",
+                    "is_private": 1,
+                },
+                {"name": "DRIVE-FILE-ADM-1", "file": "FILE-ADM-1"},
+            )
+            file_access._resolve_card_preview_derivative_role_for_drive_file = lambda drive_file_id: "viewer_preview"
+            file_access._load_drive_access_callable = lambda attribute: self.fail("generic Drive grant was used")
+
+            def _admissions_callable(attribute):
+                def _grant(**payload):
+                    grant_calls.append((attribute, payload))
+                    return {"url": "/private/files/ifitwala_drive/derivatives/aa/bb/admissions_thumb.png"}
+
+                return _grant
+
+            file_access._load_drive_admissions_callable = _admissions_callable
+            file_access._respond_with_delivery_target = lambda **kwargs: delivery_requests.append(kwargs) or True
+
+            file_access.thumbnail_admissions_file(
+                file="FILE-ADM-1",
+                drive_file_id="DRIVE-FILE-ADM-1",
+                context_doctype="Student Applicant",
+                context_name="APPL-0001",
+            )
+
+        self.assertEqual(
+            grant_calls,
+            [
+                (
+                    "issue_admissions_file_preview_grant",
+                    {
+                        "file_id": "FILE-ADM-1",
+                        "drive_file_id": "DRIVE-FILE-ADM-1",
+                        "canonical_ref": "",
+                        "context_doctype": "Student Applicant",
+                        "context_name": "APPL-0001",
+                        "derivative_role": "viewer_preview",
+                    },
+                )
+            ],
+        )
+        self.assertEqual(
+            delivery_requests,
+            [
+                {
+                    "target_url": "/private/files/ifitwala_drive/derivatives/aa/bb/admissions_thumb.png",
+                    "cache_headers": True,
+                }
+            ],
+        )
+
+    def test_admissions_file_business_authorization_actor_matrix(self):
+        with _file_access_module() as (file_access, frappe):
+            frappe.PermissionError = type("StubPermissionError", (Exception,), {})
+            frappe.get_roles = lambda user: {
+                "applicant@example.com": ["Admissions Applicant"],
+                "family@example.com": ["Admissions Family"],
+                "staff@example.com": ["Admissions Officer"],
+                "reviewer@example.com": ["Admissions Reviewer"],
+                "other@example.com": ["Admissions Applicant"],
+            }.get(user, [])
+            file_access.user_can_access_student_applicant = lambda **kwargs: (
+                kwargs.get("student_applicant") == "APPL-0001"
+                and kwargs.get("user")
+                in {
+                    "applicant@example.com",
+                    "family@example.com",
+                }
+            )
+            file_access.is_admissions_file_staff_user = lambda user: user == "staff@example.com"
+            file_access.has_scoped_staff_access_to_student_applicant = lambda **kwargs: (
+                kwargs.get("student_applicant") == "APPL-0001" and kwargs.get("user") == "staff@example.com"
+            )
+            file_access.has_open_applicant_review_access = lambda **kwargs: (
+                kwargs.get("student_applicant") == "APPL-0001" and kwargs.get("user") == "reviewer@example.com"
+            )
+
+            for user in (
+                "applicant@example.com",
+                "family@example.com",
+                "staff@example.com",
+                "reviewer@example.com",
+            ):
+                file_access._assert_can_access_student_applicant(user=user, student_applicant="APPL-0001")
+
+            with self.assertRaises(frappe.PermissionError):
+                file_access._assert_can_access_student_applicant(
+                    user="other@example.com",
+                    student_applicant="APPL-0002",
+                )
 
     def test_download_guardian_file_accepts_local_drive_delivery_target(self):
         with _file_access_module() as (file_access, frappe):

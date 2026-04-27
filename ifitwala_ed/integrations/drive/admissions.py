@@ -441,6 +441,45 @@ def validate_applicant_health_finalize_context(upload_session_doc) -> dict[str, 
     return context
 
 
+def assert_admissions_file_read_access(payload: dict[str, Any]) -> dict[str, Any]:
+    from ifitwala_ed.api import file_access
+
+    request = payload or {}
+    user = str(getattr(frappe.session, "user", "") or "").strip()
+    file_id = str(request.get("file_id") or request.get("file") or "").strip()
+    file_row, drive_file = file_access._resolve_authorized_admissions_file_target(  # pylint: disable=protected-access
+        user=user,
+        file_name=file_id or None,
+        drive_file_id=request.get("drive_file_id"),
+        canonical_ref=request.get("canonical_ref"),
+        context_doctype=request.get("context_doctype"),
+        context_name=request.get("context_name"),
+    )
+    resolved_drive_file = drive_file or {}
+    resolved_file_row = file_row or {}
+    drive_file_id = str(resolved_drive_file.get("name") or request.get("drive_file_id") or "").strip()
+    resolved_file_id = str(resolved_file_row.get("name") or resolved_drive_file.get("file") or file_id).strip()
+    if not drive_file_id:
+        frappe.throw(_("Governed admissions file was not found."))
+
+    if resolved_drive_file.get("name"):
+        student_applicant = file_access._resolve_student_applicant_from_drive_file(  # pylint: disable=protected-access
+            resolved_drive_file
+        )
+    else:
+        student_applicant = file_access._resolve_student_applicant_from_file(  # pylint: disable=protected-access
+            resolved_file_row
+        )
+    return {
+        "student_applicant": student_applicant,
+        "file_id": resolved_file_id,
+        "drive_file_id": drive_file_id,
+        "canonical_ref": str(resolved_drive_file.get("canonical_ref") or request.get("canonical_ref") or "").strip(),
+        "context_doctype": str(request.get("context_doctype") or "").strip(),
+        "context_name": str(request.get("context_name") or "").strip(),
+    }
+
+
 def run_admissions_post_finalize(upload_session_doc, created_file) -> dict[str, Any]:
     if getattr(upload_session_doc, "owner_doctype", None) != "Student Applicant" or getattr(
         upload_session_doc, "attached_doctype", None

@@ -1053,6 +1053,18 @@ def _load_drive_materials_callable(attribute: str):
     return None
 
 
+def _load_drive_admissions_callable(attribute: str):
+    try:
+        from ifitwala_drive.api import admissions as drive_api
+    except ImportError:
+        return None
+
+    callable_obj = getattr(drive_api, attribute, None)
+    if callable(callable_obj):
+        return callable_obj
+    return None
+
+
 def _load_drive_media_callable(attribute: str):
     try:
         from ifitwala_drive.api import media as drive_api
@@ -1334,6 +1346,32 @@ def _resolve_cached_thumbnail_target_url(
             expires_in_sec=_THUMBNAIL_REDIRECT_CACHE_TTL_SECONDS,
         )
     return target_url
+
+
+def _request_admissions_file_grant(
+    *,
+    method_name: str,
+    file_id: str | None,
+    drive_file_id: str | None,
+    canonical_ref: str | None = None,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+    derivative_role: str | None = None,
+):
+    grant_callable = _load_drive_admissions_callable(method_name)
+    if callable(grant_callable):
+        payload = {
+            "file_id": str(file_id or "").strip(),
+            "drive_file_id": str(drive_file_id or "").strip(),
+            "canonical_ref": str(canonical_ref or "").strip(),
+            "context_doctype": str(context_doctype or "").strip(),
+            "context_name": str(context_name or "").strip(),
+        }
+        explicit_derivative_role = (derivative_role or "").strip()
+        if explicit_derivative_role:
+            payload["derivative_role"] = explicit_derivative_role
+        return grant_callable(**payload)
+    return None
 
 
 def _request_org_communication_attachment_grant(
@@ -2651,6 +2689,55 @@ def _resolve_drive_preview_grant_url(
     return target_url or None
 
 
+def _resolve_admissions_drive_download_grant_url(
+    file_name: str | None = None,
+    *,
+    drive_file_id: str | None = None,
+    canonical_ref: str | None = None,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+) -> str | None:
+    grant = _request_admissions_file_grant(
+        method_name="issue_admissions_file_download_grant",
+        file_id=file_name,
+        drive_file_id=drive_file_id,
+        canonical_ref=canonical_ref,
+        context_doctype=context_doctype,
+        context_name=context_name,
+    )
+    target_url = str((grant or {}).get("url") or "").strip()
+    return target_url or None
+
+
+def _resolve_admissions_drive_preview_grant_url(
+    file_name: str | None = None,
+    *,
+    drive_file_id: str | None = None,
+    canonical_ref: str | None = None,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+    derivative_role: str | None = None,
+    suppress_errors: bool = False,
+) -> str | None:
+    try:
+        grant = _request_admissions_file_grant(
+            method_name="issue_admissions_file_preview_grant",
+            file_id=file_name,
+            drive_file_id=drive_file_id,
+            canonical_ref=canonical_ref,
+            context_doctype=context_doctype,
+            context_name=context_name,
+            derivative_role=derivative_role,
+        )
+    except Exception:
+        if suppress_errors:
+            return None
+        raise
+
+    target_url = str((grant or {}).get("url") or "").strip()
+    return target_url or None
+
+
 def _resolve_public_website_media_grant_url(file_name: str) -> str | None:
     resolved_file_name = str(file_name or "").strip()
     if not resolved_file_name:
@@ -3052,10 +3139,12 @@ def download_admissions_file(
         frappe.local.response["location"] = file_url
         return
 
-    target_url = _resolve_drive_download_grant_url(
+    target_url = _resolve_admissions_drive_download_grant_url(
         (file_row or {}).get("name"),
         drive_file_id=(drive_file or {}).get("name") or drive_file_id,
         canonical_ref=canonical_ref,
+        context_doctype=context_doctype,
+        context_name=context_name,
     )
     if _respond_with_delivery_target(target_url=target_url):
         return
@@ -3088,10 +3177,12 @@ def preview_admissions_file(
         context_name=context_name,
     )
 
-    target_url = _resolve_drive_preview_grant_url(
+    target_url = _resolve_admissions_drive_preview_grant_url(
         (file_row or {}).get("name"),
         drive_file_id=(drive_file or {}).get("name") or drive_file_id,
         canonical_ref=canonical_ref,
+        context_doctype=context_doctype,
+        context_name=context_name,
     )
     if _respond_with_delivery_target(target_url=target_url):
         return
@@ -3107,10 +3198,12 @@ def preview_admissions_file(
         frappe.local.response["location"] = file_url
         return
 
-    target_url = _resolve_drive_download_grant_url(
+    target_url = _resolve_admissions_drive_download_grant_url(
         (file_row or {}).get("name"),
         drive_file_id=(drive_file or {}).get("name") or drive_file_id,
         canonical_ref=canonical_ref,
+        context_doctype=context_doctype,
+        context_name=context_name,
     )
     if _respond_with_delivery_target(target_url=target_url):
         return
@@ -3152,6 +3245,15 @@ def thumbnail_admissions_file(
         ],
         derivative_role=derivative_role,
         strict_derivative=True,
+        target_resolver=lambda: _resolve_admissions_drive_preview_grant_url(
+            (file_row or {}).get("name"),
+            drive_file_id=resolved_drive_file_id,
+            canonical_ref=canonical_ref,
+            context_doctype=context_doctype,
+            context_name=context_name,
+            derivative_role=derivative_role,
+            suppress_errors=True,
+        ),
     )
     if target_url:
         if _respond_with_delivery_target(target_url=target_url, cache_headers=True):
