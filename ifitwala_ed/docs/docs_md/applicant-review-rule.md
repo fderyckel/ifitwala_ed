@@ -3,8 +3,8 @@ title: "Applicant Review Rule: Reviewer Scope Configuration"
 slug: applicant-review-rule
 category: Admission
 doc_order: 8
-version: "1.3.0"
-last_change_date: "2026-03-09"
+version: "1.3.1"
+last_change_date: "2026-04-27"
 summary: "Configure admissions reviewers by organization, school, optional program offering, and target type, including per-file document item review."
 seo_title: "Applicant Review Rule: Reviewer Scope Configuration"
 seo_description: "Configure admissions reviewers by organization, school, optional program offering, and target type, including per-file document item review."
@@ -19,6 +19,17 @@ Test refs: `ifitwala_ed/admission/test_applicant_review_workflow.py`, `ifitwala_
 `Applicant Review Rule` defines who must review admissions artifacts for a given institutional scope.
 
 It is configuration, not a task queue. Tasks are materialized later into `Applicant Review Assignment`.
+
+## Permission Matrix
+
+Status: Implemented
+Code refs: `ifitwala_ed/admission/doctype/applicant_review_rule/applicant_review_rule.py`, `ifitwala_ed/hooks.py`
+Test refs: `ifitwala_ed/admission/doctype/applicant_review_rule/test_applicant_review_rule.py`
+
+- `Admission Manager`, `Academic Admin`, and `System Manager` can create and manage rules in their authorized organization/school scope.
+- `Admission Officer` can read and report on rules in their authorized organization/school scope.
+- System-level users keep the normal administrative bypass.
+- Desk list and report views use the same scoped permission hook; sibling school rules are not visible.
 
 ## Target Types and Scope
 

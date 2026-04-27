@@ -27,6 +27,7 @@
   {
    "fieldname": "organization",
    "fieldtype": "Link",
+   "ignore_user_permissions": 1,
    "in_list_view": 1,
    "label": "Organization",
    "options": "Organization",
@@ -35,6 +36,7 @@
   {
    "fieldname": "school",
    "fieldtype": "Link",
+   "ignore_user_permissions": 1,
    "in_list_view": 1,
    "label": "School",
    "options": "School",
@@ -43,6 +45,7 @@
   {
    "fieldname": "program_offering",
    "fieldtype": "Link",
+   "ignore_user_permissions": 1,
    "in_list_view": 1,
    "label": "Program Offering",
    "options": "Program Offering"
@@ -60,6 +63,7 @@
    "description": "Optional. If set, this rule applies only to this Applicant Document Type.",
    "fieldname": "document_type",
    "fieldtype": "Link",
+   "ignore_user_permissions": 1,
    "label": "Document Type",
    "options": "Applicant Document Type"
   },
@@ -79,7 +83,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-12 08:29:49.882204",
+ "modified": "2026-04-27 12:09:16.000000",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Review Rule",

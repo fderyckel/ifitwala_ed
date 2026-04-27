@@ -4,10 +4,17 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from ifitwala_ed.admission.admission_utils import (
+    READ_LIKE_PERMISSION_TYPES,
+    get_admissions_file_staff_scope,
+)
 from ifitwala_ed.governance.policy_scope_utils import is_policy_organization_applicable_to_context
 
 REVIEWER_MODE_ROLE_ONLY = "Role Only"
 REVIEWER_MODE_SPECIFIC_USER = "Specific User"
+CONFIG_READ_ROLES = {"Admission Officer", "Admission Manager", "Academic Admin", "System Manager"}
+CONFIG_MANAGER_ROLES = {"Admission Manager", "Academic Admin", "System Manager"}
+WRITE_LIKE_PERMISSION_TYPES = {"write", "create", "delete", "submit", "cancel", "amend"}
 
 
 class ApplicantReviewRule(Document):
@@ -104,3 +111,76 @@ def get_reviewer_role_options(doctype, txt, searchfield, start, page_len, filter
         limit=page_len,
         as_list=True,
     )
+
+
+def get_permission_query_conditions(user: str | None = None) -> str | None:
+    resolved_user = (user or frappe.session.user or "").strip()
+    if not resolved_user or resolved_user == "Guest":
+        return "1=0"
+
+    scope = get_admissions_file_staff_scope(resolved_user)
+    if not scope.get("allowed"):
+        return "1=0"
+    if scope.get("bypass"):
+        return None
+
+    school_values = _scope_values_to_sql(scope.get("school_scope") or set())
+    if school_values:
+        return f"`tabApplicant Review Rule`.`school` IN ({school_values})"
+
+    org_values = _scope_values_to_sql(scope.get("org_scope") or set())
+    if org_values:
+        return f"`tabApplicant Review Rule`.`organization` IN ({org_values})"
+
+    return "1=0"
+
+
+def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bool:
+    resolved_user = (user or frappe.session.user or "").strip()
+    op = (ptype or "read").lower()
+    if not resolved_user or resolved_user == "Guest":
+        return False
+
+    roles = set(frappe.get_roles(resolved_user))
+    if resolved_user != "Administrator" and not roles.intersection(CONFIG_READ_ROLES):
+        return False
+    if (
+        op in WRITE_LIKE_PERMISSION_TYPES
+        and resolved_user != "Administrator"
+        and not roles.intersection(CONFIG_MANAGER_ROLES)
+    ):
+        return False
+    if op not in READ_LIKE_PERMISSION_TYPES and op not in WRITE_LIKE_PERMISSION_TYPES:
+        return False
+
+    scope = get_admissions_file_staff_scope(resolved_user)
+    if not scope.get("allowed"):
+        return False
+    if scope.get("bypass"):
+        return True
+    if not doc:
+        return True
+
+    organization, school = _resolve_rule_scope(doc)
+    org_scope = set(scope.get("org_scope") or set())
+    school_scope = set(scope.get("school_scope") or set())
+
+    if school_scope:
+        return school in school_scope
+    if org_scope:
+        return organization in org_scope
+    return False
+
+
+def _scope_values_to_sql(values) -> str:
+    cleaned = sorted({(value or "").strip() for value in values if (value or "").strip()})
+    return ", ".join(frappe.db.escape(value) for value in cleaned)
+
+
+def _resolve_rule_scope(doc) -> tuple[str, str]:
+    if isinstance(doc, str):
+        row = frappe.db.get_value("Applicant Review Rule", doc, ["organization", "school"], as_dict=True) or {}
+        return (row.get("organization") or "").strip(), (row.get("school") or "").strip()
+    if isinstance(doc, dict):
+        return (doc.get("organization") or "").strip(), (doc.get("school") or "").strip()
+    return (getattr(doc, "organization", None) or "").strip(), (getattr(doc, "school", None) or "").strip()

@@ -182,6 +182,22 @@ def _education_contact_scope_sql(user: str) -> str:
     """
 
 
+def _reverse_student_applicant_contact_scope_sql(user: str) -> str:
+    schools = _resolve_education_contact_school_scope(user)
+    if not schools:
+        return "1=0"
+
+    school_values = ", ".join(frappe.db.escape(school, percent=False) for school in schools)
+    return f"""
+        EXISTS (
+            SELECT 1
+            FROM `tabStudent Applicant` reverse_scoped_applicant
+            WHERE reverse_scoped_applicant.applicant_contact = `tabContact`.name
+                AND ({_student_applicant_scope_condition_sql("reverse_scoped_applicant", school_values)})
+        )
+    """
+
+
 def _education_contact_scope_matches(contact_name: str | None, user: str, roles: set[str] | None = None) -> bool | None:
     if not contact_name:
         return None
@@ -209,7 +225,7 @@ def _education_contact_scope_matches(contact_name: str | None, user: str, roles:
         if cstr(row.get("link_doctype")).strip() and cstr(row.get("link_name")).strip()
     ]
     if not linked_rows:
-        return None
+        return _reverse_student_applicant_contact_scope_matches(contact_name, user)
 
     schools = set(_resolve_education_contact_school_scope(user))
     if not schools:
@@ -224,6 +240,31 @@ def _education_contact_scope_matches(contact_name: str | None, user: str, roles:
     if student_names and _any_scoped_student(student_names, schools):
         return True
     if guardian_names and _any_scoped_guardian(guardian_names, schools):
+        return True
+
+    return False
+
+
+def _reverse_student_applicant_contact_scope_matches(contact_name: str, user: str) -> bool | None:
+    schools = set(_resolve_education_contact_school_scope(user))
+    if not schools:
+        return False
+
+    applicant_rows = frappe.get_all(
+        "Student Applicant",
+        filters={"applicant_contact": contact_name},
+        fields=["name", "school", "student"],
+        limit=200,
+    )
+    if not applicant_rows:
+        return None
+
+    for row in applicant_rows:
+        if cstr(row.get("school")).strip() in schools:
+            return True
+
+    linked_students = [cstr(row.get("student")).strip() for row in applicant_rows if cstr(row.get("student")).strip()]
+    if linked_students and _any_scoped_student(linked_students, schools):
         return True
 
     return False
@@ -467,23 +508,34 @@ def contact_permission_query_conditions(user):
 
     if roles & EDUCATION_CONTACT_ROLES:
         education_scope_sql = _education_contact_scope_sql(user)
+        reverse_student_applicant_scope_sql = _reverse_student_applicant_contact_scope_sql(user)
         education_link_exists = """
-            EXISTS (
+            (
+                EXISTS (
+                    SELECT 1
+                    FROM `tabStudent Applicant` reverse_contact_applicant
+                    WHERE reverse_contact_applicant.applicant_contact = `tabContact`.name
+                )
+                OR EXISTS (
                 SELECT 1
                 FROM `tabDynamic Link` contact_education_link
                 WHERE contact_education_link.parenttype = 'Contact'
                     AND contact_education_link.parent = `tabContact`.name
                     AND contact_education_link.link_doctype IN ('Student Applicant', 'Student', 'Guardian')
+                )
             )
         """
         scoped_education_link_exists = f"""
-            EXISTS (
-                SELECT 1
-                FROM `tabDynamic Link` scoped_education_link
-                WHERE scoped_education_link.parenttype = 'Contact'
-                    AND scoped_education_link.parent = `tabContact`.name
-                    AND scoped_education_link.link_doctype IN ('Student Applicant', 'Student', 'Guardian')
-                    AND ({education_scope_sql})
+            (
+                {reverse_student_applicant_scope_sql}
+                OR EXISTS (
+                    SELECT 1
+                    FROM `tabDynamic Link` scoped_education_link
+                    WHERE scoped_education_link.parenttype = 'Contact'
+                        AND scoped_education_link.parent = `tabContact`.name
+                        AND scoped_education_link.link_doctype IN ('Student Applicant', 'Student', 'Guardian')
+                        AND ({education_scope_sql})
+                )
             )
         """
         conditions.append(f"((NOT {education_link_exists}) OR {scoped_education_link_exists})")

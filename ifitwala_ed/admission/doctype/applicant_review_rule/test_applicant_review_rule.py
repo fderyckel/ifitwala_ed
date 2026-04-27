@@ -2,8 +2,15 @@
 # Copyright (c) 2026, François de Ryckel and Contributors
 # See license.txt
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
+
+from ifitwala_ed.admission.doctype.applicant_review_rule.applicant_review_rule import (
+    get_permission_query_conditions,
+    has_permission,
+)
 
 
 class TestApplicantReviewRule(FrappeTestCase):
@@ -120,6 +127,92 @@ class TestApplicantReviewRule(FrappeTestCase):
                 }
             )
             doc.insert(ignore_permissions=True)
+
+    def test_permission_query_conditions_use_school_scope_when_present(self):
+        with patch(
+            "ifitwala_ed.admission.doctype.applicant_review_rule.applicant_review_rule.get_admissions_file_staff_scope",
+            return_value={
+                "allowed": True,
+                "bypass": False,
+                "org_scope": {self.organization},
+                "school_scope": {self.school},
+            },
+        ):
+            condition = get_permission_query_conditions("manager@example.com")
+
+        self.assertEqual(
+            condition,
+            f"`tabApplicant Review Rule`.`school` IN ({frappe.db.escape(self.school)})",
+        )
+
+    def test_permission_query_conditions_fall_back_to_org_scope(self):
+        with patch(
+            "ifitwala_ed.admission.doctype.applicant_review_rule.applicant_review_rule.get_admissions_file_staff_scope",
+            return_value={
+                "allowed": True,
+                "bypass": False,
+                "org_scope": {self.organization},
+                "school_scope": set(),
+            },
+        ):
+            condition = get_permission_query_conditions("manager@example.com")
+
+        self.assertEqual(
+            condition,
+            f"`tabApplicant Review Rule`.`organization` IN ({frappe.db.escape(self.organization)})",
+        )
+
+    def test_permission_query_conditions_bypass_for_system_scope(self):
+        with patch(
+            "ifitwala_ed.admission.doctype.applicant_review_rule.applicant_review_rule.get_admissions_file_staff_scope",
+            return_value={"allowed": True, "bypass": True, "org_scope": set(), "school_scope": set()},
+        ):
+            self.assertIsNone(get_permission_query_conditions("admin@example.com"))
+
+    def test_has_permission_allows_scoped_manager_and_blocks_sibling(self):
+        scope = {
+            "allowed": True,
+            "bypass": False,
+            "org_scope": {self.organization},
+            "school_scope": {self.school},
+        }
+        allowed_doc = {"organization": self.organization, "school": self.school}
+        sibling_doc = {"organization": self.organization, "school": "Sibling School"}
+
+        with (
+            patch(
+                "ifitwala_ed.admission.doctype.applicant_review_rule.applicant_review_rule.get_admissions_file_staff_scope",
+                return_value=scope,
+            ),
+            patch(
+                "ifitwala_ed.admission.doctype.applicant_review_rule.applicant_review_rule.frappe.get_roles",
+                return_value=["Admission Manager"],
+            ),
+        ):
+            self.assertTrue(has_permission(allowed_doc, ptype="write", user="manager@example.com"))
+            self.assertFalse(has_permission(sibling_doc, ptype="read", user="manager@example.com"))
+
+    def test_has_permission_keeps_admission_officer_read_only(self):
+        scope = {
+            "allowed": True,
+            "bypass": False,
+            "org_scope": {self.organization},
+            "school_scope": {self.school},
+        }
+        doc = {"organization": self.organization, "school": self.school}
+
+        with (
+            patch(
+                "ifitwala_ed.admission.doctype.applicant_review_rule.applicant_review_rule.get_admissions_file_staff_scope",
+                return_value=scope,
+            ),
+            patch(
+                "ifitwala_ed.admission.doctype.applicant_review_rule.applicant_review_rule.frappe.get_roles",
+                return_value=["Admission Officer"],
+            ),
+        ):
+            self.assertTrue(has_permission(doc, ptype="read", user="officer@example.com"))
+            self.assertFalse(has_permission(doc, ptype="write", user="officer@example.com"))
 
     def _create_organization(self, name: str) -> str:
         doc = frappe.get_doc(

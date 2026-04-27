@@ -279,6 +279,7 @@ class TestContactPermissions(FrappeTestCase):
             condition = contact_utils.contact_permission_query_conditions("admissions.manager@example.com")
 
         self.assertIn("Student Applicant", condition)
+        self.assertIn("applicant_contact", condition)
         self.assertIn("Student", condition)
         self.assertIn("Guardian", condition)
         self.assertIn("SCH-ROOT", condition)
@@ -296,6 +297,28 @@ class TestContactPermissions(FrappeTestCase):
                 "ifitwala_ed.utilities.contact_utils.frappe.get_all",
                 side_effect=[
                     [frappe._dict(link_doctype="Student Applicant", link_name="APP-0001")],
+                    [frappe._dict(name="APP-0001", school="SCH-CHILD", student=None)],
+                ],
+            ),
+        ):
+            self.assertTrue(
+                contact_utils._education_contact_scope_matches(
+                    "CONTACT-0001",
+                    "admissions.manager@example.com",
+                )
+            )
+
+    def test_education_contact_scope_matches_reverse_student_applicant_contact_for_admissions(self):
+        with (
+            patch("ifitwala_ed.utilities.contact_utils.frappe.get_roles", return_value=["Admission Manager"]),
+            patch(
+                "ifitwala_ed.utilities.contact_utils._resolve_education_contact_school_scope",
+                return_value=["SCH-CHILD"],
+            ),
+            patch(
+                "ifitwala_ed.utilities.contact_utils.frappe.get_all",
+                side_effect=[
+                    [],
                     [frappe._dict(name="APP-0001", school="SCH-CHILD", student=None)],
                 ],
             ),
