@@ -40,6 +40,7 @@ def upload_applicant_document(
         applicant_document=applicant_document,
         student_applicant=student_applicant,
         document_type=document_type,
+        applicant_document_item=applicant_document_item,
     )
     item_doc = _resolve_applicant_document_item(
         applicant_document=doc,
