@@ -1,7 +1,7 @@
 # Governed Upload Workflow Examples
 
 Status: Current examples, non-authoritative companion
-Last updated: 2026-04-25
+Last updated: 2026-04-27
 Code refs:
 - `ifitwala_ed/integrations/drive/workflow_specs.py`
 - `ifitwala_ed/integrations/drive/bridge.py`
@@ -101,6 +101,16 @@ workflow_id = "student_log.evidence_attachment"
 workflow_payload = {
     "student_log": student_log_name,
     "row_name": evidence_row_name,
+}
+```
+
+Student self-referral attachment:
+
+```python
+workflow_id = "student_referral.attachment"
+workflow_payload = {
+    "student_referral": referral_name,
+    "slot": attachment_slot,
 }
 ```
 

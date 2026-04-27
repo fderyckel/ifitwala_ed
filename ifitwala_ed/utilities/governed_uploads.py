@@ -89,6 +89,23 @@ def _require_doc(doctype: str, name: str):
     return doc
 
 
+def _require_supporting_material_upload_doc(material: str | None):
+    from ifitwala_ed.curriculum import materials as materials_domain
+
+    material_name = (material or "").strip()
+    if not material_name:
+        frappe.throw(_("Missing document name."))
+
+    doc = frappe.get_doc("Supporting Material", material_name)
+    if not materials_domain.user_can_manage_supporting_material(
+        frappe.session.user,
+        doc.name,
+        course=getattr(doc, "course", None),
+    ):
+        frappe.throw(_("You do not have permission to upload this Supporting Material."), frappe.PermissionError)
+    return doc
+
+
 def _require_clean_saved_doc(doc, *, action_label: str):
     if doc.is_new():
         frappe.throw(_("Please save the document before using {0}.").format(action_label))
@@ -453,7 +470,7 @@ def upload_task_submission_attachment(task_submission: str | None = None, **_kwa
 def upload_supporting_material_file(material: str | None = None, **_kwargs):
     material = material or _get_form_arg("material") or frappe.form_dict.get("docname")
     doc = _require_clean_saved_doc(
-        _require_doc("Supporting Material", material),
+        _require_supporting_material_upload_doc(material),
         action_label=_("Upload Supporting Material"),
     )
 

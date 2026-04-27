@@ -3,6 +3,8 @@
 
 # ifitwala_ed/utilities/portal_utils.py
 
+from __future__ import annotations
+
 from datetime import datetime
 from typing import List
 
@@ -11,7 +13,11 @@ from frappe import _
 from frappe.desk.doctype.notification_log.notification_log import enqueue_create_notification
 from frappe.exceptions import UniqueValidationError  # optional clarity (see next point)
 from frappe.utils import add_to_date, now_datetime, today
-from frappe.utils.file_manager import save_file
+
+from ifitwala_ed.students.doctype.student_referral.attachments import (
+    assert_self_referral_attachment_upload_access,
+    build_student_referral_attachment_slot,
+)
 
 
 def mark_read(user: str, ref_dt: str, ref_dn: str):
@@ -292,27 +298,12 @@ def _ext_ok(filename: str) -> bool:
 @frappe.whitelist(allow_guest=False)
 def upload_self_referral_file(referral_name: str):
     """
-    Attach a single file to a Student Referral created via portal.
+    Attach a single governed file to a Student Referral created via portal.
     Expected multipart/form-data with fields:
     - referral_name: SRF-...
     - file: binary
     """
-    user = frappe.session.user
-    roles = set(frappe.get_roles(user))
-    if "Student" not in roles:
-        frappe.throw(_("Only logged-in students can upload here."), frappe.PermissionError)
-
-    if not referral_name:
-        frappe.throw(_("Missing referral name."))
-
-    try:
-        ref = frappe.get_doc("Student Referral", referral_name)
-    except Exception:
-        frappe.throw(_("Referral not found."))
-
-    # Student can only attach to their own referral
-    if ref.owner != user:
-        frappe.throw(_("You cannot attach files to this referral."), frappe.PermissionError)
+    ref = assert_self_referral_attachment_upload_access(referral_name)
 
     # Pull file
     file_storage = frappe.request.files.get("file")
@@ -323,15 +314,50 @@ def upload_self_referral_file(referral_name: str):
     if not _ext_ok(filename):
         frappe.throw(_("Only PNG, JPG, JPEG or PDF files are allowed."))
 
-    # Read bytes once to validate size and pass to save_file
+    # Read bytes once for validation and Drive-owned ingest.
     content = file_storage.stream.read()
     size_mb = len(content) / (1024 * 1024.0)
     if size_mb > MAX_MB:
         frappe.throw(_("File is too large. Max {max_mb} MB.").format(max_mb=MAX_MB))
 
-    # Save as PRIVATE file
-    filedoc = save_file(
-        filename=filename, content=content, doctype="Student Referral", name=referral_name, is_private=1, decode=False
+    try:
+        from ifitwala_drive.api import uploads as drive_uploads_api
+    except ImportError as exc:
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
+
+    from ifitwala_ed.utilities.governed_uploads import (
+        _drive_upload_and_finalize,
+        _ensure_file_on_disk,
+        _resolve_upload_mime_type_hint,
     )
 
-    return {"file_url": filedoc.file_url, "file_name": filedoc.file_name, "name": filedoc.name}
+    slot = build_student_referral_attachment_slot(
+        referral_name=ref.name,
+        filename=filename,
+        content=content,
+    )
+    _session_response, finalize_response, file_doc = _drive_upload_and_finalize(
+        create_session_callable=drive_uploads_api.create_upload_session,
+        payload={
+            "workflow_id": "student_referral.attachment",
+            "workflow_payload": {
+                "student_referral": ref.name,
+                "slot": slot,
+            },
+            "filename_original": filename,
+            "mime_type_hint": _resolve_upload_mime_type_hint(filename=filename),
+            "expected_size_bytes": len(content),
+            "upload_source": "Student Portal",
+        },
+        content=content,
+    )
+    _ensure_file_on_disk(file_doc)
+
+    return {
+        "name": file_doc.name,
+        "file_name": file_doc.file_name,
+        "file_size": file_doc.file_size,
+        "drive_file_id": finalize_response.get("drive_file_id"),
+        "canonical_ref": finalize_response.get("canonical_ref"),
+        "preview_status": finalize_response.get("preview_status"),
+    }

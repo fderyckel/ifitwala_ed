@@ -9,10 +9,12 @@ const EMPLOYEE_IMAGE_RETRY_MS = 5000;
 frappe.listview_settings["Employee"] = {
 	add_fields: ["employment_status", "department", "designation", "employee_image"],
 	onload(listview) {
+		strip_employee_link_title_joins(listview);
 		if (listview.__employee_image_cache) return;
 		listview.__employee_image_cache = Object.create(null);
 	},
 	refresh(listview) {
+		strip_employee_link_title_joins(listview);
 		const rows = Array.isArray(listview.data) ? listview.data : [];
 		const cache = listview.__employee_image_cache || (listview.__employee_image_cache = Object.create(null));
 		const now = Date.now();
@@ -93,3 +95,19 @@ frappe.listview_settings["Employee"] = {
 		return indicator;
 	},
 };
+
+function strip_employee_link_title_joins(listview) {
+	if (!listview || listview.__employee_title_joins_stripped) return;
+
+	const blockedFields = new Set(["designation.designation_name as designation_designation_name"]);
+	const originalGetFields = listview.get_fields.bind(listview);
+	listview.get_fields = function () {
+		return originalGetFields().filter((field) => !blockedFields.has(field));
+	};
+
+	if (listview.link_field_title_fields) {
+		delete listview.link_field_title_fields.designation;
+	}
+
+	listview.__employee_title_joins_stripped = true;
+}

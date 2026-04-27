@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date, datetime
 
 import frappe
 
@@ -10,6 +11,8 @@ TEST_CHILD_SCHOOL = "_Test Ifitwala Child School"
 TEST_ACADEMIC_YEAR = "_Test Ifitwala AY"
 TEST_TERM = "_Test Ifitwala Term"
 TEST_GRADE_SCALE = "_Test Ifitwala Grade Scale"
+TEST_ACADEMIC_YEAR_START_DATE = "2026-01-01"
+TEST_ACADEMIC_YEAR_END_DATE = "2026-12-31"
 
 
 @dataclass(frozen=True)
@@ -66,6 +69,8 @@ class IfitwalaBootstrapTestData:
     def _values_match(actual, expected) -> bool:
         if expected is None:
             return actual in (None, "")
+        if isinstance(actual, (date, datetime)) and isinstance(expected, str):
+            return actual.isoformat() == expected
         return actual == expected
 
     @staticmethod
@@ -152,6 +157,14 @@ class IfitwalaBootstrapTestData:
 
     @staticmethod
     def _ensure_academic_year(academic_year_name: str, *, school: str) -> str:
+        expected = {
+            "academic_year_name": academic_year_name,
+            "school": school,
+            "year_start_date": TEST_ACADEMIC_YEAR_START_DATE,
+            "year_end_date": TEST_ACADEMIC_YEAR_END_DATE,
+            "archived": 0,
+            "visible_to_admission": 1,
+        }
         existing = frappe.db.get_value(
             "Academic Year",
             {
@@ -161,15 +174,21 @@ class IfitwalaBootstrapTestData:
             "name",
         )
         if existing:
+            current = frappe.db.get_value("Academic Year", existing, list(expected), as_dict=True) or {}
+            updates = {
+                fieldname: expected_value
+                for fieldname, expected_value in expected.items()
+                if not IfitwalaBootstrapTestData._values_match(current.get(fieldname), expected_value)
+            }
+            if updates:
+                frappe.db.set_value("Academic Year", existing, updates, update_modified=False)
+            IfitwalaBootstrapTestData._assert_existing_record("Academic Year", existing, expected)
             return existing
 
         doc = frappe.get_doc(
             {
                 "doctype": "Academic Year",
-                "academic_year_name": academic_year_name,
-                "school": school,
-                "archived": 0,
-                "visible_to_admission": 1,
+                **expected,
             }
         )
         doc.insert(ignore_permissions=True)
@@ -177,6 +196,16 @@ class IfitwalaBootstrapTestData:
 
     @staticmethod
     def _ensure_term(term_name: str, *, academic_year: str, school: str) -> str:
+        expected = {
+            "academic_year": academic_year,
+            "term_name": term_name,
+            "school": school,
+            "term_start_date": TEST_ACADEMIC_YEAR_START_DATE,
+            "term_end_date": TEST_ACADEMIC_YEAR_END_DATE,
+            "term_type": "Academic",
+            "archived": 0,
+            "visible_to_admission": 1,
+        }
         existing = frappe.db.get_value(
             "Term",
             {
@@ -187,17 +216,21 @@ class IfitwalaBootstrapTestData:
             "name",
         )
         if existing:
+            current = frappe.db.get_value("Term", existing, list(expected), as_dict=True) or {}
+            updates = {
+                fieldname: expected_value
+                for fieldname, expected_value in expected.items()
+                if not IfitwalaBootstrapTestData._values_match(current.get(fieldname), expected_value)
+            }
+            if updates:
+                frappe.db.set_value("Term", existing, updates, update_modified=False)
+            IfitwalaBootstrapTestData._assert_existing_record("Term", existing, expected)
             return existing
 
         doc = frappe.get_doc(
             {
                 "doctype": "Term",
-                "academic_year": academic_year,
-                "term_name": term_name,
-                "school": school,
-                "term_type": "Academic",
-                "archived": 0,
-                "visible_to_admission": 1,
+                **expected,
             }
         )
         doc.insert(ignore_permissions=True)

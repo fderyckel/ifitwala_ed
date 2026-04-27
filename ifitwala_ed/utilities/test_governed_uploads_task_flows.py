@@ -379,7 +379,7 @@ class TestGovernedUploadTaskFlows(TestCase):
                 upload_supporting_material=drive_materials_api.upload_supporting_material,
             ):
                 with (
-                    patch.object(governed_uploads, "_require_doc", return_value=doc),
+                    patch.object(governed_uploads, "_require_supporting_material_upload_doc", return_value=doc),
                     patch.object(governed_uploads, "_require_clean_saved_doc", return_value=doc),
                     patch.object(
                         governed_uploads,

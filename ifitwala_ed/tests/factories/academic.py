@@ -5,6 +5,9 @@ from __future__ import annotations
 import frappe
 from frappe.utils import nowdate
 
+DEFAULT_TEST_ACADEMIC_YEAR_START_DATE = "2026-01-01"
+DEFAULT_TEST_ACADEMIC_YEAR_END_DATE = "2026-12-31"
+
 
 def make_academic_year(school: str, prefix: str = "AY"):
     ay = frappe.get_doc(
@@ -12,6 +15,8 @@ def make_academic_year(school: str, prefix: str = "AY"):
             "doctype": "Academic Year",
             "academic_year_name": f"{prefix} {frappe.generate_hash(length=6)}",
             "school": school,
+            "year_start_date": DEFAULT_TEST_ACADEMIC_YEAR_START_DATE,
+            "year_end_date": DEFAULT_TEST_ACADEMIC_YEAR_END_DATE,
         }
     )
     ay.insert()

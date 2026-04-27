@@ -188,7 +188,7 @@ def create_file_material_record(
     material.description = _normalize_text(description) or None
     material.modality = normalize_material_modality(modality)
     material.flags.allow_missing_file = True
-    material.insert()
+    material.insert(ignore_permissions=True)
     return material
 
 
@@ -214,7 +214,7 @@ def create_reference_material(
     material.reference_url = validate_reference_url(reference_url)
     material.description = _normalize_text(description) or None
     material.modality = normalize_material_modality(modality)
-    material.insert()
+    material.insert(ignore_permissions=True)
 
     placement = create_material_placement(
         supporting_material=material.name,
@@ -251,7 +251,7 @@ def create_material_placement(
     placement.origin = normalize_material_origin(origin, anchor_doctype=anchor_doctype)
     placement.placement_note = _normalize_text(placement_note) or None
     placement.placement_order = placement_order
-    placement.insert()
+    placement.insert(ignore_permissions=True)
     return placement
 
 

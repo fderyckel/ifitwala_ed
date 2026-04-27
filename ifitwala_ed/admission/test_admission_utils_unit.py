@@ -28,7 +28,9 @@ def _admission_utils_module():
 
     policy_scope_utils = ModuleType("ifitwala_ed.governance.policy_scope_utils")
     policy_scope_utils.get_organization_ancestors_including_self = lambda *args, **kwargs: []
+    policy_scope_utils.get_organization_descendants_including_self = lambda *args, **kwargs: []
     policy_scope_utils.get_school_ancestors_including_self = lambda *args, **kwargs: []
+    policy_scope_utils.get_school_descendants_including_self = lambda *args, **kwargs: []
 
     school_tree = ModuleType("ifitwala_ed.utilities.school_tree")
     school_tree.get_descendant_schools = lambda *args, **kwargs: []

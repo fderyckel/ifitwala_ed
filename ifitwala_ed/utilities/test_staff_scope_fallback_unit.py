@@ -219,6 +219,8 @@ class TestStaffScopeFallbackUnit(TestCase):
                 patch.object(
                     contact_utils, "_resolve_academic_contact_org_scope", return_value=["ORG-ROOT", "ORG-CHILD"]
                 ),
+                patch.object(contact_utils, "_resolve_education_contact_school_scope", return_value=[]),
+                patch.object(contact_utils, "_resolve_education_contact_org_scope", return_value=[]),
             ):
                 condition = contact_utils.contact_permission_query_conditions("academic.admin@example.com")
 

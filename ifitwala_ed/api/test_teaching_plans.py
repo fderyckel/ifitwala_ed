@@ -80,6 +80,16 @@ def _teaching_plans_module():
     planning_domain.replace_unit_plan_standards = lambda doc, rows: doc.set("standards", rows)
     planning_domain.ensure_linked_unit_plan_standards = lambda doc: None
 
+    def _create_student_group_class_delivery(student_group, *, course_plan=None, activate=1):
+        doc = frappe.new_doc("Class Teaching Plan")
+        doc.student_group = student_group
+        doc.course_plan = course_plan
+        doc.planning_status = "Active" if planning_domain.normalize_flag(activate) else "Draft"
+        doc.insert(ignore_permissions=True)
+        return {"class_teaching_plan": doc.name}
+
+    planning_domain.create_student_group_class_delivery = _create_student_group_class_delivery
+
     def _replace_unit_plan_reflections(doc, rows, course_plan_row=None):
         defaults = course_plan_row or {}
         doc.set(
