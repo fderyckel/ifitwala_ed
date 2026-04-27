@@ -29,6 +29,13 @@ def _insert_user_without_notifications(user):
         return user.insert(ignore_permissions=True)
 
 
+def _admission_settings_has_field(fieldname: str) -> bool:
+    try:
+        return bool(frappe.get_meta("Admission Settings").has_field(fieldname))
+    except Exception:
+        return False
+
+
 class TestAdmissionsDocumentItems(FrappeTestCase):
     def setUp(self):
         self._welcome_mail_patcher = patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user")
@@ -38,6 +45,7 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
         frappe.set_user("Administrator")
         self._created: list[tuple[str, str]] = []
         self._ensure_role("Admissions Applicant")
+        self._ensure_role("Admissions Family")
 
         self.organization = self._create_organization()
         self.school = self._create_school(self.organization)
@@ -182,6 +190,38 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
         self.assertTrue(bool(row))
         self.assertTrue(bool(row.get("item_key")))
         self.assertTrue(bool(row.get("item_label")))
+
+    def test_family_workspace_user_can_upload_applicant_document_without_doctype_docperm(self):
+        if not _admission_settings_has_field("admissions_access_mode"):
+            self.skipTest("Admission Settings.admissions_access_mode is required for family workspace tests.")
+
+        previous_mode = frappe.db.get_single_value("Admission Settings", "admissions_access_mode")
+        family_user = self._create_family_user()
+        self._link_family_user_to_applicant(family_user)
+        frappe.db.set_single_value("Admission Settings", "admissions_access_mode", "Family Workspace")
+
+        try:
+            frappe.set_user(family_user)
+            with self._patched_drive_admissions_bridge():
+                payload = upload_applicant_document(
+                    student_applicant=self.applicant.name,
+                    document_type=self.document_type,
+                    item_key="family_transcript",
+                    item_label="Family uploaded transcript",
+                    file_name="family-transcript.txt",
+                    content=self._tiny_file_base64(),
+                )
+        finally:
+            frappe.set_user("Administrator")
+            frappe.db.set_single_value(
+                "Admission Settings",
+                "admissions_access_mode",
+                previous_mode or "Single Applicant Workspace",
+            )
+
+        self.assertTrue(payload.get("ok"))
+        self.assertTrue(payload.get("applicant_document"))
+        self.assertTrue(payload.get("applicant_document_item"))
 
     def test_resolve_applicant_document_from_item_without_document_type(self):
         frappe.set_user(self.applicant_user)
@@ -370,6 +410,41 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
         self._created.append(("User", user.name))
         frappe.clear_cache(user=user.name)
         return user.name
+
+    def _create_family_user(self) -> str:
+        email = f"portal-family-doc-item-{frappe.generate_hash(length=8)}@example.com"
+        user = frappe.get_doc(
+            {
+                "doctype": "User",
+                "email": email,
+                "first_name": "Portal",
+                "last_name": "Family",
+                "enabled": 1,
+                "send_welcome_email": 0,
+                "roles": [{"role": "Admissions Family"}],
+            }
+        )
+        user.flags.no_welcome_mail = True
+        user = _insert_user_without_notifications(user)
+        self._created.append(("User", user.name))
+        frappe.clear_cache(user=user.name)
+        return user.name
+
+    def _link_family_user_to_applicant(self, family_user: str) -> None:
+        self.applicant.append(
+            "guardians",
+            {
+                "user": family_user,
+                "relationship": "Parent",
+                "can_consent": 1,
+                "is_primary": 1,
+                "is_primary_guardian": 1,
+                "guardian_first_name": "Portal",
+                "guardian_last_name": "Family",
+                "guardian_email": family_user,
+            },
+        )
+        self.applicant.save(ignore_permissions=True)
 
     def _create_applicant(self, organization: str, school: str, applicant_user: str):
         doc = frappe.get_doc(

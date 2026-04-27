@@ -23,13 +23,14 @@ It is configuration, not a task queue. Tasks are materialized later into `Applic
 ## Permission Matrix
 
 Status: Implemented
-Code refs: `ifitwala_ed/admission/doctype/applicant_review_rule/applicant_review_rule.py`, `ifitwala_ed/hooks.py`
+Code refs: `ifitwala_ed/admission/doctype/applicant_review_rule/applicant_review_rule.py`, `ifitwala_ed/admission/doctype/applicant_review_rule/applicant_review_rule_list.js`, `ifitwala_ed/hooks.py`
 Test refs: `ifitwala_ed/admission/doctype/applicant_review_rule/test_applicant_review_rule.py`
 
 - `Admission Manager`, `Academic Admin`, and `System Manager` can create and manage rules in their authorized organization/school scope.
 - `Admission Officer` can read and report on rules in their authorized organization/school scope.
 - System-level users keep the normal administrative bypass.
 - Desk list and report views use the same scoped permission hook; sibling school rules are not visible.
+- Desk list view does not request the Program Offering linked title field, keeping its query shape aligned with report view.
 
 ## Target Types and Scope
 

@@ -343,7 +343,7 @@ def _resolve_applicant_document(
             "document_type": document_type,
         }
     )
-    doc.insert()
+    doc.insert(ignore_permissions=True)
     return doc
 
 
@@ -454,7 +454,7 @@ def _resolve_applicant_document_item(
             "item_label": requested_label,
         }
     )
-    item_doc.insert()
+    item_doc.insert(ignore_permissions=True)
     return item_doc
 
 

@@ -551,6 +551,17 @@ Bootstrap is deprecated legacy and must not be extended in touched code.
 - Validate routed-page layout changes against sibling pages in the same surface, not only the touched page by itself.
 - If a shell/container contract must change, update the authoritative SPA docs in the same approved change before editing affected page roots.
 
+### 8.4 Frappe Desk List View Query Parity
+
+When a DocType works in Report view but not List view:
+
+- compare the exact `frappe.desk.reportview.get` request payloads before changing permissions or server workflow code
+- treat extra List-view fields as query-shape changes, especially generated linked-title fields such as `link_field.title_field as link_field_title_field`
+- remember that Frappe v16 adds linked-title joins for Link fields whose target DocType has `show_title_field_in_link = 1`
+- if that generated linked-title field is unnecessary and causes List/Report divergence, fix the DocType list view by stripping or handling that field explicitly
+- do not confuse `List Filter` requests with record queries; an empty `List Filter` response only means no saved filter presets exist
+- add or update focused regression coverage and docs when list/report parity depends on a custom list-view query shape
+
 ---
 
 ## 9. API / Workflow Design
