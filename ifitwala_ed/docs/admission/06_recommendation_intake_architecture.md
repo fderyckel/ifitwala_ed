@@ -43,6 +43,10 @@ Key fields:
 - `otp_enforced`
 - `applicant_can_view_status`
 - `template_fields` child rows (`field_key`, `label`, `field_type`, `is_required`, `options_json`, `help_text`)
+  - supported field types: `Data`, `Small Text`, `Long Text`, `Select`, `Check`, `Section Header`, `Likert Scale`
+  - `Section Header` is display-only; it groups the recommender form and never creates an answer row
+  - `Likert Scale` renders as a matrix/radio grid for recommender ease-of-clicking; staff configure it through the template form builder, while `options_json` stores normalized internal `columns` and `rows` with stable keys plus display labels
+  - Likert submissions store stable option/row keys in `answers_json`; review payloads return labels and matrix metadata so staff see human-readable responses
 
 ### 2.2 Recommendation Request
 

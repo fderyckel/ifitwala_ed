@@ -2001,12 +2001,7 @@ function render_recommendation_review_dialog(payload) {
 	`).join("");
 
 	const answerBody = answers.length
-		? answers.map((answer) => `
-			<div style="border:1px solid #d7dce2;border-radius:12px;padding:12px;background:#fff;margin-bottom:8px;">
-				<div class="text-muted" style="font-size:12px;margin-bottom:4px;">${escape_html(String(answer?.label || answer?.field_key || __("Answer")))}</div>
-				<div style="white-space:pre-wrap;">${escape_html(String(answer?.display_value || (answer?.has_value ? answer?.value || "" : __("No response"))))}</div>
-			</div>
-		`).join("")
+		? answers.map((answer) => render_recommendation_answer_card(answer)).join("")
 		: `<div class="text-muted">${escape_html(__("No structured answers were captured for this recommendation."))}</div>`;
 
 	const reviewActions = canReview
@@ -2056,6 +2051,63 @@ function render_recommendation_review_dialog(payload) {
 			</div>
 			${reviewActions}
 		</div>
+	`;
+}
+
+function render_recommendation_answer_card(answer) {
+	const fieldType = String(answer?.field_type || "").trim();
+	const label = escape_html(String(answer?.label || answer?.field_key || __("Answer")));
+	if (fieldType === "Likert Scale") {
+		return `
+			<div style="border:1px solid #d7dce2;border-radius:12px;padding:12px;background:#fff;margin-bottom:8px;">
+				<div class="text-muted" style="font-size:12px;margin-bottom:8px;">${label}</div>
+				${render_recommendation_likert_answer(answer)}
+			</div>
+		`;
+	}
+
+	return `
+		<div style="border:1px solid #d7dce2;border-radius:12px;padding:12px;background:#fff;margin-bottom:8px;">
+			<div class="text-muted" style="font-size:12px;margin-bottom:4px;">${label}</div>
+			<div style="white-space:pre-wrap;">${escape_html(String(answer?.display_value || (answer?.has_value ? answer?.value || "" : __("No response"))))}</div>
+		</div>
+	`;
+}
+
+function render_recommendation_likert_answer(answer) {
+	const columns = Array.isArray(answer?.likert_columns) ? answer.likert_columns : [];
+	const rows = Array.isArray(answer?.likert_rows) ? answer.likert_rows : [];
+	const value = answer?.value && typeof answer.value === "object" ? answer.value : {};
+	if (!columns.length || !rows.length) {
+		return `<div style="white-space:pre-wrap;">${escape_html(String(answer?.display_value || __("No response")))}</div>`;
+	}
+
+	const selectedLabels = {};
+	columns.forEach((column) => {
+		selectedLabels[String(column?.key || "")] = String(column?.label || "");
+	});
+
+	const body = rows.map((row) => {
+		const selectedKey = String(value[String(row?.key || "")] || "");
+		const selectedLabel = selectedLabels[selectedKey] || __("No response");
+		return `
+			<tr>
+				<td style="padding:6px 8px;border-bottom:1px solid #edf0f4;font-weight:600;">${escape_html(String(row?.label || ""))}</td>
+				<td style="padding:6px 8px;border-bottom:1px solid #edf0f4;">${escape_html(selectedLabel)}</td>
+			</tr>
+		`;
+	}).join("");
+
+	return `
+		<table style="width:100%;border-collapse:collapse;">
+			<thead>
+				<tr>
+					<th style="padding:6px 8px;border-bottom:1px solid #d7dce2;text-align:left;">${escape_html(__("Skill / Attribute"))}</th>
+					<th style="padding:6px 8px;border-bottom:1px solid #d7dce2;text-align:left;">${escape_html(__("Response"))}</th>
+				</tr>
+			</thead>
+			<tbody>${body}</tbody>
+		</table>
 	`;
 }
 

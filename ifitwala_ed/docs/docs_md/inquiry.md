@@ -3,8 +3,8 @@ title: "Inquiry: Managing Website Visitor Intake"
 slug: inquiry
 category: Admission
 doc_order: 2
-version: "1.4.9"
-last_change_date: "2026-04-27"
+version: "1.5.0"
+last_change_date: "2026-04-28"
 summary: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
 seo_title: "Inquiry: Managing Website Visitor Intake"
 seo_description: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
@@ -22,6 +22,7 @@ seo_description: "Capture, assign, and track incoming website inquiries with SLA
 
 - Centralizes inbound questions from community users and prospective applicants.
 - Captures lead source across public website submissions and staff-entered leads from channels such as WhatsApp, Line, Facebook, open days, referrals, and agents.
+- Shows lightweight conditional lead fields when the inquiry type is admission, current-family, or partnership/agent.
 - Assigns ownership to scoped staff users when operational follow-up is needed.
 - Gives staff a lightweight `Next Action Note` for the next planned follow-up without changing the original inquiry message.
 - Tracks first-contact and follow-up deadlines with SLA status.
@@ -55,9 +56,11 @@ Allowed transitions are strictly server-validated:
   <Do>Use `Assign`/`Reassign` actions so ownership, SLA fields, and ToDo artifacts stay consistent.</Do>
   <Do>Treat `Assigned To` as the latest assignee history field; it persists after `Contacted` and updates on reassignment.</Do>
   <Do>Use `Source` when creating inquiries from WhatsApp, Line, Facebook, referrals, agents, open days, or other non-website channels.</Do>
+  <Do>Use admission-interest fields only as lead context; confirm authoritative school, program, and applicant profile data during applicant creation/review.</Do>
   <Do>Use `Next Action Note` for the next planned staff action; keep the original visitor text in `Message` unchanged.</Do>
   <Do>Move state with named actions (`Mark Contacted`, `Qualify`, `Archive`) so server transition rules and metrics are enforced.</Do>
   <Dont>Manually edit workflow fields to skip required transitions.</Dont>
+  <Dont>Treat student-name, grade, program, or language preferences on Inquiry as applicant truth.</Dont>
   <Dont>Treat every inquiry as admissions conversion; convert only when it is actually admissions-relevant.</Dont>
 </DoDont>
 
@@ -76,6 +79,10 @@ Allowed transitions are strictly server-validated:
 - **Public web form**: `/apply/inquiry` creates Inquiry records from visitor submissions and shows a post-submit confirmation message; when Organization is selected, confirmation copy references that organization.
   - `Organization` remains optional and visible so prospects can choose context when useful; admissions users can adjust it later.
   - public web submissions default `Source` to `Website`.
+  - `Type of Inquiry` supports `Admission`, `Current Family`, `General Inquiry`, `Partnership / Agent`, and `Other`.
+  - admission inquiries show student name, intended academic year, grade-level interest, and program-interest fields.
+  - current-family inquiries show student name/ID and relationship-to-student fields.
+  - partnership/agent inquiries show organization name and partnership context fields.
 - **Manual lead capture**: admissions users can create `Inquiry` directly in Desk for leads received through WhatsApp, Line, Facebook, open days, referrals, agents, or other channels, then set `Source` and `Next Action Note` before assignment.
   - Admissions Cockpit exposes a `New Inquiry` shortcut for users with Inquiry creation rights.
 - **Notifications**:
@@ -160,17 +167,18 @@ Action-level guard in server code: assignment/reassignment require admissions pe
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-04-26)
+### Latest Technical Snapshot (2026-04-28)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/inquiry/inquiry.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/inquiry/inquiry.py`
 - **Required fields (`reqd=1`)**: none at schema level; controller/workflow rules enforce operational completeness where applicable.
-- **Manual lead fields**: `source` (`Website`, `WhatsApp`, `Line`, `Facebook`, `Open Day`, `Referral`, `Agent`, `Other`) and `next_action_note`.
+- **Manual lead fields**: `source` (`Website`, `WhatsApp`, `Line`, `Facebook`, `Open Day`, `Referral`, `Agent`, `Other`), contact preferences, dynamic inquiry-type fields, and `next_action_note`.
 - **Indexed lookup fields**: `email`, `phone_number`, `source`, `workflow_state`, `first_contact_due_on`, `followup_due_on`.
 - **Lifecycle hooks in controller**: `validate`, `before_insert`, `after_insert`, `before_save`
 - **Operational/public methods**: `mark_assigned`, `mark_qualified`, `archive`, `set_contact_metrics`, `create_contact_from_inquiry`, `mark_contacted`
 - **Workflow-state contract**: only canonical Inquiry states are accepted (`New`, `Assigned`, `Contacted`, `Qualified`, `Archived`); no legacy state alias normalization in Inquiry controller or Inquiry Desk/list scripts.
 - **Assignment contract**: `assigned_to` is retained as the latest assignee across workflow states (including `Contacted`) and changes only through assignment/reassignment actions.
+- **Inquiry type contract**: `type_of_inquiry` options are `Admission`, `Current Family`, `General Inquiry`, `Partnership / Agent`, and `Other`; type-specific fields are optional triage context only.
 - **Source contract**: public web-form inserts default missing `source` to `Website`; staff-created inquiries may set the appropriate manual lead source.
 - **Completion permission contract**: `mark_contacted` can be executed by Admissions/System users and by the current assigned user.
 - **Record visibility contract**: non-privileged users are query-scoped to assigned Inquiry rows (`assigned_to = session user`) through hooks.
@@ -187,6 +195,7 @@ Action-level guard in server code: assignment/reassignment require admissions pe
   - config file `ifitwala_ed/admission/web_form/inquiry/inquiry.json`
   - route `apply/inquiry` (public form)
   - `organization` remains visible and optional; hidden `source` defaults to `Website`
+  - conditional fields are shown from `type_of_inquiry` for admission, current-family, and partnership/agent context
   - scoped shell assets via `hooks.py` `webform_include_css/js` for `Inquiry`, using app public paths: `public/css/admissions_webform_shell.css` and `public/js/admissions_webform_shell.js`
 - **Staff analytics (SPA)**:
   - page `ifitwala_ed/ui-spa/src/pages/staff/analytics/InquiryAnalytics.vue`

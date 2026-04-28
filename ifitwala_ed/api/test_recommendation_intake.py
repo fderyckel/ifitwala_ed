@@ -227,6 +227,95 @@ class TestRecommendationIntake(FrappeTestCase):
         self.assertEqual((answers[0] or {}).get("label"), "Recommendation Summary")
         self.assertEqual((answers[0] or {}).get("display_value"), "Strong and consistent performance.")
 
+    def test_likert_submission_stores_stable_keys_and_reviews_with_labels(self):
+        template = frappe.get_doc(
+            {
+                "doctype": "Recommendation Template",
+                "template_name": f"Likert Recommendation {frappe.generate_hash(length=5)}",
+                "is_active": 1,
+                "organization": self.organization,
+                "school": self.school,
+                "target_document_type": self.document_type,
+                "minimum_required": 0,
+                "maximum_allowed": 1,
+                "allow_file_upload": 0,
+                "file_upload_required": 0,
+                "otp_enforced": 0,
+                "applicant_can_view_status": 1,
+                "template_fields": [
+                    {
+                        "label": "Academic Skill Ratings",
+                        "field_type": "Section Header",
+                        "help_text": "Rate the applicant based on recent classroom work.",
+                    },
+                    {
+                        "field_key": "academic_skills",
+                        "label": "Academic Skills",
+                        "field_type": "Likert Scale",
+                        "is_required": 1,
+                        "options_json": frappe.as_json(
+                            {
+                                "columns": ["Consistently", "Usually", "Sometimes", "Rarely", "N/A"],
+                                "rows": [
+                                    "Reading Comprehension",
+                                    "Mathematical Problem Solving",
+                                ],
+                            }
+                        ),
+                    },
+                ],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Recommendation Template", template.name))
+
+        frappe.set_user(self.staff_user.name)
+        created = create_recommendation_request(
+            student_applicant=self.applicant.name,
+            recommendation_template=template.name,
+            recommender_name="Ms Matrix",
+            recommender_email=f"matrix-{frappe.generate_hash(length=6)}@example.com",
+            recommender_relationship="Teacher",
+            send_email=0,
+            client_request_id=f"likert-create-{frappe.generate_hash(length=6)}",
+        )
+        recommendation_request = created.get("recommendation_request")
+        self._track_recommendation_artifacts(recommendation_request)
+        token = self._token_from_intake_url(created.get("intake_url"))
+
+        frappe.set_user("Guest")
+        intake_payload = get_recommendation_intake_payload(token=token)
+        fields = (intake_payload.get("template") or {}).get("fields") or []
+        self.assertEqual(fields[0].get("field_type"), "Section Header")
+        self.assertEqual(fields[1].get("field_type"), "Likert Scale")
+        self.assertEqual((fields[1].get("options") or {}).get("columns")[0].get("key"), "consistently")
+
+        submit_recommendation(
+            token=token,
+            answers={
+                "academic_skills": {
+                    "reading_comprehension": "consistently",
+                    "mathematical_problem_solving": "usually",
+                }
+            },
+            attestation_confirmed=1,
+            client_request_id=f"likert-submit-{frappe.generate_hash(length=6)}",
+        )
+
+        frappe.set_user(self.staff_user.name)
+        self._track_recommendation_artifacts(recommendation_request)
+        payload = get_recommendation_review_payload(
+            student_applicant=self.applicant.name,
+            recommendation_request=recommendation_request,
+        )
+        answers = (payload.get("recommendation") or {}).get("answers") or []
+        self.assertEqual(len(answers), 1)
+        answer = answers[0]
+        self.assertEqual(answer.get("field_type"), "Likert Scale")
+        self.assertEqual((answer.get("value") or {}).get("reading_comprehension"), "consistently")
+        self.assertEqual((answer.get("likert_columns") or [])[0].get("label"), "Consistently")
+        self.assertEqual((answer.get("likert_rows") or [])[0].get("label"), "Reading Comprehension")
+        self.assertIn("Reading Comprehension: Consistently", answer.get("display_value") or "")
+
     def test_applicant_cannot_access_staff_review_payload(self):
         submitted = self._create_submitted_recommendation()
 

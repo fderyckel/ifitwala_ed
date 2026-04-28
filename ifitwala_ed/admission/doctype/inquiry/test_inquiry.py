@@ -25,9 +25,14 @@ class TestInquiry(FrappeTestCase):
         self.assertEqual(meta.get_field("phone_number").search_index, 1)
         self.assertEqual(meta.get_field("source").fieldtype, "Select")
         self.assertEqual(meta.get_field("next_action_note").fieldtype, "Small Text")
+        self.assertIn("Current Family", meta.get_field("type_of_inquiry").options)
+        self.assertIn("Partnership / Agent", meta.get_field("type_of_inquiry").options)
         self.assertIn("WhatsApp", meta.get_field("source").options)
         self.assertIn("Line", meta.get_field("source").options)
         self.assertIn("Facebook", meta.get_field("source").options)
+        self.assertEqual(meta.get_field("intended_academic_year").options, "Academic Year")
+        self.assertEqual(meta.get_field("program_interest").options, "Program")
+        self.assertEqual(meta.get_field("partnership_context").fieldtype, "Small Text")
 
     def test_manual_inquiry_can_record_source_and_next_action_note(self):
         doc = self._make_inquiry(

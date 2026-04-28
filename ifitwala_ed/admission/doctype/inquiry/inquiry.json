@@ -22,6 +22,23 @@
   "organization",
   "school",
   "column_break_hdcf",
+  "preferred_contact_channel",
+  "preferred_contact_time",
+  "preferred_language",
+  "consent_to_contact",
+  "admission_interest_section",
+  "student_first_name",
+  "student_last_name",
+  "column_break_admission_interest",
+  "intended_academic_year",
+  "grade_level_interest",
+  "program_interest",
+  "current_family_section",
+  "student_name_or_id",
+  "relationship_to_student",
+  "partnership_section",
+  "organization_name",
+  "partnership_context",
   "message",
   "next_action_note",
   "section_break_olba",
@@ -70,7 +87,7 @@
    "fieldname": "type_of_inquiry",
    "fieldtype": "Select",
    "label": "Type of Inquiry",
-   "options": "Admission\nGeneral Inquiry"
+   "options": "Admission\nCurrent Family\nGeneral Inquiry\nPartnership / Agent\nOther"
   },
   {
    "fieldname": "source",
@@ -259,6 +276,108 @@
    "options": "School"
   },
   {
+   "fieldname": "preferred_contact_channel",
+   "fieldtype": "Select",
+   "label": "Preferred Contact Channel",
+   "options": "\nEmail\nPhone\nWhatsApp\nLine\nOther"
+  },
+  {
+   "fieldname": "preferred_contact_time",
+   "fieldtype": "Data",
+   "label": "Preferred Contact Time"
+  },
+  {
+   "fieldname": "preferred_language",
+   "fieldtype": "Data",
+   "label": "Preferred Language"
+  },
+  {
+   "default": "0",
+   "fieldname": "consent_to_contact",
+   "fieldtype": "Check",
+   "label": "Consent to Contact"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Admission'",
+   "fieldname": "admission_interest_section",
+   "fieldtype": "Section Break",
+   "label": "Admission Interest"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Admission'",
+   "fieldname": "student_first_name",
+   "fieldtype": "Data",
+   "label": "Student First Name"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Admission'",
+   "fieldname": "student_last_name",
+   "fieldtype": "Data",
+   "label": "Student Last Name"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Admission'",
+   "fieldname": "column_break_admission_interest",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Admission'",
+   "fieldname": "intended_academic_year",
+   "fieldtype": "Link",
+   "label": "Intended Academic Year",
+   "options": "Academic Year"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Admission'",
+   "fieldname": "grade_level_interest",
+   "fieldtype": "Data",
+   "label": "Grade Level Interest"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Admission'",
+   "fieldname": "program_interest",
+   "fieldtype": "Link",
+   "label": "Program Interest",
+   "options": "Program"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Current Family'",
+   "fieldname": "current_family_section",
+   "fieldtype": "Section Break",
+   "label": "Current Family Context"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Current Family'",
+   "fieldname": "student_name_or_id",
+   "fieldtype": "Data",
+   "label": "Student Name or ID"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Current Family'",
+   "fieldname": "relationship_to_student",
+   "fieldtype": "Select",
+   "label": "Relationship to Student",
+   "options": "\nParent\nGuardian\nStudent\nRelative\nStaff\nOther"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Partnership / Agent'",
+   "fieldname": "partnership_section",
+   "fieldtype": "Section Break",
+   "label": "Partnership Context"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Partnership / Agent'",
+   "fieldname": "organization_name",
+   "fieldtype": "Data",
+   "label": "Organization Name"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Partnership / Agent'",
+   "fieldname": "partnership_context",
+   "fieldtype": "Small Text",
+   "label": "Partnership Context"
+  },
+  {
    "fieldname": "column_break_hdcf",
    "fieldtype": "Column Break"
   }
@@ -267,7 +386,7 @@
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2026-04-26 11:55:01.000000",
+ "modified": "2026-04-28 08:28:22.000000",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Inquiry",

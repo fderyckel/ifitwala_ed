@@ -240,7 +240,7 @@
 											<div class="flex flex-wrap items-center gap-2">
 												<button
 													type="button"
-													class="rounded-full border border-border/70 bg-white px-3 py-1 type-caption text-ink/70 disabled:opacity-50"
+													class="if-button if-button--secondary"
 													:disabled="isReadOnly || submitting"
 													@click="openVaccinationProofPicker(idx)"
 												>
@@ -253,7 +253,7 @@
 												<button
 													v-if="row.vaccination_proof || row._uploadFileName"
 													type="button"
-													class="rounded-full border border-border/60 bg-white px-3 py-1 type-caption text-ink/60 disabled:opacity-50"
+													class="if-button if-button--quiet"
 													:disabled="isReadOnly || submitting"
 													@click="clearVaccinationProof(idx)"
 												>

@@ -188,6 +188,80 @@ class TestRecommendationTemplate(FrappeTestCase):
             )
             doc.insert(ignore_permissions=True)
 
+    def test_section_header_and_likert_fields_normalize_internal_config(self):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Recommendation Template",
+                "template_name": "Likert Template",
+                "organization": self.organization,
+                "school": self.school,
+                "target_document_type": self.doc_type_single,
+                "template_fields": [
+                    {
+                        "label": "Academic Skill Ratings",
+                        "field_type": "Section Header",
+                        "is_required": 1,
+                        "help_text": "Rate the applicant based on recent classroom work.",
+                    },
+                    {
+                        "field_key": "academic_skills",
+                        "label": "Academic Skills Matrix",
+                        "field_type": "Likert Scale",
+                        "is_required": 1,
+                        "options_json": frappe.as_json(
+                            {
+                                "columns": ["Consistently", "Usually", "Sometimes", "Rarely", "N/A"],
+                                "rows": [
+                                    "Reading Comprehension",
+                                    "Mathematical Problem Solving",
+                                ],
+                            }
+                        ),
+                    },
+                ],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Recommendation Template", doc.name))
+
+        section = doc.template_fields[0]
+        likert = doc.template_fields[1]
+        self.assertEqual(section.field_key, "academic_skill_ratings")
+        self.assertEqual(int(section.is_required or 0), 0)
+
+        config = frappe.parse_json(likert.options_json)
+        self.assertEqual(config["columns"][0], {"key": "consistently", "label": "Consistently"})
+        self.assertEqual(config["columns"][4], {"key": "n_a", "label": "N/A"})
+        self.assertEqual(
+            config["rows"][1],
+            {"key": "mathematical_problem_solving", "label": "Mathematical Problem Solving"},
+        )
+
+    def test_likert_fields_reject_invalid_config(self):
+        with self.assertRaises(frappe.ValidationError):
+            doc = frappe.get_doc(
+                {
+                    "doctype": "Recommendation Template",
+                    "template_name": "Bad Likert Template",
+                    "organization": self.organization,
+                    "school": self.school,
+                    "target_document_type": self.doc_type_single,
+                    "template_fields": [
+                        {
+                            "field_key": "academic_skills",
+                            "label": "Academic Skills",
+                            "field_type": "Likert Scale",
+                            "options_json": frappe.as_json(
+                                {
+                                    "columns": ["Usually"],
+                                    "rows": ["Reading Comprehension"],
+                                }
+                            ),
+                        }
+                    ],
+                }
+            )
+            doc.insert(ignore_permissions=True)
+
         # Duplicate field key
         with self.assertRaises(frappe.ValidationError):
             doc = frappe.get_doc(

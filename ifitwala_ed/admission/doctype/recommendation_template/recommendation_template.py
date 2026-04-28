@@ -11,7 +11,16 @@ from frappe.utils import cint
 from ifitwala_ed.admission.admission_utils import get_applicant_scope_ancestors, is_applicant_document_type_in_scope
 from ifitwala_ed.governance.policy_scope_utils import is_policy_organization_applicable_to_context
 
-ALLOWED_FIELD_TYPES = {"Data", "Small Text", "Long Text", "Select", "Check"}
+ALLOWED_FIELD_TYPES = {
+    "Data",
+    "Small Text",
+    "Long Text",
+    "Select",
+    "Check",
+    "Section Header",
+    "Likert Scale",
+}
+DISPLAY_ONLY_FIELD_TYPES = {"Section Header"}
 MANAGED_RECOMMENDATION_DOC_TYPE_CODE_PREFIX = "recommendation_letter"
 MANAGED_RECOMMENDATION_DOC_TYPE_LABEL = "Recommendation Letter"
 
@@ -180,6 +189,8 @@ class RecommendationTemplate(Document):
             row.options_json = (row.options_json or "").strip()
             row.help_text = (row.help_text or "").strip()
 
+            if not row.field_key and row.label:
+                row.field_key = frappe.scrub(row.label)[:80]
             if not row.field_key:
                 frappe.throw(_("Template field key is required."))
             if not row.label:
@@ -192,3 +203,58 @@ class RecommendationTemplate(Document):
 
             if row.field_type == "Select" and not row.options_json:
                 frappe.throw(_("Template select field {0} must define options.").format(row.label))
+            if row.field_type in DISPLAY_ONLY_FIELD_TYPES:
+                row.is_required = 0
+            if row.field_type == "Likert Scale":
+                row.options_json = frappe.as_json(self._normalize_likert_options(row.label, row.options_json))
+
+    def _normalize_likert_options(self, field_label: str, options_json: str) -> dict:
+        if not options_json:
+            frappe.throw(_("Likert Scale field {0} must define scale options and rows.").format(field_label))
+
+        try:
+            config = frappe.parse_json(options_json)
+        except Exception:
+            config = None
+        if not isinstance(config, dict):
+            frappe.throw(_("Likert Scale field {0} options must be valid JSON.").format(field_label))
+
+        columns = self._normalize_keyed_options(
+            config.get("columns"),
+            label=_("scale options for {0}").format(field_label),
+            minimum=2,
+        )
+        rows = self._normalize_keyed_options(
+            config.get("rows"),
+            label=_("rows for {0}").format(field_label),
+            minimum=1,
+        )
+
+        return {
+            "version": 1,
+            "columns": columns,
+            "rows": rows,
+        }
+
+    def _normalize_keyed_options(self, values, *, label: str, minimum: int) -> list[dict]:
+        if not isinstance(values, list) or len(values) < minimum:
+            frappe.throw(_("{0} must include at least {1} entries.").format(label, minimum))
+
+        normalized = []
+        seen = set()
+        for value in values:
+            if isinstance(value, dict):
+                option_label = (value.get("label") or value.get("key") or "").strip()
+                key = frappe.scrub((value.get("key") or option_label).strip())[:80]
+            else:
+                option_label = str(value or "").strip()
+                key = frappe.scrub(option_label)[:80]
+
+            if not key or not option_label:
+                frappe.throw(_("{0} cannot include blank entries.").format(label))
+            if key in seen:
+                frappe.throw(_("{0} cannot include duplicate key: {1}.").format(label, key))
+            seen.add(key)
+            normalized.append({"key": key, "label": option_label})
+
+        return normalized

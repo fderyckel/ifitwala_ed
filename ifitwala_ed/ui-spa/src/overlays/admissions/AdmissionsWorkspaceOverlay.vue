@@ -1262,7 +1262,38 @@
 																<p class="type-caption text-ink/60">
 																	{{ answer.label }}
 																</p>
-																<p class="mt-1 type-body whitespace-pre-wrap text-ink">
+																<div
+																	v-if="isLikertAnswer(answer)"
+																	class="mt-2 overflow-hidden rounded-lg border border-border/60"
+																>
+																	<table class="w-full border-collapse text-sm">
+																		<thead class="bg-slate-50">
+																			<tr>
+																				<th class="px-3 py-2 text-left font-semibold text-ink/70">
+																					Skill / Attribute
+																				</th>
+																				<th class="px-3 py-2 text-left font-semibold text-ink/70">
+																					Response
+																				</th>
+																			</tr>
+																		</thead>
+																		<tbody>
+																			<tr
+																				v-for="row in answer.likert_rows || []"
+																				:key="String(row.key || '')"
+																				class="border-t border-border/50"
+																			>
+																				<td class="px-3 py-2 font-medium text-ink">
+																					{{ row.label }}
+																				</td>
+																				<td class="px-3 py-2 text-ink/80">
+																					{{ likertResponseLabel(answer, row.key) }}
+																				</td>
+																			</tr>
+																		</tbody>
+																	</table>
+																</div>
+																<p v-else class="mt-1 type-body whitespace-pre-wrap text-ink">
 																	{{
 																		answer.display_value ||
 																		(answer.has_value ? String(answer.value || '') : 'No response')
@@ -1437,6 +1468,7 @@ import type {
 	InterviewWorkspaceInterview,
 	InterviewWorkspaceGuardian,
 	InterviewWorkspaceResponse,
+	RecommendationReviewAnswer,
 	RecommendationReviewPayload,
 	RecommendationReviewRow,
 } from '@/types/contracts/admissions/admissions_workspace';
@@ -2665,6 +2697,29 @@ function formatTimelineContent(content?: string | null) {
 			fallback: match,
 		})
 	);
+}
+
+function isLikertAnswer(answer: RecommendationReviewAnswer) {
+	return (
+		String(answer?.field_type || '').trim() === 'Likert Scale' &&
+		Array.isArray(answer?.likert_rows) &&
+		Array.isArray(answer?.likert_columns)
+	);
+}
+
+function likertResponseLabel(answer: RecommendationReviewAnswer, rowKey?: string | null) {
+	const value =
+		answer.value && typeof answer.value === 'object'
+			? (answer.value as Record<string, unknown>)
+			: {};
+	const selectedKey = String(value[String(rowKey || '')] || '').trim();
+	if (!selectedKey) {
+		return 'No response';
+	}
+	const column = (answer.likert_columns || []).find(
+		item => String(item?.key || '').trim() === selectedKey
+	);
+	return String(column?.label || selectedKey);
 }
 
 function formatInterviewStart(item: InterviewWorkspaceInterview) {

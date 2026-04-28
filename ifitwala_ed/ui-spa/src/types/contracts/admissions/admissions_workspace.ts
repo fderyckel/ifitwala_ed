@@ -305,6 +305,8 @@ export interface RecommendationReviewAnswer {
 	value?: unknown
 	display_value?: string | null
 	has_value?: boolean
+	likert_columns?: Array<{ key?: string | null; label?: string | null }>
+	likert_rows?: Array<{ key?: string | null; label?: string | null }>
 }
 
 export interface RecommendationReviewPayload {

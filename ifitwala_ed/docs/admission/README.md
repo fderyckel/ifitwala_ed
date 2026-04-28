@@ -23,6 +23,11 @@ Read in this order for current runtime:
 - `08_admission_program_enrollment_request_proposal.md`
   implemented applicant-to-enrollment bridge despite the historical filename
 
+Partial / planned target contracts:
+
+- `11_admissions_crm_contract.md`
+  Inquiry dynamic capture is partially implemented; CRM DocTypes, external-channel messaging, media conversion, and Inbox storage boundary remain planned until implemented
+
 Supporting current-state notes:
 
 - `03_portal_files_gdpr.md`

@@ -66,13 +66,23 @@
 								<input
 									ref="fileInput"
 									type="file"
-									class="block w-full type-caption text-ink"
+									class="hidden"
 									:disabled="isReadOnly || submitting"
 									@change="onFileSelected"
 								/>
-								<p class="mt-2 type-caption text-ink/55">
-									{{ selectedFile?.name || __('Choose a file to upload.') }}
-								</p>
+								<div class="flex flex-wrap items-center gap-3">
+									<button
+										type="button"
+										class="if-button if-button--secondary"
+										:disabled="isReadOnly || submitting"
+										@click="openFilePicker"
+									>
+										{{ selectedFile ? __('Change file') : __('Choose file') }}
+									</button>
+									<p class="type-caption text-ink/65">
+										{{ selectedFile?.name || __('No file selected yet.') }}
+									</p>
+								</div>
 								<InlineUploadStatus
 									v-if="uploadProgress"
 									class="mt-3"
@@ -120,14 +130,14 @@
 							<div class="flex items-center gap-3">
 								<button
 									type="button"
-									class="rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/70"
+									class="if-button if-button--secondary"
 									@click="emitClose('programmatic')"
 								>
 									{{ __('Cancel') }}
 								</button>
 								<button
 									type="button"
-									class="rounded-full bg-ink px-5 py-2 type-caption text-white shadow-soft disabled:opacity-50"
+									class="if-button if-button--primary"
 									:disabled="isReadOnly || submitting"
 									@click="submit"
 								>
@@ -296,6 +306,11 @@ function onFileSelected(event: Event) {
 	const target = event.target as HTMLInputElement | null;
 	const file = target?.files?.[0] || null;
 	selectedFile.value = file;
+}
+
+function openFilePicker() {
+	if (isReadOnly.value || submitting.value) return;
+	fileInput.value?.click();
 }
 
 async function submit() {

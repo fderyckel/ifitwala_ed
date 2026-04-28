@@ -37,6 +37,11 @@ Feature contracts:
 - `16_class_event_session_planning_contract.md`
 - `16_class_hub_entry_contract.md`
 
+Planned target contracts:
+
+- `17_admissions_inbox_contract.md`
+  planned staff Admissions Inbox route, DTO, action, and refresh contract; not current runtime until implemented
+
 Non-authoritative proposal:
 
 - `dto_proposal.md`
