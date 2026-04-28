@@ -1,12 +1,12 @@
 # Admissions Inbox SPA Contract
 
-Status: Planned target contract with backend Phase 2A dependency implemented
-Code refs: `ifitwala_ed/api/admissions_crm.py`, CRM DocTypes under `ifitwala_ed/admission/doctype/admission_*`
-Test refs: `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`
+Status: Backend context endpoint implemented; SPA route planned
+Code refs: `ifitwala_ed/api/admissions_inbox.py`, `ifitwala_ed/api/admissions_crm.py`, CRM DocTypes under `ifitwala_ed/admission/doctype/admission_*`
+Test refs: `ifitwala_ed/api/test_admissions_inbox.py`, `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`
 
-This note defines the planned staff-side Admissions Inbox SPA surface.
+This note defines the staff-side Admissions Inbox surface.
 
-It does not describe current runtime behavior until the route, endpoints, services, and tests are implemented.
+Current runtime behavior is limited to the backend context endpoint. The staff SPA route, page service, and UI are still planned.
 
 ## 1. Authority
 
@@ -69,9 +69,18 @@ Storage boundary:
 - provider metadata remains on `Admission Message`
 - read state for applicant portal case messages remains `Portal Read Receipt`
 
+Implemented Phase 3A backend context includes:
+
+- active `Inquiry` rows
+- `Admission Conversation` summary rows
+- latest CRM message/activity summary fields stored on `Admission Conversation`
+- `Student Applicant` rows in `Invited` and `Missing Info`
+
+Phase 3A does not yet aggregate applicant-stage `Org Communication` read state or portal-message needs-reply state.
+
 ## 5. Endpoint Shape
 
-Planned page-init endpoint:
+Implemented page-init endpoint:
 
 ```text
 ifitwala_ed.api.admissions_inbox.get_admissions_inbox_context
@@ -87,6 +96,24 @@ Rules:
 - server-side permission filtering before DTO assembly
 - organization and school filters resolved server-side
 - use `limit`, not `limit_page_length`
+
+Implemented request parameters:
+
+```text
+organization optional
+school optional
+limit optional, bounded to 1..100
+```
+
+Implemented response top-level shape:
+
+```text
+ok
+generated_at
+filters
+queues
+sources
+```
 
 Implemented Phase 2A backend mutation endpoints:
 
@@ -149,7 +176,7 @@ actions
 
 ## 7. Initial Queues
 
-Planned queues:
+Implemented Phase 3A queues:
 
 - Needs Reply
 - Unassigned
@@ -158,9 +185,12 @@ Planned queues:
 - Qualified Not Invited
 - Invited Not Started
 - Missing Documents
-- Visit / Open Day Follow-up
 - Stale Leads
 - Unmatched Messages
+
+Planned later queue:
+
+- Visit / Open Day Follow-up
 
 Queue membership is server-derived.
 

@@ -1,14 +1,14 @@
 # Admissions CRM Contract
 
 Status: Partial implementation
-Code refs: `ifitwala_ed/admission/doctype/inquiry/inquiry.json`, `ifitwala_ed/admission/web_form/inquiry/inquiry.json`, `ifitwala_ed/admission/web_form/inquiry/inquiry.js`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/admission_acknowledgement_profile.json`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/admission_acknowledgement_profile.js`, `ifitwala_ed/admission/inquiry_acknowledgement.py`, `ifitwala_ed/admission/doctype/admission_channel_account/*`, `ifitwala_ed/admission/doctype/admission_external_identity/*`, `ifitwala_ed/admission/doctype/admission_conversation/*`, `ifitwala_ed/admission/doctype/admission_message/*`, `ifitwala_ed/admission/doctype/admission_crm_activity/*`, `ifitwala_ed/api/admissions_crm.py`
-Test refs: `ifitwala_ed/admission/doctype/inquiry/test_inquiry.py`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/test_admission_acknowledgement_profile.py`, `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`
+Code refs: `ifitwala_ed/admission/doctype/inquiry/inquiry.json`, `ifitwala_ed/admission/web_form/inquiry/inquiry.json`, `ifitwala_ed/admission/web_form/inquiry/inquiry.js`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/admission_acknowledgement_profile.json`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/admission_acknowledgement_profile.js`, `ifitwala_ed/admission/inquiry_acknowledgement.py`, `ifitwala_ed/admission/doctype/admission_channel_account/*`, `ifitwala_ed/admission/doctype/admission_external_identity/*`, `ifitwala_ed/admission/doctype/admission_conversation/*`, `ifitwala_ed/admission/doctype/admission_message/*`, `ifitwala_ed/admission/doctype/admission_crm_activity/*`, `ifitwala_ed/api/admissions_crm.py`, `ifitwala_ed/api/admissions_inbox.py`
+Test refs: `ifitwala_ed/admission/doctype/inquiry/test_inquiry.py`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/test_admission_acknowledgement_profile.py`, `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`, `ifitwala_ed/api/test_admissions_inbox.py`
 
 This note defines the planned admissions CRM model for Inquiry-stage lead handling and external-channel messaging.
 
-Phase 1 Inquiry dynamic capture, public family acknowledgement, and Phase 2A CRM core manual mode are implemented.
+Phase 1 Inquiry dynamic capture, public family acknowledgement, Phase 2A CRM core manual mode, and the Phase 3A Admissions Inbox backend context endpoint are implemented.
 
-The staff Inbox route, bounded Inbox context endpoint, provider adapters, governed media conversion, and lead-scoring/read-model work remain planned until their referenced SPA surfaces, APIs, and tests are implemented.
+The staff Inbox SPA route, provider adapters, governed media conversion, and lead-scoring/read-model work remain planned until their referenced SPA surfaces, APIs, and tests are implemented.
 
 ## 1. Authority
 
@@ -433,6 +433,8 @@ Status: implemented as Phase 2A backend foundation.
 - add staff Inbox route and bounded context endpoint
 - aggregate Inquiry, CRM conversation, and applicant case summaries
 - expose server-owned actions only
+
+Status: backend context endpoint implemented as Phase 3A; staff SPA route remains planned.
 
 ### Phase 4: Governed Media Conversion
 
