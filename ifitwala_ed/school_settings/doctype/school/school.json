@@ -464,7 +464,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2026-04-28 13:11:35.079783",
+ "modified": "2026-04-28 14:43:27.478431",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",
@@ -537,7 +537,8 @@
    "report": 1,
    "role": "Admission Manager",
    "select": 1,
-   "share": 1
+   "share": 1,
+   "write": 1
   },
   {
    "email": 1,
@@ -574,7 +575,8 @@
    "report": 1,
    "role": "Admission Officer",
    "select": 1,
-   "share": 1
+   "share": 1,
+   "write": 1
   },
   {
    "read": 1,
