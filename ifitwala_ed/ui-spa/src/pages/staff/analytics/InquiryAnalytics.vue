@@ -3,9 +3,9 @@
 	<div class="analytics-shell">
 		<header class="page-header">
 			<div class="page-header__intro">
-				<h1 class="type-h1 text-canopy">Inquiry Analytics</h1>
+				<h1 class="type-h1 text-canopy">Zero Lost Lead</h1>
 				<p class="type-meta text-slate-token/80">
-					Pipeline volume, response pace, and conversion pressure across inquiry scope.
+					Operational inquiry queues first; pipeline and response analytics below.
 				</p>
 			</div>
 			<div class="page-header__actions">
@@ -115,9 +115,179 @@
 			</div>
 		</FiltersBar>
 
-		<div v-if="loading" class="py-12 text-center text-slate-500">Loading analytics...</div>
+		<div v-if="loading" class="py-12 text-center text-slate-500">Loading inquiry queues...</div>
+		<div v-else-if="error" class="analytics-card border-red-200 bg-red-50 text-red-700">
+			{{ error }}
+		</div>
 
 		<template v-else>
+			<section class="analytics-card">
+				<div class="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+					<div>
+						<h2 class="analytics-card__title">Operational Views</h2>
+						<p class="type-meta text-slate-token/70">
+							All-time queues within the selected organization, school, assignee, type, source, and
+							lane.
+						</p>
+					</div>
+					<div class="type-meta text-slate-token/70">
+						{{ totalOperationalCount }} queue match{{ totalOperationalCount === 1 ? '' : 'es' }}
+					</div>
+				</div>
+
+				<div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+					<button
+						v-for="view in commandViews"
+						:key="view.id"
+						type="button"
+						class="rounded-md border p-4 text-left transition"
+						:class="viewCardClass(view)"
+						@click="setActiveView(view.id)"
+					>
+						<div class="flex items-start justify-between gap-3">
+							<span class="type-label text-ink">{{ view.title }}</span>
+							<span
+								class="rounded-full px-2 py-0.5 text-xs font-semibold"
+								:class="viewCountClass(view)"
+							>
+								{{ view.count }}
+							</span>
+						</div>
+						<div class="mt-3 type-caption text-slate-token/70">{{ view.next_action }}</div>
+					</button>
+				</div>
+			</section>
+
+			<section class="analytics-card">
+				<div class="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+					<div>
+						<h2 class="analytics-card__title">
+							{{ activeCommandView?.title || 'Selected Queue' }}
+						</h2>
+						<p class="type-meta text-slate-token/70">
+							{{ commandPagination.total }} matching
+							{{ commandPagination.total === 1 ? 'inquiry' : 'inquiries' }}
+						</p>
+					</div>
+					<div class="flex items-center gap-2">
+						<button
+							type="button"
+							class="if-button if-button--quiet"
+							:disabled="commandPagination.start <= 0"
+							@click="previousQueuePage"
+						>
+							Previous
+						</button>
+						<button
+							type="button"
+							class="if-button if-button--quiet"
+							:disabled="!commandPagination.has_next"
+							@click="nextQueuePage"
+						>
+							Next
+						</button>
+					</div>
+				</div>
+
+				<div v-if="!leadRows.length" class="analytics-empty">
+					{{
+						hasAnyOperationalLeads
+							? 'No inquiries in this queue.'
+							: 'No invisible lead conditions found.'
+					}}
+				</div>
+				<div v-else class="overflow-x-auto">
+					<table class="min-w-full divide-y divide-slate-200 text-sm">
+						<thead>
+							<tr class="text-left type-caption text-slate-token/70">
+								<th class="py-2 pr-4 font-medium">Lead</th>
+								<th class="py-2 pr-4 font-medium">State</th>
+								<th class="py-2 pr-4 font-medium">Owner</th>
+								<th class="py-2 pr-4 font-medium">Due</th>
+								<th class="py-2 pr-4 font-medium">Context</th>
+								<th class="py-2 pr-4 font-medium">Next Action</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-slate-100">
+							<tr v-for="row in leadRows" :key="row.name">
+								<td class="py-3 pr-4 align-top">
+									<div class="font-medium text-ink">{{ row.lead_title }}</div>
+									<div class="type-caption text-slate-token/70">{{ row.name }}</div>
+									<div
+										class="mt-1 flex flex-wrap gap-x-3 gap-y-1 type-caption text-slate-token/70"
+									>
+										<a v-if="row.email" :href="`mailto:${row.email}`">{{ row.email }}</a>
+										<a v-if="row.phone_number" :href="`tel:${row.phone_number}`">{{
+											row.phone_number
+										}}</a>
+									</div>
+								</td>
+								<td class="py-3 pr-4 align-top">
+									<div class="font-medium text-ink">{{ row.workflow_state }}</div>
+									<div class="type-caption text-slate-token/70">
+										{{ row.sla_status || 'No SLA status' }}
+									</div>
+									<div
+										v-if="row.age_hours !== null && row.age_hours !== undefined"
+										class="type-caption text-slate-token/70"
+									>
+										{{ formatAge(row.age_hours) }}
+									</div>
+								</td>
+								<td class="py-3 pr-4 align-top">
+									<div class="font-medium text-ink">{{ row.assigned_to || 'Unassigned' }}</div>
+									<div class="type-caption text-slate-token/70">
+										{{ row.assignment_lane || 'Admission' }}
+									</div>
+								</td>
+								<td class="py-3 pr-4 align-top">
+									<div class="font-medium text-ink">
+										{{ formatDate(row.first_contact_due_on) }}
+									</div>
+									<div class="type-caption text-slate-token/70">
+										Submitted {{ formatDateTime(row.submitted_at) }}
+									</div>
+									<div v-if="row.followup_due_on" class="type-caption text-slate-token/70">
+										Follow-up {{ formatDate(row.followup_due_on) }}
+									</div>
+								</td>
+								<td class="py-3 pr-4 align-top">
+									<div class="font-medium text-ink">
+										{{ row.school || row.organization || 'No scope set' }}
+									</div>
+									<div class="type-caption text-slate-token/70">
+										{{
+											[row.type_of_inquiry, row.source].filter(Boolean).join(' / ') ||
+											'No type or source'
+										}}
+									</div>
+									<div v-if="row.student_applicant" class="type-caption text-slate-token/70">
+										Applicant {{ row.student_applicant_status || 'Linked' }}
+									</div>
+								</td>
+								<td class="py-3 pr-4 align-top">
+									<a
+										v-if="row.next_action?.target_url"
+										class="if-button if-button--secondary inline-flex"
+										:href="row.next_action.target_url"
+										target="_blank"
+										rel="noopener noreferrer"
+									>
+										{{ row.next_action.label }}
+									</a>
+									<div
+										v-if="row.next_action_note"
+										class="mt-2 max-w-xs type-caption text-slate-token/70"
+									>
+										{{ row.next_action_note }}
+									</div>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</section>
+
 			<KpiRow :items="kpiItems" />
 
 			<section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -226,7 +396,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import {
-	getInquiryDashboardData,
+	getZeroLostLeadContext,
 	getInquiryOrganizations,
 	getInquirySchools,
 	getInquirySources,
@@ -235,6 +405,10 @@ import {
 	searchAcademicYears,
 	type DashboardFilters,
 } from '@/lib/admission';
+import type {
+	ZeroLostLeadRow,
+	ZeroLostLeadView,
+} from '@/types/contracts/inquiry/zero_lost_lead_context';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
 import StatsTile from '@/components/analytics/StatsTile.vue';
@@ -245,6 +419,11 @@ import DateRangePills from '@/components/filters/DateRangePills.vue';
 // -- State --
 const loading = ref(false);
 const data = ref<any>(null);
+const error = ref('');
+const commandCenter = ref<any>(null);
+const activeView = ref('unassigned_new');
+const queueStart = ref(0);
+const queueLimit = 25;
 
 const DATE_RANGES = [
 	{ label: 'Last 7 Days', value: '7d' },
@@ -297,11 +476,20 @@ async function loadOptions() {
 
 async function refresh() {
 	loading.value = true;
+	error.value = '';
 	try {
-		const res = await getInquiryDashboardData(filters.value);
-		data.value = res;
+		const res = await getZeroLostLeadContext({
+			filters: filters.value,
+			active_view: activeView.value,
+			start: queueStart.value,
+			limit: queueLimit,
+		});
+		commandCenter.value = res.command_center;
+		data.value = res.analytics;
+		activeView.value = res.command_center?.active_view || activeView.value;
 	} catch (e) {
 		console.error(e);
+		error.value = e instanceof Error ? e.message : 'Could not load inquiry queues.';
 	} finally {
 		loading.value = false;
 	}
@@ -332,7 +520,7 @@ function handleAcademicYearChange() {
 watch(
 	filters,
 	() => {
-		// simple debounce could be added here
+		queueStart.value = 0;
 		refresh();
 	},
 	{ deep: true }
@@ -343,7 +531,81 @@ onMounted(async () => {
 	refresh();
 });
 
+function setActiveView(viewId: string) {
+	if (!viewId || activeView.value === viewId) return;
+	activeView.value = viewId;
+	queueStart.value = 0;
+	refresh();
+}
+
+function nextQueuePage() {
+	if (!commandPagination.value.has_next) return;
+	queueStart.value += commandPagination.value.limit;
+	refresh();
+}
+
+function previousQueuePage() {
+	if (commandPagination.value.start <= 0) return;
+	queueStart.value = Math.max(0, commandPagination.value.start - commandPagination.value.limit);
+	refresh();
+}
+
 // -- Computed View Models --
+
+const commandViews = computed<ZeroLostLeadView[]>(() => commandCenter.value?.views || []);
+const leadRows = computed<ZeroLostLeadRow[]>(() => commandCenter.value?.rows || []);
+const commandPagination = computed(() => {
+	return (
+		commandCenter.value?.pagination || {
+			start: 0,
+			limit: queueLimit,
+			total: 0,
+			has_next: false,
+		}
+	);
+});
+const activeCommandView = computed(() => {
+	return (
+		commandViews.value.find(view => view.id === activeView.value) || commandViews.value[0] || null
+	);
+});
+const totalOperationalCount = computed(() =>
+	commandViews.value.reduce((total, view) => total + Number(view.count || 0), 0)
+);
+const hasAnyOperationalLeads = computed(() => totalOperationalCount.value > 0);
+
+function viewCardClass(view: ZeroLostLeadView) {
+	const active = activeCommandView.value?.id === view.id;
+	if (active) return 'border-canopy bg-canopy/5 shadow-sm';
+	if (view.count > 0 && view.tone === 'danger')
+		return 'border-red-200 bg-red-50 hover:border-red-300';
+	if (view.count > 0 && view.tone === 'warning')
+		return 'border-amber-200 bg-amber-50 hover:border-amber-300';
+	if (view.count > 0) return 'border-sky-200 bg-sky-50 hover:border-sky-300';
+	return 'border-slate-200 bg-white hover:border-slate-300';
+}
+
+function viewCountClass(view: ZeroLostLeadView) {
+	if (view.count <= 0) return 'bg-slate-100 text-slate-500';
+	if (view.tone === 'danger') return 'bg-red-100 text-red-700';
+	if (view.tone === 'warning') return 'bg-amber-100 text-amber-700';
+	return 'bg-sky-100 text-sky-700';
+}
+
+function formatDate(value?: string | null) {
+	if (!value) return 'No date';
+	return String(value).slice(0, 10);
+}
+
+function formatDateTime(value?: string | null) {
+	if (!value) return 'unknown';
+	return String(value).replace('T', ' ').slice(0, 16);
+}
+
+function formatAge(hours: number) {
+	if (hours < 24) return `${Math.round(hours)}h old`;
+	return `${Math.round(hours / 24)}d old`;
+}
 
 const kpiItems = computed(() => {
 	if (!data.value) return [];

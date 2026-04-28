@@ -6,6 +6,9 @@
 	var APPLY_PREFIX = '/apply/';
 	var INQUIRY_ROUTE_PREFIX = '/apply/inquiry';
 	var INQUIRY_ORGANIZATION_STORAGE_KEY = 'ifitwala:inquiry:selected-organization';
+	var INQUIRY_CONTEXT_STORAGE_KEY = 'ifitwala:inquiry:selected-context';
+	var INQUIRY_ACKNOWLEDGEMENT_METHOD =
+		'ifitwala_ed.api.inquiry.get_inquiry_acknowledgement_context';
 	var INQUIRY_SUCCESS_TITLE = 'Inquiry received';
 	var INQUIRY_SUCCESS_MESSAGE_DEFAULT =
 		'Your message has been received. A member of our team will get back to you soon.';
@@ -46,18 +49,48 @@
 		return pathname.indexOf(INQUIRY_ROUTE_PREFIX) === 0;
 	}
 
-	function getInquiryOrganizationValue() {
-		var organizationInput = document.querySelector(
-			'.web-form [data-fieldname="organization"] input, ' +
-				'.web-form [data-fieldname="organization"] select, ' +
-				'.web-form input[name="organization"], ' +
-				'.web-form select[name="organization"]'
-		);
-
-		if (!organizationInput) {
+	function getInquiryFieldValue(fieldname) {
+		if (!fieldname) {
 			return '';
 		}
-		return (organizationInput.value || '').trim();
+		var selectorFieldname = String(fieldname).replace(/"/g, '');
+		var input = document.querySelector(
+			'.web-form [data-fieldname="' +
+				selectorFieldname +
+				'"] input, ' +
+				'.web-form [data-fieldname="' +
+				selectorFieldname +
+				'"] select, ' +
+				'.web-form [data-fieldname="' +
+				selectorFieldname +
+				'"] textarea, ' +
+				'.web-form input[name="' +
+				selectorFieldname +
+				'"], ' +
+				'.web-form select[name="' +
+				selectorFieldname +
+				'"], ' +
+				'.web-form textarea[name="' +
+				selectorFieldname +
+				'"]'
+		);
+
+		if (!input) {
+			return '';
+		}
+		return (input.value || '').trim();
+	}
+
+	function getInquiryOrganizationValue() {
+		return getInquiryFieldValue('organization');
+	}
+
+	function getInquiryContextValues() {
+		return {
+			organization: getInquiryFieldValue('organization'),
+			school: getInquiryFieldValue('school'),
+			type_of_inquiry: getInquiryFieldValue('type_of_inquiry'),
+		};
 	}
 
 	function saveInquiryOrganizationValue(value) {
@@ -74,6 +107,7 @@
 	function clearInquiryOrganizationValue() {
 		try {
 			window.sessionStorage.removeItem(INQUIRY_ORGANIZATION_STORAGE_KEY);
+			window.sessionStorage.removeItem(INQUIRY_CONTEXT_STORAGE_KEY);
 		} catch (error) {
 			// Ignore browser storage errors and keep runtime behavior unchanged.
 		}
@@ -87,11 +121,80 @@
 		}
 	}
 
-	function buildInquirySuccessMessage(organization) {
-		if (!organization) {
+	function saveInquiryContext(context) {
+		context = context || {};
+		if (!context.organization && !context.school && !context.type_of_inquiry) {
+			clearInquiryOrganizationValue();
+			return;
+		}
+		if (context.organization) {
+			saveInquiryOrganizationValue(context.organization);
+		}
+		try {
+			window.sessionStorage.setItem(INQUIRY_CONTEXT_STORAGE_KEY, JSON.stringify(context));
+		} catch (error) {
+			// Ignore browser storage errors and keep the default success copy.
+		}
+	}
+
+	function readInquiryContext() {
+		var fallbackOrganization = readInquiryOrganizationValue();
+		try {
+			var raw = window.sessionStorage.getItem(INQUIRY_CONTEXT_STORAGE_KEY) || '';
+			var parsed = raw ? JSON.parse(raw) : {};
+			return {
+				organization: (parsed.organization || fallbackOrganization || '').trim(),
+				school: (parsed.school || '').trim(),
+				type_of_inquiry: (parsed.type_of_inquiry || '').trim(),
+			};
+		} catch (error) {
+			return {
+				organization: fallbackOrganization,
+				school: '',
+				type_of_inquiry: '',
+			};
+		}
+	}
+
+	function normalizeInquiryContext(contextOverride) {
+		var formContext = getInquiryContextValues();
+		var storedContext = readInquiryContext();
+		var override = {};
+		if (typeof contextOverride === 'string') {
+			override.organization = contextOverride.trim();
+		} else if (contextOverride && typeof contextOverride === 'object') {
+			override = contextOverride;
+		}
+		return {
+			organization: (
+				override.organization ||
+				formContext.organization ||
+				storedContext.organization ||
+				''
+			).trim(),
+			school: (override.school || formContext.school || storedContext.school || '').trim(),
+			type_of_inquiry: (
+				override.type_of_inquiry ||
+				formContext.type_of_inquiry ||
+				storedContext.type_of_inquiry ||
+				''
+			).trim(),
+		};
+	}
+
+	function buildInquirySuccessMessage(context) {
+		context = context || {};
+		var school = (context.school || '').trim();
+		var organization = (context.organization || '').trim();
+		if (!school && !organization) {
 			return INQUIRY_SUCCESS_MESSAGE_DEFAULT;
 		}
 
+		if (school) {
+			return (
+				'Your message has been received. Someone from ' + school + ' will get back to you soon.'
+			);
+		}
 		return (
 			'Your message has been received. Someone from ' +
 			organization +
@@ -99,7 +202,159 @@
 		);
 	}
 
-	function applyInquirySuccessCopy(organizationOverride) {
+	function clearNode(node) {
+		while (node.firstChild) {
+			node.removeChild(node.firstChild);
+		}
+	}
+
+	function buildDefaultAcknowledgementPayload(context) {
+		return {
+			brand: {
+				name: context.school || context.organization || 'Ifitwala',
+				logo: '',
+			},
+			title: INQUIRY_SUCCESS_TITLE,
+			message: buildInquirySuccessMessage(context),
+			timeline_intro: 'What happens next',
+			timeline: [
+				{
+					label: 'Inquiry received',
+					description: 'Your message is now in the admissions inbox.',
+				},
+				{
+					label: 'Admissions review',
+					description: 'The team checks the school context and preferred contact channel.',
+				},
+				{
+					label: 'Family follow-up',
+					description: 'A staff member replies with the next practical action.',
+				},
+			],
+			footer_note: '',
+			ctas: [],
+		};
+	}
+
+	function renderInquiryAcknowledgement(successNode, payload) {
+		if (!successNode || !payload) {
+			return;
+		}
+
+		var successTitleNode = successNode.querySelector('.success-title');
+		var successMessageNode = successNode.querySelector('.success-message');
+		var title = (payload.title || INQUIRY_SUCCESS_TITLE).trim();
+		var message = (payload.message || INQUIRY_SUCCESS_MESSAGE_DEFAULT).trim();
+
+		if (successTitleNode && successTitleNode.textContent !== title) {
+			successTitleNode.textContent = title;
+		}
+		if (successMessageNode && successMessageNode.textContent !== message) {
+			successMessageNode.textContent = message;
+		}
+
+		var existingDetails = successNode.querySelector('.if-inquiry-ack');
+		if (!existingDetails) {
+			existingDetails = createElement('div', 'if-inquiry-ack');
+			successNode.appendChild(existingDetails);
+		}
+		clearNode(existingDetails);
+
+		var brand = payload.brand || {};
+		if (brand.name || brand.logo) {
+			var brandRow = createElement('div', 'if-inquiry-ack-brand');
+			if (brand.logo) {
+				var logo = createElement('img', 'if-inquiry-ack-logo');
+				logo.setAttribute('src', brand.logo);
+				logo.setAttribute('alt', '');
+				brandRow.appendChild(logo);
+			}
+			if (brand.name) {
+				brandRow.appendChild(createElement('span', 'if-inquiry-ack-brand-name', brand.name));
+			}
+			existingDetails.appendChild(brandRow);
+		}
+
+		var timeline = Array.isArray(payload.timeline) ? payload.timeline : [];
+		if (timeline.length) {
+			var timelineTitle = createElement(
+				'p',
+				'if-inquiry-ack-timeline-title',
+				payload.timeline_intro || 'What happens next'
+			);
+			var timelineList = createElement('ol', 'if-inquiry-ack-timeline');
+			for (var i = 0; i < timeline.length; i++) {
+				var item = timeline[i] || {};
+				var itemNode = createElement('li', 'if-inquiry-ack-step');
+				itemNode.appendChild(
+					createElement('span', 'if-inquiry-ack-step-label', item.label || 'Next step')
+				);
+				if (item.description) {
+					itemNode.appendChild(
+						createElement('span', 'if-inquiry-ack-step-description', item.description)
+					);
+				}
+				timelineList.appendChild(itemNode);
+			}
+			existingDetails.appendChild(timelineTitle);
+			existingDetails.appendChild(timelineList);
+		}
+
+		var ctas = Array.isArray(payload.ctas) ? payload.ctas : [];
+		if (ctas.length) {
+			var ctaRow = createElement('div', 'if-inquiry-ack-actions');
+			for (var j = 0; j < ctas.length; j++) {
+				var cta = ctas[j] || {};
+				if (!cta.url || !cta.label) {
+					continue;
+				}
+				var link = createElement(
+					'a',
+					'if-inquiry-ack-action if-inquiry-ack-action--' + (cta.kind || 'link'),
+					cta.label
+				);
+				link.setAttribute('href', cta.url);
+				if (/^https:\/\//.test(cta.url)) {
+					link.setAttribute('target', '_blank');
+					link.setAttribute('rel', 'noopener');
+				}
+				ctaRow.appendChild(link);
+			}
+			if (ctaRow.children.length) {
+				existingDetails.appendChild(ctaRow);
+			}
+		}
+
+		if (payload.footer_note) {
+			existingDetails.appendChild(
+				createElement('p', 'if-inquiry-ack-footer-note', payload.footer_note)
+			);
+		}
+	}
+
+	function loadInquiryAcknowledgementContext(successNode, context) {
+		if (!successNode || !window.frappe || typeof window.frappe.call !== 'function') {
+			return;
+		}
+
+		var contextKey = [context.organization, context.school, context.type_of_inquiry].join('|');
+		if (successNode.getAttribute('data-if-ack-context') === contextKey) {
+			return;
+		}
+		successNode.setAttribute('data-if-ack-context', contextKey);
+
+		window.frappe.call({
+			method: INQUIRY_ACKNOWLEDGEMENT_METHOD,
+			args: context,
+			callback: function (response) {
+				if (response && response.message) {
+					renderInquiryAcknowledgement(successNode, response.message);
+				}
+			},
+		});
+	}
+
+	function applyInquirySuccessCopy(contextOverride) {
 		if (!isInquiryRoute()) {
 			return;
 		}
@@ -109,33 +364,15 @@
 			return;
 		}
 
-		var successTitleNode = successNode.querySelector('.success-title');
 		var successMessageNode = successNode.querySelector('.success-message');
 		if (!successMessageNode) {
 			return;
 		}
 
-		var organization = '';
-		if (typeof organizationOverride === 'string') {
-			organization = organizationOverride.trim();
-		} else {
-			organization = (getInquiryOrganizationValue() || readInquiryOrganizationValue()).trim();
-		}
-		if (organization) {
-			saveInquiryOrganizationValue(organization);
-		} else {
-			clearInquiryOrganizationValue();
-		}
-
-		if (successTitleNode) {
-			if (successTitleNode.textContent !== INQUIRY_SUCCESS_TITLE) {
-				successTitleNode.textContent = INQUIRY_SUCCESS_TITLE;
-			}
-		}
-		var nextMessage = buildInquirySuccessMessage(organization);
-		if (successMessageNode.textContent !== nextMessage) {
-			successMessageNode.textContent = nextMessage;
-		}
+		var context = normalizeInquiryContext(contextOverride);
+		saveInquiryContext(context);
+		renderInquiryAcknowledgement(successNode, buildDefaultAcknowledgementPayload(context));
+		loadInquiryAcknowledgementContext(successNode, context);
 	}
 
 	function bindInquirySubmitSuccessCopy() {
@@ -150,13 +387,9 @@
 
 		formNode.setAttribute('data-if-inquiry-submit-bound', '1');
 		formNode.addEventListener('submit', function () {
-			var organization = getInquiryOrganizationValue();
-			if (organization) {
-				saveInquiryOrganizationValue(organization);
-			} else {
-				clearInquiryOrganizationValue();
-			}
-			applyInquirySuccessCopy(organization);
+			var context = getInquiryContextValues();
+			saveInquiryContext(context);
+			applyInquirySuccessCopy(context);
 		});
 	}
 

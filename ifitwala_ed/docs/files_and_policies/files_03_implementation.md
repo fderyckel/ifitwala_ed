@@ -243,6 +243,7 @@ Implemented fix:
 - new session creation fails closed without `workflow_id`
 - the locked session/finalize DTOs now expose `workflow_id`, `contract_version`, and typed `workflow_result`
 - wrapper-specific extras such as `row_name`, admissions item metadata, or gallery captions must live under `workflow_result`, not as scattered top-level session/finalize keys
+- Drive finalize checks persisted workflow metadata before invoking the Ed finalize bridge, so legacy-invalid sessions fail in Drive before storage resolution or business-record revalidation
 - finalize and post-finalize dispatch now resolve only by persisted `workflow_id`
 - sessions without persisted workflow metadata are legacy-invalid at finalize time; migration/backfill must materialize explicit workflow metadata through a patch or retire the session
 - task files now use `supporting_material.file`; legacy Task attachment rows are migrated once into `Supporting Material` plus `Material Placement` and are no longer a runtime upload surface
@@ -345,6 +346,7 @@ Required outcomes:
 - Ed owns one versioned `GovernedUploadSpec` registry in `ifitwala_ed/integrations/drive/workflow_specs.py`
 - Drive persists `workflow_id` and `contract_version` with the session upload contract
 - Drive persists the spec-owned `is_private` value with the session upload contract; UI callers and wrapper services are not a second privacy authority
+- Drive validates that persisted workflow metadata exists before invoking Ed finalize delegates
 - finalize and post-finalize dispatch resolve by persisted workflow metadata rather than branch cascades or workflow detection
 - finalize-time workflow detection fallback for pre-registry sessions is retired; legacy session repair belongs in explicit migration/backfill patches only
 - wrapper services now create sessions through `workflow_id` plus workflow-specific identifiers internally, while preserving the current public wrapper endpoints

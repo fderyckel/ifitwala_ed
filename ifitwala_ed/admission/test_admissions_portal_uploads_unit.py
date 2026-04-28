@@ -86,6 +86,115 @@ def _load_real_mime_type_resolver():
 
 
 class TestAdmissionsPortalUploadMimeHints(TestCase):
+    def test_upload_applicant_document_reads_request_payload_when_kwargs_are_empty(self):
+        file_doc = SimpleNamespace(name="FILE-0004", file_url="/private/files/transcript-request.pdf")
+        document_doc = SimpleNamespace(
+            name="APP-DOC-REQ-0001",
+            student_applicant="APP-REQ-0001",
+            document_type="Transcript",
+        )
+        item_doc = SimpleNamespace(
+            name="ADI-REQ-0001",
+            item_key="request_upload",
+            item_label="Request upload",
+        )
+        request_payload = {
+            "student_applicant": document_doc.student_applicant,
+            "document_type": document_doc.document_type,
+            "file_name": "transcript-request.pdf",
+            "content": base64.b64encode(b"pdf-request-bytes").decode(),
+            "item_key": item_doc.item_key,
+            "item_label": item_doc.item_label,
+        }
+
+        class FakeLock:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        class FakeCache:
+            def get_value(self, key):
+                return None
+
+            def set_value(self, key, value, expires_in_sec=None):
+                return None
+
+            def lock(self, key, timeout=15):
+                return FakeLock()
+
+        with _admissions_portal_module() as admissions_portal:
+            captured_resolver_kwargs = {}
+            admissions_portal.frappe.form_dict = {}
+            admissions_portal.frappe.request = SimpleNamespace(
+                get_json=lambda silent=True: request_payload,
+                data=admissions_portal.frappe.as_json(request_payload)
+                if hasattr(admissions_portal.frappe, "as_json")
+                else "",
+                files=None,
+            )
+
+            def fake_get_value(doctype, name, fieldname=None, as_dict=False):
+                if doctype == "Applicant Document Type" and fieldname == "code":
+                    return "transcript"
+                if doctype == "Student Applicant" and as_dict:
+                    return {"organization": "ORG-1", "school": "SCH-1"}
+                return None
+
+            def fake_resolve_applicant_document(**kwargs):
+                captured_resolver_kwargs.update(kwargs)
+                return document_doc
+
+            with (
+                patch.object(admissions_portal.frappe, "cache", return_value=FakeCache(), create=True),
+                patch.object(admissions_portal.frappe.db, "get_value", side_effect=fake_get_value, create=True),
+                patch.object(
+                    admissions_portal,
+                    "get_applicant_document_slot_spec",
+                    return_value={
+                        "slot": "academic_report",
+                        "data_class": "academic",
+                        "purpose": "academic_report",
+                        "retention_policy": "until_school_exit_plus_6m",
+                    },
+                ),
+                patch.object(
+                    admissions_portal,
+                    "_resolve_applicant_document",
+                    side_effect=fake_resolve_applicant_document,
+                ),
+                patch.object(
+                    admissions_portal,
+                    "_resolve_applicant_document_item",
+                    return_value=item_doc,
+                ),
+                patch.object(
+                    admissions_portal,
+                    "_drive_upload_and_finalize",
+                    return_value=(
+                        {"upload_session_id": "DUS-0004"},
+                        {
+                            "drive_file_id": "DRV-FILE-0004",
+                            "canonical_ref": "drv:ORG-1:DRV-FILE-0004",
+                            "workflow_result": {
+                                "applicant_document": document_doc.name,
+                                "applicant_document_item": item_doc.name,
+                                "item_key": item_doc.item_key,
+                                "item_label": item_doc.item_label,
+                            },
+                        },
+                        file_doc,
+                    ),
+                ),
+            ):
+                payload = admissions_portal.upload_applicant_document()
+
+        self.assertEqual(captured_resolver_kwargs["student_applicant"], document_doc.student_applicant)
+        self.assertEqual(captured_resolver_kwargs["document_type"], document_doc.document_type)
+        self.assertEqual(payload["applicant_document"], document_doc.name)
+        self.assertEqual(payload["applicant_document_item"], item_doc.name)
+
     def test_upload_applicant_document_resolves_parent_from_item_when_type_is_not_bound(self):
         file_doc = SimpleNamespace(name="FILE-0003", file_url="/private/files/transcript.pdf")
         document_doc = SimpleNamespace(

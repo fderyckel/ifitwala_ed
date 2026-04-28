@@ -58,3 +58,8 @@ export type AttachmentPreviewItem = {
 	created_at?: string | null
 	created_by_label?: string | null
 }
+
+export type GovernedAttachmentRow = AttachmentPreviewItem & {
+	id: string | null
+	surface: string | null
+}

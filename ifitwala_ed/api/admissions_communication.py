@@ -21,6 +21,7 @@ from ifitwala_ed.setup.doctype.communication_interaction_entry.communication_int
 )
 
 ADMISSIONS_APPLICANT_ROLE = "Admissions Applicant"
+ADMISSIONS_FAMILY_ROLE = "Admissions Family"
 ALLOWED_STAFF_ROLES = ADMISSIONS_ROLES | {
     "Academic Admin",
     "Academic Staff",
@@ -128,6 +129,22 @@ def _require_actor_context(*, context_doctype: str, context_name: str) -> dict:
             "actor": "applicant",
             "context": context_row,
             "applicant_user": applicant_user,
+            "portal_actor_user": user,
+        }
+
+    if ADMISSIONS_FAMILY_ROLE in roles:
+        if context_doctype != "Student Applicant":
+            frappe.throw(
+                _("Applicant portal users can only access Student Applicant communication."), frappe.PermissionError
+            )
+        _ensure_applicant_match(context_name, user)
+        return {
+            "user": user,
+            "roles": roles,
+            "actor": "applicant",
+            "context": context_row,
+            "applicant_user": applicant_user,
+            "portal_actor_user": user,
         }
 
     if roles & ALLOWED_STAFF_ROLES:
@@ -211,8 +228,14 @@ def _get_or_create_thread(*, context_doctype: str, context_name: str, context_ro
             frappe.set_user(current_user or "Guest")
 
 
-def _sender_direction(*, sender_user: str, applicant_user: str, visibility: str) -> str:
-    if applicant_user and sender_user == applicant_user:
+def _sender_direction(
+    *,
+    sender_user: str,
+    applicant_user: str,
+    visibility: str,
+    portal_actor_user: str | None = None,
+) -> str:
+    if (applicant_user and sender_user == applicant_user) or (portal_actor_user and sender_user == portal_actor_user):
         return "ApplicantToStaff"
     if visibility == "Public to audience":
         return "StaffToApplicant"
@@ -260,7 +283,7 @@ def _save_case_interaction(
     }
 
 
-def _serialize_message_row(*, row: dict, applicant_user: str) -> dict:
+def _serialize_message_row(*, row: dict, applicant_user: str, portal_actor_user: str | None = None) -> dict:
     sender_user = _to_text(row.get("user"))
     visibility = _to_text(row.get("visibility"))
     note = _to_text(row.get("note"))
@@ -268,6 +291,7 @@ def _serialize_message_row(*, row: dict, applicant_user: str) -> dict:
         sender_user=sender_user,
         applicant_user=applicant_user,
         visibility=visibility,
+        portal_actor_user=_to_text(portal_actor_user),
     )
     full_name = _to_text(row.get("full_name")) or _to_text(
         frappe.db.get_value("User", sender_user, "full_name") if sender_user else None
@@ -281,7 +305,9 @@ def _serialize_message_row(*, row: dict, applicant_user: str) -> dict:
         "direction": direction,
         "visibility": visibility,
         "applicant_visible": bool(
-            visibility == "Public to audience" or (applicant_user and sender_user == applicant_user)
+            visibility == "Public to audience"
+            or (applicant_user and sender_user == applicant_user)
+            or (_to_text(portal_actor_user) and sender_user == _to_text(portal_actor_user))
         ),
         "created_at": row.get("creation"),
         "modified_at": row.get("modified"),
@@ -402,6 +428,7 @@ def send_admissions_case_message(
         "message": _serialize_message_row(
             row=latest,
             applicant_user=_to_text(actor_ctx.get("applicant_user")),
+            portal_actor_user=_to_text(actor_ctx.get("portal_actor_user")),
         ),
     }
 
@@ -434,6 +461,7 @@ def get_admissions_case_thread(
     actor_kind = _to_text(actor_ctx.get("actor"))
     actor_user = _to_text(actor_ctx.get("user"))
     applicant_user = _to_text(actor_ctx.get("applicant_user"))
+    portal_actor_user = _to_text(actor_ctx.get("portal_actor_user"))
 
     conditions = [
         "i.org_communication = %(thread_name)s",
@@ -475,6 +503,7 @@ def get_admissions_case_thread(
         _serialize_message_row(
             row=row,
             applicant_user=applicant_user,
+            portal_actor_user=portal_actor_user,
         )
         for row in (rows or [])
     ]

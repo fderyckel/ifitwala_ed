@@ -36,6 +36,27 @@ frappe.ready(function() {
 		frappe.web_form.set_value(fieldname, '');
 	}
 
+	function getFieldValue(fieldname) {
+		if (!frappe.web_form || typeof frappe.web_form.get_value !== 'function') {
+			return '';
+		}
+		return String(frappe.web_form.get_value(fieldname) || '').trim();
+	}
+
+	function configureSchoolQuery() {
+		if (!frappe.web_form || typeof frappe.web_form.set_query !== 'function') {
+			return;
+		}
+
+		frappe.web_form.set_query('school', function() {
+			return {
+				filters: {
+					organization: getFieldValue('organization')
+				}
+			};
+		});
+	}
+
 	function updateInquiryFields() {
 		if (!frappe.web_form || typeof frappe.web_form.get_value !== 'function') {
 			return;
@@ -63,7 +84,11 @@ frappe.ready(function() {
 
 	if (frappe.web_form && typeof frappe.web_form.on === 'function') {
 		frappe.web_form.on('type_of_inquiry', updateInquiryFields);
+		frappe.web_form.on('organization', function() {
+			clearField('school');
+		});
 	}
 
+	configureSchoolQuery();
 	updateInquiryFields();
 });

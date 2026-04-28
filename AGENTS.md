@@ -373,6 +373,35 @@ When Ed code relies on Drive or any async follow-up work:
 - user-visible mutation success must not be lost merely because deferred enrichment selected an undeployed semantic queue label
 - if a change adds or renames queue labels, update the canonical docs/runbook in the same change and add regression coverage for the enqueue boundary
 
+## 5.4.2 Ed/Drive Seam Debugging Rule
+
+When debugging or changing Ifitwala_Ed code that calls Ifitwala Drive, treat the seam as a chain of explicit contracts, not one request.
+
+For every governed upload/read failure, trace these layers separately:
+
+- browser or caller payload
+- Ed whitelisted API binding (`kwargs`, `frappe.form_dict`, JSON body, and nested `args`)
+- Ed business/domain helper payload
+- Ed Drive workflow/context resolver payload
+- Drive public wrapper payload
+- Drive service/session payload
+- Drive finalize/post-finalize payload
+
+Rules:
+
+- A valid browser payload is not proof that the Ed domain helper, Drive wrapper, or Drive service received the same values.
+- Do not label an error as a permission problem until the exact throw site and the missing/invalid value at that layer are identified.
+- The first user-visible error may be thrown several layers below the actual payload-binding loss.
+- Public whitelisted seam wrappers must tolerate the request-binding shapes Frappe actually sends, but they must still pass only approved workflow fields into governed services.
+- Domain helpers that are callable both from whitelisted endpoints and cross-app delegates must either receive explicit required values or recover the same canonical flat payload before resolving workflow records.
+- Do not stop after fixing the outermost API wrapper if the same invariant can still fail in a deeper in-process call.
+
+Regression coverage for seam fixes must include the failing handoff depth:
+
+- one test for the public/whitelisted payload shape when binding is involved
+- one test for the in-process business helper or resolver that actually threw
+- one cross-repo wrapper/service contract test when Drive is part of the path
+
 ### 5.3 Caching Rules
 
 Shared or stable data should use Redis-backed caching where safe:

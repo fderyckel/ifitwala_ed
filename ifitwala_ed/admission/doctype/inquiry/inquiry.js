@@ -343,20 +343,36 @@ frappe.ui.form.on("Inquiry", {
 	},
 
 	archive(frm) {
-		frappe.confirm(
-			__("Archive this inquiry?"),
-			() => {
+		frappe.prompt(
+			[
+				{
+					label: __("Archive Reason"),
+					fieldname: "archive_reason",
+					fieldtype: "Small Text",
+					reqd: 1,
+					description: __("Explain why this lead is being closed.")
+				}
+			],
+			(values) => {
 				blurActiveModalFocus();
+				const archiveReason = String(values.archive_reason || "").trim();
+				if (!archiveReason) {
+					frappe.msgprint(__("Archive reason is required."));
+					return;
+				}
 				frappe.call({
 					doc: frm.doc,
 					method: "archive",
+					args: { reason: archiveReason },
 					freeze: true,
 					callback: function () {
 						frappe.show_alert(__("Inquiry archived."));
 						frm.reload_doc();
 					}
 				});
-			}
+			},
+			__("Archive Inquiry"),
+			__("Archive")
 		);
 	}
 });

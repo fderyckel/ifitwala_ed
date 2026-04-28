@@ -233,7 +233,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Admin",
-   "link_count": 4,
+   "link_count": 5,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -244,6 +244,16 @@
    "label": "Admission Settings",
    "link_count": 0,
    "link_to": "Admission Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Admission Acknowledgement Profile",
+   "link_count": 0,
+   "link_to": "Admission Acknowledgement Profile",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -318,7 +328,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-04-26 21:27:19.564158",
+ "modified": "2026-04-28 09:03:00.000000",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Admission",

@@ -26,7 +26,7 @@ Read in this order for current runtime:
 Partial / planned target contracts:
 
 - `11_admissions_crm_contract.md`
-  Inquiry dynamic capture is partially implemented; CRM DocTypes, external-channel messaging, media conversion, and Inbox storage boundary remain planned until implemented
+  Inquiry dynamic capture and public family acknowledgement are partially implemented; CRM DocTypes, external-channel messaging, media conversion, and Inbox storage boundary remain planned until implemented
 
 Supporting current-state notes:
 

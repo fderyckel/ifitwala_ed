@@ -1,0 +1,202 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "ADM-EXT-ID-.YY.-.MM.-.###",
+ "creation": "2026-04-28 08:56:27.000000",
+ "description": "Provider-scoped external identity for admissions CRM matching. Matching is staff-confirmed, not automatic.",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "channel_account",
+  "channel_type",
+  "external_identity_section",
+  "external_user_id",
+  "phone_number",
+  "email",
+  "display_name",
+  "profile_picture_url",
+  "match_section",
+  "linked_contact",
+  "linked_guardian",
+  "linked_inquiry",
+  "linked_student_applicant",
+  "confidence_score",
+  "match_status",
+  "status_section",
+  "last_seen_at",
+  "opt_in_status",
+  "is_blocked"
+ ],
+ "fields": [
+  {
+   "fieldname": "channel_account",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Channel Account",
+   "options": "Admission Channel Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "channel_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Channel Type",
+   "options": "WhatsApp\nLine\nFacebook Messenger\nInstagram DM\nEmail\nPortal\nManual",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "external_identity_section",
+   "fieldtype": "Section Break",
+   "label": "External Identity"
+  },
+  {
+   "fieldname": "external_user_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "External User ID",
+   "search_index": 1
+  },
+  {
+   "fieldname": "phone_number",
+   "fieldtype": "Phone",
+   "label": "Phone Number",
+   "search_index": 1
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email",
+   "options": "Email",
+   "search_index": 1
+  },
+  {
+   "fieldname": "display_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Display Name"
+  },
+  {
+   "fieldname": "profile_picture_url",
+   "fieldtype": "Data",
+   "label": "Profile Picture URL"
+  },
+  {
+   "fieldname": "match_section",
+   "fieldtype": "Section Break",
+   "label": "Matching"
+  },
+  {
+   "fieldname": "linked_contact",
+   "fieldtype": "Link",
+   "label": "Linked Contact",
+   "options": "Contact"
+  },
+  {
+   "fieldname": "linked_guardian",
+   "fieldtype": "Link",
+   "label": "Linked Guardian",
+   "options": "Guardian"
+  },
+  {
+   "fieldname": "linked_inquiry",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Linked Inquiry",
+   "options": "Inquiry"
+  },
+  {
+   "fieldname": "linked_student_applicant",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Linked Student Applicant",
+   "options": "Student Applicant"
+  },
+  {
+   "fieldname": "confidence_score",
+   "fieldtype": "Float",
+   "label": "Confidence Score"
+  },
+  {
+   "default": "Unmatched",
+   "fieldname": "match_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Match Status",
+   "options": "Unmatched\nSuggested\nConfirmed\nRejected"
+  },
+  {
+   "fieldname": "status_section",
+   "fieldtype": "Section Break",
+   "label": "Status"
+  },
+  {
+   "fieldname": "last_seen_at",
+   "fieldtype": "Datetime",
+   "label": "Last Seen At"
+  },
+  {
+   "default": "Unknown",
+   "fieldname": "opt_in_status",
+   "fieldtype": "Select",
+   "label": "Opt-in Status",
+   "options": "Unknown\nOpted In\nOpted Out"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_blocked",
+   "fieldtype": "Check",
+   "label": "Blocked"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-28 08:56:27.000000",
+ "modified_by": "Administrator",
+ "module": "Admission",
+ "name": "Admission External Identity",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

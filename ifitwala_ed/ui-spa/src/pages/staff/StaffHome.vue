@@ -802,7 +802,7 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 				capability: 'analytics_admissions',
 			},
 			{
-				label: 'Inquiries Analytics',
+				label: 'Zero Lost Lead',
 				to: { name: 'staff-inquiry-analytics' },
 				capability: 'analytics_admissions',
 			},

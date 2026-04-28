@@ -158,6 +158,64 @@ class TestAdmissionsCommunicationAuthGuards(FrappeTestCase):
         self.assertTrue(bool(getattr(admissions_communication.get_admissions_case_thread, "allow_guest", False)))
         self.assertTrue(bool(getattr(admissions_communication.mark_admissions_case_thread_read, "allow_guest", False)))
 
+    def test_require_actor_context_allows_linked_family_workspace_user(self):
+        with (
+            patch(
+                "ifitwala_ed.api.admissions_communication.frappe.session",
+                SimpleNamespace(user="family@example.com"),
+            ),
+            patch(
+                "ifitwala_ed.api.admissions_communication.frappe.get_roles",
+                return_value=["Admissions Family"],
+            ),
+            patch(
+                "ifitwala_ed.api.admissions_communication._resolve_student_applicant_row",
+                return_value={
+                    "name": "APP-0001",
+                    "organization": "ORG-1",
+                    "school": "SCH-1",
+                    "applicant_user": "",
+                },
+            ),
+            patch(
+                "ifitwala_ed.api.admissions_communication._ensure_applicant_match",
+                return_value={"name": "APP-0001"},
+            ) as ensure_match_mock,
+        ):
+            actor_ctx = _require_actor_context(context_doctype="Student Applicant", context_name="APP-0001")
+
+        ensure_match_mock.assert_called_once_with("APP-0001", "family@example.com")
+        self.assertEqual(actor_ctx["actor"], "applicant")
+        self.assertEqual(actor_ctx["user"], "family@example.com")
+        self.assertEqual(actor_ctx["portal_actor_user"], "family@example.com")
+
+    def test_require_actor_context_rejects_unlinked_family_workspace_user(self):
+        with (
+            patch(
+                "ifitwala_ed.api.admissions_communication.frappe.session",
+                SimpleNamespace(user="family@example.com"),
+            ),
+            patch(
+                "ifitwala_ed.api.admissions_communication.frappe.get_roles",
+                return_value=["Admissions Family"],
+            ),
+            patch(
+                "ifitwala_ed.api.admissions_communication._resolve_student_applicant_row",
+                return_value={
+                    "name": "APP-0001",
+                    "organization": "ORG-1",
+                    "school": "SCH-1",
+                    "applicant_user": "",
+                },
+            ),
+            patch(
+                "ifitwala_ed.api.admissions_communication._ensure_applicant_match",
+                side_effect=frappe.PermissionError("You do not have permission to access this Applicant."),
+            ),
+        ):
+            with self.assertRaises(frappe.PermissionError):
+                _require_actor_context(context_doctype="Student Applicant", context_name="APP-0001")
+
 
 class TestAdmissionsCommunicationCanonicalWriters(FrappeTestCase):
     def test_create_thread_uses_portal_feed_case_container_without_generic_audience(self):
@@ -229,6 +287,54 @@ class TestAdmissionsCommunicationCanonicalWriters(FrappeTestCase):
         self.assertEqual(result["thread_name"], "COMM-0001")
         self.assertEqual(result["message"]["name"], "ENTRY-0001")
         self.assertEqual(result["message"]["direction"], "ApplicantToStaff")
+
+    def test_family_workspace_message_is_written_as_portal_to_staff(self):
+        created_at = now_datetime()
+        actor_ctx = {
+            "actor": "applicant",
+            "user": "family@example.com",
+            "context": {"name": "APP-0001", "organization": "ORG-1", "school": "SCH-1"},
+            "applicant_user": "",
+            "portal_actor_user": "family@example.com",
+        }
+        latest_row = {
+            "name": "ENTRY-0002",
+            "user": "family@example.com",
+            "note": "Can we confirm the interview time?",
+            "visibility": "Private to school",
+            "creation": created_at,
+            "modified": created_at,
+            "full_name": "Family Portal",
+        }
+
+        with (
+            patch("ifitwala_ed.api.admissions_communication._require_actor_context", return_value=actor_ctx),
+            patch("ifitwala_ed.api.admissions_communication._get_or_create_thread", return_value="COMM-0002"),
+            patch(
+                "ifitwala_ed.api.admissions_communication.create_interaction_entry",
+                return_value=latest_row,
+            ) as create_entry_mock,
+            patch(
+                "ifitwala_ed.api.admissions_communication.get_latest_org_communication_entry_for_user",
+                return_value=latest_row,
+            ),
+        ):
+            result = admissions_communication.send_admissions_case_message(
+                context_doctype="Student Applicant",
+                context_name="APP-0001",
+                body="Can we confirm the interview time?",
+            )
+
+        create_entry_mock.assert_called_once_with(
+            org_communication="COMM-0002",
+            user="family@example.com",
+            intent_type="Question",
+            note="Can we confirm the interview time?",
+            visibility="Private to school",
+            surface="Other",
+        )
+        self.assertEqual(result["message"]["direction"], "ApplicantToStaff")
+        self.assertTrue(bool(result["message"]["applicant_visible"]))
 
     def test_mark_thread_read_delegates_to_shared_read_receipt(self):
         read_at = now_datetime()

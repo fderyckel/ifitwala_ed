@@ -10,7 +10,7 @@ import frappe
 from frappe import _
 from frappe.desk.form.assign_to import remove as remove_assignment
 from frappe.model.document import Document
-from frappe.utils import cint, get_datetime, now_datetime
+from frappe.utils import cint, escape_html, get_datetime, now_datetime
 
 from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
@@ -19,6 +19,7 @@ from ifitwala_ed.admission.admission_utils import (
     set_inquiry_deadlines,
     update_sla_status,
 )
+from ifitwala_ed.admission.inquiry_acknowledgement import queue_inquiry_family_acknowledgement
 
 CANONICAL_INQUIRY_STATES = {"New", "Assigned", "Contacted", "Qualified", "Archived"}
 
@@ -32,6 +33,7 @@ class Inquiry(Document):
     def validate(self):
         self._validate_org_consistency()
         self._validate_state_change()
+        self._validate_archive_reason()
         self._validate_student_applicant_link()
 
     def _validate_org_consistency(self):
@@ -93,6 +95,15 @@ class Inquiry(Document):
         previous = self.get_db_value("student_applicant")
         if previous and previous != self.student_applicant:
             frappe.throw(_("Student Applicant link is immutable once set."))
+
+    def _validate_archive_reason(self):
+        state = _normalize_inquiry_state(self.workflow_state)
+        reason = (self.archive_reason or "").strip()
+        if self.archive_reason and self.archive_reason != reason:
+            self.archive_reason = reason
+
+        if state == "Archived" and not reason:
+            frappe.throw(_("Archive reason is required when archiving an Inquiry."))
 
     def _ensure_transition_allowed(self, from_state: str, to_state: str):
         if from_state == to_state:
@@ -185,12 +196,26 @@ class Inquiry(Document):
         return {"ok": True, "changed": changed}
 
     @frappe.whitelist()
-    def archive(self):
+    def archive(self, reason: str | None = None):
         ensure_admissions_permission()
+        archive_reason = (reason or self.archive_reason or "").strip()
+        if not archive_reason:
+            frappe.throw(_("Archive reason is required when archiving an Inquiry."))
+
+        current = _normalize_inquiry_state(self.workflow_state)
+        if current != "Archived":
+            self._ensure_transition_allowed(current, "Archived")
+
+        if (self.archive_reason or "").strip() != archive_reason:
+            self.archive_reason = archive_reason
+            self.db_set("archive_reason", archive_reason, update_modified=False)
+
         changed = self._set_workflow_state(
             "Archived",
-            comment=_("Inquiry marked as <b>Archived</b> by {0} on {1}.").format(
-                frappe.bold(frappe.session.user), now_datetime()
+            comment=_("Inquiry marked as <b>Archived</b> by {user} on {timestamp}. Reason: {reason}.").format(
+                user=frappe.bold(frappe.session.user),
+                timestamp=now_datetime(),
+                reason=frappe.bold(escape_html(archive_reason)),
             ),
         )
         return {"ok": True, "changed": changed}
@@ -206,6 +231,7 @@ class Inquiry(Document):
             self.workflow_state = "New"
             self.db_set("workflow_state", "New")
         notify_admission_manager(self)
+        queue_inquiry_family_acknowledgement(self)
 
     def before_save(self):
         # Only sets first_contact_due_on if missing; followup_due_on is set on (re)assignment.

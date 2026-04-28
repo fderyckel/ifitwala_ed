@@ -163,6 +163,7 @@ Current runtime note:
 
 - Drive persists the workflow metadata inside `Drive Upload Session.upload_contract_json.workflow`
 - the session row itself remains the authority for resolved owner, attached target, subject, and governance fields
+- Drive finalize checks for persisted `workflow_id` and `contract_version` before storage work or Ed finalize delegation
 - finalize uses persisted `workflow_id`; it does not rediscover workflow meaning by scanning upload specs
 - legacy sessions without persisted workflow metadata must be repaired or retired by explicit migration/backfill logic, not by finalize-time detection
 - new session creation fails closed without `workflow_id`

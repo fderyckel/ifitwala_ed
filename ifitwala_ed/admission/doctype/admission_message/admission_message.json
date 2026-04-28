@@ -1,0 +1,278 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "ADM-MSG-.YY.-.MM.-.#####",
+ "creation": "2026-04-28 08:56:27.000000",
+ "description": "Append-only admissions CRM message and external-provider audit record. Does not replace applicant-stage Org Communication.",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "conversation",
+  "organization",
+  "school",
+  "message_section",
+  "direction",
+  "message_type",
+  "body",
+  "message_at",
+  "delivery_status",
+  "channel_section",
+  "channel_account",
+  "external_identity",
+  "external_message_id",
+  "external_conversation_id",
+  "dedupe_key",
+  "provider_payload_json",
+  "links_section",
+  "linked_org_communication",
+  "linked_interaction_entry",
+  "linked_inquiry",
+  "linked_student_applicant",
+  "linked_contact",
+  "linked_guardian",
+  "media_section",
+  "media_provider_id",
+  "media_mime_type",
+  "media_file_name",
+  "media_size",
+  "media_status"
+ ],
+ "fields": [
+  {
+   "fieldname": "conversation",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Conversation",
+   "options": "Admission Conversation",
+   "reqd": 1
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Organization",
+   "options": "Organization",
+   "read_only": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School",
+   "read_only": 1
+  },
+  {
+   "fieldname": "message_section",
+   "fieldtype": "Section Break",
+   "label": "Message"
+  },
+  {
+   "fieldname": "direction",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Direction",
+   "options": "Inbound\nOutbound\nSystem",
+   "reqd": 1
+  },
+  {
+   "default": "Text",
+   "fieldname": "message_type",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Message Type",
+   "options": "Text\nImage\nDocument\nAudio\nVideo\nSticker\nTemplate\nSystem",
+   "reqd": 1
+  },
+  {
+   "fieldname": "body",
+   "fieldtype": "Text",
+   "label": "Body"
+  },
+  {
+   "fieldname": "message_at",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Message At",
+   "reqd": 1
+  },
+  {
+   "default": "Logged",
+   "fieldname": "delivery_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Delivery Status",
+   "options": "Received\nQueued\nSent\nDelivered\nRead\nFailed\nLogged"
+  },
+  {
+   "fieldname": "channel_section",
+   "fieldtype": "Section Break",
+   "label": "Channel"
+  },
+  {
+   "fieldname": "channel_account",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Channel Account",
+   "options": "Admission Channel Account"
+  },
+  {
+   "fieldname": "external_identity",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "External Identity",
+   "options": "Admission External Identity"
+  },
+  {
+   "fieldname": "external_message_id",
+   "fieldtype": "Data",
+   "label": "External Message ID",
+   "search_index": 1
+  },
+  {
+   "fieldname": "external_conversation_id",
+   "fieldtype": "Data",
+   "label": "External Conversation ID",
+   "search_index": 1
+  },
+  {
+   "fieldname": "dedupe_key",
+   "fieldtype": "Data",
+   "label": "Dedupe Key",
+   "search_index": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "provider_payload_json",
+   "fieldtype": "Code",
+   "label": "Provider Payload JSON"
+  },
+  {
+   "fieldname": "links_section",
+   "fieldtype": "Section Break",
+   "label": "System Links"
+  },
+  {
+   "fieldname": "linked_org_communication",
+   "fieldtype": "Link",
+   "label": "Linked Org Communication",
+   "options": "Org Communication"
+  },
+  {
+   "fieldname": "linked_interaction_entry",
+   "fieldtype": "Link",
+   "label": "Linked Interaction Entry",
+   "options": "Communication Interaction Entry"
+  },
+  {
+   "fieldname": "linked_inquiry",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Linked Inquiry",
+   "options": "Inquiry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "linked_student_applicant",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Linked Student Applicant",
+   "options": "Student Applicant",
+   "read_only": 1
+  },
+  {
+   "fieldname": "linked_contact",
+   "fieldtype": "Link",
+   "label": "Linked Contact",
+   "options": "Contact"
+  },
+  {
+   "fieldname": "linked_guardian",
+   "fieldtype": "Link",
+   "label": "Linked Guardian",
+   "options": "Guardian"
+  },
+  {
+   "fieldname": "media_section",
+   "fieldtype": "Section Break",
+   "label": "External Media Metadata"
+  },
+  {
+   "fieldname": "media_provider_id",
+   "fieldtype": "Data",
+   "label": "Media Provider ID",
+   "search_index": 1
+  },
+  {
+   "fieldname": "media_mime_type",
+   "fieldtype": "Data",
+   "label": "Media MIME Type"
+  },
+  {
+   "fieldname": "media_file_name",
+   "fieldtype": "Data",
+   "label": "Media File Name"
+  },
+  {
+   "fieldname": "media_size",
+   "fieldtype": "Int",
+   "label": "Media Size"
+  },
+  {
+   "default": "None",
+   "fieldname": "media_status",
+   "fieldtype": "Select",
+   "label": "Media Status",
+   "options": "None\nAvailable\nImported\nExpired\nFailed"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-28 08:56:27.000000",
+ "modified_by": "Administrator",
+ "module": "Admission",
+ "name": "Admission Message",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

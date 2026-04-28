@@ -1,12 +1,14 @@
 # Admissions CRM Contract
 
 Status: Partial implementation
-Code refs: `ifitwala_ed/admission/doctype/inquiry/inquiry.json`, `ifitwala_ed/admission/web_form/inquiry/inquiry.json`, `ifitwala_ed/admission/web_form/inquiry/inquiry.js`
-Test refs: `ifitwala_ed/admission/doctype/inquiry/test_inquiry.py`
+Code refs: `ifitwala_ed/admission/doctype/inquiry/inquiry.json`, `ifitwala_ed/admission/web_form/inquiry/inquiry.json`, `ifitwala_ed/admission/web_form/inquiry/inquiry.js`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/admission_acknowledgement_profile.json`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/admission_acknowledgement_profile.js`, `ifitwala_ed/admission/inquiry_acknowledgement.py`, `ifitwala_ed/admission/doctype/admission_channel_account/*`, `ifitwala_ed/admission/doctype/admission_external_identity/*`, `ifitwala_ed/admission/doctype/admission_conversation/*`, `ifitwala_ed/admission/doctype/admission_message/*`, `ifitwala_ed/admission/doctype/admission_crm_activity/*`, `ifitwala_ed/api/admissions_crm.py`
+Test refs: `ifitwala_ed/admission/doctype/inquiry/test_inquiry.py`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/test_admission_acknowledgement_profile.py`, `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`
 
 This note defines the planned admissions CRM model for Inquiry-stage lead handling and external-channel messaging.
 
-Phase 1 Inquiry dynamic capture is implemented. The CRM DocTypes, Inbox APIs, external-channel ingestion, and media conversion workflows remain planned until their referenced DocTypes, APIs, SPA surfaces, and tests are implemented.
+Phase 1 Inquiry dynamic capture, public family acknowledgement, and Phase 2A CRM core manual mode are implemented.
+
+The staff Inbox route, bounded Inbox context endpoint, provider adapters, governed media conversion, and lead-scoring/read-model work remain planned until their referenced SPA surfaces, APIs, and tests are implemented.
 
 ## 1. Authority
 
@@ -37,7 +39,7 @@ Responsibilities:
 
 - `Inquiry` is a lightweight triage and lead-capture record.
 - `Student Applicant` is the sole pre-student admissions container.
-- `Admission Conversation`, `Admission Message`, and `Admission CRM Activity` are planned CRM support records around Inquiry-stage and external-channel work.
+- `Admission Conversation`, `Admission Message`, and `Admission CRM Activity` are CRM support records around Inquiry-stage and external-channel work.
 - `Org Communication` remains the current applicant-stage case communication container for authenticated applicant portal messages.
 
 No CRM work may create a parallel applicant container or bypass `Student Applicant`.
@@ -152,13 +154,74 @@ message
 
 Additional type-specific fields require a separate schema approval.
 
-## 5. Planned CRM DocTypes
+## 4.6 Zero Lost Lead Command Center
+
+Status: Implemented
+Code refs: `ifitwala_ed/api/inquiry.py`, `ifitwala_ed/admission/doctype/inquiry/inquiry.json`, `ifitwala_ed/admission/doctype/inquiry/inquiry.py`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/InquiryAnalytics.vue`
+Test refs: `ifitwala_ed/admission/doctype/inquiry/test_inquiry.py`
+
+The current staff operational surface for Inquiry-stage lead loss prevention is the Zero Lost Lead command center at `/staff/analytics/inquiry`.
+
+It is intentionally Inquiry-backed and does not require the planned Admissions Inbox or CRM message DocTypes.
+
+Server-owned operational views:
+
+- Unassigned new inquiries
+- Uncontacted and due today
+- Overdue first contact
+- Contacted but no follow-up date
+- Qualified but not invited to apply
+- Invited but no applicant progress
+- Archived without reason
+- Leads older than 24 hours with no owner
+
+Rules:
+
+- queue membership is derived server-side by `ifitwala_ed.api.inquiry.get_zero_lost_lead_context`
+- permissions and organization/school scope are applied before counts and rows are assembled
+- operational views are all-time within the selected non-date filters so old lost leads cannot be hidden by the analytics date window
+- row actions are server-owned next-action links to the canonical Desk Inquiry or Student Applicant record
+- the SPA must not infer queue membership from raw fields
+- the SPA command center must not mutate Inquiry workflow state directly from the analytics page until a separate workflow-overlay contract is approved
+- `Inquiry.archive_reason` is required for future archive transitions; the "Archived without reason" view exists to surface legacy or bypassed rows that need operator correction
+
+### 4.6 Public Family Acknowledgement
+
+Status: Implemented for the first transactional version.
+
+When a public `/apply/inquiry` submission creates an `Inquiry`, family acknowledgement has two parts:
+
+- the Web Form success state becomes the branded thank-you page
+- `Inquiry.after_insert` queues a family acknowledgement email after commit when the submission has an email address
+
+This acknowledgement is transactional receipt and next-step guidance. It is not CRM conversation storage, applicant portal provisioning, or external-channel messaging.
+
+Configuration lives in `Admission Acknowledgement Profile`:
+
+- `organization` is required
+- `school` is optional; a school-scoped active profile wins over an organization fallback
+- `email_template` is required for configured profile email copy
+- thank-you page title/message, timeline heading, footer note, and CTAs are declarative
+- visit CTA may use the configured profile route or the selected School `admissions_visit_route`
+- application CTA is hidden unless explicitly enabled with a public application route
+- `/admissions` is rejected as an application CTA route because it is the authenticated Admissions Portal, not an anonymous application start
+
+Runtime rules:
+
+- The thank-you DTO is public-safe and may include only brand/copy/timeline/CTA data.
+- The DTO must not expose Inquiry name, email, phone, internal assignment state, or applicant status.
+- Email sending runs through `frappe.enqueue(..., queue="short", enqueue_after_commit=True)`.
+- Email template rendering receives `doc`, `inquiry`, `profile`, `acknowledgement`, `brand`, `timeline`, and `ctas`.
+- If no acknowledgement profile is configured, the system may send the generic transactional fallback email; school-specific copy requires a profile.
+- WhatsApp, LINE, Facebook, SMS, delivery/read receipts, and external message storage remain out of scope for this acknowledgement version.
+
+## 5. CRM DocTypes
 
 ### 5.1 Admission Channel Account
 
 Represents a school-owned external channel endpoint.
 
-Planned purpose:
+Purpose:
 
 - resolve organization and optional school context for inbound messages
 - store enabled/disabled state
@@ -172,7 +235,7 @@ This DocType is operational configuration, not a message ledger.
 
 Represents a parent/contact identity on one external provider.
 
-Planned purpose:
+Purpose:
 
 - store provider-scoped identity, such as WhatsApp phone, LINE user ID, Facebook PSID, Instagram scoped user ID, or email address
 - link explicitly to `Contact`, `Inquiry`, and later `Student Applicant` when confirmed
@@ -184,11 +247,12 @@ No fuzzy match may auto-link. Ambiguous matches must become staff decisions.
 
 Represents the CRM case thread for Inquiry-stage and external-channel communication.
 
-Planned purpose:
+Purpose:
 
 - group Admission Messages around an Inquiry or external identity
 - optionally link to `Student Applicant` after conversion for cross-stage timeline display
-- own CRM reply-state fields if persistent denormalization is approved
+- own manual-mode CRM reply-state fields: `latest_message_at`, latest inbound/outbound timestamps, `needs_reply`, `last_message_preview`, `next_action_on`, and `last_activity_at`
+- store the CRM assignee in `assigned_to`
 
 It must not duplicate `Org Communication` portal audience behavior.
 
@@ -196,7 +260,7 @@ It must not duplicate `Org Communication` portal audience behavior.
 
 Append-only external-channel message and provider audit record.
 
-Planned purpose:
+Purpose:
 
 - webhook dedupe
 - inbound/outbound direction
@@ -208,11 +272,25 @@ Planned purpose:
 
 It is not the applicant portal message ledger.
 
+Implemented records are append-only for original history fields. Delivery/media status enrichment and applicant-stage provenance links may update their dedicated status/link fields, but body, direction, provider IDs, context, and external media metadata must not be rewritten.
+
+The implemented media fields are metadata only:
+
+```text
+media_provider_id
+media_mime_type
+media_file_name
+media_size
+media_status
+```
+
+There is no `media_file` field on `Admission Message`.
+
 ### 5.5 Admission CRM Activity
 
 Append-only structured CRM activity record.
 
-Planned purpose:
+Purpose:
 
 - call attempt
 - no answer
@@ -226,6 +304,19 @@ Planned purpose:
 - staff note that is not a channel message
 
 It must not store chat history, reactions, or read receipts.
+
+Implemented activity rows are append-only. Corrections must be recorded as a new activity.
+
+Implemented manual-mode API endpoints:
+
+```text
+ifitwala_ed.api.admissions_crm.log_admission_message
+ifitwala_ed.api.admissions_crm.record_admission_crm_activity
+ifitwala_ed.api.admissions_crm.link_admission_conversation
+ifitwala_ed.api.admissions_crm.confirm_admission_external_identity
+```
+
+These endpoints use flat payloads, server-owned permission checks, scoped CRM writes, and short-lived idempotency keys via `client_request_id`.
 
 ## 6. Messaging Boundary
 
@@ -334,6 +425,8 @@ Persistent denormalized counters require a separate invalidation contract before
 - implement manual inbound/outbound logging
 - implement identity confirmation and link flows
 - no provider APIs yet
+
+Status: implemented as Phase 2A backend foundation.
 
 ### Phase 3: Admissions Inbox Manual Mode
 

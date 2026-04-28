@@ -1,8 +1,13 @@
 # ifitwala_ed/admission/admissions_portal.py
 
+# Copyright (c) 2026, François de Ryckel and contributors
+# For license information, please see license.txt
+
 from __future__ import annotations
 
 import base64
+import json
+from typing import Any
 
 import frappe
 from frappe import _
@@ -16,6 +21,94 @@ from ifitwala_ed.utilities.governed_uploads import (
 )
 
 ALLOWED_UPLOAD_SOURCES = {"Desk", "SPA", "API", "Job"}
+
+
+def _has_bound_value(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    return True
+
+
+def _parse_request_payload(value: Any) -> dict[str, Any] | None:
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, (bytes, bytearray)):
+        try:
+            value = value.decode()
+        except Exception:
+            return None
+    if isinstance(value, str):
+        payload = None
+        try:
+            payload = frappe.parse_json(value)
+        except Exception:
+            payload = None
+        if isinstance(payload, dict):
+            return payload
+        try:
+            payload = json.loads(value)
+        except Exception:
+            return None
+        return payload if isinstance(payload, dict) else None
+    return None
+
+
+def _request_json_payload() -> dict[str, Any]:
+    request = getattr(frappe, "request", None)
+    if not request:
+        return {}
+
+    get_json = getattr(request, "get_json", None)
+    if callable(get_json):
+        try:
+            payload = get_json(silent=True)
+        except TypeError:
+            try:
+                payload = get_json()
+            except Exception:
+                payload = None
+        except Exception:
+            payload = None
+        parsed_payload = _parse_request_payload(payload)
+        if isinstance(parsed_payload, dict):
+            return parsed_payload
+
+    parsed_payload = _parse_request_payload(getattr(request, "data", None))
+    if isinstance(parsed_payload, dict):
+        return parsed_payload
+    return {}
+
+
+def _request_value(key: str, current_value: Any = None) -> Any:
+    if _has_bound_value(current_value):
+        return current_value
+
+    form_dict = getattr(frappe, "form_dict", None)
+    if form_dict and hasattr(form_dict, "get"):
+        value = form_dict.get(key)
+        if _has_bound_value(value):
+            return value
+
+        args = _parse_request_payload(form_dict.get("args"))
+        if isinstance(args, dict):
+            value = args.get(key)
+            if _has_bound_value(value):
+                return value
+
+    request_payload = _request_json_payload()
+    value = request_payload.get(key)
+    if _has_bound_value(value):
+        return value
+
+    args = _parse_request_payload(request_payload.get("args"))
+    if isinstance(args, dict):
+        value = args.get(key)
+        if _has_bound_value(value):
+            return value
+
+    return current_value
 
 
 def upload_applicant_document(
@@ -35,6 +128,20 @@ def upload_applicant_document(
     Governed admissions upload endpoint.
     Creates Applicant Document (if needed) and stores file via dispatcher.
     """
+    student_applicant = _request_value("student_applicant", student_applicant)
+    document_type = _request_value("document_type", document_type)
+    applicant_document = _request_value("applicant_document", applicant_document)
+    applicant_document_item = _request_value("applicant_document_item", applicant_document_item)
+    item_key = _request_value("item_key", item_key)
+    item_label = _request_value("item_label", item_label)
+    client_request_id = _request_value("client_request_id", client_request_id)
+    kwargs = dict(kwargs or {})
+    for request_key in ("file_name", "filename", "content", "mime_type_hint", "content_type"):
+        if not _has_bound_value(kwargs.get(request_key)):
+            value = _request_value(request_key)
+            if _has_bound_value(value):
+                kwargs[request_key] = value
+
     filename, content = _extract_upload(kwargs)
     doc = _resolve_applicant_document(
         applicant_document=applicant_document,

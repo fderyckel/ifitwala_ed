@@ -79,11 +79,12 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
         self.assertEqual(payload.get("item_label"), "AISL transcript 2019")
         self.assertTrue(payload.get("ok"))
         self.assertEqual(payload.get("file_name"), "aisl-2019.txt")
-        self.assertTrue(payload.get("open_url"))
-        self.assertEqual(payload.get("attachment_preview", {}).get("owner_doctype"), "Student Applicant")
-        self.assertEqual(payload.get("attachment_preview", {}).get("owner_name"), self.applicant.name)
-        self.assertEqual(payload.get("attachment_preview", {}).get("open_url"), payload.get("open_url"))
-        self.assertEqual(payload.get("attachment_preview", {}).get("preview_url"), payload.get("preview_url"))
+        self.assertNotIn("attachment_preview", payload)
+        self.assertNotIn("open_url", payload)
+        self.assertEqual(payload.get("attachment", {}).get("surface"), "admissions.applicant_document")
+        self.assertEqual(payload.get("attachment", {}).get("owner_doctype"), "Student Applicant")
+        self.assertEqual(payload.get("attachment", {}).get("owner_name"), self.applicant.name)
+        self.assertTrue(payload.get("attachment", {}).get("open_url"))
 
         row = frappe.db.get_value(
             "Applicant Document Item",
@@ -266,10 +267,15 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
         documents = payload.get("documents") or []
         self.assertEqual(len(documents), 1)
         items_by_name = {row.get("name"): row for row in documents[0].get("items") or []}
-        self.assertIn("thumbnail_admissions_file", str(items_by_name[item_names[0]].get("thumbnail_url") or ""))
-        self.assertIn("preview_admissions_file", str(items_by_name[item_names[0]].get("preview_url") or ""))
-        self.assertIsNone(items_by_name[item_names[1]].get("thumbnail_url"))
-        self.assertIsNone(items_by_name[item_names[1]].get("preview_url"))
+        first_item = items_by_name[item_names[0]]
+        second_item = items_by_name[item_names[1]]
+        self.assertNotIn("attachment_preview", first_item)
+        self.assertNotIn("preview_url", first_item)
+        self.assertEqual(first_item.get("attachment", {}).get("surface"), "admissions.applicant_document")
+        self.assertIn("thumbnail_admissions_file", str(first_item.get("attachment", {}).get("thumbnail_url") or ""))
+        self.assertIn("preview_admissions_file", str(first_item.get("attachment", {}).get("preview_url") or ""))
+        self.assertIsNone(second_item.get("attachment", {}).get("thumbnail_url"))
+        self.assertIsNone(second_item.get("attachment", {}).get("preview_url"))
 
     def test_upload_without_item_description_uses_server_generated_submission_label(self):
         frappe.set_user(self.applicant_user)

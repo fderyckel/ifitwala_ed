@@ -48,13 +48,11 @@ describe('admissionsService uploads', () => {
 			ok: true,
 			file: 'FILE-1',
 			file_name: 'passport.pdf',
-			open_url: '/api/method/ifitwala_ed.api.file_access.download_admissions_file?file=FILE-1',
-			preview_url: null,
-			thumbnail_url: null,
-			preview_status: 'pending',
 			drive_file_id: 'DRV-FILE-1',
 			canonical_ref: 'drv:ORG-1:DRV-FILE-1',
-			attachment_preview: {
+			attachment: {
+				id: 'DRV-FILE-1',
+				surface: 'admissions.applicant_document',
 				item_id: 'DRV-FILE-1',
 				owner_doctype: 'Student Applicant',
 				owner_name: 'APP-1',

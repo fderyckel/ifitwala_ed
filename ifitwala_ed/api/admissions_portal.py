@@ -44,7 +44,8 @@ from ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollmen
     get_deposit_invoice_status_for_plan,
     get_latest_applicant_enrollment_plan,
 )
-from ifitwala_ed.api.attachment_previews import build_attachment_preview_item, extract_file_extension
+from ifitwala_ed.api.attachment_previews import extract_file_extension
+from ifitwala_ed.api.attachment_rows import build_governed_attachment_row
 from ifitwala_ed.api.file_access import (
     get_drive_file_thumbnail_ready_map,
     resolve_admissions_file_open_url,
@@ -2750,7 +2751,9 @@ def _serialize_applicant_document_attachment(
         thumbnail_ready=thumbnail_ready_map.get(drive_file_id, False),
     )
     mime_type = version_mime_map.get(_as_text(latest_drive_file.get("current_version")).strip())
-    attachment_preview = build_attachment_preview_item(
+    attachment = build_governed_attachment_row(
+        row_id=drive_file_id or compatibility_file_id or file_name,
+        surface="admissions.applicant_document",
         item_id=drive_file_id or compatibility_file_id or file_name,
         owner_doctype="Student Applicant",
         owner_name=student_applicant_name,
@@ -2763,17 +2766,11 @@ def _serialize_applicant_document_attachment(
         preview_url=preview_url,
         open_url=open_url,
         download_url=open_url,
+        created_at=latest_drive_file.get("creation"),
     )
     return {
-        "drive_file_id": drive_file_id or None,
-        "canonical_ref": canonical_ref,
-        "file_name": file_name or None,
         "uploaded_at": latest_drive_file.get("creation"),
-        "open_url": open_url,
-        "preview_url": preview_url,
-        "thumbnail_url": thumbnail_url,
-        "preview_status": preview_status,
-        "attachment_preview": attachment_preview,
+        "attachment": attachment,
     }
 
 
@@ -2897,15 +2894,8 @@ def list_applicant_documents(student_applicant: str | None = None):
             )
             if latest_drive_file
             else {
-                "drive_file_id": None,
-                "canonical_ref": None,
-                "file_name": None,
                 "uploaded_at": None,
-                "open_url": None,
-                "preview_url": None,
-                "thumbnail_url": None,
-                "preview_status": None,
-                "attachment_preview": None,
+                "attachment": None,
             }
         )
         items_by_document.setdefault(parent, []).append(
@@ -2917,14 +2907,7 @@ def list_applicant_documents(student_applicant: str | None = None):
                 "reviewed_by": row_item.get("reviewed_by"),
                 "reviewed_on": row_item.get("reviewed_on"),
                 "uploaded_at": attachment.get("uploaded_at"),
-                "open_url": attachment.get("open_url"),
-                "preview_url": attachment.get("preview_url"),
-                "thumbnail_url": attachment.get("thumbnail_url"),
-                "preview_status": attachment.get("preview_status"),
-                "file_name": attachment.get("file_name"),
-                "drive_file_id": attachment.get("drive_file_id"),
-                "canonical_ref": attachment.get("canonical_ref"),
-                "attachment_preview": attachment.get("attachment_preview"),
+                "attachment": attachment.get("attachment"),
             }
         )
 
@@ -2935,7 +2918,6 @@ def list_applicant_documents(student_applicant: str | None = None):
         items = items_by_document.get(doc_name, [])
 
         latest_uploaded_at = None
-        latest_open_url = None
         if items:
             sorted_items = sorted(
                 items,
@@ -2943,23 +2925,30 @@ def list_applicant_documents(student_applicant: str | None = None):
                 reverse=True,
             )
             latest_uploaded_at = sorted_items[0].get("uploaded_at")
-            latest_open_url = sorted_items[0].get("open_url")
 
         is_required = bool(type_meta.get("is_required"))
         is_repeatable = bool(type_meta.get("is_repeatable"))
         required_count = _portal_required_document_count(type_meta)
-        uploaded_count = len([item for item in items if item.get("open_url")])
+        uploaded_count = len([item for item in items if (item.get("attachment") or {}).get("open_url")])
         approved_count = len(
-            [item for item in items if item.get("open_url") and item.get("review_status") == "Approved"]
+            [
+                item
+                for item in items
+                if (item.get("attachment") or {}).get("open_url") and item.get("review_status") == "Approved"
+            ]
         )
         rejected_count = len(
-            [item for item in items if item.get("open_url") and item.get("review_status") == "Rejected"]
+            [
+                item
+                for item in items
+                if (item.get("attachment") or {}).get("open_url") and item.get("review_status") == "Rejected"
+            ]
         )
         pending_count = len(
             [
                 item
                 for item in items
-                if item.get("open_url")
+                if (item.get("attachment") or {}).get("open_url")
                 and (item.get("review_status") or "Pending").strip() not in {"Approved", "Rejected"}
             ]
         )
@@ -3003,7 +2992,6 @@ def list_applicant_documents(student_applicant: str | None = None):
                 "reviewed_by": doc.get("reviewed_by"),
                 "reviewed_on": doc.get("reviewed_on"),
                 "uploaded_at": latest_uploaded_at,
-                "open_url": latest_open_url,
                 "items": items,
             }
         )
@@ -3275,7 +3263,9 @@ def upload_applicant_document(
         or _as_text(upload_result.get("file")).strip()
         or None
     )
-    attachment_preview = build_attachment_preview_item(
+    attachment = build_governed_attachment_row(
+        row_id=resolved_drive_file_id or upload_result.get("file") or resolved_file_name,
+        surface="admissions.applicant_document",
         item_id=resolved_drive_file_id or upload_result.get("file") or resolved_file_name,
         owner_doctype="Student Applicant",
         owner_name=row.get("name"),
@@ -3292,13 +3282,9 @@ def upload_applicant_document(
         "ok": True,
         "file": upload_result.get("file"),
         "file_name": resolved_file_name,
-        "open_url": open_url,
-        "preview_url": preview_url,
-        "thumbnail_url": thumbnail_url,
-        "preview_status": preview_status or None,
         "drive_file_id": resolved_drive_file_id,
         "canonical_ref": resolved_canonical_ref,
-        "attachment_preview": attachment_preview,
+        "attachment": attachment,
         "applicant_document": upload_result.get("applicant_document"),
         "applicant_document_item": upload_result.get("applicant_document_item"),
         "item_key": upload_result.get("item_key"),

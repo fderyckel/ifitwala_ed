@@ -2,8 +2,8 @@
 
 Status: Canonical current runtime contract
 Date: 2026-04-27
-Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/api/gradebook_reads.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/student_log_attachments.py`, `ifitwala_ed/api/org_communication_archive.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/task_submission.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/api/student_log.py`, `ifitwala_ed/api/guardian_monitoring.py`, `ifitwala_ed/api/focus_context.py`, `ifitwala_ed/integrations/drive/admissions.py`, `ifitwala_ed/ui-spa/AGENTS.md`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentLogs.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianMonitoring.vue`, `ifitwala_ed/ui-spa/src/overlays/student/StudentLogFollowUpOverlay.vue`
-Test refs: `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_file_access_unit.py`, `ifitwala_ed/api/test_admissions_document_items.py`, `ifitwala_ed/api/test_gradebook.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_task_submission.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/students/doctype/student_log/test_student_log_evidence_unit.py`, `ifitwala_ed/ui-spa/src/components/tasks/__tests__/CreateTaskDeliveryOverlay.test.ts`
+Code refs: `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/attachment_rows.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/api/gradebook_reads.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/student_log_attachments.py`, `ifitwala_ed/api/org_communication_archive.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/task_submission.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/api/student_log.py`, `ifitwala_ed/api/guardian_monitoring.py`, `ifitwala_ed/api/focus_context.py`, `ifitwala_ed/integrations/drive/admissions.py`, `ifitwala_ed/ui-spa/AGENTS.md`, `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantDocuments.vue`, `ifitwala_ed/ui-spa/src/pages/student/StudentLogs.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianMonitoring.vue`, `ifitwala_ed/ui-spa/src/overlays/student/StudentLogFollowUpOverlay.vue`
+Test refs: `ifitwala_ed/api/test_attachment_rows.py`, `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_file_access_unit.py`, `ifitwala_ed/api/test_admissions_document_items.py`, `ifitwala_ed/api/test_gradebook.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_task_submission.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/students/doctype/student_log/test_student_log_evidence_unit.py`, `ifitwala_ed/ui-spa/src/components/tasks/__tests__/CreateTaskDeliveryOverlay.test.ts`
 Related current-state docs:
 
 - `ifitwala_ed/docs/high_concurrency_contract.md`
@@ -174,11 +174,16 @@ Initial rollout target:
 
 ## Shared DTO Direction
 
-Status: Implemented additively, not yet the top-level row contract
-Code refs: `ifitwala_ed/api/attachment_previews.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/api/task_submission.py`
-Test refs: `ifitwala_ed/api/test_attachment_previews.py`, `ifitwala_ed/api/test_gradebook.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_org_communication_attachments_unit.py`, `ifitwala_ed/api/test_teaching_plans.py`
+Status: Phase 7 in progress; top-level row contract implemented first for applicant-facing admissions documents
+Code refs: `ifitwala_ed/api/attachment_previews.py`, `ifitwala_ed/api/attachment_rows.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/api/task_submission.py`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantDocuments.vue`
+Test refs: `ifitwala_ed/api/test_attachment_previews.py`, `ifitwala_ed/api/test_attachment_rows.py`, `ifitwala_ed/api/test_admissions_document_items.py`, `ifitwala_ed/api/test_gradebook.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_org_communication_attachments_unit.py`, `ifitwala_ed/api/test_teaching_plans.py`
 
-The shared DTO is now implemented as one cross-portal shape built by a shared Ed-side helper, but it is currently exposed additively as a nested `attachment_preview` block on existing surface rows. This avoids breaking current surface-specific contracts while giving future shared SPA components one canonical preview object to consume.
+The shared DTO is now implemented in two layers:
+
+- `AttachmentPreviewItem` is the existing display DTO consumed by the shared SPA card.
+- `GovernedAttachmentRow` is the Phase 7 top-level surface row. It adds `id` and `surface` to the display DTO and is returned directly as `attachment` by migrated surfaces.
+
+Applicant-facing admissions documents are the first migrated surface. Their list/upload payloads now expose `attachment` directly and no longer expose the legacy nested `attachment_preview` adapter. Other surfaces remain additive until migrated one by one; when a surface migrates, its legacy adapter must be removed in the same change.
 
 ```ts
 export type AttachmentPreviewItem = {
@@ -252,6 +257,7 @@ DTO rules:
 
 - URL fields are stable server-owned surface actions or `null`
 - the DTO is already filtered for the current viewer; the SPA must not infer hidden attachments
+- migrated Phase 7 surfaces expose `attachment: GovernedAttachmentRow | null`, not `attachment_preview`
 - `thumbnail_url` should stay optional and represent the card-sized preview action for images or first-page PDF cards; DTOs must not expose Drive derivative role names or derivative-role query parameters
 - `preview_url` should be used only when a richer preview action exists and `preview_status` is absent or `ready`
 - `open_url` remains the current compatibility baseline during rollout
@@ -367,6 +373,28 @@ Phase 6: regression protection - implemented for active governed attachment surf
 - admissions applicant-document listing locks Drive attachment row lookup, thumbnail readiness, and MIME/version lookup to batched surface reads
 
 Remaining items are future scope, not unfinished Phase 6 work: the top-level shared row contract across all surfaces, broad preview routes for every governed file surface, and one unified gallery/drawer system.
+
+## Phase 7 Attachment Convergence
+
+Status: Approved and in progress
+Code refs: `ifitwala_ed/api/attachment_rows.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/ui-spa/src/types/contracts/attachments/shared.ts`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantDocuments.vue`
+Test refs: `ifitwala_ed/api/test_attachment_rows.py`, `ifitwala_ed/api/test_admissions_document_items.py`, `ifitwala_ed/ui-spa/src/lib/services/admissions/__tests__/admissionsService.test.ts`
+
+Rules:
+
+- migrate one surface at a time
+- return `attachment: GovernedAttachmentRow | null` directly on migrated surface rows
+- remove that surface's legacy nested `attachment_preview` adapter in the same change
+- do not add a generic file-preview endpoint, file browser, or SPA permission inference layer
+- keep each surface's existing aggregate read endpoint bounded; no attachment waterfalls
+- do not widen media preview support until Drive has deterministic derivative/status support for that media class
+
+First migrated surface:
+
+- applicant-facing Admissions Documents page
+- server list/upload endpoints return top-level `attachment`
+- `ApplicantDocuments.vue` renders the shared preview card from `item.attachment`
+- the legacy `item.attachment_preview` adapter is removed for that surface
 
 ## Important Non-Goals
 

@@ -43,6 +43,7 @@
   "next_action_note",
   "section_break_olba",
   "workflow_state",
+  "archive_reason",
   "sla_status",
   "assigned_to",
   "assignment_lane",
@@ -126,6 +127,13 @@
    "options": "New\nAssigned\nContacted\nQualified\nArchived",
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "depends_on": "eval:doc.workflow_state=='Archived'",
+   "description": "Required when archiving an Inquiry so closed leads do not disappear without context.",
+   "fieldname": "archive_reason",
+   "fieldtype": "Small Text",
+   "label": "Archive Reason"
   },
   {
    "fieldname": "sla_status",
@@ -386,7 +394,7 @@
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2026-04-28 08:28:22.000000",
+ "modified": "2026-04-28 09:14:17.000000",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Inquiry",

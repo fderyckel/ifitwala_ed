@@ -1,8 +1,6 @@
 # ifitwala_ed/admission/admission_utils.py
-# Copyright (c) 2025, Francois de Ryckel and contributors
+# Copyright (c) 2025, François de Ryckel and contributors
 # For license information, please see license.txt
-
-# ifitwala_ed/admission/admission_utils.py
 
 import frappe
 from frappe import _

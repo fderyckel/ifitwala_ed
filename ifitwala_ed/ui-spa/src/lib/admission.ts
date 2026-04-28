@@ -1,9 +1,14 @@
 // ifitwala_ed/ui-spa/src/lib/admission.ts
 
 import { api } from './client';
+import type {
+	Request as ZeroLostLeadContextRequest,
+	Response as ZeroLostLeadContextResponse,
+} from '@/types/contracts/inquiry/zero_lost_lead_context';
 
 export const ADMISSION_API = {
 	dashboard: 'ifitwala_ed.api.inquiry.get_dashboard_data',
+	zeroLostLeadContext: 'ifitwala_ed.api.inquiry.get_zero_lost_lead_context',
 	admissionsCockpit: 'ifitwala_ed.api.admission_cockpit.get_admissions_cockpit_data',
 	admissionsCockpitSendOffer: 'ifitwala_ed.api.admission_cockpit.send_admissions_cockpit_offer',
 	admissionsCockpitHydrateRequest:
@@ -41,6 +46,10 @@ export type DashboardFilters = {
 
 export function getInquiryDashboardData(filters: DashboardFilters = {}) {
 	return api(ADMISSION_API.dashboard, { filters });
+}
+
+export function getZeroLostLeadContext(payload: ZeroLostLeadContextRequest = {}) {
+	return api(ADMISSION_API.zeroLostLeadContext, payload) as Promise<ZeroLostLeadContextResponse>;
 }
 
 export type AdmissionsCockpitFilters = {

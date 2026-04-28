@@ -1,4 +1,6 @@
 # ifitwala_ed/admission/access.py
+# Copyright (c) 2026, François de Ryckel and contributors
+# For license information, please see license.txt
 
 from __future__ import annotations
 

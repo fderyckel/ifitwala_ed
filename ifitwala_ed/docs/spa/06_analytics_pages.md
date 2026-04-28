@@ -454,6 +454,31 @@ Rules:
 7. The presence or width of actions must never visually re-anchor the intro block away from the left edge of the shell rhythm.
 8. If a page needs more than one short sentence of operational context, keep the subtitle concise and move secondary detail into badges, helper chips, or the first surface below the header.
 
+### 5.7 Inquiry Zero Lost Lead Command Center
+
+Status: Implemented
+
+Code refs:
+- `ifitwala_ed/ui-spa/src/pages/staff/analytics/InquiryAnalytics.vue`
+- `ifitwala_ed/ui-spa/src/lib/admission.ts`
+- `ifitwala_ed/ui-spa/src/types/contracts/inquiry/zero_lost_lead_context.ts`
+- `ifitwala_ed/api/inquiry.py`
+
+Test refs:
+- `ifitwala_ed/admission/doctype/inquiry/test_inquiry.py`
+
+The Inquiry analytics route is also the implemented staff "Zero Lost Lead" command center.
+
+Rules:
+
+1. The route remains `/staff/analytics/inquiry`.
+2. The first surface inside the analytics page renders server-owned operational views before chart analytics.
+3. Operational view membership comes only from `ifitwala_ed.api.inquiry.get_zero_lost_lead_context`.
+4. The SPA must not derive membership client-side from raw Inquiry fields.
+5. Operational views are all-time within selected non-date filters; the date range still controls chart analytics.
+6. The page remains a refresh owner. It may render server-owned next-action links, but it must not perform workflow mutations directly from the analytics page.
+7. Direct state-changing actions still belong to canonical Desk workflows, Focus actions, or a future approved overlay/workflow contract.
+
 ## 6. Performance & Query Design
 
 ### 6.1 Prefer one indexed query

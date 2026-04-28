@@ -1,8 +1,8 @@
 # Admissions Inbox SPA Contract
 
-Status: Planned target contract
-Code refs: Pending implementation
-Test refs: Pending implementation
+Status: Planned target contract with backend Phase 2A dependency implemented
+Code refs: `ifitwala_ed/api/admissions_crm.py`, CRM DocTypes under `ifitwala_ed/admission/doctype/admission_*`
+Test refs: `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`
 
 This note defines the planned staff-side Admissions Inbox SPA surface.
 
@@ -88,7 +88,16 @@ Rules:
 - organization and school filters resolved server-side
 - use `limit`, not `limit_page_length`
 
-Planned mutation endpoints must be named workflow endpoints, for example:
+Implemented Phase 2A backend mutation endpoints:
+
+```text
+ifitwala_ed.api.admissions_crm.log_admission_message
+ifitwala_ed.api.admissions_crm.record_admission_crm_activity
+ifitwala_ed.api.admissions_crm.link_admission_conversation
+ifitwala_ed.api.admissions_crm.confirm_admission_external_identity
+```
+
+Planned Inbox-specific mutation endpoints must continue to be named workflow endpoints, for example:
 
 ```text
 log_admission_message
@@ -103,7 +112,7 @@ archive_admission_conversation
 convert_admission_media_to_governed_file
 ```
 
-Exact endpoint names and payloads require implementation approval.
+Exact Inbox endpoint names and payloads require implementation approval.
 
 ## 6. Queue DTO
 

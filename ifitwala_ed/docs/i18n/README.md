@@ -8,6 +8,7 @@ Code refs:
 - `ifitwala_ed/hooks.py`
 - `scripts/i18n/audit.py`
 - `scripts/i18n/check.sh`
+- `scripts/i18n/plan_batches.py`
 - `ifitwala_ed/docs/audit/i18n_phase_02a_batch_plan.md`
 - `ifitwala_ed/docs/audit/i18n_phase_02a_normalization_decisions.md`
 
@@ -35,6 +36,7 @@ Implemented:
 - SPA date formatting has a shared helper at `ifitwala_ed/ui-spa/src/lib/datetime.ts`.
 - A repo-owned source audit script exists at `scripts/i18n/audit.py`.
 - A repo-owned critical i18n guardrail exists at `scripts/i18n/check.sh` and runs in CI.
+- A repo-owned module batch planner exists at `scripts/i18n/plan_batches.py`.
 - Previous audit follow-up docs exist under `ifitwala_ed/docs/audit/`.
 
 Not implemented:
@@ -213,6 +215,15 @@ The audit must classify:
 ### Phase 2: Source Cleanup
 
 Use the audit output to clean source strings in batches.
+
+Planning command:
+
+- `python3 scripts/i18n/plan_batches.py`
+
+Useful filters:
+
+- `python3 scripts/i18n/plan_batches.py --bucket interpolation_risk`
+- `python3 scripts/i18n/plan_batches.py --surface python_backend --files-per-module 5`
 
 Batch order:
 

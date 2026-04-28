@@ -1,6 +1,6 @@
 // ifitwala_ed/ui-spa/src/types/contracts/admissions/upload_applicant_document.ts
 
-import type { AttachmentPreviewItem } from '@/types/contracts/attachments/shared'
+import type { GovernedAttachmentRow } from '@/types/contracts/attachments/shared'
 
 export type Request = {
   student_applicant?: string
@@ -17,13 +17,9 @@ export type Response = {
   ok?: boolean
   file: string
   file_name?: string | null
-  open_url?: string | null
-  preview_url?: string | null
-  thumbnail_url?: string | null
-  preview_status?: string | null
   drive_file_id?: string | null
   canonical_ref?: string | null
-  attachment_preview?: AttachmentPreviewItem | null
+  attachment?: GovernedAttachmentRow | null
   applicant_document: string
   applicant_document_item: string
   item_key: string

@@ -14,6 +14,7 @@ from ifitwala_ed.admission.admission_utils import (
     from_inquiry_invite,
     get_inquiry_assignees,
 )
+from ifitwala_ed.api.inquiry import get_zero_lost_lead_context
 from ifitwala_ed.tests.factories.users import make_user
 
 
@@ -25,6 +26,7 @@ class TestInquiry(FrappeTestCase):
         self.assertEqual(meta.get_field("phone_number").search_index, 1)
         self.assertEqual(meta.get_field("source").fieldtype, "Select")
         self.assertEqual(meta.get_field("next_action_note").fieldtype, "Small Text")
+        self.assertEqual(meta.get_field("archive_reason").fieldtype, "Small Text")
         self.assertIn("Current Family", meta.get_field("type_of_inquiry").options)
         self.assertIn("Partnership / Agent", meta.get_field("type_of_inquiry").options)
         self.assertIn("WhatsApp", meta.get_field("source").options)
@@ -53,21 +55,25 @@ class TestInquiry(FrappeTestCase):
         previous = getattr(frappe.flags, "in_web_form", None)
         frappe.flags.in_web_form = True
         try:
-            doc = frappe.get_doc(
-                {
-                    "doctype": "Inquiry",
-                    "first_name": "Web",
-                    "last_name": "Lead",
-                    "email": f"web-{frappe.generate_hash(length=8)}@example.com",
-                    "type_of_inquiry": "Admission",
-                    "message": "We would like to learn more.",
-                }
-            )
-            doc.insert(ignore_permissions=True)
+            with patch(
+                "ifitwala_ed.admission.doctype.inquiry.inquiry.queue_inquiry_family_acknowledgement"
+            ) as mocked_queue:
+                doc = frappe.get_doc(
+                    {
+                        "doctype": "Inquiry",
+                        "first_name": "Web",
+                        "last_name": "Lead",
+                        "email": f"web-{frappe.generate_hash(length=8)}@example.com",
+                        "type_of_inquiry": "Admission",
+                        "message": "We would like to learn more.",
+                    }
+                )
+                doc.insert(ignore_permissions=True)
         finally:
             frappe.flags.in_web_form = previous
 
         self.assertEqual(frappe.db.get_value("Inquiry", doc.name, "source"), "Website")
+        mocked_queue.assert_called_once()
 
     def test_insert_legacy_new_inquiry_state_is_rejected(self):
         doc = frappe.get_doc(
@@ -381,6 +387,95 @@ class TestInquiry(FrappeTestCase):
                 inquiry.mark_contacted(complete_todo=0)
         finally:
             frappe.set_user(previous_user)
+
+    def test_archive_requires_and_stores_reason(self):
+        inquiry = self._make_inquiry()
+
+        with patch(
+            "ifitwala_ed.admission.doctype.inquiry.inquiry.ensure_admissions_permission", return_value="Administrator"
+        ):
+            with self.assertRaises(frappe.ValidationError):
+                inquiry.archive()
+
+            inquiry.archive(reason="Duplicate parent inquiry.")
+
+        inquiry.reload()
+        self.assertEqual(inquiry.workflow_state, "Archived")
+        self.assertEqual(inquiry.archive_reason, "Duplicate parent inquiry.")
+
+    def test_zero_lost_lead_context_surfaces_operational_queues_without_date_window(self):
+        organization = self._make_organization("Zero Lost Root", is_group=1)
+        school = self._make_school(organization, "Zero Lost School")
+        stale = self._make_inquiry(organization=organization, school=school, source="Website")
+        legacy_archived = self._make_inquiry(organization=organization, school=school, source="Website")
+        invited = self._make_inquiry(
+            email=f"zero-lost-{frappe.generate_hash(length=8)}@example.com",
+            organization=organization,
+            school=school,
+            source="Website",
+        )
+        outside_org = self._make_organization("Zero Lost Outside", is_group=1)
+        outside_school = self._make_school(outside_org, "Zero Lost Outside School")
+        outside = self._make_inquiry(organization=outside_org, school=outside_school, source="Website")
+
+        frappe.db.set_value(
+            "Inquiry",
+            stale.name,
+            "submitted_at",
+            f"{frappe.utils.add_days(frappe.utils.nowdate(), -10)} 08:00:00",
+            update_modified=False,
+        )
+        frappe.db.set_value("Inquiry", legacy_archived.name, "workflow_state", "Archived", update_modified=False)
+        frappe.db.set_value("Inquiry", legacy_archived.name, "archive_reason", None, update_modified=False)
+
+        with patch("ifitwala_ed.admission.admission_utils.ensure_admissions_permission", return_value="Administrator"):
+            applicant_name = from_inquiry_invite(
+                inquiry_name=invited.name,
+                school=school,
+                organization=organization,
+            )
+
+        previous_user = frappe.session.user
+        try:
+            frappe.set_user("Administrator")
+            stale_payload = get_zero_lost_lead_context(
+                filters={
+                    "organization": organization,
+                    "date_mode": "custom",
+                    "from_date": frappe.utils.nowdate(),
+                    "to_date": frappe.utils.nowdate(),
+                },
+                active_view="stale_unowned",
+                start=0,
+                limit=20,
+            )
+            archived_payload = get_zero_lost_lead_context(
+                filters={"organization": organization},
+                active_view="archived_without_reason",
+                start=0,
+                limit=20,
+            )
+            invited_payload = get_zero_lost_lead_context(
+                filters={"organization": organization},
+                active_view="invited_no_progress",
+                start=0,
+                limit=20,
+            )
+        finally:
+            frappe.set_user(previous_user)
+
+        stale_rows = {row["name"] for row in stale_payload["command_center"]["rows"]}
+        archived_rows = {row["name"] for row in archived_payload["command_center"]["rows"]}
+        invited_rows = {row["name"] for row in invited_payload["command_center"]["rows"]}
+
+        self.assertIn(stale.name, stale_rows)
+        self.assertNotIn(outside.name, stale_rows)
+        self.assertIn(legacy_archived.name, archived_rows)
+        self.assertIn(invited.name, invited_rows)
+        self.assertEqual(
+            frappe.db.get_value("Student Applicant", applicant_name, "application_status"),
+            "Invited",
+        )
 
     def _make_organization(self, prefix: str, parent: str | None = None, is_group: int = 0) -> str:
         doc = frappe.get_doc(
