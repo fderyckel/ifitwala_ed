@@ -118,6 +118,7 @@ class TestApplicantEnrollmentPlanDepositBridge(IfitwalaEdTestSuite):
             with self.assertRaises(frappe.ValidationError):
                 generate_deposit_invoice_from_offer(plan.name)
 
+        plan.reload()
         with self.set_user(ctx["academic_admin"].name):
             plan.approve_deposit_academic_override()
         plan.reload()
@@ -512,7 +513,7 @@ class TestApplicantEnrollmentPlanDepositBridge(IfitwalaEdTestSuite):
             {
                 "doctype": "School",
                 "school_name": f"{prefix} {frappe.generate_hash(length=8)}",
-                "abbr": f"S{frappe.generate_hash(length=5)}",
+                "abbr": f"S{frappe.generate_hash(length=4)}",
                 "organization": organization,
                 "parent_school": self.bootstrap.root_school,
                 "is_group": 0,
