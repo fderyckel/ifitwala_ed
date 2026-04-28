@@ -23,7 +23,6 @@
   "school_logo",
   "school_settings_section",
   "default_follow_up_due_in_days",
-  "require_health_profile_for_approval",
   "column_break_xryt",
   "schedule_conflict_rule",
   "current_calendar_events_section",
@@ -45,12 +44,17 @@
   "course_color",
   "todo_color",
   "mission_vision_values_section",
+  "misson_vision",
   "school_philosophy",
   "school_mission",
   "school_vision",
   "school_values",
   "dashboard_tab",
   "website_tab",
+  "admission_section",
+  "show_in_inquiry",
+  "column_break_imes",
+  "require_health_profile_for_approval",
   "admissions_cta_section",
   "is_published",
   "website_slug",
@@ -146,7 +150,7 @@
    "collapsible": 1,
    "fieldname": "mission_vision_values_section",
    "fieldtype": "Tab Break",
-   "label": "Mission Vision Values"
+   "label": "Mission Vision & Values"
   },
   {
    "fieldname": "school_philosophy",
@@ -314,7 +318,7 @@
   {
    "fieldname": "website_tab",
    "fieldtype": "Tab Break",
-   "label": "Website"
+   "label": "Adminission & Website "
   },
   {
    "fieldname": "admissions_cta_section",
@@ -433,6 +437,26 @@
    "fieldname": "school_values",
    "fieldtype": "Text Editor",
    "label": "School Values"
+  },
+  {
+   "fieldname": "misson_vision",
+   "fieldtype": "Section Break",
+   "label": "Mission, Visions & Values"
+  },
+  {
+   "fieldname": "admission_section",
+   "fieldtype": "Section Break",
+   "label": "Admission"
+  },
+  {
+   "fieldname": "column_break_imes",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "show_in_inquiry",
+   "fieldtype": "Check",
+   "label": "Show in Inquiry"
   }
  ],
  "grid_page_length": 50,
@@ -440,7 +464,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2026-04-05 16:30:23.355980",
+ "modified": "2026-04-28 13:11:35.079783",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "School",

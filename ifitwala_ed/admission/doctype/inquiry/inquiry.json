@@ -39,10 +39,11 @@
   "partnership_section",
   "organization_name",
   "partnership_context",
+  "inquiry_message_section",
   "message",
-  "next_action_note",
   "section_break_olba",
   "workflow_state",
+  "next_action_note",
   "archive_reason",
   "sla_status",
   "assigned_to",
@@ -388,13 +389,18 @@
   {
    "fieldname": "column_break_hdcf",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "inquiry_message_section",
+   "fieldtype": "Section Break",
+   "label": "Inquiry Message"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2026-04-28 09:14:17.000000",
+ "modified": "2026-04-28 12:58:20.221213",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Inquiry",
