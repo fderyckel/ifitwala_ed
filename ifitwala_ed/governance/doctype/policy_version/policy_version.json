@@ -159,7 +159,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-22 13:01:32",
+ "modified": "2026-04-28 14:10:49.568620",
  "modified_by": "Administrator",
  "module": "Governance",
  "name": "Policy Version",
@@ -250,6 +250,15 @@
    "read": 1,
    "report": 1,
    "role": "Employee",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
    "share": 1
   }
  ],
