@@ -175,7 +175,7 @@ class TestAdmissionAcknowledgementProfile(FrappeTestCase):
             {
                 "doctype": "School",
                 "school_name": school_name or f"Ack School {frappe.generate_hash(length=6)}",
-                "abbr": f"AS{frappe.generate_hash(length=4)}",
+                "abbr": f"AS{frappe.generate_hash(length=3)}",
                 "organization": organization,
                 "is_published": is_published,
                 "show_in_inquiry": show_in_inquiry,
