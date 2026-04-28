@@ -42,6 +42,16 @@ TOKEN_MAX_EXPIRY_DAYS = 60
 OTP_TTL_MINUTES = 10
 OTP_MAX_FAILED_ATTEMPTS = 5
 IDEMPOTENCY_TTL_SECONDS = 60 * 15
+RECOMMENDATION_UPLOAD_ALLOWED_MIME_TYPES = {"application/pdf", "image/png"}
+RECOMMENDATION_UPLOAD_ALLOWED_EXTENSIONS = {
+    ".pdf": "application/pdf",
+    ".png": "image/png",
+}
+RECOMMENDATION_UPLOAD_GENERIC_MIME_TYPES = {
+    "application/octet-stream",
+    "binary/octet-stream",
+    "multipart/form-data",
+}
 
 
 def _table_exists(doctype: str) -> bool:
@@ -93,6 +103,44 @@ def _as_bool(value) -> bool:
 
 def _text(value) -> str:
     return str(value or "").strip()
+
+
+def _normalize_recommendation_upload_mime_type(value) -> str:
+    return str(value or "").split(";", 1)[0].strip().lower()
+
+
+def _recommendation_upload_extension(file_name: str | None) -> str:
+    text = _text(file_name).lower()
+    if "." not in text:
+        return ""
+    return f".{text.rsplit('.', 1)[-1]}"
+
+
+def _recommendation_upload_type_message() -> str:
+    return _("Recommendation attachments must be PDF or PNG files.")
+
+
+def _resolve_recommendation_upload_mime_hint(*, file_name: str | None, content_type: str | None = None) -> str:
+    mime_type = _normalize_recommendation_upload_mime_type(content_type)
+    extension = _recommendation_upload_extension(file_name)
+    expected_from_extension = RECOMMENDATION_UPLOAD_ALLOWED_EXTENSIONS.get(extension)
+
+    if mime_type and mime_type not in RECOMMENDATION_UPLOAD_GENERIC_MIME_TYPES:
+        if mime_type not in RECOMMENDATION_UPLOAD_ALLOWED_MIME_TYPES:
+            frappe.throw(_recommendation_upload_type_message(), frappe.ValidationError)
+        if expected_from_extension and expected_from_extension != mime_type:
+            frappe.throw(
+                _("The selected file extension does not match the uploaded file type. Upload a PDF or PNG file."),
+                frappe.ValidationError,
+            )
+
+    if extension and not expected_from_extension:
+        frappe.throw(_recommendation_upload_type_message(), frappe.ValidationError)
+
+    resolved = expected_from_extension or (mime_type if mime_type in RECOMMENDATION_UPLOAD_ALLOWED_MIME_TYPES else None)
+    if not resolved:
+        frappe.throw(_recommendation_upload_type_message(), frappe.ValidationError)
+    return resolved
 
 
 def _load_drive_version_mime_map(version_ids: list[str]) -> dict[str, str]:
@@ -2280,7 +2328,8 @@ def submit_recommendation(payload=None, **kwargs):
 
         request_obj = _get_bound_request()
         request_files = getattr(request_obj, "files", None) if request_obj else None
-        has_file_in_request = bool(data.get("content")) or bool(request_files and request_files.get("file"))
+        uploaded_file = request_files.get("file") if request_files and hasattr(request_files, "get") else None
+        has_file_in_request = bool(data.get("content")) or bool(uploaded_file)
         allow_file_upload = bool(template_meta.get("allow_file_upload"))
         file_upload_required = bool(template_meta.get("file_upload_required"))
         if has_file_in_request and not allow_file_upload:
@@ -2290,6 +2339,15 @@ def submit_recommendation(payload=None, **kwargs):
 
         upload_result = None
         if has_file_in_request:
+            upload_mime_hint = _resolve_recommendation_upload_mime_hint(
+                file_name=data.get("file_name") or getattr(uploaded_file, "filename", None),
+                content_type=(
+                    data.get("mime_type_hint")
+                    or data.get("content_type")
+                    or getattr(uploaded_file, "mimetype", None)
+                    or getattr(uploaded_file, "content_type", None)
+                ),
+            )
             upload_payload = {
                 "student_applicant": request_doc.student_applicant,
                 "document_type": request_doc.target_document_type,
@@ -2300,6 +2358,7 @@ def submit_recommendation(payload=None, **kwargs):
                 "upload_source": "API",
                 "is_private": 1,
                 "client_request_id": client_request_id,
+                "mime_type_hint": upload_mime_hint,
             }
             if data.get("content"):
                 upload_payload["content"] = data.get("content")

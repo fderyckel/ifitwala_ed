@@ -2,6 +2,7 @@
 # Copyright (c) 2026, François de Ryckel and contributors
 # See license.txt
 
+import base64
 from unittest.mock import patch
 from urllib.parse import urlparse
 
@@ -141,6 +142,103 @@ class TestRecommendationIntake(FrappeTestCase):
         self.assertTrue(bool(status_payload.get("ok")))
         self.assertEqual(int(status_payload.get("required_total") or 0), 1)
         self.assertEqual(int(status_payload.get("received_total") or 0), 1)
+
+    def test_submit_recommendation_accepts_pdf_attachment(self):
+        template = self._create_template(
+            organization=self.organization,
+            school=self.school,
+            target_document_type=self.document_type,
+            minimum_required=0,
+            maximum_allowed=1,
+            allow_file_upload=1,
+            otp_enforced=0,
+            applicant_can_view_status=1,
+        )
+        frappe.set_user(self.staff_user.name)
+        created = create_recommendation_request(
+            student_applicant=self.applicant.name,
+            recommendation_template=template.name,
+            recommender_name="PDF Mentor",
+            recommender_email=f"pdf-{frappe.generate_hash(length=6)}@example.com",
+            send_email=0,
+            client_request_id=f"pdf-create-{frappe.generate_hash(length=6)}",
+        )
+        request_name = created.get("recommendation_request")
+        self._track_recommendation_artifacts(request_name)
+        request_row = frappe.db.get_value(
+            "Recommendation Request",
+            request_name,
+            ["applicant_document", "applicant_document_item"],
+            as_dict=True,
+        )
+        token = self._token_from_intake_url(created.get("intake_url"))
+
+        frappe.set_user("Guest")
+        pdf_content = base64.b64encode(b"%PDF-1.4\n% ifitwala recommendation test\n").decode()
+        with patch(
+            "ifitwala_ed.api.recommendation_intake.admission_upload_api.upload_applicant_document",
+            return_value={
+                "applicant_document": request_row.get("applicant_document"),
+                "applicant_document_item": request_row.get("applicant_document_item"),
+            },
+        ) as upload_document:
+            payload = submit_recommendation(
+                token=token,
+                answers={"recommendation_summary": "Attached as PDF."},
+                attestation_confirmed=1,
+                content=pdf_content,
+                file_name="recommendation.pdf",
+                client_request_id=f"pdf-submit-{frappe.generate_hash(length=6)}",
+            )
+
+        self.assertTrue(bool(payload.get("ok")))
+        self.assertTrue(bool(payload.get("has_file")))
+        upload_kwargs = upload_document.call_args.kwargs
+        self.assertEqual(upload_kwargs.get("file_name"), "recommendation.pdf")
+        self.assertEqual(upload_kwargs.get("mime_type_hint"), "application/pdf")
+        self._track_recommendation_artifacts(request_name)
+
+    def test_submit_recommendation_rejects_unsupported_attachment_type(self):
+        template = self._create_template(
+            organization=self.organization,
+            school=self.school,
+            target_document_type=self.document_type,
+            minimum_required=0,
+            maximum_allowed=1,
+            allow_file_upload=1,
+            otp_enforced=0,
+            applicant_can_view_status=1,
+        )
+        frappe.set_user(self.staff_user.name)
+        created = create_recommendation_request(
+            student_applicant=self.applicant.name,
+            recommendation_template=template.name,
+            recommender_name="Unsupported Mentor",
+            recommender_email=f"unsupported-{frappe.generate_hash(length=6)}@example.com",
+            send_email=0,
+            client_request_id=f"unsupported-create-{frappe.generate_hash(length=6)}",
+        )
+        request_name = created.get("recommendation_request")
+        self._track_recommendation_artifacts(request_name)
+        token = self._token_from_intake_url(created.get("intake_url"))
+
+        frappe.set_user("Guest")
+        text_content = base64.b64encode(b"not a supported recommendation attachment").decode()
+        with patch(
+            "ifitwala_ed.api.recommendation_intake.admission_upload_api.upload_applicant_document"
+        ) as upload_document:
+            with self.assertRaises(frappe.ValidationError):
+                submit_recommendation(
+                    token=token,
+                    answers={"recommendation_summary": "Unsupported attachment."},
+                    attestation_confirmed=1,
+                    content=text_content,
+                    file_name="recommendation.txt",
+                    content_type="text/plain",
+                    client_request_id=f"unsupported-submit-{frappe.generate_hash(length=6)}",
+                )
+
+        upload_document.assert_not_called()
 
     def test_template_maximum_allowed_blocks_extra_requests(self):
         frappe.set_user(self.staff_user.name)

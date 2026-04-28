@@ -43,8 +43,8 @@
       <div id="dynamic-fields" style="display: grid; gap: 14px;"></div>
 
       <div id="file-section" style="display: none; margin-top: 16px;">
-        <label for="recommendation-file" style="display: block; font-weight: 600; color: #22354d; margin-bottom: 4px;">Attachment (PDF or document)</label>
-        <input id="recommendation-file" type="file" style="display: block;" />
+        <label for="recommendation-file" style="display: block; font-weight: 600; color: #22354d; margin-bottom: 4px;">Attachment (PDF or PNG)</label>
+        <input id="recommendation-file" type="file" accept=".pdf,.png,application/pdf,image/png" style="display: block;" />
         <p id="file-help" style="margin: 6px 0 0 0; color: #4f5f73; font-size: 13px;"></p>
       </div>
 
@@ -89,6 +89,10 @@
   const otpStatusEl = document.getElementById("otp-status");
 
   let latestPayload = null;
+  const allowedUploadMimeTypes = new Set(["application/pdf", "image/png"]);
+  const allowedUploadExtensions = new Set(["pdf", "png"]);
+  const genericUploadMimeTypes = new Set(["", "application/octet-stream", "binary/octet-stream"]);
+  const uploadTypeHelpText = "Accepted file types: PDF or PNG.";
 
   function messageFromServerPayload(payload) {
     if (!payload) return "Request failed.";
@@ -422,8 +426,8 @@
       return;
     }
     fileHelpEl.textContent = required
-      ? "File upload is required for this recommendation."
-      : "File upload is optional.";
+      ? `${uploadTypeHelpText} File upload is required for this recommendation.`
+      : `${uploadTypeHelpText} File upload is optional.`;
   }
 
   function setBusy(isBusy, message) {
@@ -478,7 +482,14 @@
   function readFileAsBase64(file) {
     return new Promise((resolve, reject) => {
       if (!file) {
-        resolve({ content: null, file_name: null });
+        resolve({ content: null, file_name: null, content_type: null });
+        return;
+      }
+
+      try {
+        validateSelectedFile(file);
+      } catch (error) {
+        reject(error);
         return;
       }
 
@@ -494,10 +505,27 @@
         resolve({
           content: result.slice(idx + 1),
           file_name: file.name,
+          content_type: file.type || null,
         });
       };
       reader.readAsDataURL(file);
     });
+  }
+
+  function validateSelectedFile(file) {
+    const fileName = String(file && file.name ? file.name : "");
+    const extension = fileName.includes(".") ? fileName.split(".").pop().toLowerCase() : "";
+    const mimeType = String(file && file.type ? file.type : "").split(";", 1)[0].trim().toLowerCase();
+
+    if (mimeType && !genericUploadMimeTypes.has(mimeType) && !allowedUploadMimeTypes.has(mimeType)) {
+      throw new Error(uploadTypeHelpText);
+    }
+    if (extension && !allowedUploadExtensions.has(extension)) {
+      throw new Error(uploadTypeHelpText);
+    }
+    if (!extension && !allowedUploadMimeTypes.has(mimeType)) {
+      throw new Error(uploadTypeHelpText);
+    }
   }
 
   async function loadPayload() {
@@ -625,6 +653,7 @@
       if (filePayload.content) {
         payload.content = filePayload.content;
         payload.file_name = filePayload.file_name;
+        payload.content_type = filePayload.content_type;
       }
 
       const needsOtp = Boolean(latestPayload && latestPayload.request && latestPayload.request.otp_enforced);

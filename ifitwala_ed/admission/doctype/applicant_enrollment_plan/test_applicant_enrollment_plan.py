@@ -65,7 +65,7 @@ class TestApplicantEnrollmentPlanDepositBridge(IfitwalaEdTestSuite):
         self.assertEqual(account_holder.primary_email, "finance.guardian@example.com")
         self.assertEqual(account_holder.primary_phone, "+66000000000")
 
-    def test_admission_officer_cannot_create_applicant_account_holder(self):
+    def test_admission_officer_can_create_applicant_account_holder_in_scope(self):
         ctx = self._make_context()
         officer = self._make_user("Admissions", "Officer", ["Admission Officer"])
         self._make_employee(
@@ -77,11 +77,11 @@ class TestApplicantEnrollmentPlanDepositBridge(IfitwalaEdTestSuite):
         )
 
         with self.set_user(officer.name):
-            with self.assertRaises(frappe.PermissionError):
-                create_account_holder_for_applicant(ctx["applicant"].name)
+            result = create_account_holder_for_applicant(ctx["applicant"].name)
 
         ctx["applicant"].reload()
-        self.assertFalse((ctx["applicant"].account_holder or "").strip())
+        self.assertTrue(result.get("created"))
+        self.assertEqual(ctx["applicant"].account_holder, result.get("account_holder", {}).get("name"))
 
     def test_terminal_applicant_cannot_create_account_holder(self):
         ctx = self._make_context()

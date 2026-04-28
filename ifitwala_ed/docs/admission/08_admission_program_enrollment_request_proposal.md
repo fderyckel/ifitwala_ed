@@ -98,7 +98,7 @@ Runtime rules:
 - `Admission Manager` may generate the draft invoice only through this domain endpoint when the plan is in scope and the deposit terms match the school default.
 - Invoice generation is idempotent; an existing `deposit_invoice` is returned instead of creating a duplicate.
 - `Student Applicant.account_holder` links the applicant/family to the accounting payer and is populated by the same account-holder seed/link workflow when either the Desk `Create Account Holder` action is used or the deposit invoice is generated while the field is still missing.
-- The Desk `Create Account Holder` action is available from the `Student Applicant` Billing section for in-scope `Admission Manager` users, with `System Manager` and `Administrator` as administrative bypasses. It creates at most one linked `Account Holder`, seeds the payer from the financial or primary applicant guardian when present, and blocks terminal applicants.
+- The Desk `Create Account Holder` action is available from the `Student Applicant` Billing section for in-scope `Admission Officer` and `Admission Manager` users, with `System Manager` and `Administrator` as administrative bypasses. It creates at most one linked `Account Holder`, seeds the payer from the financial or primary applicant guardian when present, and blocks terminal applicants.
 - Manual deposit terms on an AEP, including discounts or altered amounts/dates/items, set `deposit_terms_source = Manual Override` and require both academic and finance approval before invoice generation.
 - Academic approval requires `Academic Admin` or `System Manager` in employee scope.
 - Finance approval requires `Accounts Manager` or `System Manager` in employee scope.

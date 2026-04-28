@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, time, timedelta
+from html.parser import HTMLParser
 from typing import Iterable, Sequence
 
 import frappe
@@ -42,6 +44,52 @@ INTERVIEW_TIMELINE_LIMIT = 8
 INTERVIEW_WORKSPACE_DOC_LIMIT = 30
 INTERVIEW_WORKSPACE_INTERVIEW_LIMIT = 20
 INTERVIEW_FEEDBACK_DOCTYPE = "Applicant Interview Feedback"
+_RICH_TEXT_BLOCK_TAGS = {
+    "blockquote",
+    "br",
+    "div",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "li",
+    "ol",
+    "p",
+    "tr",
+    "ul",
+}
+
+
+class _RichTextPlainTextParser(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self._parts: list[str] = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag.lower() == "li":
+            self._append_newline()
+            self._parts.append("- ")
+        elif tag.lower() in _RICH_TEXT_BLOCK_TAGS:
+            self._append_newline()
+
+    def handle_endtag(self, tag):
+        if tag.lower() in _RICH_TEXT_BLOCK_TAGS:
+            self._append_newline()
+
+    def handle_data(self, data):
+        if data:
+            self._parts.append(data)
+
+    def _append_newline(self):
+        if self._parts and not self._parts[-1].endswith("\n"):
+            self._parts.append("\n")
+
+    def get_text(self):
+        text = "".join(self._parts).replace("\xa0", " ")
+        lines = [re.sub(r"[ \t]+", " ", line).strip() for line in text.splitlines()]
+        return "\n".join(line for line in lines if line).strip()
 
 
 class ApplicantInterview(Document):
@@ -785,7 +833,7 @@ def _serialize_interview_for_workspace(interview_doc: ApplicantInterview) -> dic
         else None,
         "interview_end_label": format_datetime(interview_doc.interview_end) if interview_doc.interview_end else None,
         "school_event": interview_doc.school_event,
-        "operational_notes": interview_doc.notes or "",
+        "operational_notes": _rich_text_to_plain_text(interview_doc.notes),
         "interviewers": [
             {
                 "user": user,
@@ -794,6 +842,18 @@ def _serialize_interview_for_workspace(interview_doc: ApplicantInterview) -> dic
             for user in interviewer_users
         ],
     }
+
+
+def _rich_text_to_plain_text(value: str | None) -> str:
+    raw = (value or "").strip()
+    if not raw:
+        return ""
+
+    parser = _RichTextPlainTextParser()
+    parser.feed(raw)
+    parser.close()
+    parsed = parser.get_text()
+    return parsed or raw
 
 
 def _get_applicant_workspace_context(student_applicant: str) -> dict:

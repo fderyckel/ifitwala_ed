@@ -361,12 +361,12 @@
 												</div>
 											</div>
 											<div
-												v-if="workspace.interview.operational_notes"
+												v-if="operationalNotesText"
 												class="mt-3 rounded-xl border border-border/60 bg-slate-50 px-3 py-3"
 											>
 												<p class="type-caption text-ink/65">Operational Notes</p>
 												<p class="type-body text-ink whitespace-pre-line mt-1">
-													{{ workspace.interview.operational_notes }}
+													{{ operationalNotesText }}
 												</p>
 											</div>
 										</article>
@@ -1604,6 +1604,9 @@ const workspaceInterviews = computed<InterviewWorkspaceInterview[]>(() => {
 	}
 	return [];
 });
+const operationalNotesText = computed(() =>
+	richTextToPlainText(workspace.value?.interview?.operational_notes)
+);
 const supplementalDocumentNames = computed(() => {
 	const names = new Set<string>();
 	for (const row of applicantRequirementRows.value) {
@@ -2697,6 +2700,31 @@ function formatTimelineContent(content?: string | null) {
 			fallback: match,
 		})
 	);
+}
+
+function richTextToPlainText(value?: string | null) {
+	const raw = String(value || '').trim();
+	if (!raw) return '';
+	if (!/<\/?[a-z][\s\S]*>/i.test(raw)) return raw;
+
+	let text = raw
+		.replace(/<\s*br\s*\/?>/gi, '\n')
+		.replace(/<\s*li\b[^>]*>/gi, '\n- ')
+		.replace(/<\/\s*(p|div|li|blockquote|h[1-6])\s*>/gi, '\n')
+		.replace(/<[^>]+>/g, '');
+
+	if (typeof document !== 'undefined') {
+		const decoder = document.createElement('textarea');
+		decoder.innerHTML = text;
+		text = decoder.value;
+	}
+
+	return text
+		.split(/\r?\n/)
+		.map(line => line.replace(/[ \t]+/g, ' ').trim())
+		.filter(Boolean)
+		.join('\n')
+		.trim();
 }
 
 function isLikertAnswer(answer: RecommendationReviewAnswer) {

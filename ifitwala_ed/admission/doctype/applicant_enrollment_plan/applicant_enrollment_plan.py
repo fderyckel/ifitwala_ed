@@ -34,6 +34,12 @@ DEPOSIT_INVOICE_ROLES = {
     "System Manager",
     "Administrator",
 }
+ACCOUNT_HOLDER_CREATE_ROLES = {
+    "Admission Manager",
+    "Admission Officer",
+    "System Manager",
+    "Administrator",
+}
 DEPOSIT_ACADEMIC_APPROVER_ROLES = {"Academic Admin", "System Manager", "Administrator"}
 DEPOSIT_FINANCE_APPROVER_ROLES = {"Accounts Manager", "System Manager", "Administrator"}
 STATUS_OPTIONS = {
@@ -1250,7 +1256,7 @@ def _ensure_account_holder_create_actor(applicant) -> None:
     roles = set(frappe.get_roles(user))
     if user == "Administrator" or roles & {"System Manager"}:
         return
-    if not (roles & DEPOSIT_INVOICE_ROLES):
+    if not (roles & ACCOUNT_HOLDER_CREATE_ROLES):
         frappe.throw(
             _("You do not have permission to create Account Holders for applicants."),
             frappe.PermissionError,

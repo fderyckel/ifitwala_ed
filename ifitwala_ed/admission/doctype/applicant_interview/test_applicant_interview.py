@@ -327,6 +327,37 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertEqual(payload.get("feedback", {}).get("my_feedback", {}).get("interviewer_user"), interviewer.name)
         self.assertTrue(bool(payload.get("feedback", {}).get("can_edit")))
 
+    def test_workspace_operational_notes_are_plain_text(self):
+        interviewer = self._create_user("workspace_notes")
+        self._create_employee(interviewer, first_name="Notes", last_name="Viewer")
+
+        interview = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview",
+                "student_applicant": self.applicant.name,
+                "interview_date": "2030-06-08",
+                "interview_start": "2030-06-08 13:00:00",
+                "interview_end": "2030-06-08 13:30:00",
+                "interview_type": "Student",
+                "notes": (
+                    '<div class="ql-editor read-mode">'
+                    "<p>Interview to check math level</p>"
+                    "<p>Bring portfolio&nbsp;copies.</p>"
+                    "</div>"
+                ),
+                "interviewers": [{"interviewer": interviewer.name}],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Interview", interview.name))
+
+        frappe.set_user(interviewer.name)
+        payload = get_interview_workspace(interview=interview.name)
+
+        operational_notes = payload.get("interview", {}).get("operational_notes")
+        self.assertEqual(operational_notes, "Interview to check math level\nBring portfolio copies.")
+        self.assertNotIn("<div", operational_notes)
+        self.assertNotIn("</p>", operational_notes)
+
     def test_workspace_document_links_use_secure_download_endpoint_for_interviewer(self):
         interviewer = self._create_user("workspace_docs")
         outsider = self._create_user("workspace_docs_out")

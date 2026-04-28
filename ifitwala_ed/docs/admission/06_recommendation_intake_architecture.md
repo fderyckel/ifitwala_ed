@@ -17,7 +17,7 @@ Test refs: `ifitwala_ed/api/test_recommendation_intake.py`, `ifitwala_ed/admissi
 1. Admissions portal authentication remains password login for `Admissions Applicant` users only.
 2. Recommender intake is a separate guest surface (`/admissions/recommendation/<token>`), not admissions portal authentication.
 3. Recommender links grant one narrow capability: submit exactly one recommendation request payload.
-4. Recommendation submissions are referee-owned. When a school enables file upload on the template, the referee uploads that file within the secure recommendation intake flow; otherwise the recommendation is form-only.
+4. Recommendation submissions are referee-owned. When a school enables file upload on the template, the referee uploads a PDF or PNG file within the secure recommendation intake flow; otherwise the recommendation is form-only.
 5. Recommendation evidence follows the same requirement/submission contract as all admissions evidence: the parent `Applicant Document` is aggregate-only and review, when required, happens only on the linked `Applicant Document Item`.
 6. Applicant portal visibility is status-only. Applicants never open the recommendation submission, its answers, or any attached file, and recommendation target document types are excluded from `/admissions/documents`.
 
@@ -118,6 +118,7 @@ Test refs: `ifitwala_ed/api/test_recommendation_intake.py`, `ifitwala_ed/admissi
    - when template author left `target_document_type` empty, save auto-resolves/creates the managed recommendation document type before requests can be created
 2. System allocates/links `Applicant Document Item` slot and issues secure intake URL.
 3. Recommender opens token link, completes template fields, optionally uploads file, confirms attestation, submits.
+   - recommendation attachment uploads are limited to PDF and PNG files; the guest form displays the accepted file types before submit and the server enforces the same allowlist before handing the file to Drive
 4. System seals `Recommendation Submission`, updates request to `Submitted`, and stores evidence in admissions document item slot.
    - if staff evidence review is configured, the resulting review task is materialized against that submission row only
 5. Staff can re-send or revoke open requests.
