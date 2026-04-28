@@ -207,10 +207,7 @@ function add_account_holder_action(frm) {
 
 	const field = frm.get_field("account_holder");
 	const wrapper = field?.$wrapper;
-	if (wrapper?.length) {
-		wrapper.find(".create-account-holder-btn").remove();
-		wrapper.closest(".section-body").find(".account-holder-action-column").remove();
-	}
+	reset_account_holder_inline_action(frm, wrapper);
 
 	if (!frm.doc || frm.is_new()) {
 		return;
@@ -241,7 +238,11 @@ function add_account_holder_action(frm) {
 		return;
 	}
 
-	$fieldColumn.removeClass("col-sm-12").addClass("col-sm-6");
+	$fieldColumn
+		.attr("data-account-holder-original-class", $fieldColumn.attr("class") || "")
+		.addClass("account-holder-link-column")
+		.removeClass("col-sm-12")
+		.addClass("col-sm-6");
 	const $actionColumn = $(`
 		<div class="form-column col-sm-6 account-holder-action-column">
 			<div class="frappe-control input-max-width">
@@ -250,7 +251,7 @@ function add_account_holder_action(frm) {
 						<label class="control-label" style="padding-right: 0;"></label>
 					</div>
 					<div class="control-input-wrapper">
-						<button type="button" class="btn btn-xs btn-primary create-account-holder-btn">
+						<button type="button" class="btn btn-xs create-account-holder-btn" style="background-color:#2563eb;border-color:#2563eb;color:#fff;">
 							${__("Create Account Holder")}
 						</button>
 					</div>
@@ -261,6 +262,29 @@ function add_account_holder_action(frm) {
 	const $btn = $actionColumn.find(".create-account-holder-btn");
 	$btn.on("click", createAccountHolder);
 	$fieldColumn.after($actionColumn);
+}
+
+function reset_account_holder_inline_action(frm, wrapper) {
+	const $form = frm.wrapper ? $(frm.wrapper) : $(document);
+	$form.find(".account-holder-action-column").remove();
+	$form.find(".create-account-holder-btn").remove();
+
+	if (!wrapper?.length) {
+		return;
+	}
+
+	const $fieldColumn = wrapper.closest(".form-column.account-holder-link-column");
+	if (!$fieldColumn.length) {
+		return;
+	}
+
+	const originalClass = $fieldColumn.attr("data-account-holder-original-class");
+	if (originalClass) {
+		$fieldColumn.attr("class", originalClass);
+	} else {
+		$fieldColumn.removeClass("account-holder-link-column col-sm-6").addClass("col-sm-12");
+	}
+	$fieldColumn.removeAttr("data-account-holder-original-class");
 }
 
 function create_account_holder_for_applicant(frm) {

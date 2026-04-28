@@ -121,39 +121,50 @@
 		</div>
 
 		<template v-else>
-			<section class="analytics-card">
-				<div class="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+			<section class="analytics-card analytics-card--dense">
+				<div class="mb-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
 					<div>
-						<h2 class="analytics-card__title">Operational Views</h2>
-						<p class="type-meta text-slate-token/70">
-							All-time queues within the selected organization, school, assignee, type, source, and
-							lane.
+						<h2 class="analytics-card__title">Operational Queues</h2>
+						<p class="type-caption text-slate-token/70">
+							All-time lead-loss queues. Organization, school, assignee, type, source, and lane
+							filters still apply.
 						</p>
 					</div>
-					<div class="type-meta text-slate-token/70">
-						{{ totalOperationalCount }} queue match{{ totalOperationalCount === 1 ? '' : 'es' }}
+					<div
+						class="inline-flex w-fit items-baseline gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5"
+					>
+						<span class="text-xl font-semibold tabular-nums text-ink">{{
+							totalOperationalCount
+						}}</span>
+						<span class="type-caption text-slate-token/70">
+							queue match{{ totalOperationalCount === 1 ? '' : 'es' }}
+						</span>
 					</div>
 				</div>
 
-				<div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 					<button
 						v-for="view in commandViews"
 						:key="view.id"
 						type="button"
-						class="rounded-md border p-4 text-left transition"
+						class="min-h-[96px] rounded-md border p-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-canopy"
 						:class="viewCardClass(view)"
 						@click="setActiveView(view.id)"
 					>
-						<div class="flex items-start justify-between gap-3">
-							<span class="type-label text-ink">{{ view.title }}</span>
-							<span
-								class="rounded-full px-2 py-0.5 text-xs font-semibold"
-								:class="viewCountClass(view)"
-							>
-								{{ view.count }}
+						<div class="flex h-full flex-col justify-between gap-3">
+							<div class="flex items-start justify-between gap-3">
+								<span class="type-label leading-snug text-ink">{{ view.title }}</span>
+								<span
+									class="text-3xl font-semibold leading-none tabular-nums"
+									:class="viewNumberClass(view)"
+								>
+									{{ view.count }}
+								</span>
+							</div>
+							<span class="line-clamp-2 type-caption leading-snug text-slate-token/70">
+								{{ view.next_action }}
 							</span>
 						</div>
-						<div class="mt-3 type-caption text-slate-token/70">{{ view.next_action }}</div>
 					</button>
 				</div>
 			</section>
@@ -576,20 +587,20 @@ const hasAnyOperationalLeads = computed(() => totalOperationalCount.value > 0);
 
 function viewCardClass(view: ZeroLostLeadView) {
 	const active = activeCommandView.value?.id === view.id;
-	if (active) return 'border-canopy bg-canopy/5 shadow-sm';
+	if (active) return 'border-canopy bg-canopy/5 shadow-sm ring-1 ring-canopy/30';
 	if (view.count > 0 && view.tone === 'danger')
-		return 'border-red-200 bg-red-50 hover:border-red-300';
+		return 'border-red-200 bg-red-50/70 hover:border-red-300 hover:bg-red-50';
 	if (view.count > 0 && view.tone === 'warning')
-		return 'border-amber-200 bg-amber-50 hover:border-amber-300';
-	if (view.count > 0) return 'border-sky-200 bg-sky-50 hover:border-sky-300';
+		return 'border-amber-200 bg-amber-50/70 hover:border-amber-300 hover:bg-amber-50';
+	if (view.count > 0) return 'border-sky-200 bg-sky-50/70 hover:border-sky-300 hover:bg-sky-50';
 	return 'border-slate-200 bg-white hover:border-slate-300';
 }
 
-function viewCountClass(view: ZeroLostLeadView) {
-	if (view.count <= 0) return 'bg-slate-100 text-slate-500';
-	if (view.tone === 'danger') return 'bg-red-100 text-red-700';
-	if (view.tone === 'warning') return 'bg-amber-100 text-amber-700';
-	return 'bg-sky-100 text-sky-700';
+function viewNumberClass(view: ZeroLostLeadView) {
+	if (view.count <= 0) return 'text-slate-400';
+	if (view.tone === 'danger') return 'text-red-600';
+	if (view.tone === 'warning') return 'text-amber-600';
+	return 'text-sky-600';
 }
 
 function formatDate(value?: string | null) {
