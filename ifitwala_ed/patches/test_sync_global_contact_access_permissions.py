@@ -1,10 +1,10 @@
 from types import ModuleType
 from unittest.mock import Mock, patch
 
-from ifitwala_ed.patches.sync_core_crm_permissions import execute
+from ifitwala_ed.patches.sync_global_contact_access_permissions import execute
 
 
-def test_sync_core_crm_permissions_reapplies_canonical_seed():
+def test_sync_global_contact_access_permissions_reapplies_canonical_seed():
     setup_module = ModuleType("ifitwala_ed.setup.setup")
     setup_module.grant_core_crm_permissions = Mock()
 

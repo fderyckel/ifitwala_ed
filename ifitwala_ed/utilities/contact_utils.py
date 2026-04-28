@@ -51,12 +51,28 @@ from frappe.contacts.address_and_contact import has_permission as _core_has_perm
 HR_CONTACT_ROLES = {"HR Manager", "HR User"}
 ACADEMIC_CONTACT_ROLES = {"Academic Admin", "Academic Assistant"}
 ADMISSIONS_CONTACT_ROLES = {"Admission Manager", "Admission Officer"}
+MARKETING_CONTACT_ROLES = {"Marketing Manager", "Marketing User"}
+CONTACT_GLOBAL_ACCESS_ROLES = ADMISSIONS_CONTACT_ROLES | MARKETING_CONTACT_ROLES
+CONTACT_GLOBAL_MANAGER_ROLES = {"Admission Manager", "Marketing Manager"}
 EDUCATION_CONTACT_ROLES = ACADEMIC_CONTACT_ROLES | ADMISSIONS_CONTACT_ROLES
 READ_LIKE_CONTACT_PTYPES = {"read", "report", "export", "print", "email"}
+CONTACT_EDITOR_PTYPES = READ_LIKE_CONTACT_PTYPES | {"write", "create", "comment", "assign"}
 
 
 def _is_adminish(user: str) -> bool:
     return user == "Administrator" or "System Manager" in set(frappe.get_roles(user))
+
+
+def _has_global_contact_access(roles: set[str], ptype: str | None) -> bool:
+    if not roles & CONTACT_GLOBAL_ACCESS_ROLES:
+        return False
+
+    op = (ptype or "read").lower()
+    if op in CONTACT_EDITOR_PTYPES:
+        return True
+    if op == "delete" and roles & CONTACT_GLOBAL_MANAGER_ROLES:
+        return True
+    return False
 
 
 def _resolve_hr_contact_org_scope(user: str) -> list[str]:
@@ -556,6 +572,8 @@ def contact_has_permission(doc, ptype, user):
 
     if _is_adminish(user):
         return True
+    if _has_global_contact_access(roles, op):
+        return True
 
     education_allowed = _education_contact_scope_matches(getattr(doc, "name", None), user, roles)
     if education_allowed is False:
@@ -586,6 +604,9 @@ def contact_permission_query_conditions(user):
         return ""
 
     roles = set(frappe.get_roles(user))
+    if roles & CONTACT_GLOBAL_ACCESS_ROLES:
+        return ""
+
     conditions = []
     employee_scope_sql = _employee_contact_scope_sql(user)
     if employee_scope_sql:

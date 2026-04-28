@@ -677,6 +677,8 @@ def grant_core_crm_permissions():
         "Contact": {
             "Admission Officer": ["read", "write", "create", "email", "comment", "assign"],
             "Admission Manager": ["read", "write", "create", "delete", "email", "comment", "assign"],
+            "Marketing User": ["read", "write", "create", "email", "comment", "assign"],
+            "Marketing Manager": ["read", "write", "create", "delete", "email", "comment", "assign"],
             "Academic Admin": ["read", "write", "create", "delete", "email", "comment", "assign"],
             "Academic Assistant": ["read", "write", "create", "delete", "email", "comment", "assign"],
             "Curriculum Coordinator": ["read"],
@@ -689,6 +691,8 @@ def grant_core_crm_permissions():
         "Address": {
             "Admission Officer": ["read", "email", "comment", "assign"],
             "Admission Manager": ["read", "write", "create", "delete", "email", "comment", "assign"],
+            "Marketing User": ["read", "email", "comment", "assign"],
+            "Marketing Manager": ["read", "write", "create", "delete", "email", "comment", "assign"],
             "Academic Admin": ["read", "write", "create", "delete", "email", "comment", "assign"],
             "Academic Assistant": ["read", "write", "create", "delete", "email", "comment", "assign"],
             "Curriculum Coordinator": ["read"],
