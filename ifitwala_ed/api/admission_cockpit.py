@@ -23,7 +23,14 @@ from ifitwala_ed.governance.policy_scope_utils import (
     get_school_ancestors_including_self,
     select_nearest_policy_rows_by_key,
 )
-from ifitwala_ed.governance.policy_utils import ensure_policy_applies_to_storage, policy_applies_to_filter_sql
+from ifitwala_ed.governance.policy_utils import (
+    ADMISSIONS_POLICY_MODE_FAMILY,
+    ADMISSIONS_POLICY_MODE_OPTIONAL,
+    ensure_policy_applies_to_storage,
+    get_policy_admissions_acknowledgement_mode,
+    institutional_policy_db_has_column,
+    policy_applies_to_filter_sql,
+)
 from ifitwala_ed.utilities.employee_utils import get_schools_for_organization_scope
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
@@ -609,6 +616,11 @@ def _build_policy_state(applicant_rows: list[dict], applicant_names: list[str]) 
             school_scope_sql = f" OR ip.school IN ({school_placeholders})"
             school_params = tuple(school_values)
 
+        mode_select_sql = (
+            "ip.admissions_acknowledgement_mode AS admissions_acknowledgement_mode,"
+            if institutional_policy_db_has_column("admissions_acknowledgement_mode")
+            else "'Child Acknowledgement' AS admissions_acknowledgement_mode,"
+        )
         policy_rows = frappe.db.sql(
             f"""
             SELECT ip.name AS policy_name,
@@ -616,6 +628,7 @@ def _build_policy_state(applicant_rows: list[dict], applicant_names: list[str]) 
                    ip.policy_title AS policy_title,
                    ip.organization AS policy_organization,
                    ip.school AS policy_school,
+                   {mode_select_sql}
                    pv.name AS policy_version
               FROM `tabInstitutional Policy` ip
               JOIN `tabPolicy Version` pv
@@ -630,8 +643,8 @@ def _build_policy_state(applicant_rows: list[dict], applicant_names: list[str]) 
             as_dict=True,
         )
 
-    required_policy_rows_by_applicant: dict[str, list[dict]] = {}
-    all_required_versions: set[str] = set()
+    policy_rows_by_applicant: dict[str, list[dict]] = {}
+    all_policy_versions: set[str] = set()
 
     for applicant_row in applicant_rows:
         applicant_name = _to_text(applicant_row.get("name"))
@@ -648,7 +661,7 @@ def _build_policy_state(applicant_rows: list[dict], applicant_names: list[str]) 
                 "required": [],
                 "missing_rows": [],
             }
-            required_policy_rows_by_applicant[applicant_name] = []
+            policy_rows_by_applicant[applicant_name] = []
             continue
 
         ancestor_orgs = org_ancestors_cache.get(organization) or []
@@ -661,7 +674,7 @@ def _build_policy_state(applicant_rows: list[dict], applicant_names: list[str]) 
                 "required": [],
                 "missing_rows": [],
             }
-            required_policy_rows_by_applicant[applicant_name] = []
+            policy_rows_by_applicant[applicant_name] = []
             continue
 
         candidate_rows = [
@@ -683,18 +696,18 @@ def _build_policy_state(applicant_rows: list[dict], applicant_names: list[str]) 
             policy_school_field="policy_school",
         )
 
-        required_policy_rows_by_applicant[applicant_name] = nearest_rows
+        policy_rows_by_applicant[applicant_name] = nearest_rows
         for row_policy in nearest_rows:
             policy_version = _to_text(row_policy.get("policy_version"))
             if policy_version:
-                all_required_versions.add(policy_version)
+                all_policy_versions.add(policy_version)
 
-    acknowledgements_by_pair: dict[tuple[str, str], dict] = {}
-    if all_required_versions and applicant_names:
+    applicant_acknowledgements_by_pair: dict[tuple[str, str], dict] = {}
+    if all_policy_versions and applicant_names:
         acknowledgement_rows = frappe.get_all(
             "Policy Acknowledgement",
             filters={
-                "policy_version": ["in", sorted(all_required_versions)],
+                "policy_version": ["in", sorted(all_policy_versions)],
                 "acknowledged_for": "Applicant",
                 "context_doctype": "Student Applicant",
                 "context_name": ["in", applicant_names],
@@ -710,16 +723,63 @@ def _build_policy_state(applicant_rows: list[dict], applicant_names: list[str]) 
             if not applicant_name or not policy_version:
                 continue
             key = (applicant_name, policy_version)
-            if key in acknowledgements_by_pair:
+            if key in applicant_acknowledgements_by_pair:
                 continue
-            acknowledgements_by_pair[key] = row_ack
+            applicant_acknowledgements_by_pair[key] = row_ack
+
+    applicant_names_by_guardian: dict[str, set[str]] = defaultdict(set)
+    if applicant_names:
+        guardian_rows = frappe.get_all(
+            "Student Applicant Guardian",
+            filters={
+                "parent": ["in", applicant_names],
+                "parenttype": "Student Applicant",
+                "parentfield": "guardians",
+                "can_consent": 1,
+                "is_primary_guardian": 1,
+            },
+            fields=["parent", "guardian"],
+            limit=10000,
+        )
+        for row_guardian in guardian_rows:
+            applicant_name = _to_text(row_guardian.get("parent"))
+            guardian_name = _to_text(row_guardian.get("guardian"))
+            if not applicant_name or not guardian_name:
+                continue
+            applicant_names_by_guardian[guardian_name].add(applicant_name)
+
+    guardian_acknowledgements_by_pair: dict[tuple[str, str], dict] = {}
+    guardian_names = sorted(applicant_names_by_guardian)
+    if all_policy_versions and guardian_names:
+        guardian_acknowledgement_rows = frappe.get_all(
+            "Policy Acknowledgement",
+            filters={
+                "policy_version": ["in", sorted(all_policy_versions)],
+                "acknowledged_for": "Guardian",
+                "context_doctype": "Guardian",
+                "context_name": ["in", guardian_names],
+            },
+            fields=["context_name", "policy_version", "acknowledged_by", "acknowledged_at"],
+            order_by="acknowledged_at desc",
+            limit=10000,
+        )
+        for row_ack in guardian_acknowledgement_rows:
+            guardian_name = _to_text(row_ack.get("context_name"))
+            policy_version = _to_text(row_ack.get("policy_version"))
+            if not guardian_name or not policy_version:
+                continue
+            for applicant_name in applicant_names_by_guardian.get(guardian_name, set()):
+                key = (applicant_name, policy_version)
+                if key in guardian_acknowledgements_by_pair:
+                    continue
+                guardian_acknowledgements_by_pair[key] = row_ack
 
     for applicant_name in applicant_names:
         if applicant_name in out:
             continue
 
-        required_rows = required_policy_rows_by_applicant.get(applicant_name, [])
-        if not required_rows:
+        assigned_rows = policy_rows_by_applicant.get(applicant_name, [])
+        if not assigned_rows:
             out[applicant_name] = {
                 "ok": True,
                 "missing": [],
@@ -732,17 +792,23 @@ def _build_policy_state(applicant_rows: list[dict], applicant_names: list[str]) 
         missing_labels: list[str] = []
         missing_rows: list[dict] = []
 
-        for row_policy in required_rows:
+        for row_policy in assigned_rows:
             label = (
                 _to_text(row_policy.get("policy_key"))
                 or _to_text(row_policy.get("policy_title"))
                 or _to_text(row_policy.get("policy_name"))
             )
-            required_labels.append(label)
+            acknowledgement_mode = get_policy_admissions_acknowledgement_mode(policy_row=row_policy)
+            is_required = acknowledgement_mode != ADMISSIONS_POLICY_MODE_OPTIONAL
+            if is_required:
+                required_labels.append(label)
 
             policy_version = _to_text(row_policy.get("policy_version"))
-            ack = acknowledgements_by_pair.get((applicant_name, policy_version))
-            if ack:
+            if acknowledgement_mode == ADMISSIONS_POLICY_MODE_FAMILY:
+                ack = guardian_acknowledgements_by_pair.get((applicant_name, policy_version))
+            else:
+                ack = applicant_acknowledgements_by_pair.get((applicant_name, policy_version))
+            if ack or not is_required:
                 continue
 
             missing_labels.append(label)
@@ -751,6 +817,7 @@ def _build_policy_state(applicant_rows: list[dict], applicant_names: list[str]) 
                     "label": label,
                     "policy_name": _to_text(row_policy.get("policy_name")) or None,
                     "policy_version": policy_version or None,
+                    "admissions_acknowledgement_mode": acknowledgement_mode,
                 }
             )
 

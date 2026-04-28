@@ -71,26 +71,26 @@ class TestAdmissionAcknowledgementProfile(FrappeTestCase):
                 application_cta_route="/admissions",
             )
 
-    def test_public_school_query_exposes_only_published_inquiry_schools(self):
+    def test_public_school_query_exposes_only_inquiry_enabled_schools(self):
         organization = self._make_organization(get_inquiry=1)
-        published = self._make_school(
+        unpublished_enabled = self._make_school(
             organization=organization,
-            school_name="Published Inquiry School",
-            is_published=1,
-            website_slug="published-inquiry-school",
+            school_name="Enabled Inquiry School",
+            is_published=0,
+            show_in_inquiry=1,
         )
-        unpublished = self._make_school(
+        published_but_hidden = self._make_school(
             organization=organization,
             school_name="Hidden Inquiry School",
-            is_published=0,
-            website_slug="hidden-inquiry-school",
+            is_published=1,
+            show_in_inquiry=0,
         )
 
         rows = inquiry_school_link_query(txt="Inquiry School", filters={"organization": organization})
         names = {row[0] for row in rows}
 
-        self.assertIn(published.name, names)
-        self.assertNotIn(unpublished.name, names)
+        self.assertIn(unpublished_enabled.name, names)
+        self.assertNotIn(published_but_hidden.name, names)
 
     def test_queue_uses_short_after_commit_for_public_web_form(self):
         previous = getattr(frappe.flags, "in_web_form", None)
@@ -167,6 +167,7 @@ class TestAdmissionAcknowledgementProfile(FrappeTestCase):
         organization: str,
         school_name: str | None = None,
         is_published: int = 0,
+        show_in_inquiry: int = 0,
         website_slug: str | None = None,
         admissions_visit_route: str | None = None,
     ):
@@ -177,6 +178,7 @@ class TestAdmissionAcknowledgementProfile(FrappeTestCase):
                 "abbr": f"AS{frappe.generate_hash(length=4)}",
                 "organization": organization,
                 "is_published": is_published,
+                "show_in_inquiry": show_in_inquiry,
                 "website_slug": website_slug,
                 "admissions_visit_route": admissions_visit_route,
             }

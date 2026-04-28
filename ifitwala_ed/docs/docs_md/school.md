@@ -3,8 +3,8 @@ title: "School: Academic Scope and Hierarchy Node"
 slug: school
 category: School Settings
 doc_order: 1
-version: "1.4.1"
-last_change_date: "2026-04-25"
+version: "1.4.2"
+last_change_date: "2026-04-28"
 summary: "Define schools as NestedSet academic scope records anchored to an Organization, with hierarchy integrity, governed public media, website publication bootstrap, and explicit DocType permissions."
 seo_title: "School: Academic Scope and Hierarchy Node"
 seo_description: "Define schools as NestedSet academic scope records anchored to an Organization, with hierarchy integrity, governed public media, website publication bootstrap, and explicit DocType permissions."
@@ -28,6 +28,7 @@ seo_description: "Define schools as NestedSet academic scope records anchored to
 - When a child school is saved from Desk with empty `current_academic_year`, `current_term`, or `current_school_calendar` fields and the parent school has values, Desk prompts the user to copy the parent's values into that child school explicitly.
 - Attendance thresholds must stay within `0..100`, and warning must be greater than or equal to critical.
 - Publishing requires a usable `website_slug`; when blank, save generates the next available slug automatically.
+- `Show in Inquiry` controls whether the school appears in the public Inquiry web-form School picker; it is independent from website publication.
 - Existing `School Website Page` rows are kept in sync with school publication state.
 - First publish, or a publish-state repair path, prepares the canonical starter website pages and missing `Website SEO Profile` links without overwriting authored content.
 - School logo and gallery images must resolve through governed Organization Media; direct unmanaged image values are rejected on save.
@@ -149,6 +150,7 @@ This matrix reflects the explicit `School` DocType permission rows only. Effecti
   - `attendance_warning_threshold` / `attendance_critical_threshold`
   - `website_slug`
   - `is_published`
+  - `show_in_inquiry`
   - `school_logo_file`
   - `gallery_image`
 - **Controller hooks**:

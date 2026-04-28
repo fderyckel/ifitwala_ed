@@ -3,7 +3,7 @@ title: "Inquiry: Managing Website Visitor Intake"
 slug: inquiry
 category: Admission
 doc_order: 2
-version: "1.7.0"
+version: "1.7.1"
 last_change_date: "2026-04-28"
 summary: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
 seo_title: "Inquiry: Managing Website Visitor Intake"
@@ -80,7 +80,7 @@ Allowed transitions are strictly server-validated:
   - Kanban board `Inquiry Team Pipeline` grouped by `sla_status` (with `workflow_state != Archived`) for admissions/marketing/comms triage
 - **Public web form**: `/apply/inquiry` creates Inquiry records from visitor submissions and shows a branded post-submit thank-you page with next-step timeline and safe CTAs.
   - `Organization` and `School` remain optional and visible so prospects can choose context when useful; admissions users can adjust them later.
-  - the public `School` picker is filtered to published schools under inquiry-enabled organizations.
+  - the public `School` picker is filtered to schools with `Show in Inquiry` enabled under inquiry-enabled organizations; website publication is a separate setting.
   - public web submissions default `Source` to `Website`.
   - public submissions with an email address queue a transactional family acknowledgement email after commit.
   - school-specific thank-you copy, email template, visit CTA, and optional public application CTA are configured through `Admission Acknowledgement Profile`.
@@ -208,7 +208,7 @@ Action-level guard in server code: assignment/reassignment require admissions pe
   - config file `ifitwala_ed/admission/web_form/inquiry/inquiry.json`
   - route `apply/inquiry` (public form)
   - `organization` and `school` remain visible and optional; hidden `source` defaults to `Website`
-  - `school` uses public-safe `inquiry_school_link_query`, scoped by selected organization where present
+  - `school` uses public-safe `inquiry_school_link_query`, scoped by selected organization where present and filtered by `School.show_in_inquiry`
   - thank-you page copy and CTAs are loaded from `get_inquiry_acknowledgement_context`
   - conditional fields are shown from `type_of_inquiry` for admission, current-family, and partnership/agent context
   - scoped shell assets via `hooks.py` `webform_include_css/js` for `Inquiry`, using app public paths: `public/css/admissions_webform_shell.css` and `public/js/admissions_webform_shell.js`

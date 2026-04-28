@@ -19,6 +19,8 @@ from ifitwala_ed.api.admissions_review import (
     review_applicant_document_submission,
     set_document_requirement_override,
 )
+from ifitwala_ed.governance.doctype.policy_version.policy_version import has_permission as policy_version_has_permission
+from ifitwala_ed.governance.policy_utils import ensure_policy_audience_records
 
 
 def _insert_user_without_notifications(user):
@@ -37,21 +39,35 @@ class TestAdmissionCockpit(FrappeTestCase):
         frappe.set_user("Administrator")
         self._created: list[tuple[str, str]] = []
         self._ensure_role("Admission Manager")
+        self._ensure_role("Admission Officer")
         self._ensure_role("Admissions Applicant")
         self._ensure_gender("Male")
+        ensure_policy_audience_records()
 
         self.staff_user = self._create_user("staff", ["Admission Manager"])
+        self.admission_officer_user = self._create_user("officer", ["Admission Officer"])
         self.applicant_user = self._create_user("applicant", ["Admissions Applicant"])
 
         self.organization = self._create_organization()
         self.school = self._create_school(self.organization)
         self._create_employee(self.staff_user.name, self.organization, self.school)
+        self._create_employee(self.admission_officer_user.name, self.organization, self.school)
         self.applicant = self._create_applicant(self.organization, self.school, self.applicant_user.name)
 
     def tearDown(self):
         frappe.set_user("Administrator")
         for doctype, name in reversed(self._created):
             if frappe.db.exists(doctype, name):
+                if doctype == "Policy Acknowledgement":
+                    frappe.db.delete("Policy Acknowledgement", {"name": name})
+                    continue
+                if doctype == "Policy Version":
+                    frappe.db.delete("Policy Version", {"name": name})
+                    continue
+                if doctype == "Institutional Policy":
+                    frappe.db.delete("Institutional Policy Audience", {"parent": name})
+                    frappe.db.delete("Institutional Policy", {"name": name})
+                    continue
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
         super().tearDown()
 
@@ -189,6 +205,44 @@ class TestAdmissionCockpit(FrappeTestCase):
                 for blocker in (card.get("blockers") or [])
             )
         )
+
+    def test_family_policy_acknowledgement_marks_cockpit_policies_ready(self):
+        policy_version = self._create_applicant_policy_version(admissions_acknowledgement_mode="Family Acknowledgement")
+        guardian = self._create_guardian()
+        self._link_guardian_to_applicant(guardian.name)
+        self._create_policy_acknowledgement(
+            policy_version=policy_version.name,
+            acknowledged_for="Guardian",
+            context_doctype="Guardian",
+            context_name=guardian.name,
+        )
+
+        card = self._get_cockpit_card(self.applicant.name)
+
+        self.assertTrue(bool((card.get("readiness") or {}).get("policies_ok")))
+        self.assertNotIn("missing_policies", {row.get("kind") for row in card.get("blockers") or []})
+
+    def test_optional_applicant_policy_does_not_block_cockpit_readiness(self):
+        self._create_applicant_policy_version(admissions_acknowledgement_mode="Child Optional Consent")
+
+        card = self._get_cockpit_card(self.applicant.name)
+
+        self.assertTrue(bool((card.get("readiness") or {}).get("policies_ok")))
+        self.assertNotIn("missing_policies", {row.get("kind") for row in card.get("blockers") or []})
+
+    def test_admission_officer_can_read_policy_version_with_scoped_applicant_acknowledgement(self):
+        policy_version = self._create_applicant_policy_version()
+        self._create_policy_acknowledgement(
+            policy_version=policy_version.name,
+            acknowledged_for="Applicant",
+            context_doctype="Student Applicant",
+            context_name=self.applicant.name,
+        )
+
+        self.assertTrue(
+            policy_version_has_permission(policy_version, user=self.admission_officer_user.name, ptype="read")
+        )
+        self.assertTrue(policy_version_has_permission(policy_version, "read", self.admission_officer_user.name))
 
     def test_cockpit_card_exposes_committee_approved_enrollment_plan_state(self):
         context = self._create_offer_plan(status="Committee Approved")
@@ -371,6 +425,88 @@ class TestAdmissionCockpit(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Document Type", document_type.name))
         return document_type.name
+
+    def _create_applicant_policy_version(self, admissions_acknowledgement_mode: str = "Child Acknowledgement"):
+        policy = frappe.get_doc(
+            {
+                "doctype": "Institutional Policy",
+                "policy_key": f"cockpit_policy_{frappe.generate_hash(length=8)}",
+                "policy_title": f"Cockpit Policy {frappe.generate_hash(length=6)}",
+                "policy_category": "Admissions",
+                "applies_to": [{"policy_audience": "Applicant"}],
+                "admissions_acknowledgement_mode": admissions_acknowledgement_mode,
+                "organization": self.organization,
+                "school": self.school,
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Institutional Policy", policy.name))
+
+        version = frappe.get_doc(
+            {
+                "doctype": "Policy Version",
+                "institutional_policy": policy.name,
+                "version_label": f"v-{frappe.generate_hash(length=6)}",
+                "policy_text": "<p>Cockpit admissions policy text.</p>",
+                "is_active": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Policy Version", version.name))
+        return version
+
+    def _create_guardian(self):
+        guardian = frappe.get_doc(
+            {
+                "doctype": "Guardian",
+                "guardian_first_name": "Cockpit",
+                "guardian_last_name": f"Guardian-{frappe.generate_hash(length=6)}",
+                "guardian_mobile_phone": "0800000000",
+                "guardian_email": f"guardian-{frappe.generate_hash(length=6)}@example.com",
+                "organization": self.organization,
+                "is_primary_guardian": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Guardian", guardian.name))
+        return guardian
+
+    def _link_guardian_to_applicant(self, guardian_name: str):
+        applicant = frappe.get_doc("Student Applicant", self.applicant.name)
+        applicant.append(
+            "guardians",
+            {
+                "guardian": guardian_name,
+                "relationship": "Mother",
+                "is_primary": 1,
+                "is_primary_guardian": 1,
+                "can_consent": 1,
+            },
+        )
+        applicant.save(ignore_permissions=True)
+        self.applicant.reload()
+
+    def _create_policy_acknowledgement(
+        self,
+        *,
+        policy_version: str,
+        acknowledged_for: str,
+        context_doctype: str,
+        context_name: str,
+    ):
+        frappe.set_user("Administrator")
+        acknowledgement = frappe.get_doc(
+            {
+                "doctype": "Policy Acknowledgement",
+                "policy_version": policy_version,
+                "acknowledged_by": "Administrator",
+                "acknowledged_for": acknowledged_for,
+                "context_doctype": context_doctype,
+                "context_name": context_name,
+                "typed_signature_name": "Administrator",
+                "attestation_confirmed": 1,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Policy Acknowledgement", acknowledgement.name))
+        return acknowledgement
 
     def _create_offer_plan(self, *, status: str):
         academic_year = frappe.get_doc(

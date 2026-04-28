@@ -199,6 +199,7 @@ class PolicyAcknowledgement(Document):
 
     def after_insert(self):
         self._auto_submit()
+        self._invalidate_admissions_cockpit_cache()
 
     def on_submit(self):
         if is_system_manager() and not self._is_role_allowed_for_ack():
@@ -208,6 +209,18 @@ class PolicyAcknowledgement(Document):
                     user=frappe.bold(frappe.session.user),
                     timestamp=now_datetime(),
                 ),
+            )
+
+    def _invalidate_admissions_cockpit_cache(self):
+        if self.context_doctype not in {"Student Applicant", "Guardian"}:
+            return
+        try:
+            from ifitwala_ed.api.admission_cockpit import invalidate_admissions_cockpit_cache
+
+            invalidate_admissions_cockpit_cache()
+        except Exception:
+            frappe.logger("policy_acknowledgement", allow_site=True).exception(
+                "Unable to invalidate admissions cockpit cache after policy acknowledgement."
             )
 
     def _auto_submit(self):

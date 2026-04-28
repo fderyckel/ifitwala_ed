@@ -91,6 +91,7 @@ def get_applicant_document_context(payload: dict[str, Any]) -> dict[str, Any]:
         applicant_document=payload.get("applicant_document"),
         student_applicant=student_applicant,
         document_type=document_type,
+        applicant_document_item=applicant_document_item,
     )
     item_doc = admission_api._resolve_applicant_document_item(
         applicant_document=doc,

@@ -75,6 +75,31 @@ class TestInquiry(FrappeTestCase):
         self.assertEqual(frappe.db.get_value("Inquiry", doc.name, "source"), "Website")
         mocked_queue.assert_called_once()
 
+    def test_web_form_inquiry_rejects_school_hidden_from_inquiry_picker(self):
+        organization = self._make_organization("Web Form Inquiry")
+        frappe.db.set_value("Organization", organization, "get_inquiry", 1, update_modified=False)
+        school = self._make_school(organization, "Hidden Web Inquiry School", show_in_inquiry=0)
+
+        previous = getattr(frappe.flags, "in_web_form", None)
+        frappe.flags.in_web_form = True
+        try:
+            doc = frappe.get_doc(
+                {
+                    "doctype": "Inquiry",
+                    "first_name": "Web",
+                    "last_name": "Hidden",
+                    "email": f"hidden-web-{frappe.generate_hash(length=8)}@example.com",
+                    "type_of_inquiry": "Admission",
+                    "organization": organization,
+                    "school": school,
+                    "message": "We would like to learn more.",
+                }
+            )
+            with self.assertRaises(frappe.ValidationError):
+                doc.insert(ignore_permissions=True)
+        finally:
+            frappe.flags.in_web_form = previous
+
     def test_insert_legacy_new_inquiry_state_is_rejected(self):
         doc = frappe.get_doc(
             {
@@ -497,6 +522,7 @@ class TestInquiry(FrappeTestCase):
         *,
         parent_school: str | None = None,
         is_group: int = 0,
+        show_in_inquiry: int = 0,
     ) -> str:
         doc = frappe.get_doc(
             {
@@ -506,6 +532,7 @@ class TestInquiry(FrappeTestCase):
                 "organization": organization,
                 "parent_school": parent_school,
                 "is_group": is_group,
+                "show_in_inquiry": show_in_inquiry,
             }
         )
         doc.insert(ignore_permissions=True)

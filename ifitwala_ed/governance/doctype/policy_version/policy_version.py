@@ -10,6 +10,11 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint, now_datetime
 
+from ifitwala_ed.admission.admission_utils import (
+    READ_LIKE_PERMISSION_TYPES,
+    build_admissions_file_scope_exists_sql,
+    has_scoped_staff_access_to_student_applicant,
+)
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
     get_school_ancestors_including_self,
@@ -690,6 +695,116 @@ def _escaped_in(values: list[str]) -> str:
     return ", ".join(frappe.db.escape(value) for value in cleaned)
 
 
+def _is_admission_officer(user: str | None = None) -> bool:
+    return "Admission Officer" in set(frappe.get_roles(user or frappe.session.user))
+
+
+def _applicant_acknowledgement_policy_version_exists_sql(
+    *, user: str | None = None, policy_version_expr_sql: str
+) -> str:
+    applicant_scope_condition = build_admissions_file_scope_exists_sql(
+        user=user,
+        student_applicant_expr_sql="pa.context_name",
+    )
+    guardian_scope_condition = build_admissions_file_scope_exists_sql(
+        user=user,
+        student_applicant_expr_sql="sag.parent",
+    )
+    if applicant_scope_condition == "1=0" and guardian_scope_condition == "1=0":
+        return "1=0"
+
+    clauses: list[str] = []
+    if applicant_scope_condition and applicant_scope_condition != "1=0":
+        clauses.append(
+            "("
+            "pa.context_doctype = 'Student Applicant' "
+            "AND pa.acknowledged_for = 'Applicant' "
+            f"AND {applicant_scope_condition}"
+            ")"
+        )
+    if guardian_scope_condition and guardian_scope_condition != "1=0":
+        clauses.append(
+            "("
+            "pa.context_doctype = 'Guardian' "
+            "AND pa.acknowledged_for = 'Guardian' "
+            "AND EXISTS ("
+            "SELECT 1 FROM `tabStudent Applicant Guardian` sag "
+            "WHERE sag.guardian = pa.context_name "
+            "AND sag.parenttype = 'Student Applicant' "
+            "AND sag.parentfield = 'guardians' "
+            "AND IFNULL(sag.can_consent, 0) = 1 "
+            "AND IFNULL(sag.is_primary_guardian, 0) = 1 "
+            f"AND {guardian_scope_condition}"
+            ")"
+            ")"
+        )
+
+    if not clauses:
+        return "1=0"
+
+    return (
+        "EXISTS ("
+        "SELECT 1 FROM `tabPolicy Acknowledgement` pa "
+        f"WHERE pa.policy_version = {policy_version_expr_sql} "
+        "AND (" + " OR ".join(clauses) + ")"
+        ")"
+    )
+
+
+def _has_applicant_acknowledgement_policy_version_access(*, policy_version: str, user: str | None = None) -> bool:
+    policy_version = (policy_version or "").strip()
+    if not policy_version:
+        return False
+
+    acknowledgement_rows = frappe.get_all(
+        "Policy Acknowledgement",
+        filters={
+            "policy_version": policy_version,
+            "context_doctype": ["in", ["Student Applicant", "Guardian"]],
+            "acknowledged_for": ["in", ["Applicant", "Guardian"]],
+        },
+        fields=["acknowledged_for", "context_doctype", "context_name"],
+        limit=10000,
+    )
+    guardian_names: set[str] = set()
+    for row in acknowledgement_rows:
+        context_doctype = (row.get("context_doctype") or "").strip()
+        context_name = (row.get("context_name") or "").strip()
+        if not context_name:
+            continue
+        if context_doctype == "Student Applicant" and has_scoped_staff_access_to_student_applicant(
+            user=user,
+            student_applicant=context_name,
+        ):
+            return True
+        if context_doctype == "Guardian":
+            guardian_names.add(context_name)
+
+    if not guardian_names:
+        return False
+
+    guardian_rows = frappe.get_all(
+        "Student Applicant Guardian",
+        filters={
+            "guardian": ["in", sorted(guardian_names)],
+            "parenttype": "Student Applicant",
+            "parentfield": "guardians",
+            "can_consent": 1,
+            "is_primary_guardian": 1,
+        },
+        fields=["parent"],
+        limit=10000,
+    )
+    for row in guardian_rows:
+        applicant_name = (row.get("parent") or "").strip()
+        if applicant_name and has_scoped_staff_access_to_student_applicant(
+            user=user,
+            student_applicant=applicant_name,
+        ):
+            return True
+    return False
+
+
 def get_permission_query_conditions(user: str | None = None) -> str | None:
     user = user or frappe.session.user
     if user == "Administrator" or is_system_manager(user):
@@ -725,16 +840,26 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
             ")"
         )
 
+    if _is_admission_officer(user):
+        clauses.append(
+            _applicant_acknowledgement_policy_version_exists_sql(
+                user=user,
+                policy_version_expr_sql="`tabPolicy Version`.`name`",
+            )
+        )
+
     if not clauses:
         return "1=0"
 
     return " OR ".join(clauses)
 
 
-def has_permission(doc: "PolicyVersion", user: str | None = None, ptype: str | None = None) -> bool:
+def has_permission(doc: "PolicyVersion", ptype: str | None = None, user: str | None = None) -> bool:
     user = user or frappe.session.user
     if user == "Administrator" or is_system_manager(user):
         return True
+
+    op = (ptype or "read").lower()
 
     if not doc:
         return True
@@ -761,8 +886,15 @@ def has_permission(doc: "PolicyVersion", user: str | None = None, ptype: str | N
     if is_policy_admin(user) and is_policy_manageable_by_user(policy_organization=policy_organization, user=user):
         return True
 
-    return is_policy_within_user_scope(
+    if op in READ_LIKE_PERMISSION_TYPES and is_policy_within_user_scope(
         policy_organization=policy_organization,
         policy_school=policy_school,
         user=user,
-    )
+    ):
+        return True
+
+    if op in READ_LIKE_PERMISSION_TYPES and _is_admission_officer(user):
+        policy_version = (getattr(doc, "name", None) if not isinstance(doc, str) else doc) or ""
+        return _has_applicant_acknowledgement_policy_version_access(policy_version=policy_version, user=user)
+
+    return False

@@ -32,6 +32,7 @@ def _normalize_inquiry_state(state: str | None) -> str:
 class Inquiry(Document):
     def validate(self):
         self._validate_org_consistency()
+        self._validate_public_web_form_school_visibility()
         self._validate_state_change()
         self._validate_archive_reason()
         self._validate_student_applicant_link()
@@ -58,6 +59,32 @@ class Inquiry(Document):
 
         if not (org_bounds.lft <= school_org_bounds.lft and org_bounds.rgt >= school_org_bounds.rgt):
             frappe.throw(_("Selected School does not belong to the selected Organization."))
+
+    def _validate_public_web_form_school_visibility(self):
+        if not frappe.flags.in_web_form or not self.school:
+            return
+
+        school_row = frappe.db.get_value(
+            "School",
+            self.school,
+            ["show_in_inquiry", "organization"],
+            as_dict=True,
+        )
+        if not school_row or not int(school_row.get("show_in_inquiry") or 0):
+            frappe.throw(_("Selected School is not available for public inquiries."))
+
+        organization_row = frappe.db.get_value(
+            "Organization",
+            school_row.get("organization"),
+            ["get_inquiry", "archived"],
+            as_dict=True,
+        )
+        if (
+            not organization_row
+            or not int(organization_row.get("get_inquiry") or 0)
+            or int(organization_row.get("archived") or 0)
+        ):
+            frappe.throw(_("Selected School is not available for public inquiries."))
 
     def _validate_state_change(self):
         previous_raw = self.get_db_value("workflow_state")

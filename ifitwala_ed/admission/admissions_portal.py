@@ -111,6 +111,21 @@ def _request_value(key: str, current_value: Any = None) -> Any:
     return current_value
 
 
+def _request_payload_debug_snapshot() -> dict[str, Any]:
+    form_dict = getattr(frappe, "form_dict", None)
+    form_keys = sorted(str(key) for key in form_dict.keys()) if form_dict and hasattr(form_dict, "keys") else []
+    request_payload = _request_json_payload()
+    request_keys = sorted(str(key) for key in request_payload.keys()) if isinstance(request_payload, dict) else []
+    request = getattr(frappe, "request", None)
+    files = getattr(request, "files", None) if request else None
+    return {
+        "form_keys": form_keys,
+        "request_json_keys": request_keys,
+        "has_request_data": bool(getattr(request, "data", None)) if request else False,
+        "has_uploaded_file": bool(files and files.get("file")) if files and hasattr(files, "get") else False,
+    }
+
+
 def upload_applicant_document(
     *,
     student_applicant: str | None = None,
@@ -431,6 +446,18 @@ def _resolve_applicant_document(
         return doc
 
     if not student_applicant or not document_type:
+        frappe.log_error(
+            title="Admissions applicant document resolve missing context",
+            message=frappe.as_json(
+                {
+                    "has_applicant_document": bool(applicant_document),
+                    "has_applicant_document_item": bool(applicant_document_item),
+                    "has_student_applicant": bool(student_applicant),
+                    "has_document_type": bool(document_type),
+                    "payload_debug": _request_payload_debug_snapshot(),
+                }
+            ),
+        )
         frappe.throw(_("student_applicant and document_type are required."))
 
     existing = frappe.db.get_value(

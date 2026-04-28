@@ -1127,7 +1127,7 @@ def inquiry_school_link_query(doctype=None, txt=None, searchfield=None, start=0,
         "page_len": int(page_len or 20),
     }
     where = [
-        "COALESCE(s.is_published, 0) = 1",
+        "COALESCE(s.show_in_inquiry, 0) = 1",
         "COALESCE(o.get_inquiry, 0) = 1",
         "COALESCE(o.archived, 0) = 0",
         "(s.name LIKE %(txt)s OR s.school_name LIKE %(txt)s)",

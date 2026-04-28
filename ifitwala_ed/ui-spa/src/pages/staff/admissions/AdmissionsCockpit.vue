@@ -800,7 +800,7 @@ const kpiItems = computed(() => {
 function pillClass(ok: boolean) {
 	return ok
 		? 'rounded-full border border-emerald-300 bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700'
-		: 'rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800';
+		: 'rounded-full border border-[rgb(var(--flame-rgb)/0.35)] bg-[rgb(var(--flame-rgb)/0.10)] px-2 py-0.5 text-xs font-semibold text-flame';
 }
 
 function reviewStageClass(item: CockpitCard) {
