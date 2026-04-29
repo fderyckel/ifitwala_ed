@@ -74,6 +74,12 @@ class SchoolCalendar(Document):
 
         self.total_instruction_days = self.total_number_day - self.total_holiday_days
 
+    def on_update(self):
+        _invalidate_staff_calendar_fallback_cache(self, include_previous=True)
+
+    def on_trash(self):
+        _invalidate_staff_calendar_fallback_cache(self)
+
     # ----------------------------------------------------------------
     def _sync_school_with_ay(self):
         """
@@ -303,6 +309,19 @@ class SchoolCalendar(Document):
 
     def on_doctype_update():
         frappe.db.add_index("School Calendar", ["academic_year", "school"])
+
+
+def _invalidate_staff_calendar_fallback_cache(doc, *, include_previous: bool = False) -> None:
+    from ifitwala_ed.api.calendar_invalidation import invalidate_staff_calendar_for_school_scope
+
+    schools = {(getattr(doc, "school", None) or "").strip()}
+    if include_previous and hasattr(doc, "get_doc_before_save"):
+        previous = doc.get_doc_before_save()
+        if previous:
+            schools.add((getattr(previous, "school", None) or "").strip())
+
+    for school in sorted(school for school in schools if school):
+        invalidate_staff_calendar_for_school_scope(school)
 
 
 # ---------------------------------------------------------------------

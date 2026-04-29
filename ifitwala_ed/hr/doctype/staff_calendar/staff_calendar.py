@@ -12,6 +12,7 @@ from frappe.model.document import Document
 from frappe.utils import date_diff, formatdate, getdate
 
 from ifitwala_ed.hr.utils import (
+    invalidate_staff_portal_calendar_cache,
     resolve_current_staff_calendar_for_employee,
     sync_current_staff_calendar_for_employee,
 )
@@ -309,6 +310,7 @@ class StaffCalendar(Document):
 
     def _sync_affected_employees(self, *, ignore_calendar_name: str | None = None):
         for employee in self._affected_employee_names():
+            invalidate_staff_portal_calendar_cache(employee)
             sync_kwargs = {"update_modified": False}
             if ignore_calendar_name:
                 sync_kwargs["ignore_calendar_name"] = ignore_calendar_name

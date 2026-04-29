@@ -606,7 +606,10 @@ def build_document_review_payload_batch(applicant_rows: list[dict]) -> dict[str,
                 )
                 row_label = document_label
                 if item_label and item_label.lower() != document_label.lower():
-                    row_label = _("{0} — {1}").format(document_label, item_label)
+                    row_label = _("{document_label} — {item_label}").format(
+                        document_label=document_label,
+                        item_label=item_label,
+                    )
 
                 uploaded_rows.append(
                     {

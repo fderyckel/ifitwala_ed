@@ -528,7 +528,7 @@ def serialize_task_submission_evidence(
 
 def _require(value, label):
     if not value:
-        frappe.throw(_("{0} is required.").format(label))
+        frappe.throw(_("{label} is required.").format(label=label))
 
 
 def _normalize_payload(payload, kwargs):

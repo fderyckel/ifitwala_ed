@@ -120,7 +120,8 @@ class Designation(Document):
         user = user or frappe.session.user
         if not user or user == "Guest":
             frappe.throw(
-                _("You do not have permission to {0} this designation.").format(action), frappe.PermissionError
+                _("You do not have permission to {action} this designation.").format(action=action),
+                frappe.PermissionError,
             )
 
         roles = set(frappe.get_roles(user))
@@ -128,13 +129,13 @@ class Designation(Document):
             return
 
         if not roles & OPERATOR_SCOPE_ROLES:
-            frappe.throw(_("Only HR can {0} designations.").format(action), frappe.PermissionError)
+            frappe.throw(_("Only HR can {action} designations.").format(action=action), frappe.PermissionError)
 
         designation_org = cstr(self.organization).strip()
         visible_orgs = set(_resolve_designation_operator_org_scope(user))
         if not designation_org or designation_org not in visible_orgs:
             frappe.throw(
-                _("You can only {0} designations within your organization scope.").format(action),
+                _("You can only {action} designations within your organization scope.").format(action=action),
                 frappe.PermissionError,
             )
 
@@ -145,7 +146,7 @@ class Designation(Document):
         school_scope = set(_resolve_designation_operator_school_write_scope(user, org_scope=sorted(visible_orgs)))
         if designation_school not in school_scope:
             frappe.throw(
-                _("You can only {0} school-scoped designations within your school scope.").format(action),
+                _("You can only {action} school-scoped designations within your school scope.").format(action=action),
                 frappe.PermissionError,
             )
 

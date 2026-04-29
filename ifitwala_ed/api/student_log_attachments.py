@@ -37,7 +37,7 @@ def _load_drive_callable(attribute: str):
     try:
         from ifitwala_drive.api import student_logs as drive_api
     except ImportError as exc:
-        frappe.throw(_("Ifitwala Drive is required for Student Log evidence attachments: {0}").format(exc))
+        frappe.throw(_("Ifitwala Drive is required for Student Log evidence attachments: {error}").format(error=exc))
 
     callable_obj = getattr(drive_api, attribute, None)
     if callable(callable_obj):
@@ -45,8 +45,8 @@ def _load_drive_callable(attribute: str):
 
     frappe.throw(
         _(
-            "Ifitwala Drive is missing public Student Log method '{0}'. Deploy the matching Drive API before using governed Student Log evidence."
-        ).format(attribute)
+            "Ifitwala Drive is missing public Student Log method '{method}'. Deploy the matching Drive API before using governed Student Log evidence."
+        ).format(method=attribute)
     )
 
 
@@ -59,7 +59,10 @@ def _get_evidence_row(doc, row_name: str):
         if str(getattr(row, "name", "") or "").strip() == resolved_row_name:
             return row
 
-    frappe.throw(_("Evidence row was not found: {0}").format(resolved_row_name), frappe.DoesNotExistError)
+    frappe.throw(
+        _("Evidence row was not found: {row_name}").format(row_name=resolved_row_name),
+        frappe.DoesNotExistError,
+    )
 
 
 def _set_row_metadata(

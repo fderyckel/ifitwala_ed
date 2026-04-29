@@ -219,7 +219,11 @@ class TestOrgCommunicationAttachmentsUnit(TestCase):
         self.assertEqual(response["org_communication"], "COMM-0001")
         self.assertEqual(response["attachment"]["row_name"], "row-001")
         self.assertEqual(response["attachment"]["file_name"], "announcement.pdf")
-        self.assertEqual(response["attachment"]["open_url"], "/open/COMM-0001/row-001")
+        self.assertNotIn("open_url", response["attachment"])
+        self.assertEqual(
+            response["attachment"]["attachment"]["open_url"],
+            "/open/COMM-0001/row-001",
+        )
 
     def test_serialize_attachment_row_includes_preview_status_for_governed_file(self):
         file_access = ModuleType("ifitwala_ed.api.file_access")
@@ -276,14 +280,21 @@ class TestOrgCommunicationAttachmentsUnit(TestCase):
                 ),
             )
 
-        self.assertEqual(payload["preview_status"], "ready")
-        self.assertEqual(payload["preview_url"], "/preview/COMM-0001/row-001")
-        self.assertEqual(payload["thumbnail_url"], "/preview/COMM-0001/row-001")
-        self.assertEqual(payload["attachment_preview"]["owner_doctype"], "Org Communication")
-        self.assertEqual(payload["attachment_preview"]["owner_name"], "COMM-0001")
-        self.assertEqual(payload["attachment_preview"]["kind"], "pdf")
-        self.assertEqual(payload["attachment_preview"]["preview_mode"], "pdf_embed")
-        self.assertEqual(payload["attachment_preview"]["download_url"], "/open/COMM-0001/row-001")
+        self.assertNotIn("preview_status", payload)
+        self.assertNotIn("preview_url", payload)
+        self.assertNotIn("thumbnail_url", payload)
+        self.assertNotIn("open_url", payload)
+        self.assertNotIn("attachment_preview", payload)
+        self.assertEqual(payload["attachment"]["id"], "row-001")
+        self.assertEqual(payload["attachment"]["surface"], "org_communication.attachment")
+        self.assertEqual(payload["attachment"]["owner_doctype"], "Org Communication")
+        self.assertEqual(payload["attachment"]["owner_name"], "COMM-0001")
+        self.assertEqual(payload["attachment"]["kind"], "pdf")
+        self.assertEqual(payload["attachment"]["preview_mode"], "pdf_embed")
+        self.assertEqual(payload["attachment"]["preview_status"], "ready")
+        self.assertEqual(payload["attachment"]["preview_url"], "/preview/COMM-0001/row-001")
+        self.assertEqual(payload["attachment"]["thumbnail_url"], "/preview/COMM-0001/row-001")
+        self.assertEqual(payload["attachment"]["download_url"], "/open/COMM-0001/row-001")
 
     def test_serialize_attachment_row_hides_inline_preview_until_governed_preview_is_ready(self):
         file_access = ModuleType("ifitwala_ed.api.file_access")
@@ -340,12 +351,14 @@ class TestOrgCommunicationAttachmentsUnit(TestCase):
                 ),
             )
 
-        self.assertEqual(payload["preview_status"], "pending")
-        self.assertIsNone(payload["thumbnail_url"])
-        self.assertIsNone(payload["preview_url"])
-        self.assertEqual(payload["attachment_preview"]["kind"], "pdf")
-        self.assertIsNone(payload["attachment_preview"]["preview_url"])
-        self.assertEqual(payload["attachment_preview"]["preview_mode"], "icon_only")
+        self.assertNotIn("preview_status", payload)
+        self.assertNotIn("thumbnail_url", payload)
+        self.assertNotIn("preview_url", payload)
+        self.assertNotIn("attachment_preview", payload)
+        self.assertEqual(payload["attachment"]["preview_status"], "pending")
+        self.assertEqual(payload["attachment"]["kind"], "pdf")
+        self.assertIsNone(payload["attachment"]["preview_url"])
+        self.assertEqual(payload["attachment"]["preview_mode"], "icon_only")
 
     def test_attachment_context_lock_blocks_issuing_school_change_when_files_remain(self):
         with stubbed_frappe():

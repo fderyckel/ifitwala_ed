@@ -5,6 +5,8 @@ from __future__ import annotations
 import frappe
 from frappe import _
 
+from ifitwala_ed.api.admission_cockpit import invalidate_admissions_cockpit_cache
+
 
 def _cache():
     return frappe.cache()
@@ -68,6 +70,7 @@ def review_applicant_document_submission(
             decision=resolved_decision,
             notes=notes,
         )
+        invalidate_admissions_cockpit_cache()
         if cache_key:
             cache.set_value(cache_key, response, expires_in_sec=60 * 10)
         return response
@@ -114,6 +117,7 @@ def set_document_requirement_override(
             requirement_override=requirement_override,
             override_reason=override_reason,
         )
+        invalidate_admissions_cockpit_cache()
         if cache_key:
             cache.set_value(cache_key, response, expires_in_sec=60 * 10)
         return response

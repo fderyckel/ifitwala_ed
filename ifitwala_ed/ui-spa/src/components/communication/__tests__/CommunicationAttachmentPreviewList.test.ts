@@ -12,8 +12,10 @@ async function flushUi() {
 	await nextTick();
 }
 
-function buildAttachmentPreview(overrides: Record<string, unknown> = {}) {
+function buildCommunicationAttachment(overrides: Record<string, unknown> = {}) {
 	return {
+		id: 'ATT-1',
+		surface: 'org_communication.attachment',
 		item_id: 'ATT-1',
 		owner_doctype: 'Org Communication',
 		owner_name: 'COMM-1',
@@ -57,14 +59,7 @@ describe('CommunicationAttachmentPreviewList', () => {
 				kind: 'file',
 				title: 'Event poster',
 				file_name: 'poster.jpg',
-				preview_status: 'ready',
-				thumbnail_url:
-					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-READY',
-				preview_url:
-					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-READY',
-				open_url:
-					'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMG-READY',
-				attachment_preview: buildAttachmentPreview({
+				attachment: buildCommunicationAttachment({
 					item_id: 'ATT-IMG-READY',
 					display_name: 'Event poster',
 					kind: 'image',
@@ -99,12 +94,7 @@ describe('CommunicationAttachmentPreviewList', () => {
 				kind: 'file',
 				title: 'Campus photo',
 				file_name: 'campus.png',
-				preview_status: 'ready',
-				preview_url:
-					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-VIEWER-READY',
-				open_url:
-					'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMG-VIEWER-READY',
-				attachment_preview: buildAttachmentPreview({
+				attachment: buildCommunicationAttachment({
 					item_id: 'ATT-IMG-VIEWER-READY',
 					display_name: 'Campus photo',
 					kind: 'image',
@@ -134,11 +124,7 @@ describe('CommunicationAttachmentPreviewList', () => {
 				kind: 'file',
 				title: 'Campus photo',
 				file_name: 'campus.png',
-				preview_status: 'pending',
-				preview_url: null,
-				open_url:
-					'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMG-PENDING',
-				attachment_preview: buildAttachmentPreview({
+				attachment: buildCommunicationAttachment({
 					item_id: 'ATT-IMG-PENDING',
 					display_name: 'Campus photo',
 					kind: 'image',
@@ -165,13 +151,7 @@ describe('CommunicationAttachmentPreviewList', () => {
 				kind: 'file',
 				title: 'Athletics banner',
 				file_name: 'banner.webp',
-				thumbnail_url:
-					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-BROKEN',
-				preview_url:
-					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMG-BROKEN',
-				open_url:
-					'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMG-BROKEN',
-				attachment_preview: buildAttachmentPreview({
+				attachment: buildCommunicationAttachment({
 					item_id: 'ATT-IMG-BROKEN',
 					display_name: 'Athletics banner',
 					kind: 'image',
@@ -211,12 +191,7 @@ describe('CommunicationAttachmentPreviewList', () => {
 				kind: 'file',
 				title: 'Family handbook',
 				file_name: 'handbook.pdf',
-				preview_status: 'ready',
-				thumbnail_url:
-					'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF-READY',
-				preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF-READY',
-				open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-PDF-READY',
-				attachment_preview: buildAttachmentPreview({
+				attachment: buildCommunicationAttachment({
 					item_id: 'ATT-PDF-READY',
 					display_name: 'Family handbook',
 					kind: 'pdf',
@@ -245,11 +220,7 @@ describe('CommunicationAttachmentPreviewList', () => {
 				kind: 'file',
 				title: 'Policy update',
 				file_name: 'policy.pdf',
-				preview_status: 'pending',
-				thumbnail_url: null,
-				preview_url: null,
-				open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-PDF-PENDING',
-				attachment_preview: buildAttachmentPreview({
+				attachment: buildCommunicationAttachment({
 					item_id: 'ATT-PDF-PENDING',
 					display_name: 'Policy update',
 					kind: 'pdf',

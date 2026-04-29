@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from datetime import date, datetime
 from typing import Any
+from urllib.parse import quote
 
 import frappe
 from frappe import _
@@ -312,6 +313,14 @@ def _base_row() -> dict:
     }
 
 
+def _desk_url(doctype: str, name: str | None) -> str | None:
+    docname = clean(name)
+    if not docname:
+        return None
+    doctype_slug = doctype.strip().lower().replace(" ", "-")
+    return f"/desk/{doctype_slug}/{quote(docname, safe='')}"
+
+
 def _conversation_actions(row: dict) -> list[dict]:
     actions = [
         {"id": "log_reply", "enabled": True},
@@ -365,6 +374,7 @@ def _conversation_dto(row: dict) -> dict:
         "inquiry": clean(row.get("inquiry")),
         "student_applicant": clean(row.get("student_applicant")),
         "conversation": clean(row.get("name")),
+        "open_url": _desk_url("Admission Conversation", row.get("name")),
         "external_identity": clean(row.get("external_identity")),
         "channel_type": clean(row.get("channel_type")),
         "channel_account": clean(row.get("channel_account")),
@@ -403,6 +413,7 @@ def _inquiry_dto(row: dict, conversation: dict | None = None) -> dict:
         "inquiry": clean(row.get("name")),
         "student_applicant": clean(row.get("student_applicant")),
         "conversation": clean(conversation.get("name")) if conversation else None,
+        "open_url": _desk_url("Inquiry", row.get("name")),
         "external_identity": clean(conversation.get("external_identity")) if conversation else None,
         "channel_type": clean(conversation.get("channel_type")) if conversation else None,
         "channel_account": clean(conversation.get("channel_account")) if conversation else None,
@@ -444,6 +455,7 @@ def _applicant_dto(row: dict, conversation: dict | None = None) -> dict:
         "inquiry": clean(row.get("inquiry")),
         "student_applicant": clean(row.get("name")),
         "conversation": clean(conversation.get("name")) if conversation else None,
+        "open_url": _desk_url("Student Applicant", row.get("name")),
         "external_identity": clean(conversation.get("external_identity")) if conversation else None,
         "channel_type": clean(conversation.get("channel_type")) if conversation else None,
         "channel_account": clean(conversation.get("channel_account")) if conversation else None,

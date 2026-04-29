@@ -96,6 +96,23 @@ def _participant_user_ids(doc, *, include_previous: bool = False) -> set[str]:
     return users
 
 
+def _participant_employee_ids(doc, *, include_previous: bool = False) -> set[str]:
+    employees = {
+        (getattr(row, "employee", None) or "").strip()
+        for row in (getattr(doc, "participants", None) or [])
+        if (getattr(row, "employee", None) or "").strip()
+    }
+
+    if include_previous and hasattr(doc, "get_doc_before_save"):
+        previous = doc.get_doc_before_save()
+        for row in getattr(previous, "participants", None) or []:
+            employee = (getattr(row, "employee", None) or "").strip()
+            if employee:
+                employees.add(employee)
+
+    return employees
+
+
 def _invalidate_student_calendar_caches_for_participants(doc, *, include_previous: bool = False) -> None:
     participant_users = sorted(_participant_user_ids(doc, include_previous=include_previous))
     if not participant_users:
@@ -108,6 +125,22 @@ def _invalidate_student_calendar_caches_for_participants(doc, *, include_previou
         source="meeting",
         source_name=getattr(doc, "name", None),
     )
+
+
+def _invalidate_staff_calendar_caches_for_participants(doc, *, include_previous: bool = False) -> None:
+    participant_users = _participant_user_ids(doc, include_previous=include_previous)
+    participant_employees = _participant_employee_ids(doc, include_previous=include_previous)
+
+    if not participant_users and not participant_employees:
+        return
+
+    from ifitwala_ed.api.calendar_invalidation import (
+        active_employee_names_for_users,
+        invalidate_staff_calendar_for_employees,
+    )
+
+    participant_employees.update(active_employee_names_for_users(participant_users))
+    invalidate_staff_calendar_for_employees(participant_employees)
 
 
 class Meeting(Document):
@@ -139,21 +172,25 @@ class Meeting(Document):
         self.sync_employee_bookings()
         self.sync_location_booking()
         _invalidate_student_calendar_caches_for_participants(self)
+        _invalidate_staff_calendar_caches_for_participants(self)
 
     def on_update(self):
         self.sync_employee_bookings()
         self.sync_location_booking()
         _invalidate_student_calendar_caches_for_participants(self, include_previous=True)
+        _invalidate_staff_calendar_caches_for_participants(self, include_previous=True)
 
     def on_cancel(self):
         delete_employee_bookings_for_source(self.doctype, self.name)
         delete_location_bookings_for_source(source_doctype=self.doctype, source_name=self.name)
         _invalidate_student_calendar_caches_for_participants(self)
+        _invalidate_staff_calendar_caches_for_participants(self)
 
     def on_trash(self):
         delete_employee_bookings_for_source(self.doctype, self.name)
         delete_location_bookings_for_source(source_doctype=self.doctype, source_name=self.name)
         _invalidate_student_calendar_caches_for_participants(self)
+        _invalidate_staff_calendar_caches_for_participants(self)
 
     # ─────────────────────────────────────────────────────────────
     # Participant helpers

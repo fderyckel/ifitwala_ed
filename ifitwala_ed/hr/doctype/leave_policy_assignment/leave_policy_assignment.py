@@ -475,8 +475,8 @@ def show_assignment_submission_status(failed):
 
     msg = _("Failed to submit some leave policy assignments:")
     msg += " " + comma_and(assignment_list, False) + "<hr>"
-    msg += _("Check {0} for more details").format(
-        "<a href='{0}?reference_doctype=Leave Policy Assignment'>{1}</a>".format(
+    msg += _("Check {error_log_link} for more details").format(
+        error_log_link="<a href='{0}?reference_doctype=Leave Policy Assignment'>{1}</a>".format(
             get_url_to_list("Error Log"), _("Error Log")
         )
     )

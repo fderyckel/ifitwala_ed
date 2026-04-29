@@ -73,7 +73,10 @@ def daterange(start_date, end_date):
 
 class LeaveApplication(Document, PWANotificationsMixin):
     def get_feed(self):
-        return _("{0}: From {0} of type {1}").format(self.employee_full_name, self.leave_type)
+        return _("{employee}: From {employee} of type {leave_type}").format(
+            employee=self.employee_full_name,
+            leave_type=self.leave_type,
+        )
 
     def after_insert(self):
         self.notify_approver()
@@ -132,7 +135,12 @@ class LeaveApplication(Document, PWANotificationsMixin):
             "Cancelled": {"Cancelled"},
         }
         if next_status not in allowed.get(prev_status, set()):
-            frappe.throw(_("Invalid status transition from {0} to {1}.").format(prev_status, next_status))
+            frappe.throw(
+                _("Invalid status transition from {previous_status} to {next_status}.").format(
+                    previous_status=prev_status,
+                    next_status=next_status,
+                )
+            )
 
         roles = set(frappe.get_roles())
         is_hr_override = bool(roles & HR_OVERRIDE_ROLES)
@@ -220,8 +228,9 @@ class LeaveApplication(Document, PWANotificationsMixin):
                     number_of_days = number_of_days - leave_days - holidays
                     if number_of_days < leave_type.applicable_after:
                         frappe.throw(
-                            _("{0} applicable after {1} working days").format(
-                                self.leave_type, leave_type.applicable_after
+                            _("{leave_type} applicable after {working_days} working days").format(
+                                leave_type=self.leave_type,
+                                working_days=leave_type.applicable_after,
                             )
                         )
 
@@ -235,16 +244,18 @@ class LeaveApplication(Document, PWANotificationsMixin):
                 user_roles = [d.role for d in user.roles]
                 if not allowed_role:
                     frappe.throw(
-                        _("Backdated Leave Application is restricted. Please set the {} in {}").format(
-                            frappe.bold(_("Role Allowed to Create Backdated Leave Application")),
-                            get_link_to_form("HR Settings", "HR Settings", _("HR Settings")),
+                        _(
+                            "Backdated Leave Application is restricted. Please set the {role_field} in {settings}."
+                        ).format(
+                            role_field=frappe.bold(_("Role Allowed to Create Backdated Leave Application")),
+                            settings=get_link_to_form("HR Settings", "HR Settings", _("HR Settings")),
                         )
                     )
 
                 if allowed_role and allowed_role not in user_roles:
                     frappe.throw(
-                        _("Only users with the {0} role can create backdated leave applications").format(
-                            frappe.bold(allowed_role)
+                        _("Only users with the {role} role can create backdated leave applications").format(
+                            role=frappe.bold(allowed_role)
                         )
                     )
 
@@ -314,8 +325,11 @@ class LeaveApplication(Document, PWANotificationsMixin):
         if future_allocation:
             frappe.throw(
                 _(
-                    "Leave cannot be applied/cancelled before {0}, as leave balance has already been carry-forwarded in the future leave allocation record {1}"
-                ).format(formatdate(future_allocation[0].from_date), future_allocation[0].name)
+                    "Leave cannot be applied/cancelled before {from_date}, as leave balance has already been carry-forwarded in the future leave allocation record {leave_allocation}"
+                ).format(
+                    from_date=formatdate(future_allocation[0].from_date),
+                    leave_allocation=future_allocation[0].name,
+                )
             )
 
     def get_leave_allocation(self):
@@ -426,8 +440,11 @@ class LeaveApplication(Document, PWANotificationsMixin):
         if last_processed_pay_slip:
             frappe.throw(
                 _(
-                    "Salary already processed for period between {0} and {1}, Leave application period cannot be between this date range."
-                ).format(formatdate(last_processed_pay_slip[0][0]), formatdate(last_processed_pay_slip[0][1]))
+                    "Salary already processed for period between {from_date} and {to_date}, Leave application period cannot be between this date range."
+                ).format(
+                    from_date=formatdate(last_processed_pay_slip[0][0]),
+                    to_date=formatdate(last_processed_pay_slip[0][1]),
+                )
             )
 
     def show_block_day_warning(self):
@@ -491,20 +508,24 @@ class LeaveApplication(Document, PWANotificationsMixin):
 
         if frappe.db.get_value("Leave Type", self.leave_type, "allow_negative"):
             if leave_balance_for_consumption != self.leave_balance:
-                msg = _("Warning: Insufficient leave balance for Leave Type {0} in this allocation.").format(
-                    frappe.bold(self.leave_type)
+                msg = _("Warning: Insufficient leave balance for Leave Type {leave_type} in this allocation.").format(
+                    leave_type=frappe.bold(self.leave_type)
                 )
                 msg += "<br><br>"
                 msg += _(
                     "Actual balances aren't available because the leave application spans over different leave allocations. You can still apply for leaves which would be compensated during the next allocation."
                 )
             else:
-                msg = _("Warning: Insufficient leave balance for Leave Type {0}.").format(frappe.bold(self.leave_type))
+                msg = _("Warning: Insufficient leave balance for Leave Type {leave_type}.").format(
+                    leave_type=frappe.bold(self.leave_type)
+                )
 
             frappe.msgprint(msg, title=_("Warning"), indicator="orange")
         else:
             frappe.throw(
-                _("Insufficient leave balance for Leave Type {0}").format(frappe.bold(self.leave_type)),
+                _("Insufficient leave balance for Leave Type {leave_type}").format(
+                    leave_type=frappe.bold(self.leave_type)
+                ),
                 exc=InsufficientLeaveBalanceError,
                 title=_("Insufficient Balance"),
             )
@@ -551,8 +572,14 @@ class LeaveApplication(Document, PWANotificationsMixin):
 
     def throw_overlap_error(self, d):
         form_link = get_link_to_form("Leave Application", d.name)
-        msg = _("Employee {0} has already applied for {1} between {2} and {3} : {4}").format(
-            self.employee, d["leave_type"], formatdate(d["from_date"]), formatdate(d["to_date"]), form_link
+        msg = _(
+            "Employee {employee} has already applied for {leave_type} between {from_date} and {to_date} : {leave_application}"
+        ).format(
+            employee=self.employee,
+            leave_type=d["leave_type"],
+            from_date=formatdate(d["from_date"]),
+            to_date=formatdate(d["to_date"]),
+            leave_application=form_link,
         )
         frappe.throw(msg, OverlapError)
 
@@ -578,12 +605,15 @@ class LeaveApplication(Document, PWANotificationsMixin):
         details = self.get_consecutive_leave_details()
 
         if details.total_consecutive_leaves > cint(max_days):
-            msg = _("Leave of type {0} cannot be longer than {1}.").format(
-                get_link_to_form("Leave Type", self.leave_type), max_days
+            msg = _("Leave of type {leave_type} cannot be longer than {max_days}.").format(
+                leave_type=get_link_to_form("Leave Type", self.leave_type),
+                max_days=max_days,
             )
             if details.leave_applications:
-                msg += "<br><br>" + _("Reference: {0}").format(
-                    ", ".join(get_link_to_form("Leave Application", name) for name in details.leave_applications)
+                msg += "<br><br>" + _("Reference: {references}").format(
+                    references=", ".join(
+                        get_link_to_form("Leave Application", name) for name in details.leave_applications
+                    )
                 )
 
             frappe.throw(msg, title=_("Maximum Consecutive Leaves Exceeded"))
@@ -659,9 +689,11 @@ class LeaveApplication(Document, PWANotificationsMixin):
         )
         if attendance_dates:
             frappe.throw(
-                _("Attendance for employee {0} is already marked for the following dates: {1}").format(
-                    self.employee,
-                    (
+                _(
+                    "Attendance for employee {employee} is already marked for the following dates: {attendance_dates}"
+                ).format(
+                    employee=self.employee,
+                    attendance_dates=(
                         "<br><ul><li>"
                         + "</li><li>".join(
                             get_link_to_form("Employee Attendance", a.name, label=formatdate(a.attendance_date))
@@ -679,7 +711,11 @@ class LeaveApplication(Document, PWANotificationsMixin):
             frappe.throw(_("Cannot find active Leave Period"))
         optional_holiday_list = frappe.db.get_value("Leave Period", leave_period[0]["name"], "optional_holiday_list")
         if not optional_holiday_list:
-            frappe.throw(_("Optional Holiday List not set for leave period {0}").format(leave_period[0]["name"]))
+            frappe.throw(
+                _("Optional Holiday List not set for leave period {leave_period}").format(
+                    leave_period=leave_period[0]["name"]
+                )
+            )
         day = getdate(self.from_date)
         while day <= getdate(self.to_date):
             in_staff_calendar = frappe.db.exists(
@@ -691,7 +727,7 @@ class LeaveApplication(Document, PWANotificationsMixin):
             )
             if not in_staff_calendar:
                 frappe.throw(
-                    _("{0} is not in Optional Holiday List").format(formatdate(day)),
+                    _("{date} is not in Optional Holiday List").format(date=formatdate(day)),
                     NotAnOptionalHoliday,
                 )
             day = add_days(day, 1)
@@ -774,7 +810,7 @@ class LeaveApplication(Document, PWANotificationsMixin):
                     subject=args.subject,
                     message=args.message,
                 )
-                frappe.msgprint(_("Email sent to {0}").format(contact))
+                frappe.msgprint(_("Email sent to {contact}").format(contact=contact))
             except frappe.OutgoingEmailError:
                 pass
 
@@ -827,10 +863,10 @@ class LeaveApplication(Document, PWANotificationsMixin):
         ):
             frappe.throw(
                 _(
-                    "Leave Application period cannot be across two non-consecutive leave allocations {0} and {1}."
+                    "Leave Application period cannot be across two non-consecutive leave allocations {from_allocation} and {to_allocation}."
                 ).format(
-                    get_link_to_form("Leave Allocation", alloc_on_from_date.name),
-                    get_link_to_form("Leave Allocation", alloc_on_to_date),
+                    from_allocation=get_link_to_form("Leave Allocation", alloc_on_from_date.name),
+                    to_allocation=get_link_to_form("Leave Allocation", alloc_on_to_date),
                 )
             )
 

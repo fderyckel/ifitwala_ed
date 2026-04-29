@@ -68,6 +68,51 @@ def _normalize_linked_school_event_note(current_note: str | None, event_name: st
     return note_value
 
 
+def _school_event_staff_cache_employee_names(event_doc) -> set[str]:
+    from ifitwala_ed.api.calendar_invalidation import (
+        STAFF_SCHOOL_EVENT_AUDIENCE_TYPES,
+        active_employee_names_for_school_scope,
+        active_employee_names_for_teams,
+        active_employee_names_for_users,
+    )
+
+    users = {
+        _safe_text(_doc_row_value(row, "participant"))
+        for row in (_doc_row_value(event_doc, "participants") or [])
+        if _safe_text(_doc_row_value(row, "participant"))
+    }
+    employees = set(active_employee_names_for_users(users))
+
+    broad_staff_scope = False
+    team_names: set[str] = set()
+    for row in _doc_row_value(event_doc, "audience") or []:
+        audience_type = _safe_text(_doc_row_value(row, "audience_type"))
+        if audience_type in STAFF_SCHOOL_EVENT_AUDIENCE_TYPES:
+            broad_staff_scope = True
+        if audience_type == "Employees in Team":
+            team = _safe_text(_doc_row_value(row, "team"))
+            if team:
+                team_names.add(team)
+
+    employees.update(active_employee_names_for_teams(team_names))
+    if broad_staff_scope:
+        employees.update(active_employee_names_for_school_scope(_doc_row_value(event_doc, "school")))
+
+    return employees
+
+
+def _invalidate_staff_calendar_caches_for_school_event(event_doc, *, include_previous: bool = False) -> None:
+    from ifitwala_ed.api.calendar_invalidation import invalidate_staff_calendar_for_employees
+
+    employees = set(_school_event_staff_cache_employee_names(event_doc))
+    if include_previous and hasattr(event_doc, "get_doc_before_save"):
+        previous = event_doc.get_doc_before_save()
+        if previous:
+            employees.update(_school_event_staff_cache_employee_names(previous))
+
+    invalidate_staff_calendar_for_employees(employees)
+
+
 def _resolve_school_event_organization(event_doc) -> str:
     school_name = _safe_text(_doc_row_value(event_doc, "school"))
     if not school_name:
@@ -562,20 +607,24 @@ class SchoolEvent(Document):
     def after_insert(self):
         self.sync_employee_bookings()
         self.sync_location_booking()
+        _invalidate_staff_calendar_caches_for_school_event(self)
 
     def on_update(self):
         self.validate_date()
         self.sync_employee_bookings()
         self.sync_location_booking()
         self.sync_linked_announcement()
+        _invalidate_staff_calendar_caches_for_school_event(self, include_previous=True)
 
     def on_cancel(self):
         delete_location_bookings_for_source(source_doctype=self.doctype, source_name=self.name)
         self.archive_linked_announcement()
+        _invalidate_staff_calendar_caches_for_school_event(self)
 
     def on_trash(self):
         delete_location_bookings_for_source(source_doctype=self.doctype, source_name=self.name)
         self.archive_linked_announcement()
+        _invalidate_staff_calendar_caches_for_school_event(self)
 
     def validate_date(self):
         """Non-'Other' categories must be in the future."""

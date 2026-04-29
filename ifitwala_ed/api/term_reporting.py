@@ -352,22 +352,34 @@ def _build_readiness(cycle: dict | None, filters: dict, roles: set[str]) -> dict
     if not counts["total_results"]:
         blocked_reasons.append(_("No Course Term Results have been generated for this selection."))
     if counts["zero_task_results"]:
-        blocked_reasons.append(_("{0} result(s) have no counted assessment tasks.").format(counts["zero_task_results"]))
+        blocked_reasons.append(
+            _("{count} result(s) have no counted assessment tasks.").format(count=counts["zero_task_results"])
+        )
     if counts["missing_grade_results"]:
-        blocked_reasons.append(_("{0} result(s) are missing a grade value.").format(counts["missing_grade_results"]))
+        blocked_reasons.append(
+            _("{count} result(s) are missing a grade value.").format(count=counts["missing_grade_results"])
+        )
     if counts["missing_teacher_comment_results"]:
         blocked_reasons.append(
-            _("{0} result(s) are missing required teacher comments.").format(counts["missing_teacher_comment_results"])
+            _("{count} result(s) are missing required teacher comments.").format(
+                count=counts["missing_teacher_comment_results"]
+            )
         )
 
     if counts["missing_score_results"]:
-        warnings.append(_("{0} result(s) are missing numeric scores.").format(counts["missing_score_results"]))
+        warnings.append(
+            _("{count} result(s) are missing numeric scores.").format(count=counts["missing_score_results"])
+        )
     if counts["missing_component_results"]:
         warnings.append(
-            _("{0} result(s) have no stored calculation components.").format(counts["missing_component_results"])
+            _("{count} result(s) have no stored calculation components.").format(
+                count=counts["missing_component_results"]
+            )
         )
     if counts["override_results"]:
-        warnings.append(_("{0} result(s) contain grade overrides for review.").format(counts["override_results"]))
+        warnings.append(
+            _("{count} result(s) contain grade overrides for review.").format(count=counts["override_results"])
+        )
 
     ready = not blocked_reasons
     readiness_status = "blocked" if blocked_reasons else "attention" if warnings else "ready"

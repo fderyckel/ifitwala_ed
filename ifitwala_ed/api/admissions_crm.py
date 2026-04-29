@@ -35,7 +35,13 @@ def _require_doc_read(user: str, doctype: str, name: str | None):
         return None
     doc = frappe.get_doc(doctype, docname)
     if not frappe.has_permission(doctype, ptype="read", doc=doc, user=user):
-        frappe.throw(_("You do not have permission to use {0} {1}.").format(doctype, docname), frappe.PermissionError)
+        frappe.throw(
+            _("You do not have permission to use {doctype} {docname}.").format(
+                doctype=doctype,
+                docname=docname,
+            ),
+            frappe.PermissionError,
+        )
     return doc
 
 
@@ -133,7 +139,7 @@ def _apply_identity_defaults(*, external_identity: str | None, values: dict) -> 
         as_dict=True,
     )
     if not row:
-        frappe.throw(_("Admission External Identity not found: {0}").format(identity_name))
+        frappe.throw(_("Admission External Identity not found: {identity}").format(identity=identity_name))
 
     if not clean(values.get("channel_account")):
         values["channel_account"] = row.get("channel_account")
@@ -246,7 +252,7 @@ def _log_admission_message(
 ) -> dict:
     direction_value = clean(direction) or "Inbound"
     if direction_value not in {"Inbound", "Outbound", "System"}:
-        frappe.throw(_("Invalid message direction: {0}.").format(direction_value))
+        frappe.throw(_("Invalid message direction: {direction}.").format(direction=direction_value))
 
     conversation_doc = _resolve_or_create_conversation(
         user=user,
@@ -528,7 +534,7 @@ def confirm_admission_external_identity(
 
         status_value = clean(match_status) or "Confirmed"
         if status_value not in {"Unmatched", "Suggested", "Confirmed", "Rejected"}:
-            frappe.throw(_("Invalid match status: {0}.").format(status_value))
+            frappe.throw(_("Invalid match status: {status}.").format(status=status_value))
 
         if clean(contact):
             _require_doc_read(user, "Contact", contact)

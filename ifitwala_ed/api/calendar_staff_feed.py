@@ -42,7 +42,24 @@ def get_staff_calendar(
     force_refresh: bool = False,
 ):
     """Return a merged list of calendar entries for the logged-in staff user."""
-    user = frappe.session.user
+    return get_staff_calendar_for_user(
+        user=frappe.session.user,
+        from_datetime=from_datetime,
+        to_datetime=to_datetime,
+        sources=sources,
+        force_refresh=force_refresh,
+    )
+
+
+def get_staff_calendar_for_user(
+    *,
+    user: str,
+    from_datetime: Optional[str] = None,
+    to_datetime: Optional[str] = None,
+    sources=None,
+    force_refresh: bool = False,
+):
+    """Return a merged list of calendar entries for an explicit staff user."""
     if not user or user == "Guest":
         frappe.throw(_("Please sign in to view your calendar."), frappe.PermissionError)
 

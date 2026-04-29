@@ -36,11 +36,8 @@ Feature contracts:
 - `15_room_utilization_contract.md`
 - `16_class_event_session_planning_contract.md`
 - `16_class_hub_entry_contract.md`
-
-Planned target contracts:
-
 - `17_admissions_inbox_contract.md`
-  planned staff Admissions Inbox route, DTO, action, and refresh contract; not current runtime until implemented
+  staff Admissions Inbox route, DTO, action, and refresh contract; current runtime covers the Phase 3B queue route, with mutation workflows still planned
 
 Non-authoritative proposal:
 

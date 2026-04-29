@@ -156,6 +156,82 @@ class TestAdmissionCockpit(FrappeTestCase):
         self.assertEqual(blocker.get("workspace_applicant_document"), upload.get("applicant_document"))
         self.assertEqual(blocker.get("workspace_document_item"), upload.get("applicant_document_item"))
 
+    def test_approved_submission_clears_document_review_blocker(self):
+        document_type = self._create_document_type(
+            organization=self.organization,
+            school=self.school,
+            is_repeatable=0,
+            min_items_required=1,
+        )
+        upload = self._upload_submission(document_type=document_type, item_key="passport_scan")
+
+        self._review_submission(
+            applicant_document_item=upload.get("applicant_document_item"),
+            decision="Approved",
+            notes="",
+        )
+
+        card = self._get_cockpit_card(self.applicant.name)
+        self.assertTrue(bool((card.get("readiness") or {}).get("documents_ok")))
+        self.assertNotIn("documents_unapproved", {row.get("kind") for row in card.get("blockers") or []})
+
+    def test_review_submission_invalidates_admissions_cockpit_cache(self):
+        document_type = self._create_document_type(
+            organization=self.organization,
+            school=self.school,
+            is_repeatable=0,
+            min_items_required=1,
+        )
+        upload = self._upload_submission(document_type=document_type, item_key="passport_scan")
+
+        frappe.set_user(self.staff_user.name)
+        with patch("ifitwala_ed.api.admissions_review.invalidate_admissions_cockpit_cache") as invalidate_mock:
+            review_applicant_document_submission(
+                student_applicant=self.applicant.name,
+                applicant_document_item=upload.get("applicant_document_item"),
+                decision="Approved",
+                notes="",
+                client_request_id=f"review-{frappe.generate_hash(length=8)}",
+            )
+
+        invalidate_mock.assert_called_once()
+
+    def test_reviewed_submission_cannot_be_changed_from_workspace(self):
+        document_type = self._create_document_type(
+            organization=self.organization,
+            school=self.school,
+            is_repeatable=0,
+            min_items_required=1,
+        )
+        upload = self._upload_submission(document_type=document_type, item_key="passport_scan")
+        item_name = upload.get("applicant_document_item")
+
+        self._review_submission(
+            applicant_document_item=item_name,
+            decision="Approved",
+            notes="",
+        )
+
+        frappe.set_user(self.staff_user.name)
+        repeated = review_applicant_document_submission(
+            student_applicant=self.applicant.name,
+            applicant_document_item=item_name,
+            decision="Approved",
+            notes="",
+            client_request_id=f"review-{frappe.generate_hash(length=8)}",
+        )
+        self.assertTrue(bool(repeated.get("ok")))
+        self.assertFalse(bool(repeated.get("changed")))
+
+        with self.assertRaises(frappe.ValidationError):
+            review_applicant_document_submission(
+                student_applicant=self.applicant.name,
+                applicant_document_item=item_name,
+                decision="Rejected",
+                notes="Reversing an already approved item should be blocked.",
+                client_request_id=f"review-{frappe.generate_hash(length=8)}",
+            )
+
     def test_rejected_submission_blocker_targets_requirement_anchor_for_resubmission(self):
         document_type = self._create_document_type(
             organization=self.organization,

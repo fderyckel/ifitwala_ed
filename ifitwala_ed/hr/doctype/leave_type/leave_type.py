@@ -25,8 +25,8 @@ class LeaveType(Document):
             if leave_allocation:
                 frappe.throw(
                     _(
-                        "Leave application is linked with leave allocations {0}. Leave application cannot be set as leave without pay"
-                    ).format(", ".join(leave_allocation))
+                        "Leave application is linked with leave allocations {leave_allocations}. Leave application cannot be set as leave without pay"
+                    ).format(leave_allocations=", ".join(leave_allocation))
                 )  # nosec
 
     def validate_leave_types(self):
@@ -37,8 +37,9 @@ class LeaveType(Document):
                 "Whereas allocation for Compensatory Leaves is automatically created or updated on submission of Compensatory Leave Request."
             )
             msg += "<br><br>"
-            msg += _("Disable {0} or {1} to proceed.").format(
-                bold(_("Is Compensatory Leave")), bold(_("Is Earned Leave"))
+            msg += _("Disable {compensatory_leave} or {earned_leave} to proceed.").format(
+                compensatory_leave=bold(_("Is Compensatory Leave")),
+                earned_leave=bold(_("Is Earned Leave")),
             )
             frappe.throw(msg, title=_("Not Allowed"))
 

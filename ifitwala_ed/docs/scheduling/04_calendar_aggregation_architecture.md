@@ -7,6 +7,7 @@ Active with known implementation split. Canonical note for how portal calendar f
 Code refs:
 - `ifitwala_ed/api/calendar.py`
 - `ifitwala_ed/api/calendar_export.py`
+- `ifitwala_ed/api/calendar_subscription.py`
 - `ifitwala_ed/api/calendar_core.py`
 - `ifitwala_ed/api/calendar_staff_feed.py`
 - `ifitwala_ed/api/calendar_details.py`
@@ -20,6 +21,7 @@ Test refs:
 - `ifitwala_ed/api/test_portal_calendar.py`
 - `ifitwala_ed/api/test_calendar.py`
 - `ifitwala_ed/api/test_calendar_export.py`
+- `ifitwala_ed/api/test_calendar_subscription.py`
 - `ifitwala_ed/api/test_student_calendar.py`
 - `ifitwala_ed/api/test_room_utilization.py`
 
@@ -96,6 +98,7 @@ It keeps public API paths stable while implementation is split across:
 - `calendar_quick_create.py`
 - `calendar_prefs.py`
 - `calendar_export.py`
+- `calendar_subscription.py`
 
 Refactors may move implementation between those modules, but they must not silently drift the public API boundary without updating docs and dependent contracts.
 Internal Python code must import helpers from the owner modules directly rather than importing helper functions through `api/calendar.py`.
@@ -210,6 +213,33 @@ Rules:
 1. The export must reuse the same staff-feed source authority and visibility rules documented above.
 2. The export may reshape the payload into weekly print spreads, but it must not widen or narrow event inclusion ad hoc.
 3. The export is server-rendered for print and must not depend on client-side per-event detail waterfalls.
+
+### 3.6 Staff calendar subscription feeds reuse the staff feed contract
+
+Staff phone-calendar sync is a subscription feed, not a one-time export.
+
+Runtime contract:
+
+1. Staff create a private, revocable subscription URL from the staff portal.
+2. The URL serves an iCalendar (`.ics`) feed for Apple Calendar, Google Calendar, and other calendar clients.
+3. Every external calendar poll is read-only: it must not update last-seen timestamps, event state, or subscription metadata.
+4. The feed reuses `get_staff_calendar_for_user(...)` and therefore inherits the same staff source authority, school scope, and permission rules as the staff portal calendar.
+5. Subscription tokens are stored as hashed lookup values with a retrievable secret only for showing the staff user their URL again; resetting a link revokes prior active token rows.
+6. The feed uses a bounded rolling window of recent past events plus future events rather than publishing an unbounded personal history.
+7. Weekly-off holiday rows are intentionally hidden from the phone subscription to reduce noise; holidays and institution-wide events remain included.
+
+Phone-client behavior:
+
+- Ifitwala_Ed does not push events into Google or Apple calendars.
+- Calendar clients refresh by polling the subscription URL.
+- The feed advertises a one-hour refresh interval, but the external provider controls actual refresh timing.
+- Event updates are reflected when the client next fetches the URL because stable iCalendar UIDs are derived from the source event IDs.
+
+Security consequences:
+
+- Possession of the subscription URL is treated as read access to that user's current staff-visible calendar feed.
+- Resetting the link is the revocation path.
+- The feed payload must stay intentionally minimal: title, time, location, source, and a generic description. Detail-rich fields such as agendas, minutes, student lists, attachments, and virtual meeting URLs must not be added without an explicit privacy review and doc update.
 
 ---
 

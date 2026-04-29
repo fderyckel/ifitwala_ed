@@ -120,23 +120,30 @@ class TestOrgCommunicationArchiveItem(FrappeTestCase):
         self.assertEqual(result["audience_label"], "Staff · ISS")
         self.assertEqual(result["audience_summary"], audience_summary)
         self.assertEqual(result["attachments"][0]["row_name"], "row-file")
+        self.assertNotIn("open_url", result["attachments"][0])
+        self.assertNotIn("thumbnail_url", result["attachments"][0])
+        self.assertNotIn("preview_url", result["attachments"][0])
+        self.assertNotIn("preview_status", result["attachments"][0])
+        self.assertNotIn("attachment_preview", result["attachments"][0])
+        self.assertEqual(result["attachments"][0]["attachment"]["surface"], "org_communication.attachment")
+        self.assertEqual(result["attachments"][0]["attachment"]["owner_doctype"], "Org Communication")
+        self.assertEqual(result["attachments"][0]["attachment"]["kind"], "pdf")
         self.assertEqual(
-            result["attachments"][0]["open_url"],
+            result["attachments"][0]["attachment"]["open_url"],
             "/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?org_communication=COMM-0001&row_name=row-file",
         )
         self.assertEqual(
-            result["attachments"][0]["thumbnail_url"],
+            result["attachments"][0]["attachment"]["thumbnail_url"],
             "/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?org_communication=COMM-0001&row_name=row-file",
         )
         self.assertEqual(
-            result["attachments"][0]["preview_url"],
+            result["attachments"][0]["attachment"]["preview_url"],
             "/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?org_communication=COMM-0001&row_name=row-file",
         )
-        self.assertEqual(result["attachments"][0]["preview_status"], "ready")
-        self.assertEqual(result["attachments"][0]["attachment_preview"]["owner_doctype"], "Org Communication")
-        self.assertEqual(result["attachments"][0]["attachment_preview"]["kind"], "pdf")
+        self.assertEqual(result["attachments"][0]["attachment"]["preview_status"], "ready")
         self.assertEqual(result["attachments"][1]["external_url"], "https://example.com/reference")
-        self.assertEqual(result["attachments"][1]["attachment_preview"]["kind"], "link")
+        self.assertNotIn("attachment_preview", result["attachments"][1])
+        self.assertEqual(result["attachments"][1]["attachment"]["kind"], "link")
 
     def test_get_item_enriches_academic_admin_with_archive_scope(self):
         doc = SimpleNamespace(

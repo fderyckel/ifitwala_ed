@@ -176,8 +176,8 @@
 					class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 				>
 					<AttachmentPreviewCard
-						v-if="resource.attachment_preview"
-						:attachment="resource.attachment_preview"
+						v-if="resource.attachment"
+						:attachment="resource.attachment"
 						variant="planning"
 						:title="resource.title"
 						:description="resourceDescription(resource)"

@@ -193,6 +193,21 @@ import OrgCommunicationQuickCreateModal from '@/components/communication/OrgComm
 
 const cleanupFns: Array<() => void> = [];
 
+function buildCommunicationAttachment(overrides: Record<string, unknown> = {}) {
+	return {
+		id: 'ATT-1',
+		surface: 'org_communication.attachment',
+		item_id: 'ATT-1',
+		owner_doctype: 'Org Communication',
+		owner_name: 'COMM-1',
+		file_id: 'FILE-1',
+		display_name: 'Attachment',
+		kind: 'other',
+		preview_mode: 'icon_only',
+		...overrides,
+	};
+}
+
 const quickCreateDeliveryRules = {
 	brief_portal_surfaces: ['Morning Brief', 'Everywhere'],
 	profiles: {
@@ -1151,7 +1166,14 @@ describe('OrgCommunicationQuickCreateModal', () => {
 				kind: 'link',
 				title: 'Health advisory',
 				external_url: 'https://example.com/health-advisory',
-				open_url: 'https://example.com/health-advisory',
+				attachment: buildCommunicationAttachment({
+					item_id: 'row-link-everywhere',
+					display_name: 'Health advisory',
+					kind: 'link',
+					preview_mode: 'external_link',
+					link_url: 'https://example.com/health-advisory',
+					open_url: 'https://example.com/health-advisory',
+				}),
 			},
 		});
 
@@ -1204,7 +1226,14 @@ describe('OrgCommunicationQuickCreateModal', () => {
 				kind: 'link',
 				title: 'Reference sheet',
 				external_url: 'https://example.com/reference',
-				open_url: 'https://example.com/reference',
+				attachment: buildCommunicationAttachment({
+					item_id: 'row-link',
+					display_name: 'Reference sheet',
+					kind: 'link',
+					preview_mode: 'external_link',
+					link_url: 'https://example.com/reference',
+					open_url: 'https://example.com/reference',
+				}),
 			},
 		});
 
@@ -1274,7 +1303,14 @@ describe('OrgCommunicationQuickCreateModal', () => {
 				kind: 'link',
 				title: 'Policy PDF',
 				external_url: 'https://example.com/policy.pdf',
-				open_url: 'https://example.com/policy.pdf',
+				attachment: buildCommunicationAttachment({
+					item_id: 'row-link-staff',
+					display_name: 'Policy PDF',
+					kind: 'link',
+					preview_mode: 'external_link',
+					link_url: 'https://example.com/policy.pdf',
+					open_url: 'https://example.com/policy.pdf',
+				}),
 			},
 		});
 
@@ -1330,7 +1366,14 @@ describe('OrgCommunicationQuickCreateModal', () => {
 				kind: 'link',
 				title: 'Policy PDF',
 				external_url: 'https://example.com/policy.pdf',
-				open_url: 'https://example.com/policy.pdf',
+				attachment: buildCommunicationAttachment({
+					item_id: 'row-link-incomplete-audience',
+					display_name: 'Policy PDF',
+					kind: 'link',
+					preview_mode: 'external_link',
+					link_url: 'https://example.com/policy.pdf',
+					open_url: 'https://example.com/policy.pdf',
+				}),
 			},
 		});
 
@@ -1400,7 +1443,14 @@ describe('OrgCommunicationQuickCreateModal', () => {
 				title: 'Policy PDF',
 				file_name: 'policy.pdf',
 				file_size: 1024,
-				open_url: 'https://example.com/files/policy.pdf',
+				attachment: buildCommunicationAttachment({
+					item_id: 'row-file-team-attachment',
+					display_name: 'Policy PDF',
+					kind: 'pdf',
+					extension: 'pdf',
+					preview_mode: 'icon_only',
+					open_url: 'https://example.com/files/policy.pdf',
+				}),
 			},
 		});
 
@@ -1479,7 +1529,14 @@ describe('OrgCommunicationQuickCreateModal', () => {
 				title: 'Policy PDF',
 				file_name: 'policy.pdf',
 				file_size: 1024,
-				open_url: 'https://example.com/files/policy.pdf',
+				attachment: buildCommunicationAttachment({
+					item_id: 'row-file-lock',
+					display_name: 'Policy PDF',
+					kind: 'pdf',
+					extension: 'pdf',
+					preview_mode: 'icon_only',
+					open_url: 'https://example.com/files/policy.pdf',
+				}),
 			},
 		});
 
@@ -1519,7 +1576,14 @@ describe('OrgCommunicationQuickCreateModal', () => {
 				title: 'Policy PDF',
 				file_name: 'policy.pdf',
 				file_size: 1024,
-				open_url: 'https://example.com/files/policy.pdf',
+				attachment: buildCommunicationAttachment({
+					item_id: 'row-file-org-message',
+					display_name: 'Policy PDF',
+					kind: 'pdf',
+					extension: 'pdf',
+					preview_mode: 'icon_only',
+					open_url: 'https://example.com/files/policy.pdf',
+				}),
 			},
 		});
 
@@ -1553,7 +1617,14 @@ describe('OrgCommunicationQuickCreateModal', () => {
 				title: 'Policy PDF',
 				file_name: 'policy.pdf',
 				file_size: 1024,
-				open_url: 'https://example.com/files/policy.pdf',
+				attachment: buildCommunicationAttachment({
+					item_id: 'row-file-org-scope',
+					display_name: 'Policy PDF',
+					kind: 'pdf',
+					extension: 'pdf',
+					preview_mode: 'icon_only',
+					open_url: 'https://example.com/files/policy.pdf',
+				}),
 			},
 		});
 
@@ -1604,7 +1675,14 @@ describe('OrgCommunicationQuickCreateModal', () => {
 				title: 'Policy PDF',
 				file_name: 'policy.pdf',
 				file_size: 1024,
-				open_url: 'https://example.com/files/policy.pdf',
+				attachment: buildCommunicationAttachment({
+					item_id: 'row-file-block',
+					display_name: 'Policy PDF',
+					kind: 'pdf',
+					extension: 'pdf',
+					preview_mode: 'icon_only',
+					open_url: 'https://example.com/files/policy.pdf',
+				}),
 			},
 		});
 

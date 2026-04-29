@@ -36,7 +36,7 @@ class AdmissionCRMActivity(Document):
             as_dict=True,
         )
         if not conversation:
-            frappe.throw(_("Admission Conversation not found: {0}").format(self.conversation))
+            frappe.throw(_("Admission Conversation not found: {conversation}").format(conversation=self.conversation))
 
         self.organization = conversation.get("organization")
         self.school = conversation.get("school")

@@ -175,7 +175,11 @@ def upload_applicant_document(
     doc_type_code = frappe.db.get_value("Applicant Document Type", doc.document_type, "code") or doc.document_type
     slot_spec = get_applicant_document_slot_spec(document_type=doc.document_type, doc_type_code=doc_type_code)
     if not slot_spec:
-        frappe.throw(_("Applicant Document Type is missing upload classification settings: {0}.").format(doc_type_code))
+        frappe.throw(
+            _("Applicant Document Type is missing upload classification settings: {document_type}.").format(
+                document_type=doc_type_code
+            )
+        )
 
     applicant_row = (
         frappe.db.get_value(
@@ -215,7 +219,7 @@ def upload_applicant_document(
         try:
             from ifitwala_drive.api import admissions as drive_admissions_api
         except ImportError as exc:
-            frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
+            frappe.throw(_("Ifitwala Drive is required for governed upload execution: {error}").format(error=exc))
 
         _session_response, finalize_response, file_doc = _drive_upload_and_finalize(
             create_session_callable=drive_admissions_api.upload_applicant_document,
@@ -277,7 +281,7 @@ def upload_applicant_profile_image(
     try:
         from ifitwala_drive.api import admissions as drive_admissions_api
     except ImportError as exc:
-        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {error}").format(error=exc))
     _session_response, finalize_response, file_doc = _drive_upload_and_finalize(
         create_session_callable=drive_admissions_api.upload_applicant_profile_image,
         payload={
@@ -330,7 +334,7 @@ def upload_applicant_guardian_image(
     try:
         from ifitwala_drive.api import admissions as drive_admissions_api
     except ImportError as exc:
-        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {error}").format(error=exc))
     _session_response, finalize_response, file_doc = _drive_upload_and_finalize(
         create_session_callable=drive_admissions_api.upload_applicant_guardian_image,
         payload={
@@ -388,7 +392,7 @@ def upload_applicant_health_vaccination_proof(
     try:
         from ifitwala_drive.api import admissions as drive_admissions_api
     except ImportError as exc:
-        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {error}").format(error=exc))
     _session_response, finalize_response, file_doc = _drive_upload_and_finalize(
         create_session_callable=drive_admissions_api.upload_applicant_health_vaccination_proof,
         payload={
@@ -643,17 +647,21 @@ def _append_document_upload_timeline(
 
     document_type_name = frappe.db.get_value("Applicant Document Type", document_type, "document_type_name")
     document_label = document_type_code or document_type_name or document_type
-    message = _("Applicant document {0}: {1} ({2}) item {3} [{4}] ({5}) by {6} on {7} via {8}. File: {9}.").format(
-        action,
-        frappe.bold(document_label),
-        frappe.bold(applicant_document),
-        frappe.bold(item_label or item_key or applicant_document_item),
-        frappe.bold(item_key or _("n/a")),
-        frappe.bold(applicant_document_item),
-        frappe.bold(frappe.session.user),
-        now_datetime(),
-        frappe.bold(upload_source),
-        file_url or _("not available"),
+    message = _(
+        "Applicant document {action}: {document_label} ({applicant_document}) "
+        "item {item_label} [{item_key}] ({applicant_document_item}) by {user} on {timestamp} "
+        "via {upload_source}. File: {file_url}."
+    ).format(
+        action=action,
+        document_label=frappe.bold(document_label),
+        applicant_document=frappe.bold(applicant_document),
+        item_label=frappe.bold(item_label or item_key or applicant_document_item),
+        item_key=frappe.bold(item_key or _("n/a")),
+        applicant_document_item=frappe.bold(applicant_document_item),
+        user=frappe.bold(frappe.session.user),
+        timestamp=now_datetime(),
+        upload_source=frappe.bold(upload_source),
+        file_url=file_url or _("not available"),
     )
 
     try:

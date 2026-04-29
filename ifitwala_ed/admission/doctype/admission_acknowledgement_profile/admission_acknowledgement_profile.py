@@ -70,7 +70,7 @@ class AdmissionAcknowledgementProfile(Document):
         if not self.email_template:
             frappe.throw(_("Email Template is required."))
         if not frappe.db.exists("Email Template", self.email_template):
-            frappe.throw(_("Invalid Email Template: {0}.").format(self.email_template))
+            frappe.throw(_("Invalid Email Template: {email_template}.").format(email_template=self.email_template))
 
     def _validate_ctas(self):
         if self.visit_cta_route:

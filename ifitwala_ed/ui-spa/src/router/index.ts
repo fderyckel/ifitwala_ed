@@ -164,6 +164,7 @@ const routes: RouteRecordRaw[] = [
 
   // Staff
   { path: '/staff', name: 'staff-home', component: () => import('@/pages/staff/StaffHome.vue'), meta: { layout: 'staff' } },
+  { path: '/staff/calendar-sync', name: 'staff-calendar-sync', component: () => import('@/pages/staff/StaffCalendarSync.vue'), meta: { layout: 'staff' } },
   { path: '/staff/portfolio', name: 'staff-portfolio', component: () => import('@/pages/staff/StaffPortfolioFeed.vue'), meta: { layout: 'staff', portal: 'Staff' } },
   { path: '/staff/professional-development', name: 'staff-professional-development', component: () => import('@/pages/staff/ProfessionalDevelopment.vue'), meta: { layout: 'staff' } },
   { path: '/staff/organization-chart', name: 'staff-organization-chart', component: () => import('@/pages/staff/organization_chart/OrganizationChart.vue'), meta: { layout: 'staff' } },
@@ -206,6 +207,7 @@ const routes: RouteRecordRaw[] = [
 	{ path: '/staff/policies', name: 'staff-policies', component: () => import('@/pages/staff/StaffPolicies.vue'), meta: { layout: 'staff' } },
   { path: '/staff/announcements', name: 'staff-announcements', component: () => import('@/pages/staff/OrgCommunicationArchive.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/analytics/inquiry', name: 'staff-inquiry-analytics', component: () => import('@/pages/staff/analytics/InquiryAnalytics.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/admissions/inbox', name: 'staff-admissions-inbox', component: () => import('@/pages/staff/admissions/AdmissionsInbox.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/admission-cockpit', name: 'staff-admission-cockpit', component: () => import('@/pages/staff/admissions/AdmissionsCockpit.vue'), meta: { layout: 'staff' } },
 	{ path: '/staff/room-utilization', name: 'staff-room-utilization', component: () => import('@/pages/staff/analytics/RoomUtilization.vue'), meta: { layout: 'staff' } },
 ]

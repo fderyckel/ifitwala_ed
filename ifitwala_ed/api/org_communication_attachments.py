@@ -6,11 +6,8 @@ import frappe
 from frappe import _
 
 from ifitwala_ed.api import file_access as file_access_api
-from ifitwala_ed.api.attachment_previews import (
-    build_attachment_preview_item,
-    extract_file_extension,
-    preview_status_allows_preview,
-)
+from ifitwala_ed.api.attachment_previews import extract_file_extension, preview_status_allows_preview
+from ifitwala_ed.api.attachment_rows import build_governed_attachment_row
 from ifitwala_ed.setup.doctype.org_communication.attachments import (
     ORG_COMMUNICATION_ATTACHMENT_BINDING_ROLE,
     ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX,
@@ -22,6 +19,8 @@ from ifitwala_ed.utilities.governed_uploads import (
     _resolve_upload_mime_type_hint,
     _workflow_result_payload,
 )
+
+ORG_COMMUNICATION_ATTACHMENT_SURFACE = "org_communication.attachment"
 
 
 def _clean_text(value) -> str | None:
@@ -35,7 +34,7 @@ def _load_drive_callable(attribute: str):
     try:
         from ifitwala_drive.api import communications as drive_api
     except ImportError as exc:
-        frappe.throw(_("Ifitwala Drive is required for communication attachments: {0}").format(exc))
+        frappe.throw(_("Ifitwala Drive is required for communication attachments: {error}").format(error=exc))
 
     callable_obj = getattr(drive_api, attribute, None)
     if callable(callable_obj):
@@ -43,8 +42,8 @@ def _load_drive_callable(attribute: str):
 
     frappe.throw(
         _(
-            "Ifitwala Drive is missing public communications method '{0}'. Deploy the matching Drive API before using governed communication attachments."
-        ).format(attribute)
+            "Ifitwala Drive is missing public communications method '{method}'. Deploy the matching Drive API before using governed communication attachments."
+        ).format(method=attribute)
     )
 
 
@@ -57,10 +56,13 @@ def _get_attachment_row(doc, row_name: str):
         if str(getattr(row, "name", "") or "").strip() == resolved_row_name:
             return row
 
-    frappe.throw(_("Attachment row was not found: {0}").format(resolved_row_name), frappe.DoesNotExistError)
+    frappe.throw(
+        _("Attachment row was not found: {row_name}").format(row_name=resolved_row_name),
+        frappe.DoesNotExistError,
+    )
 
 
-def _get_attachment_preview_meta(org_communication: str, row_name: str) -> dict[str, Any]:
+def _get_attachment_render_meta(org_communication: str, row_name: str) -> dict[str, Any]:
     slot = f"{ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX}{str(row_name or '').strip()}"
     if not slot or not org_communication:
         return {"preview_status": None, "inline_preview_ready": False}
@@ -135,7 +137,7 @@ def serialize_org_communication_attachment_row(org_communication: str, row) -> d
         )
 
     if file_url:
-        preview_meta = _get_attachment_preview_meta(org_communication, row_name)
+        preview_meta = _get_attachment_render_meta(org_communication, row_name)
         preview_status = preview_meta.get("preview_status")
         open_url = file_access_api.build_org_communication_attachment_open_url(
             org_communication=org_communication,
@@ -152,7 +154,9 @@ def serialize_org_communication_attachment_row(org_communication: str, row) -> d
             if preview_meta.get("inline_preview_ready")
             else None
         )
-        attachment_preview = build_attachment_preview_item(
+        attachment = build_governed_attachment_row(
+            row_id=row_name,
+            surface=ORG_COMMUNICATION_ATTACHMENT_SURFACE,
             item_id=row_name,
             owner_doctype="Org Communication",
             owner_name=org_communication,
@@ -173,14 +177,12 @@ def serialize_org_communication_attachment_row(org_communication: str, row) -> d
             "description": description,
             "file_name": file_name or title,
             "file_size": file_size,
-            "preview_status": preview_status,
-            "thumbnail_url": thumbnail_url,
-            "preview_url": preview_url,
-            "open_url": open_url,
-            "attachment_preview": attachment_preview,
+            "attachment": attachment,
         }
 
-    attachment_preview = build_attachment_preview_item(
+    attachment = build_governed_attachment_row(
+        row_id=row_name,
+        surface=ORG_COMMUNICATION_ATTACHMENT_SURFACE,
         item_id=row_name,
         owner_doctype="Org Communication",
         owner_name=org_communication,
@@ -195,8 +197,7 @@ def serialize_org_communication_attachment_row(org_communication: str, row) -> d
         "title": title,
         "description": description,
         "external_url": external_url or None,
-        "open_url": external_url or None,
-        "attachment_preview": attachment_preview,
+        "attachment": attachment,
     }
 
 

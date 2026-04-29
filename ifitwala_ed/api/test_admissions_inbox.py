@@ -35,6 +35,7 @@ class TestAdmissionsInbox(FrappeTestCase):
 
         row = next(row for row in unassigned["rows"] if row["inquiry"] == inquiry.name)
         self.assertEqual(row["kind"], "inquiry")
+        self.assertEqual(row["open_url"], f"/desk/inquiry/{inquiry.name}")
         self.assertIn("log_message", {action["id"] for action in row["actions"]})
         self.assertIn("mark_contacted", {action["id"] for action in row["actions"]})
 
@@ -59,6 +60,7 @@ class TestAdmissionsInbox(FrappeTestCase):
 
         row = next(row for row in needs_reply["rows"] if row["conversation"] == logged["conversation"]["name"])
         self.assertEqual(row["kind"], "conversation")
+        self.assertEqual(row["open_url"], f"/desk/admission-conversation/{logged['conversation']['name']}")
         self.assertTrue(row["needs_reply"])
         self.assertIn("log_reply", {action["id"] for action in row["actions"]})
         self.assertEqual(row["last_message_preview"], "Can someone call me about admissions?")

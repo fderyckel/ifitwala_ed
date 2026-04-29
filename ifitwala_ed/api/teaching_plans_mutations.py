@@ -347,7 +347,12 @@ def create_planning_reference_material_impl(api, payload=None, **kwargs) -> dict
         "anchor_doctype": context["anchor_doctype"],
         "anchor_name": context["anchor_name"],
         "placement": placement.name,
-        "resource": api._reload_anchor_material(context["anchor_doctype"], context["anchor_name"], material.name),
+        "resource": api._reload_anchor_material(
+            context["anchor_doctype"],
+            context["anchor_name"],
+            material.name,
+            attachment_surface=api.PLANNING_ATTACHMENT_SURFACE,
+        ),
     }
 
 
@@ -400,7 +405,12 @@ def upload_planning_material_file_impl(
         "anchor_doctype": context["anchor_doctype"],
         "anchor_name": context["anchor_name"],
         "placement": placement.name,
-        "resource": api._reload_anchor_material(context["anchor_doctype"], context["anchor_name"], material.name),
+        "resource": api._reload_anchor_material(
+            context["anchor_doctype"],
+            context["anchor_name"],
+            material.name,
+            attachment_surface=api.PLANNING_ATTACHMENT_SURFACE,
+        ),
     }
 
 

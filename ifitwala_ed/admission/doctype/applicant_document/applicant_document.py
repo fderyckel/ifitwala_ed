@@ -108,7 +108,9 @@ class ApplicantDocument(Document):
             return
         for field in ("student_applicant", "document_type"):
             if before.get(field) != self.get(field):
-                frappe.throw(_("{0} is immutable once set.").format(field.replace("_", " ").title()))
+                frappe.throw(
+                    _("{field_label} is immutable once set.").format(field_label=field.replace("_", " ").title())
+                )
 
     def _validate_unique_document_type(self):
         if not self.student_applicant or not self.document_type:
@@ -155,7 +157,7 @@ class ApplicantDocument(Document):
 
         override_status = (self.requirement_override or "").strip()
         if override_status and override_status not in ALLOWED_REQUIREMENT_OVERRIDES:
-            frappe.throw(_("Invalid requirement override: {0}.").format(override_status))
+            frappe.throw(_("Invalid requirement override: {override_status}.").format(override_status=override_status))
 
         if not override_status:
             self.override_reason = None
@@ -210,9 +212,9 @@ class ApplicantDocument(Document):
         current_override = (self.get("requirement_override") or "").strip()
         if before_override != current_override:
             changes.append(
-                _("Requirement Override: {0} -> {1}").format(
-                    before_override or _("None"),
-                    current_override or _("None"),
+                _("Requirement Override: {before_override} -> {current_override}").format(
+                    before_override=before_override or _("None"),
+                    current_override=current_override or _("None"),
                 )
             )
 
@@ -225,9 +227,9 @@ class ApplicantDocument(Document):
         current_target = (self.get("promotion_target") or "").strip()
         if before_target != current_target:
             changes.append(
-                _("Promotion Target: {0} -> {1}").format(
-                    before_target or _("None"),
-                    current_target or _("None"),
+                _("Promotion Target: {before_target} -> {current_target}").format(
+                    before_target=before_target or _("None"),
+                    current_target=current_target or _("None"),
                 )
             )
 
@@ -237,12 +239,15 @@ class ApplicantDocument(Document):
         document_label = (
             frappe.db.get_value("Applicant Document Type", self.document_type, "code") or self.document_type
         )
-        message = _("Applicant document updated: {0} ({1}) by {2} on {3}. Changes: {4}.").format(
-            frappe.bold(document_label),
-            frappe.bold(self.name),
-            frappe.bold(frappe.session.user),
-            now_datetime(),
-            "; ".join(changes),
+        message = _(
+            "Applicant document updated: {document_label} ({applicant_document}) by {user} on {timestamp}. "
+            "Changes: {changes}."
+        ).format(
+            document_label=frappe.bold(document_label),
+            applicant_document=frappe.bold(self.name),
+            user=frappe.bold(frappe.session.user),
+            timestamp=now_datetime(),
+            changes="; ".join(changes),
         )
 
         try:

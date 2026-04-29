@@ -169,8 +169,10 @@ import OrgCommunicationArchive from '@/pages/staff/OrgCommunicationArchive.vue';
 
 const cleanupFns: Array<() => void> = [];
 
-function buildAttachmentPreview(overrides: Record<string, unknown> = {}) {
+function buildCommunicationAttachment(overrides: Record<string, unknown> = {}) {
 	return {
+		id: 'ATT-1',
+		surface: 'org_communication.attachment',
 		item_id: 'ATT-1',
 		owner_doctype: 'Org Communication',
 		owner_name: 'COMM-1',
@@ -329,12 +331,7 @@ describe('OrgCommunicationArchive', () => {
 					title: 'Event photo',
 					file_name: 'event-photo.jpg',
 					file_size: 2048,
-					preview_status: 'ready',
-					thumbnail_url:
-						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
-					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
-					open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMAGE',
-					attachment_preview: buildAttachmentPreview({
+					attachment: buildCommunicationAttachment({
 						item_id: 'ATT-IMAGE',
 						display_name: 'Event photo',
 						kind: 'image',
@@ -355,12 +352,7 @@ describe('OrgCommunicationArchive', () => {
 					title: 'Agenda',
 					file_name: 'agenda.pdf',
 					file_size: 4096,
-					preview_status: 'ready',
-					thumbnail_url:
-						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF',
-					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-PDF',
-					open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-PDF',
-					attachment_preview: buildAttachmentPreview({
+					attachment: buildCommunicationAttachment({
 						item_id: 'ATT-PDF',
 						display_name: 'Agenda',
 						kind: 'pdf',
@@ -380,8 +372,7 @@ describe('OrgCommunicationArchive', () => {
 					kind: 'link',
 					title: 'Reference site',
 					external_url: 'https://example.com/reference',
-					open_url: 'https://example.com/reference',
-					attachment_preview: buildAttachmentPreview({
+					attachment: buildCommunicationAttachment({
 						item_id: 'ATT-LINK',
 						display_name: 'Reference site',
 						kind: 'link',

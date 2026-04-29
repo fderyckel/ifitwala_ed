@@ -412,7 +412,10 @@ def _interview_sort_key(row: dict) -> tuple:
 def _interview_feedback_status_label(submitted_count: int, expected_count: int) -> str:
     if expected_count <= 0:
         return _("No interviewers assigned")
-    return _("{0}/{1} submitted").format(submitted_count, expected_count)
+    return _("{submitted_count}/{expected_count} submitted").format(
+        submitted_count=submitted_count,
+        expected_count=expected_count,
+    )
 
 
 def _build_interview_state(applicant_names: list[str]) -> dict[str, dict]:
@@ -1073,7 +1076,9 @@ def _build_issues(
             missing = policies.get("missing") or []
             if missing:
                 issues.append(
-                    _("Missing policy acknowledgements: {0}.").format(", ".join(str(item) for item in missing))
+                    _("Missing policy acknowledgements: {policies}.").format(
+                        policies=", ".join(str(item) for item in missing)
+                    )
                 )
             else:
                 issues.append(_("Missing required policy acknowledgements."))
@@ -1089,16 +1094,22 @@ def _build_issues(
         missing = documents.get("missing") or []
         unapproved = documents.get("unapproved") or []
         if missing:
-            issues.append(_("Missing required documents: {0}.").format(", ".join(str(item) for item in missing)))
+            issues.append(
+                _("Missing required documents: {documents}.").format(documents=", ".join(str(item) for item in missing))
+            )
         if unapproved:
             issues.append(
-                _("Required documents not approved: {0}.").format(", ".join(str(item) for item in unapproved))
+                _("Required documents not approved: {documents}.").format(
+                    documents=", ".join(str(item) for item in unapproved)
+                )
             )
 
     if not profile.get("ok"):
         missing = profile.get("missing") or []
         if missing:
-            issues.append(_("Missing profile information: {0}.").format(", ".join(str(item) for item in missing)))
+            issues.append(
+                _("Missing profile information: {fields}.").format(fields=", ".join(str(item) for item in missing))
+            )
         else:
             issues.append(_("Missing required profile information."))
 
@@ -1107,9 +1118,18 @@ def _build_issues(
         required_total = cint(recommendations.get("required_total") or 0)
         received_total = cint(recommendations.get("received_total") or 0)
         if missing:
-            issues.append(_("Missing required recommendations: {0}.").format(", ".join(str(item) for item in missing)))
+            issues.append(
+                _("Missing required recommendations: {recommendations}.").format(
+                    recommendations=", ".join(str(item) for item in missing)
+                )
+            )
         elif required_total > 0:
-            issues.append(_("Required recommendations received: {0} of {1}.").format(received_total, required_total))
+            issues.append(
+                _("Required recommendations received: {received_total} of {required_total}.").format(
+                    received_total=received_total,
+                    required_total=required_total,
+                )
+            )
 
     return issues
 
@@ -1247,7 +1267,7 @@ def _build_blockers(
             else applicant_target
         )
 
-        label = _("Missing policies") if not missing else _("Missing policies: {0}").format(len(missing))
+        label = _("Missing policies") if not missing else _("Missing policies: {count}").format(count=len(missing))
         blockers.append(
             {
                 "kind": "missing_policies",
@@ -1280,7 +1300,7 @@ def _build_blockers(
             blockers.append(
                 {
                     "kind": "missing_documents",
-                    "label": _("Requirements awaiting submission: {0}").format(len(missing)),
+                    "label": _("Requirements awaiting submission: {count}").format(count=len(missing)),
                     "items": [str(item) for item in missing],
                     **target,
                 }
@@ -1294,11 +1314,11 @@ def _build_blockers(
             review_status = _to_text(first_unapproved.get("review_status"))
 
             if review_status == "Rejected":
-                label = _("Requirements awaiting resubmission: {0}").format(len(unapproved))
+                label = _("Requirements awaiting resubmission: {count}").format(count=len(unapproved))
                 target_label = _("Open requirement")
                 document_item = None
             else:
-                label = _("Submitted files awaiting review: {0}").format(len(unapproved))
+                label = _("Submitted files awaiting review: {count}").format(count=len(unapproved))
                 target_label = _("Open submission review")
 
             target = (

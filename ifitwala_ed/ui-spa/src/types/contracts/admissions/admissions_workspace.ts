@@ -438,6 +438,7 @@ export interface ReviewApplicantDocumentSubmissionRequest {
 
 export interface ReviewApplicantDocumentSubmissionResponse {
 	ok: boolean
+	changed?: boolean
 	applicant_document?: string | null
 	applicant_document_item?: string | null
 	decision?: ApplicantDocumentReviewDecision | null

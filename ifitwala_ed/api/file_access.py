@@ -1008,13 +1008,13 @@ def _load_drive_access_callable(attribute: str):
     try:
         from ifitwala_drive.api import access as drive_api
     except ImportError as exc:
-        frappe.throw(_("Ifitwala Drive is required for governed file access: {0}").format(exc))
+        frappe.throw(_("Ifitwala Drive is required for governed file access: {error}").format(error=exc))
 
     callable_obj = getattr(drive_api, attribute, None)
     if callable(callable_obj):
         return callable_obj
 
-    frappe.throw(_("Ifitwala Drive access method is unavailable: {0}").format(attribute))
+    frappe.throw(_("Ifitwala Drive access method is unavailable: {method}").format(method=attribute))
 
 
 def _load_drive_communications_callable(attribute: str):

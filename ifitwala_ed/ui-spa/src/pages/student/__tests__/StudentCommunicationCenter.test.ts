@@ -123,8 +123,10 @@ import StudentCommunicationCenter from '@/pages/student/StudentCommunicationCent
 
 const cleanupFns: Array<() => void> = [];
 
-function buildAttachmentPreview(overrides: Record<string, unknown> = {}) {
+function buildCommunicationAttachment(overrides: Record<string, unknown> = {}) {
 	return {
+		id: 'ATT-1',
+		surface: 'org_communication.attachment',
 		item_id: 'ATT-1',
 		owner_doctype: 'Org Communication',
 		owner_name: 'COMM-1',
@@ -358,13 +360,7 @@ describe('StudentCommunicationCenter', () => {
 					title: 'Poster',
 					file_name: 'poster.webp',
 					file_size: 3072,
-					thumbnail_url:
-						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
-					preview_url:
-						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
-					open_url:
-						'/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMAGE',
-					attachment_preview: buildAttachmentPreview({
+					attachment: buildCommunicationAttachment({
 						item_id: 'ATT-IMAGE',
 						display_name: 'Poster',
 						kind: 'image',
@@ -383,8 +379,7 @@ describe('StudentCommunicationCenter', () => {
 					kind: 'link',
 					title: 'Course site',
 					external_url: 'https://example.com/course',
-					open_url: 'https://example.com/course',
-					attachment_preview: buildAttachmentPreview({
+					attachment: buildCommunicationAttachment({
 						item_id: 'ATT-LINK',
 						display_name: 'Course site',
 						kind: 'link',

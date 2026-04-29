@@ -1862,6 +1862,10 @@ function can_review_document_submissions() {
 	return ["Admission Officer", "Admission Manager", "Academic Admin", "System Manager"].some((role) => frappe.user.has_role(role));
 }
 
+function is_pending_document_review_status(status) {
+	return (String(status || "Pending").trim() || "Pending") === "Pending";
+}
+
 function new_admissions_review_request_id(prefix = "admissions_review") {
 	return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2, 12)}`;
 }
@@ -1870,6 +1874,9 @@ function render_submission_action_buttons(row) {
 	const itemName = String(row?.applicant_document_item || "").trim();
 	if (!itemName) {
 		return escape_html(__("—"));
+	}
+	if (!is_pending_document_review_status(row?.review_status)) {
+		return escape_html(__("Already reviewed"));
 	}
 	const attrs = `data-applicant-document-item="${escape_html(itemName)}" data-label="${escape_html(String(row?.label || row?.item_label || row?.item_key || __("Submission")))}"`;
 	return [
@@ -2006,7 +2013,8 @@ function render_recommendation_review_dialog(payload) {
 	const canReview = Boolean(
 		recommendation.can_review &&
 		recommendation.applicant_document_item &&
-		canReviewSubmissions
+		canReviewSubmissions &&
+		is_pending_document_review_status(recommendation.review_status)
 	);
 	const reviewStatus = String(recommendation.review_status || __("Pending")).trim() || __("Pending");
 

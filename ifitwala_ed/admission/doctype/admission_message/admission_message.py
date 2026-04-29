@@ -79,7 +79,7 @@ class AdmissionMessage(Document):
             as_dict=True,
         )
         if not conversation:
-            frappe.throw(_("Admission Conversation not found: {0}").format(self.conversation))
+            frappe.throw(_("Admission Conversation not found: {conversation}").format(conversation=self.conversation))
         return conversation
 
     def _validate_session_scope(self, conversation: dict) -> None:

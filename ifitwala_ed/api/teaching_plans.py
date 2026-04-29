@@ -37,6 +37,7 @@ PLANNING_RESOURCE_ANCHORS = {
     "Class Session",
 }
 GOVERNED_PLANNING_RESOURCE_ANCHORS = {"Course Plan", "Unit Plan"}
+PLANNING_ATTACHMENT_SURFACE = "planning.material"
 STUDENT_LEARNING_SPACE_WARN_ELAPSED_MS = 1200
 STUDENT_LEARNING_SPACE_WARN_PAYLOAD_BYTES = 350_000
 
@@ -356,9 +357,17 @@ def _build_course_plan_creation_access(user: str, roles: set[str]) -> dict[str, 
 
 
 def _serialize_material_entry(
-    entry: dict[str, Any], *, thumbnail_ready_map: dict[str, bool] | None = None
+    entry: dict[str, Any],
+    *,
+    thumbnail_ready_map: dict[str, bool] | None = None,
+    attachment_surface: str | None = None,
 ) -> dict[str, Any]:
-    return _read_models_impl.serialize_material_entry(_module(), entry, thumbnail_ready_map=thumbnail_ready_map)
+    return _read_models_impl.serialize_material_entry(
+        _module(),
+        entry,
+        thumbnail_ready_map=thumbnail_ready_map,
+        attachment_surface=attachment_surface,
+    )
 
 
 def _fetch_course_quiz_question_banks(course: str | None) -> list[dict[str, Any]]:
@@ -377,12 +386,32 @@ def _fetch_selected_quiz_question_bank(
     )
 
 
-def _reload_anchor_material(anchor_doctype: str, anchor_name: str, material_name: str) -> dict[str, Any]:
-    return _read_models_impl.reload_anchor_material(_module(), anchor_doctype, anchor_name, material_name)
+def _reload_anchor_material(
+    anchor_doctype: str,
+    anchor_name: str,
+    material_name: str,
+    *,
+    attachment_surface: str | None = None,
+) -> dict[str, Any]:
+    return _read_models_impl.reload_anchor_material(
+        _module(),
+        anchor_doctype,
+        anchor_name,
+        material_name,
+        attachment_surface=attachment_surface,
+    )
 
 
-def _fetch_material_map(anchor_refs: list[tuple[str, str]]) -> dict[tuple[str, str], list[dict[str, Any]]]:
-    return _read_models_impl.fetch_material_map(_module(), anchor_refs)
+def _fetch_material_map(
+    anchor_refs: list[tuple[str, str]],
+    *,
+    attachment_surface: str | None = None,
+) -> dict[tuple[str, str], list[dict[str, Any]]]:
+    return _read_models_impl.fetch_material_map(
+        _module(),
+        anchor_refs,
+        attachment_surface=attachment_surface,
+    )
 
 
 def _fetch_assigned_work(

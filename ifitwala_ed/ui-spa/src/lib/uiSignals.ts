@@ -33,6 +33,7 @@ export const SIGNAL_STUDENT_LOG_RECENT_LOGS_INVALIDATE = 'student_log_recent_log
 export const SIGNAL_STUDENT_LOG_FILTER_META_INVALIDATE = 'student_log_filter_meta:invalidate' as const
 export const SIGNAL_ORG_COMMUNICATION_INVALIDATE = 'org_communication:invalidate' as const
 export const SIGNAL_ATTENDANCE_INVALIDATE = 'attendance:invalidate' as const
+export const SIGNAL_ADMISSIONS_INBOX_INVALIDATE = 'admissions_inbox:invalidate' as const
 export const SIGNAL_ADMISSIONS_PORTAL_INVALIDATE = 'admissions_portal:invalidate' as const
 export const SIGNAL_GRADEBOOK_INVALIDATE = 'gradebook:invalidate' as const
 export const SIGNAL_PROFESSIONAL_DEVELOPMENT_INVALIDATE = 'professional_development:invalidate' as const
@@ -55,6 +56,7 @@ export type UiSignalName =
 	| typeof SIGNAL_ORG_COMMUNICATION_INVALIDATE
 	| typeof SIGNAL_TOAST_SHOW
 	| typeof SIGNAL_ATTENDANCE_INVALIDATE
+	| typeof SIGNAL_ADMISSIONS_INBOX_INVALIDATE
 	| typeof SIGNAL_ADMISSIONS_PORTAL_INVALIDATE
 	| typeof SIGNAL_GRADEBOOK_INVALIDATE
 	| typeof SIGNAL_PROFESSIONAL_DEVELOPMENT_INVALIDATE

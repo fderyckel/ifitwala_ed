@@ -60,7 +60,7 @@ def validate_active_employee(employee: str, method=None):
         frappe.throw(_("Employee is required."))
     status = frappe.db.get_value("Employee", employee, "employment_status")
     if status not in {"Active", "Temporary Leave"}:
-        frappe.throw(_("Employee {0} is not active.").format(frappe.bold(employee)))
+        frappe.throw(_("Employee {employee} is not active.").format(employee=frappe.bold(employee)))
 
 
 def validate_dates(doc, from_date, to_date, restrict_future_dates=True):
@@ -88,7 +88,9 @@ def validate_overlap(doc, from_date, to_date, organization=None):
             },
         )
         if overlap:
-            frappe.throw(_("Compensatory Leave Request overlaps with existing request: {0}").format(overlap))
+            frappe.throw(
+                _("Compensatory Leave Request overlaps with existing request: {request}").format(request=overlap)
+            )
         return
 
     if doc.doctype == "Leave Period":
@@ -102,7 +104,7 @@ def validate_overlap(doc, from_date, to_date, organization=None):
             },
         )
         if overlap:
-            frappe.throw(_("Leave Period overlaps with existing record: {0}").format(overlap))
+            frappe.throw(_("Leave Period overlaps with existing record: {leave_period}").format(leave_period=overlap))
 
 
 def get_leave_period(from_date, to_date, organization):
@@ -417,7 +419,7 @@ def get_holiday_list_for_employee(employee, organization=None, raise_exception=T
         return calendar_row.get("name")
 
     if raise_exception:
-        frappe.throw(_("No Staff Calendar could be resolved for Employee {0}").format(employee))
+        frappe.throw(_("No Staff Calendar could be resolved for Employee {employee}").format(employee=employee))
     return None
 
 
@@ -450,7 +452,9 @@ def get_holidays_for_employee(employee, start_date, end_date, raise_exception=Tr
         return holidays
 
     if raise_exception:
-        frappe.throw(_("No Staff Calendar holidays could be resolved for Employee {0}").format(employee))
+        frappe.throw(
+            _("No Staff Calendar holidays could be resolved for Employee {employee}").format(employee=employee)
+        )
     return []
 
 
@@ -480,7 +484,11 @@ def validate_bulk_tool_fields(doc, mandatory_fields, employees, from_field, to_f
         frappe.throw(_("Select at least one employee."))
     for fieldname in mandatory_fields:
         if not doc.get(fieldname):
-            frappe.throw(_("Field {0} is required.").format(frappe.bold(doc.meta.get_label(fieldname) or fieldname)))
+            frappe.throw(
+                _("Field {field_label} is required.").format(
+                    field_label=frappe.bold(doc.meta.get_label(fieldname) or fieldname)
+                )
+            )
     if doc.get(from_field) and doc.get(to_field) and getdate(doc.get(from_field)) > getdate(doc.get(to_field)):
         frappe.throw(_("From Date cannot be after To Date."))
 
@@ -641,7 +649,7 @@ def get_annual_allocation_from_policy(allocation, leave_type):
 
 def log_allocation_error(allocation_name, error):
     error_log = frappe.log_error(error, reference_doctype="Leave Allocation")
-    text = _("{0}. Check error log for more details.").format(error_log.method)
+    text = _("{error}. Check error log for more details.").format(error=error_log.method)
     earned_leave_schedule = frappe.qb.DocType("Earned Leave Schedule")
     today_date = getdate(frappe.flags.current_date) or getdate()
     (

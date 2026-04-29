@@ -35,9 +35,9 @@ def _normalize_positive_int(value, *, default: int, label: str) -> int:
     try:
         normalized = int(value)
     except (TypeError, ValueError):
-        frappe.throw(_("{0} must be a whole number.").format(label))
+        frappe.throw(_("{label} must be a whole number.").format(label=label))
     if normalized < 0:
-        frappe.throw(_("{0} cannot be negative.").format(label))
+        frappe.throw(_("{label} cannot be negative.").format(label=label))
     return normalized
 
 

@@ -495,7 +495,7 @@ def _ensure_allowed_school(user: str, school: str | None) -> str | None:
     allowed = set(scope.get("school_scope") or [])
     if not bool(scope.get("is_admin_like")) and school_value not in allowed:
         frappe.throw(
-            _("You are not allowed to schedule meetings for school {0}.").format(school_value),
+            _("You are not allowed to schedule meetings for school {school}.").format(school=school_value),
             frappe.PermissionError,
         )
     return school_value
@@ -535,7 +535,9 @@ def _ensure_allowed_location(user: str, school: str | None, location: str | None
 
     if location_value not in allowed_locations:
         frappe.throw(
-            _("You are not allowed to use location {0} for the selected host school.").format(location_value),
+            _("You are not allowed to use location {location} for the selected host school.").format(
+                location=location_value
+            ),
             frappe.PermissionError,
         )
 
@@ -555,8 +557,8 @@ def _ensure_allowed_location_type(user: str, school: str | None, location_type: 
 
     if location_type_value not in allowed:
         frappe.throw(
-            _("You are not allowed to filter by location type {0} for the selected host school.").format(
-                location_type_value
+            _("You are not allowed to filter by location type {location_type} for the selected host school.").format(
+                location_type=location_type_value
             ),
             frappe.PermissionError,
         )
@@ -578,7 +580,7 @@ def _ensure_allowed_team(user: str, team: str | None) -> str | None:
     allowed = {row.get("value") for row in team_options if row.get("value")}
     if not bool(scope.get("is_admin_like")) and team_value not in allowed:
         frappe.throw(
-            _("You are not allowed to use team {0} in quick create.").format(team_value),
+            _("You are not allowed to use team {team} in quick create.").format(team=team_value),
             frappe.PermissionError,
         )
     return team_value
@@ -595,9 +597,15 @@ def _coerce_minutes(value: object | None, *, default: int, minimum: int, maximum
     try:
         minutes = int(value or default)
     except Exception:
-        frappe.throw(_("{0} must be a whole number.").format(label))
+        frappe.throw(_("{label} must be a whole number.").format(label=label))
     if minutes < minimum or minutes > maximum:
-        frappe.throw(_("{0} must be between {1} and {2}.").format(label, minimum, maximum))
+        frappe.throw(
+            _("{label} must be between {minimum} and {maximum}.").format(
+                label=label,
+                minimum=minimum,
+                maximum=maximum,
+            )
+        )
     return minutes
 
 
@@ -607,7 +615,7 @@ def _coerce_date_required(value: object | None, label: str) -> date:
     except Exception:
         parsed = None
     if not parsed:
-        frappe.throw(_("{0} is required.").format(label))
+        frappe.throw(_("{label} is required.").format(label=label))
     return parsed
 
 
@@ -619,7 +627,7 @@ def _coerce_time_required(value: object | None, label: str):
         except Exception:
             parsed = None
     if not parsed:
-        frappe.throw(_("{0} is required.").format(label))
+        frappe.throw(_("{label} is required.").format(label=label))
     return parsed
 
 
@@ -1819,7 +1827,11 @@ def suggest_meeting_slots(
     if attendee_count == 0:
         frappe.throw(_("Add at least one attendee before asking for common times."))
     if attendee_count > MAX_SLOT_ATTENDEES:
-        frappe.throw(_("Quick scheduling supports up to {0} attendees at a time.").format(MAX_SLOT_ATTENDEES))
+        frappe.throw(
+            _("Quick scheduling supports up to {max_attendees} attendees at a time.").format(
+                max_attendees=MAX_SLOT_ATTENDEES
+            )
+        )
 
     duration = _coerce_minutes(
         duration_minutes,
@@ -1833,7 +1845,7 @@ def suggest_meeting_slots(
     if end_date < start_date:
         frappe.throw(_("End date must be on or after Start date."))
     if (end_date - start_date).days + 1 > MAX_SLOT_SEARCH_DAYS:
-        frappe.throw(_("Search window cannot exceed {0} days.").format(MAX_SLOT_SEARCH_DAYS))
+        frappe.throw(_("Search window cannot exceed {max_days} days.").format(max_days=MAX_SLOT_SEARCH_DAYS))
 
     day_start = _coerce_time_required(day_start_time or DEFAULT_DAY_START_TIME, _("Earliest start"))
     day_end = _coerce_time_required(day_end_time or DEFAULT_DAY_END_TIME, _("Latest end"))
@@ -1954,12 +1966,14 @@ def suggest_meeting_slots(
         else:
             notes.append(_("No rooms are configured for the selected school scope."))
         if location_type_value:
-            notes.append(_("Room ranking is limited to location type {0}.").format(location_type_value))
+            notes.append(
+                _("Room ranking is limited to location type {location_type}.").format(location_type=location_type_value)
+            )
         if room_blocked_exact_slots:
             notes.append(
                 _(
-                    "{0} attendee-free slot(s) were excluded because no room was free in the selected school scope."
-                ).format(room_blocked_exact_slots)
+                    "{blocked_slots} attendee-free slot(s) were excluded because no room was free in the selected school scope."
+                ).format(blocked_slots=room_blocked_exact_slots)
             )
 
     payload = {
@@ -2063,7 +2077,11 @@ def suggest_meeting_rooms(
     payload = {
         "rooms": available_rooms[:room_limit],
         "notes": (
-            [_("Room suggestions are limited to location type {0}.").format(location_type_value)]
+            [
+                _("Room suggestions are limited to location type {location_type}.").format(
+                    location_type=location_type_value
+                )
+            ]
             if location_type_value
             else []
         ),

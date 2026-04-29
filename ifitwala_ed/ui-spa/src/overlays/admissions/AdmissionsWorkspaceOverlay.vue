@@ -771,7 +771,7 @@
 															</div>
 
 															<div
-																v-if="canReviewApplicantSubmissions && item.name"
+																v-if="canShowSubmissionReviewActions(item)"
 																class="flex flex-wrap gap-2 lg:justify-end"
 															>
 																<button
@@ -894,7 +894,7 @@
 														</div>
 
 														<div
-															v-if="canReviewApplicantSubmissions && row.applicant_document_item"
+															v-if="canShowUploadedRowReviewActions(row)"
 															class="flex flex-wrap gap-2 lg:justify-end"
 														>
 															<button
@@ -1320,7 +1320,10 @@
 														v-if="
 															recommendationReviewItem &&
 															canReviewRecommendationSubmissions &&
-															recommendationReview.recommendation.can_review
+															recommendationReview.recommendation.can_review &&
+															canShowRecommendationSubmissionReviewActions(
+																recommendationReviewItem
+															)
 														"
 														class="rounded-xl border border-border/70 bg-white p-4"
 													>
@@ -1650,6 +1653,36 @@ const canManageApplicantOverrides = computed(() =>
 const submissionRequiresNotes = computed(
 	() => submissionDecision.value === 'Needs Follow-Up' || submissionDecision.value === 'Rejected'
 );
+
+function isPendingSubmissionReviewStatus(status: unknown) {
+	return (String(status || 'Pending').trim() || 'Pending') === 'Pending';
+}
+
+function canShowSubmissionReviewActions(item: ApplicantWorkspaceDocumentItem | null | undefined) {
+	return Boolean(
+		canReviewApplicantSubmissions.value &&
+		String(item?.name || '').trim() &&
+		isPendingSubmissionReviewStatus(item?.review_status)
+	);
+}
+
+function canShowRecommendationSubmissionReviewActions(
+	item: ApplicantWorkspaceDocumentItem | null | undefined
+) {
+	return Boolean(
+		canReviewRecommendationSubmissions.value &&
+		String(item?.name || '').trim() &&
+		isPendingSubmissionReviewStatus(item?.review_status)
+	);
+}
+
+function canShowUploadedRowReviewActions(row: ApplicantWorkspaceUploadedRow | null | undefined) {
+	return Boolean(
+		canReviewApplicantSubmissions.value &&
+		String(row?.applicant_document_item || '').trim() &&
+		isPendingSubmissionReviewStatus(row?.review_status)
+	);
+}
 
 const isInterviewMode = computed(() => currentMode.value === 'interview');
 const isGuardianMode = computed(() => currentMode.value === 'guardian');

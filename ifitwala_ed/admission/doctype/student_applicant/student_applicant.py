@@ -34,7 +34,10 @@ from ifitwala_ed.admission.admission_utils import (
     sync_student_applicant_contact_binding,
 )
 from ifitwala_ed.admission.applicant_document_readiness import build_document_review_payload_for_applicant
-from ifitwala_ed.admission.applicant_review_workflow import apply_review_decision
+from ifitwala_ed.admission.applicant_review_workflow import (
+    DOCUMENT_REVIEW_STATUS_BY_DECISION,
+    apply_review_decision,
+)
 from ifitwala_ed.governance.policy_utils import (
     get_applicant_policy_status,
 )
@@ -256,7 +259,9 @@ class StudentApplicant(Document):
         if not self.applicant_contact:
             return
         if not frappe.db.exists("Contact", self.applicant_contact):
-            frappe.throw(_("Invalid Applicant Contact: {0}.").format(self.applicant_contact))
+            frappe.throw(
+                _("Invalid Applicant Contact: {applicant_contact}.").format(applicant_contact=self.applicant_contact)
+            )
 
         previous = before.applicant_contact if before else self.get_db_value("applicant_contact")
         if previous and previous != self.applicant_contact:
@@ -301,7 +306,7 @@ class StudentApplicant(Document):
             frappe.throw(_("Application Status is required."))
 
         if self.application_status not in STATUS_SET:
-            frappe.throw(_("Invalid Application Status: {0}.").format(self.application_status))
+            frappe.throw(_("Invalid Application Status: {status}.").format(status=self.application_status))
 
         if self.is_new():
             if self.application_status == "Invited" and getattr(self.flags, "from_inquiry_invite", False):
@@ -325,7 +330,12 @@ class StudentApplicant(Document):
     def _validate_status_transition(self, from_status, to_status):
         allowed = STATUS_TRANSITIONS.get(from_status, set())
         if to_status not in allowed:
-            frappe.throw(_("Invalid Application Status transition from {0} to {1}.").format(from_status, to_status))
+            frappe.throw(
+                _("Invalid Application Status transition from {from_status} to {to_status}.").format(
+                    from_status=from_status,
+                    to_status=to_status,
+                )
+            )
 
     # ---------------------------------------------------------------------
     # Edit permissions
@@ -357,13 +367,13 @@ class StudentApplicant(Document):
 
         rules = EDIT_RULES.get(status_for_edit)
         if not rules:
-            frappe.throw(_("Invalid Application Status: {0}.").format(status_for_edit))
+            frappe.throw(_("Invalid Application Status: {status}.").format(status=status_for_edit))
 
         if status_for_edit in TERMINAL_STATUSES:
             if is_system_manager and getattr(self.flags, "system_manager_override", False):
                 return
             if self._has_changes(before):
-                frappe.throw(_("Edits are not allowed when status is {0}.").format(status_for_edit))
+                frappe.throw(_("Edits are not allowed when status is {status}.").format(status=status_for_edit))
             return
 
         # Staff precedence: if a user has admissions roles, evaluate against staff rules
@@ -372,7 +382,7 @@ class StudentApplicant(Document):
             if not rules["staff"] and self._has_changes(before):
                 if getattr(self.flags, "allow_status_change", False) and self._only_status_changed(before):
                     return
-                frappe.throw(_("Edits are not allowed when status is {0}.").format(status_for_edit))
+                frappe.throw(_("Edits are not allowed when status is {status}.").format(status=status_for_edit))
             return
 
         has_family_access = is_family_role and user_can_access_student_applicant(user=user, student_applicant=self.name)
@@ -386,14 +396,14 @@ class StudentApplicant(Document):
             if self.applicant_user != user and self._has_changes(before):
                 frappe.throw(_("You do not have permission to edit this Applicant."))
             if not rules["family"] and self._has_changes(before):
-                frappe.throw(_("Family edits are not allowed when status is {0}.").format(status_for_edit))
+                frappe.throw(_("Family edits are not allowed when status is {status}.").format(status=status_for_edit))
             return
 
         if is_family_role:
             if not has_family_access and self._has_changes(before):
                 frappe.throw(_("You do not have permission to edit this Applicant."))
             if not rules["family"] and self._has_changes(before):
-                frappe.throw(_("Family edits are not allowed when status is {0}.").format(status_for_edit))
+                frappe.throw(_("Family edits are not allowed when status is {status}.").format(status=status_for_edit))
             return
 
     def _has_changes(self, before, ignore_fields=None):
@@ -525,12 +535,12 @@ class StudentApplicant(Document):
                 source_event="application_submitted",
             )
 
-        comment_text = _("{0} by {1} on {2}. Status: {3} → {4}.").format(
-            action_label,
-            frappe.bold(frappe.session.user),
-            now_datetime(),
-            previous,
-            new_status,
+        comment_text = _("{action_label} by {user} on {timestamp}. Status: {previous_status} → {new_status}.").format(
+            action_label=action_label,
+            user=frappe.bold(frappe.session.user),
+            timestamp=now_datetime(),
+            previous_status=previous,
+            new_status=new_status,
         )
         if comment_suffix:
             comment_text = f"{comment_text} {comment_suffix}"
@@ -597,8 +607,8 @@ class StudentApplicant(Document):
         frappe.db.set_value("User", self.applicant_user, "enabled", 0, update_modified=False)
         self.add_comment(
             "Comment",
-            text=_("Applicant portal user {0} disabled after status changed to {1}.").format(
-                frappe.bold(self.applicant_user), frappe.bold(self.application_status)
+            text=_("Applicant portal user {user} disabled after status changed to {status}.").format(
+                user=frappe.bold(self.applicant_user), status=frappe.bold(self.application_status)
             ),
         )
 
@@ -637,7 +647,7 @@ class StudentApplicant(Document):
     def withdraw_application(self, reason=None):
         suffix = None
         if reason:
-            suffix = _("Reason: {0}.").format(reason)
+            suffix = _("Reason: {reason}.").format(reason=reason)
         return self._set_status(
             "Withdrawn",
             "Application withdrawn",
@@ -660,7 +670,7 @@ class StudentApplicant(Document):
         self._ensure_decision_permission()
         if not reason:
             frappe.throw(_("Rejection reason is required."))
-        reason_text = _("Reason: {0}.").format(reason)
+        reason_text = _("Reason: {reason}.").format(reason=reason)
         return self._set_status(
             "Rejected",
             "Application rejected",
@@ -689,13 +699,13 @@ class StudentApplicant(Document):
             hydrated_request = self._maybe_auto_hydrate_enrollment_request_after_promotion(self.student)
             self._copy_health_profile_to_student_patient(self.student, require_profile=False)
             self._set_status("Promoted", "Applicant promoted")
-            if hydrated_request:
-                self.add_comment(
-                    "Comment",
-                    text=_("Draft Program Enrollment Request {0} auto-hydrated after promotion.").format(
-                        frappe.bold(hydrated_request)
-                    ),
-                )
+        if hydrated_request:
+            self.add_comment(
+                "Comment",
+                text=_("Draft Program Enrollment Request {request} auto-hydrated after promotion.").format(
+                    request=frappe.bold(hydrated_request)
+                ),
+            )
             return self.student
 
         existing = frappe.db.get_value("Student", {"student_applicant": self.name}, "name")
@@ -711,8 +721,8 @@ class StudentApplicant(Document):
             if hydrated_request:
                 self.add_comment(
                     "Comment",
-                    text=_("Draft Program Enrollment Request {0} auto-hydrated after promotion.").format(
-                        frappe.bold(hydrated_request)
+                    text=_("Draft Program Enrollment Request {request} auto-hydrated after promotion.").format(
+                        request=frappe.bold(hydrated_request)
                     ),
                 )
             return existing
@@ -768,15 +778,19 @@ class StudentApplicant(Document):
         self.add_comment(
             "Comment",
             text=_(
-                "Promoted transfer completed: {0} Applicant Document file(s) copied; "
-                "{1} vaccination row(s) synced to Student Patient {2}."
-            ).format(copied_docs, health_snapshot["vaccinations"], health_snapshot["student_patient"]),
+                "Promoted transfer completed: {copied_documents} Applicant Document file(s) copied; "
+                "{vaccinations} vaccination row(s) synced to Student Patient {student_patient}."
+            ).format(
+                copied_documents=copied_docs,
+                vaccinations=health_snapshot["vaccinations"],
+                student_patient=health_snapshot["student_patient"],
+            ),
         )
         if hydrated_request:
             self.add_comment(
                 "Comment",
-                text=_("Draft Program Enrollment Request {0} auto-hydrated after promotion.").format(
-                    frappe.bold(hydrated_request)
+                text=_("Draft Program Enrollment Request {request} auto-hydrated after promotion.").format(
+                    request=frappe.bold(hydrated_request)
                 ),
             )
 
@@ -846,23 +860,23 @@ class StudentApplicant(Document):
         )
         trigger_suffix = ""
         if (trigger_detail or "").strip():
-            trigger_suffix = _(" Trigger: {0}.").format(trigger_detail.strip())
+            trigger_suffix = _(" Trigger: {trigger_detail}.").format(trigger_detail=trigger_detail.strip())
         self.add_comment(
             "Comment",
             text=_(
-                "Identity Upgrade completed by {0} on {1}. "
+                "Identity Upgrade completed by {user} on {timestamp}. "
                 "State: Promoted -> Identity Upgraded. "
-                "Student: {2}. Guardians linked: {3} (new links: {4}). "
-                "Sibling links added: {5}. Users updated: {6}.{7}"
+                "Student: {student}. Guardians linked: {guardians} (new links: {new_guardian_links}). "
+                "Sibling links added: {sibling_links}. Users updated: {users}.{trigger_suffix}"
             ).format(
-                frappe.bold(frappe.session.user),
-                now_datetime(),
-                frappe.bold(student_name),
-                guardian_list,
-                added_guardians,
-                added_siblings,
-                user_list,
-                trigger_suffix,
+                user=frappe.bold(frappe.session.user),
+                timestamp=now_datetime(),
+                student=frappe.bold(student_name),
+                guardians=guardian_list,
+                new_guardian_links=added_guardians,
+                sibling_links=added_siblings,
+                users=user_list,
+                trigger_suffix=trigger_suffix,
             ),
         )
         return {
@@ -885,7 +899,11 @@ class StudentApplicant(Document):
         )
         if has_active:
             return
-        frappe.throw(_("Identity Upgrade requires an active Program Enrollment for Student {0}.").format(student_name))
+        frappe.throw(
+            _("Identity Upgrade requires an active Program Enrollment for Student {student}.").format(
+                student=student_name
+            )
+        )
 
     def _validate_enrollment_plan_for_promotion(self):
         from ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan import (
@@ -989,7 +1007,7 @@ class StudentApplicant(Document):
 
             if guardian_name:
                 if not frappe.db.exists("Guardian", guardian_name):
-                    frappe.throw(_("Guardian {0} does not exist.").format(guardian_name))
+                    frappe.throw(_("Guardian {guardian} does not exist.").format(guardian=guardian_name))
                 guardian_doc = frappe.get_doc("Guardian", guardian_name)
                 key = guardian_doc.name
                 if key in seen:
@@ -1254,7 +1272,7 @@ class StudentApplicant(Document):
             guardian.create_guardian_user()
             guardian.reload()
         if not guardian.user:
-            frappe.throw(_("Guardian {0} must be linked to a User.").format(guardian.name))
+            frappe.throw(_("Guardian {guardian} must be linked to a User.").format(guardian=guardian.name))
         if (guardian.user or "").strip() == (self.applicant_user or "").strip():
             frappe.throw(_("Guardian user cannot match Applicant User. Applicant User is reserved for the student."))
         self._ensure_user_roles(
@@ -1756,8 +1774,8 @@ class StudentApplicant(Document):
             )
             if not slot_spec:
                 copy_errors.append(
-                    _("Applicant Document Type {0} is missing classification settings.").format(
-                        doc_type_code or doc_row.get("document_type") or _("Unknown")
+                    _("Applicant Document Type {document_type} is missing classification settings.").format(
+                        document_type=doc_type_code or doc_row.get("document_type") or _("Unknown")
                     )
                 )
                 continue
@@ -1765,8 +1783,8 @@ class StudentApplicant(Document):
             item_group = items_by_doc.get(doc_row.get("name"), [])
             if not item_group:
                 copy_errors.append(
-                    _("Approved Applicant Document {0} has no approved submissions to copy.").format(
-                        doc_row.get("name") or _("Unknown")
+                    _("Approved Applicant Document {applicant_document} has no approved submissions to copy.").format(
+                        applicant_document=doc_row.get("name") or _("Unknown")
                     )
                 )
                 continue
@@ -1775,14 +1793,16 @@ class StudentApplicant(Document):
                 source = current_file_by_item.get(item.get("name"))
                 if not source:
                     copy_errors.append(
-                        _("Missing file for Applicant Document Item {0}.").format(item.get("name") or _("Unknown"))
+                        _("Missing file for Applicant Document Item {item}.").format(
+                            item=item.get("name") or _("Unknown")
+                        )
                     )
                     continue
                 content = self._read_file_bytes(source)
                 if not content:
                     copy_errors.append(
-                        _("Could not read file for Applicant Document Item {0}.").format(
-                            item.get("name") or _("Unknown")
+                        _("Could not read file for Applicant Document Item {item}.").format(
+                            item=item.get("name") or _("Unknown")
                         )
                     )
                     continue
@@ -1804,7 +1824,9 @@ class StudentApplicant(Document):
                     copied_count += 1
                 except Exception:
                     copy_errors.append(
-                        _("Could not copy Applicant Document Item {0}.").format(item.get("name") or _("Unknown"))
+                        _("Could not copy Applicant Document Item {item}.").format(
+                            item=item.get("name") or _("Unknown")
+                        )
                     )
                     frappe.log_error(frappe.get_traceback(), "Applicant Document Item Promotion Copy Failed")
             continue
@@ -1886,7 +1908,7 @@ class StudentApplicant(Document):
 
         for blocked in ("application_status", "student", "inquiry"):
             if blocked in updates:
-                frappe.throw(_("Field {0} cannot be changed via override.").format(blocked))
+                frappe.throw(_("Field {fieldname} cannot be changed via override.").format(fieldname=blocked))
 
         self.flags.system_manager_override = True
         self.update(updates)
@@ -1894,8 +1916,10 @@ class StudentApplicant(Document):
 
         self.add_comment(
             "Comment",
-            text=_("System Manager override by {0} on {1}. Reason: {2}.").format(
-                frappe.bold(user), now_datetime(), reason
+            text=_("System Manager override by {user} on {timestamp}. Reason: {reason}.").format(
+                user=frappe.bold(user),
+                timestamp=now_datetime(),
+                reason=reason,
             ),
         )
         return {"ok": True}
@@ -2120,7 +2144,10 @@ class StudentApplicant(Document):
             item["feedback_expected_count"] = expected_count
             item["feedback_complete"] = bool(expected_count and submitted_count >= expected_count)
             item["feedback_status_label"] = (
-                _("{0}/{1} submitted").format(submitted_count, expected_count)
+                _("{submitted_count}/{expected_count} submitted").format(
+                    submitted_count=submitted_count,
+                    expected_count=expected_count,
+                )
                 if expected_count
                 else _("No interviewers assigned")
             )
@@ -2192,7 +2219,11 @@ class StudentApplicant(Document):
             else:
                 missing = policies.get("missing") or []
                 if missing:
-                    issues.append(_("Missing policy acknowledgements: {0}.").format(", ".join(missing)))
+                    issues.append(
+                        _("Missing policy acknowledgements: {policy_acknowledgements}.").format(
+                            policy_acknowledgements=", ".join(missing)
+                        )
+                    )
                 else:
                     issues.append(_("Missing required policy acknowledgements."))
         if health_required_for_approval and not health_payload.get("ok"):
@@ -2205,13 +2236,15 @@ class StudentApplicant(Document):
             missing = documents.get("missing") or []
             unapproved = documents.get("unapproved") or []
             if missing:
-                issues.append(_("Missing required documents: {0}.").format(", ".join(missing)))
+                issues.append(_("Missing required documents: {documents}.").format(documents=", ".join(missing)))
             if unapproved:
-                issues.append(_("Required documents not approved: {0}.").format(", ".join(unapproved)))
+                issues.append(
+                    _("Required documents not approved: {documents}.").format(documents=", ".join(unapproved))
+                )
         if not profile.get("ok"):
             missing = profile.get("missing") or []
             if missing:
-                issues.append(_("Missing profile information: {0}.").format(", ".join(missing)))
+                issues.append(_("Missing profile information: {fields}.").format(fields=", ".join(missing)))
             else:
                 issues.append(_("Missing required profile information."))
         if not recommendations.get("ok"):
@@ -2219,10 +2252,17 @@ class StudentApplicant(Document):
             required_total = cint(recommendations.get("required_total") or 0)
             received_total = cint(recommendations.get("received_total") or 0)
             if missing_recommendations:
-                issues.append(_("Missing required recommendations: {0}.").format(", ".join(missing_recommendations)))
+                issues.append(
+                    _("Missing required recommendations: {recommendations}.").format(
+                        recommendations=", ".join(missing_recommendations)
+                    )
+                )
             elif required_total > 0:
                 issues.append(
-                    _("Required recommendations received: {0} of {1}.").format(received_total, required_total)
+                    _("Required recommendations received: {received_total} of {required_total}.").format(
+                        received_total=received_total,
+                        required_total=required_total,
+                    )
                 )
 
         return {
@@ -2261,11 +2301,14 @@ class StudentApplicant(Document):
         item_row = frappe.db.get_value(
             "Applicant Document Item",
             item_name,
-            ["name", "applicant_document", "item_key", "item_label"],
+            ["name", "applicant_document", "item_key", "item_label", "review_status"],
             as_dict=True,
         )
         if not item_row:
-            frappe.throw(_("Applicant Document Item {0} was not found.").format(item_name), frappe.DoesNotExistError)
+            frappe.throw(
+                _("Applicant Document Item {item} was not found.").format(item=item_name),
+                frappe.DoesNotExistError,
+            )
 
         document_row = frappe.db.get_value(
             "Applicant Document",
@@ -2289,7 +2332,24 @@ class StudentApplicant(Document):
 
         resolved_decision = (decision or "").strip()
         if resolved_decision not in {"Approved", "Needs Follow-Up", "Rejected"}:
-            frappe.throw(_("Invalid evidence decision: {0}.").format(resolved_decision or _("(empty)")))
+            frappe.throw(_("Invalid evidence decision: {decision}.").format(decision=resolved_decision or _("(empty)")))
+
+        current_review_status = (item_row.get("review_status") or "Pending").strip() or "Pending"
+        target_review_status = DOCUMENT_REVIEW_STATUS_BY_DECISION.get(resolved_decision)
+        if current_review_status in {"Approved", "Rejected", "Superseded"}:
+            if current_review_status == target_review_status:
+                return {
+                    "ok": True,
+                    "changed": False,
+                    "applicant_document": document_row.get("name"),
+                    "applicant_document_item": item_row.get("name"),
+                    "decision": resolved_decision,
+                    "documents": self.has_required_documents(),
+                }
+            frappe.throw(
+                _("Submitted file has already been reviewed as {status}.").format(status=current_review_status),
+                frappe.ValidationError,
+            )
 
         clean_notes = (notes or "").strip() or None
         if resolved_decision in {"Needs Follow-Up", "Rejected"} and not clean_notes:
@@ -2319,17 +2379,20 @@ class StudentApplicant(Document):
         )
         self.add_comment(
             "Comment",
-            text=_("Evidence review updated: {0} / {1} -> {2} by {3} on {4}.").format(
-                frappe.bold(document_label),
-                frappe.bold(item_label or _("Submission")),
-                frappe.bold(resolved_decision),
-                frappe.bold(frappe.session.user),
-                now_datetime(),
+            text=_(
+                "Evidence review updated: {document_label} / {item_label} -> {decision} by {user} on {timestamp}."
+            ).format(
+                document_label=frappe.bold(document_label),
+                item_label=frappe.bold(item_label or _("Submission")),
+                decision=frappe.bold(resolved_decision),
+                user=frappe.bold(frappe.session.user),
+                timestamp=now_datetime(),
             ),
         )
 
         return {
             "ok": True,
+            "changed": True,
             "applicant_document": document_row.get("name"),
             "applicant_document_item": item_row.get("name"),
             "decision": resolved_decision,
@@ -2430,8 +2493,8 @@ def auto_upgrade_identity_for_student(*, student_name: str, program_enrollment: 
         return None
 
     applicant = frappe.get_doc("Student Applicant", applicant_name)
-    trigger_detail = _("Automatic trigger from active Program Enrollment {0}").format(
-        frappe.bold(program_enrollment or _("unknown"))
+    trigger_detail = _("Automatic trigger from active Program Enrollment {program_enrollment}").format(
+        program_enrollment=frappe.bold(program_enrollment or _("unknown"))
     )
     return applicant._run_identity_upgrade_without_permission(trigger_detail=trigger_detail)
 

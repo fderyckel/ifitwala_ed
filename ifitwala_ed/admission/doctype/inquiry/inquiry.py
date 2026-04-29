@@ -96,7 +96,7 @@ class Inquiry(Document):
             return
 
         if current not in CANONICAL_INQUIRY_STATES:
-            frappe.throw(_("Invalid workflow state: {0}.").format(current_raw or current))
+            frappe.throw(_("Invalid workflow state: {workflow_state}.").format(workflow_state=current_raw or current))
 
         # Keep stored value canonical (trimmed/defaulted).
         if current_raw != current:
@@ -149,7 +149,12 @@ class Inquiry(Document):
         }
 
         if from_state not in allowed or to_state not in allowed[from_state]:
-            frappe.throw(_("Invalid workflow state transition from {0} to {1}.").format(from_state, to_state))
+            frappe.throw(
+                _("Invalid workflow state transition from {from_state} to {to_state}.").format(
+                    from_state=from_state,
+                    to_state=to_state,
+                )
+            )
 
     def _ensure_contact_action_permission(self) -> str:
         user = frappe.session.user
@@ -176,7 +181,7 @@ class Inquiry(Document):
             return False
 
         if target not in CANONICAL_INQUIRY_STATES:
-            frappe.throw(_("Invalid workflow state: {0}.").format(target))
+            frappe.throw(_("Invalid workflow state: {workflow_state}.").format(workflow_state=target))
 
         self._ensure_transition_allowed(current, target)
 
@@ -205,8 +210,8 @@ class Inquiry(Document):
         if add_comment:
             self.add_comment(
                 "Comment",
-                text=_("Inquiry marked as <b>Assigned</b> by {0} on {1}.").format(
-                    frappe.bold(frappe.session.user), now_datetime()
+                text=_("Inquiry marked as <b>Assigned</b> by {user} on {timestamp}.").format(
+                    user=frappe.bold(frappe.session.user), timestamp=now_datetime()
                 ),
             )
         return {"ok": True}
@@ -216,8 +221,8 @@ class Inquiry(Document):
         ensure_admissions_permission()
         changed = self._set_workflow_state(
             "Qualified",
-            comment=_("Inquiry marked as <b>Qualified</b> by {0} on {1}.").format(
-                frappe.bold(frappe.session.user), now_datetime()
+            comment=_("Inquiry marked as <b>Qualified</b> by {user} on {timestamp}.").format(
+                user=frappe.bold(frappe.session.user), timestamp=now_datetime()
             ),
         )
         return {"ok": True, "changed": changed}
@@ -310,7 +315,7 @@ class Inquiry(Document):
     @frappe.whitelist()
     def create_contact_from_inquiry(self):
         if self.contact:
-            frappe.msgprint(_("This Inquiry is already linked to Contact: {0}").format(self.contact))
+            frappe.msgprint(_("This Inquiry is already linked to Contact: {contact}").format(contact=self.contact))
             return
 
         # Check for existing email or phone match
@@ -343,7 +348,10 @@ class Inquiry(Document):
         # ✅ Add comment to Inquiry, not Contact
         self.add_comment(
             "Comment",
-            text=_("Linked to Contact <b>{0}</b> on {1}.").format(frappe.bold(self.contact), frappe.utils.nowdate()),
+            text=_("Linked to Contact <b>{contact}</b> on {date}.").format(
+                contact=frappe.bold(self.contact),
+                date=frappe.utils.nowdate(),
+            ),
         )
 
     @frappe.whitelist()
@@ -353,8 +361,8 @@ class Inquiry(Document):
 
         self.add_comment(
             "Comment",
-            text=_("Inquiry marked as <b>Contacted</b> by {0} on {1}.").format(
-                frappe.bold(frappe.session.user), now_datetime()
+            text=_("Inquiry marked as <b>Contacted</b> by {user} on {timestamp}.").format(
+                user=frappe.bold(frappe.session.user), timestamp=now_datetime()
             ),
         )
 

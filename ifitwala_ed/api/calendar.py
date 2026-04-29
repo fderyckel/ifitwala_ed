@@ -23,6 +23,7 @@ from ifitwala_ed.api import (
     calendar_prefs,
     calendar_quick_create,
     calendar_staff_feed,
+    calendar_subscription,
 )
 
 
@@ -228,6 +229,21 @@ def export_staff_timetable_pdf(
     )
 
 
+@frappe.whitelist()
+def get_my_staff_calendar_subscription():
+    return calendar_subscription.get_my_staff_calendar_subscription()
+
+
+@frappe.whitelist()
+def create_or_get_my_staff_calendar_subscription():
+    return calendar_subscription.create_or_get_my_staff_calendar_subscription()
+
+
+@frappe.whitelist()
+def reset_my_staff_calendar_subscription():
+    return calendar_subscription.reset_my_staff_calendar_subscription()
+
+
 __all__ = [
     "get_staff_calendar",
     "get_meeting_details",
@@ -242,4 +258,7 @@ __all__ = [
     "create_school_event_quick",
     "get_portal_calendar_prefs",
     "export_staff_timetable_pdf",
+    "get_my_staff_calendar_subscription",
+    "create_or_get_my_staff_calendar_subscription",
+    "reset_my_staff_calendar_subscription",
 ]

@@ -891,7 +891,7 @@ class TestTeachingPlansApi(TestCase):
             ):
                 module._assert_student_group_membership("STU-1", "GROUP-1")
 
-    def test_serialize_material_entry_uses_governed_preview_and_open_urls_for_file_material(self):
+    def test_serialize_material_entry_uses_top_level_attachment_for_planning_file_material(self):
         with _teaching_plans_module() as module:
             with (
                 patch.object(
@@ -929,6 +929,7 @@ class TestTeachingPlansApi(TestCase):
                         ],
                     },
                     thumbnail_ready_map={"FILE-1": True},
+                    attachment_surface="planning.material",
                 )
 
         resolve_thumbnail_url.assert_called_once_with(
@@ -950,24 +951,18 @@ class TestTeachingPlansApi(TestCase):
             context_doctype="Material Placement",
             context_name="PLC-1",
         )
-        self.assertEqual(
-            payload["thumbnail_url"],
-            "/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?f=FILE-1",
-        )
-        self.assertEqual(
-            payload["preview_url"],
-            "/api/method/ifitwala_ed.api.file_access.preview_academic_file?f=FILE-1",
-        )
-        self.assertEqual(
-            payload["open_url"],
-            "/api/method/ifitwala_ed.api.file_access.open_academic_file?f=FILE-1",
-        )
         self.assertNotIn("file_url", payload)
-        self.assertEqual(payload["attachment_preview"]["owner_doctype"], "Material Placement")
-        self.assertEqual(payload["attachment_preview"]["owner_name"], "PLC-1")
-        self.assertEqual(payload["attachment_preview"]["kind"], "pdf")
+        self.assertNotIn("attachment_preview", payload)
+        self.assertNotIn("thumbnail_url", payload)
+        self.assertNotIn("preview_url", payload)
+        self.assertNotIn("open_url", payload)
+        self.assertEqual(payload["attachment"]["id"], "PLC-1")
+        self.assertEqual(payload["attachment"]["surface"], "planning.material")
+        self.assertEqual(payload["attachment"]["owner_doctype"], "Material Placement")
+        self.assertEqual(payload["attachment"]["owner_name"], "PLC-1")
+        self.assertEqual(payload["attachment"]["kind"], "pdf")
         self.assertEqual(
-            payload["attachment_preview"]["download_url"],
+            payload["attachment"]["download_url"],
             "/api/method/ifitwala_ed.api.file_access.open_academic_file?f=FILE-1",
         )
 
@@ -2691,8 +2686,12 @@ class TestTeachingPlansApi(TestCase):
                 patch.object(
                     module,
                     "_reload_anchor_material",
-                    return_value={"material": "MAT-1", "title": "Starter article"},
-                ),
+                    return_value={
+                        "material": "MAT-1",
+                        "title": "Starter article",
+                        "attachment": {"surface": "planning.material"},
+                    },
+                ) as reload_anchor_material,
             ):
                 payload = module.create_planning_reference_material(
                     {
@@ -2704,6 +2703,13 @@ class TestTeachingPlansApi(TestCase):
                 )
 
         self.assertEqual(payload["placement"], "MAT-PLC-1")
+        self.assertEqual(payload["resource"]["attachment"]["surface"], "planning.material")
+        reload_anchor_material.assert_called_once_with(
+            "Class Teaching Plan",
+            "CLASS-PLAN-1",
+            "MAT-1",
+            attachment_surface="planning.material",
+        )
         create_reference_material.assert_called_once_with(
             anchor_doctype="Class Teaching Plan",
             anchor_name="CLASS-PLAN-1",

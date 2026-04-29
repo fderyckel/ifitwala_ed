@@ -121,8 +121,10 @@ import GuardianCommunicationCenter from '@/pages/guardian/GuardianCommunicationC
 
 const cleanupFns: Array<() => void> = []
 
-function buildAttachmentPreview(overrides: Record<string, unknown> = {}) {
+function buildCommunicationAttachment(overrides: Record<string, unknown> = {}) {
 	return {
+		id: 'ATT-1',
+		surface: 'org_communication.attachment',
 		item_id: 'ATT-1',
 		owner_doctype: 'Org Communication',
 		owner_name: 'COMM-1',
@@ -363,11 +365,7 @@ describe('GuardianCommunicationCenter', () => {
 					title: 'Poster',
 					file_name: 'poster.webp',
 					file_size: 3072,
-					thumbnail_url:
-						'/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
-					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_org_communication_attachment?row_name=ATT-IMAGE',
-					open_url: '/api/method/ifitwala_ed.api.file_access.open_org_communication_attachment?row_name=ATT-IMAGE',
-					attachment_preview: buildAttachmentPreview({
+					attachment: buildCommunicationAttachment({
 						item_id: 'ATT-IMAGE',
 						display_name: 'Poster',
 						kind: 'image',
@@ -386,8 +384,7 @@ describe('GuardianCommunicationCenter', () => {
 					kind: 'link',
 					title: 'School site',
 					external_url: 'https://example.com/school',
-					open_url: 'https://example.com/school',
-					attachment_preview: buildAttachmentPreview({
+					attachment: buildCommunicationAttachment({
 						item_id: 'ATT-LINK',
 						display_name: 'School site',
 						kind: 'link',

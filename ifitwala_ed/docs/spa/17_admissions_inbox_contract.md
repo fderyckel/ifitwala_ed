@@ -1,12 +1,12 @@
 # Admissions Inbox SPA Contract
 
-Status: Backend context endpoint implemented; SPA route planned
-Code refs: `ifitwala_ed/api/admissions_inbox.py`, `ifitwala_ed/api/admissions_crm.py`, CRM DocTypes under `ifitwala_ed/admission/doctype/admission_*`
-Test refs: `ifitwala_ed/api/test_admissions_inbox.py`, `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`
+Status: Backend context endpoint and Phase 3B staff SPA queue route implemented; mutation workflows planned
+Code refs: `ifitwala_ed/api/admissions_inbox.py`, `ifitwala_ed/api/admissions_crm.py`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsInbox.vue`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsInboxService.ts`, `ifitwala_ed/ui-spa/src/types/contracts/admissions_inbox/get_admissions_inbox_context.ts`, CRM DocTypes under `ifitwala_ed/admission/doctype/admission_*`
+Test refs: `ifitwala_ed/api/test_admissions_inbox.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsInbox.test.ts`, `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`
 
 This note defines the staff-side Admissions Inbox surface.
 
-Current runtime behavior is limited to the backend context endpoint. The staff SPA route, page service, and UI are still planned.
+Current runtime behavior includes the backend context endpoint and a staff SPA queue route. Workflow actions such as reply, assignment, linking, archive, and governed media conversion are still planned.
 
 ## 1. Authority
 
@@ -41,7 +41,7 @@ It must turn every parent/inquirer message into an owned admissions next action.
 
 ## 3. Route
 
-Planned route:
+Implemented route:
 
 ```text
 /staff/admissions/inbox
@@ -168,11 +168,14 @@ last_message_preview
 needs_reply
 unread_count
 next_action_on
+open_url
 permissions
 actions
 ```
 
 `permissions` and `actions` are server-owned. The SPA may hide blocked actions for UX, but the server must enforce every mutation.
+
+`open_url` is server-owned. The SPA must not derive Desk URLs from DocType names or document names.
 
 ## 7. Initial Queues
 
@@ -198,7 +201,13 @@ The SPA must not infer queue membership from raw status fields.
 
 ## 8. Actions
 
-Initial actions:
+Implemented Phase 3B UI actions:
+
+- open the server-owned source record URL when `permissions.can_open` and `open_url` allow it
+- retry a failed page-owned context load
+- switch queues client-side using the server-returned queue DTO
+
+Planned mutation actions:
 
 - reply or log reply
 - assign or reassign
@@ -214,6 +223,8 @@ Initial actions:
 - import external media through governed workflow when eligible
 
 Blocked actions must explain why they are blocked and what to do next.
+
+Phase 3B must not render inert mutation buttons. Until a mutation endpoint and payload contract exists, staff should open the source record rather than trigger a silent or client-only workflow.
 
 ## 9. Messaging UX Boundary
 
@@ -306,7 +317,7 @@ SPA tests must cover:
 
 - first render from one context payload
 - queue filtering without request waterfalls
-- blocked action explanation
-- action payload shape
-- signal-driven refresh
+- blocked open-link explanation
+- page-owned manual refresh
+- signal-driven refresh when mutation workflows are added
 - no raw media URL rendering

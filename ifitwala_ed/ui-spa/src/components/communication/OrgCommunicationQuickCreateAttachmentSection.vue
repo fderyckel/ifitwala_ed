@@ -40,8 +40,8 @@
 				</div>
 				<div class="flex flex-wrap gap-2">
 					<a
-						v-if="attachment.preview_url || attachment.open_url"
-						:href="attachment.preview_url || attachment.open_url"
+						v-if="attachmentActionUrl(attachment)"
+						:href="attachmentActionUrl(attachment) || undefined"
 						target="_blank"
 						rel="noopener noreferrer"
 						class="rounded-full border border-border/80 bg-white px-3 py-1.5 type-button-label text-ink transition hover:border-jacaranda hover:text-jacaranda"
@@ -112,6 +112,10 @@ function formatAttachmentMeta(attachment: OrgCommunicationAttachmentRow) {
 		parts.push(formatFileSize(attachment.file_size));
 	}
 	return parts.filter(Boolean).join(' · ') || 'Governed file';
+}
+
+function attachmentActionUrl(attachment: OrgCommunicationAttachmentRow) {
+	return attachment.attachment?.preview_url || attachment.attachment?.open_url || null;
 }
 
 function formatFileSize(value: number | string | null | undefined) {

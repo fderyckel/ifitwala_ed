@@ -93,8 +93,10 @@ async function flushUi() {
 	await nextTick();
 }
 
-function buildAttachmentPreview(overrides: Record<string, unknown> = {}) {
+function buildPlanningAttachment(overrides: Record<string, unknown> = {}) {
 	return {
+		id: 'MAT-1',
+		surface: 'planning.material',
 		item_id: 'MAT-1',
 		owner_doctype: 'Supporting Material',
 		owner_name: 'MAT-1',
@@ -201,9 +203,7 @@ describe('PlanningResourcePanel', () => {
 				material: 'MAT-1',
 				title: 'Unit diagram',
 				material_type: 'File',
-				preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-1',
-				open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1',
-				attachment_preview: buildAttachmentPreview({
+				attachment: buildPlanningAttachment({
 					item_id: 'MAT-1',
 					display_name: 'Unit diagram',
 					kind: 'other',
@@ -237,11 +237,7 @@ describe('PlanningResourcePanel', () => {
 					title: 'Cell structure diagram',
 					material_type: 'File',
 					file_name: 'diagram.webp',
-					thumbnail_url:
-						'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-IMG-1',
-					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG-1',
-					open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-IMG-1',
-					attachment_preview: buildAttachmentPreview({
+					attachment: buildPlanningAttachment({
 						item_id: 'MAT-IMG-1',
 						display_name: 'Cell structure diagram',
 						kind: 'image',
@@ -279,9 +275,7 @@ describe('PlanningResourcePanel', () => {
 					title: 'Class map',
 					material_type: 'File',
 					file_name: 'class-map.png',
-					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG-2',
-					open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-IMG-2',
-					attachment_preview: buildAttachmentPreview({
+					attachment: buildPlanningAttachment({
 						item_id: 'MAT-IMG-2',
 						display_name: 'Class map',
 						kind: 'image',
@@ -316,11 +310,7 @@ describe('PlanningResourcePanel', () => {
 					title: 'Lab setup photo',
 					material_type: 'File',
 					file_name: 'lab-setup.webp',
-					thumbnail_url:
-						'/api/method/ifitwala_ed.api.file_access.thumbnail_academic_file?file=FILE-IMG-3',
-					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-IMG-3',
-					open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-IMG-3',
-					attachment_preview: buildAttachmentPreview({
+					attachment: buildPlanningAttachment({
 						item_id: 'MAT-IMG-3',
 						display_name: 'Lab setup photo',
 						kind: 'image',
@@ -366,9 +356,7 @@ describe('PlanningResourcePanel', () => {
 					title: 'Lab handout',
 					material_type: 'File',
 					file_name: 'handout.pdf',
-					preview_url: '/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-PDF-1',
-					open_url: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-PDF-1',
-					attachment_preview: buildAttachmentPreview({
+					attachment: buildPlanningAttachment({
 						item_id: 'MAT-PDF-1',
 						display_name: 'Lab handout',
 						kind: 'pdf',

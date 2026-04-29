@@ -519,7 +519,11 @@ class ApplicantEnrollmentPlan(Document):
             as_dict=True,
         )
         if not applicant_row:
-            frappe.throw(_("Student Applicant {0} does not exist.").format(self.student_applicant))
+            frappe.throw(
+                _("Student Applicant {student_applicant} does not exist.").format(
+                    student_applicant=self.student_applicant
+                )
+            )
         return applicant_row
 
     def _sync_from_applicant(self, applicant_row: dict):
@@ -544,7 +548,11 @@ class ApplicantEnrollmentPlan(Document):
                 as_dict=True,
             )
             if not offering:
-                frappe.throw(_("Program Offering {0} does not exist.").format(self.program_offering))
+                frappe.throw(
+                    _("Program Offering {program_offering} does not exist.").format(
+                        program_offering=self.program_offering
+                    )
+                )
             self.program = offering.get("program")
             if self.school and offering.get("school") and self.school != offering.get("school"):
                 frappe.throw(_("Program Offering school must match the applicant school."))
@@ -588,26 +596,26 @@ class ApplicantEnrollmentPlan(Document):
         for idx, row in enumerate(self.get("courses") or [], start=1):
             course = (row.course or "").strip()
             if not course:
-                frappe.throw(_("Planned Course row {0}: Course is required.").format(idx))
+                frappe.throw(_("Planned Course row {row}: Course is required.").format(row=idx))
             if course in seen:
-                frappe.throw(_("Planned Course row {0}: duplicate course {1}.").format(idx, course))
+                frappe.throw(_("Planned Course row {row}: duplicate course {course}.").format(row=idx, course=course))
             seen.add(course)
 
             semantics = offering_semantics.get(course) or {}
             if self.program_offering and not semantics:
                 frappe.throw(
-                    _("Planned Course row {0}: Course {1} is not part of Program Offering {2}.").format(
-                        idx, course, self.program_offering
-                    )
+                    _(
+                        "Planned Course row {row}: Course {course} is not part of Program Offering {program_offering}."
+                    ).format(row=idx, course=course, program_offering=self.program_offering)
                 )
             allowed_groups = list(semantics.get("basket_groups") or [])
             applied_group = (row.applied_basket_group or "").strip()
 
             if applied_group and applied_group not in allowed_groups:
                 frappe.throw(
-                    _("Planned Course row {0}: Basket Group {1} is not allowed for course {2}.").format(
-                        idx, applied_group, course
-                    )
+                    _(
+                        "Planned Course row {row}: Basket Group {basket_group} is not allowed for course {course}."
+                    ).format(row=idx, basket_group=applied_group, course=course)
                 )
 
             if not applied_group and len(allowed_groups) == 1 and not int(row.required or 0):
@@ -615,29 +623,42 @@ class ApplicantEnrollmentPlan(Document):
                 applied_group = allowed_groups[0]
 
             if row.choice_rank and not applied_group:
-                frappe.throw(_("Planned Course row {0}: Choice Rank requires an Applied Basket Group.").format(idx))
+                frappe.throw(
+                    _("Planned Course row {row}: Choice Rank requires an Applied Basket Group.").format(row=idx)
+                )
 
             if (self.status or "").strip() in gate_statuses and len(allowed_groups) > 1 and not applied_group:
                 frappe.throw(
-                    _("Planned Course row {0}: select an Applied Basket Group for course {1}.").format(idx, course)
+                    _("Planned Course row {row}: select an Applied Basket Group for course {course}.").format(
+                        row=idx,
+                        course=course,
+                    )
                 )
 
     def _validate_status(self):
         status = (self.status or "Draft").strip() or "Draft"
         if status not in STATUS_OPTIONS:
-            frappe.throw(_("Invalid Applicant Enrollment Plan status: {0}.").format(status))
+            frappe.throw(_("Invalid Applicant Enrollment Plan status: {status}.").format(status=status))
         self.status = status
 
         if status in {"Ready for Committee", "Committee Approved", "Offer Sent", "Offer Accepted", "Hydrated"}:
             if not self.academic_year:
-                frappe.throw(_("Academic Year is required before the plan can advance to {0}.").format(status))
+                frappe.throw(
+                    _("Academic Year is required before the plan can advance to {status}.").format(status=status)
+                )
             if not self.program_offering:
-                frappe.throw(_("Program Offering is required before the plan can advance to {0}.").format(status))
+                frappe.throw(
+                    _("Program Offering is required before the plan can advance to {status}.").format(status=status)
+                )
 
         applicant_status = frappe.db.get_value("Student Applicant", self.student_applicant, "application_status")
         if status in {"Committee Approved", "Offer Sent", "Offer Accepted", "Hydrated"}:
             if applicant_status != "Approved":
-                frappe.throw(_("Student Applicant must be Approved before the plan can advance to {0}.").format(status))
+                frappe.throw(
+                    _("Student Applicant must be Approved before the plan can advance to {status}.").format(
+                        status=status
+                    )
+                )
 
         if status == "Hydrated" and not self.program_enrollment_request:
             frappe.throw(_("Program Enrollment Request is required before marking the plan as Hydrated."))
@@ -657,9 +678,9 @@ class ApplicantEnrollmentPlan(Document):
             if (row.get("status") or "").strip() in TERMINAL_STATUSES:
                 continue
             frappe.throw(
-                _("Student Applicant {0} already has an active Applicant Enrollment Plan ({1}).").format(
-                    self.student_applicant, row.get("name")
-                )
+                _(
+                    "Student Applicant {student_applicant} already has an active Applicant Enrollment Plan ({plan})."
+                ).format(student_applicant=self.student_applicant, plan=row.get("name"))
             )
 
     def _validate_offer_expiry(self):
@@ -756,7 +777,11 @@ class ApplicantEnrollmentPlan(Document):
             as_dict=True,
         )
         if not offering:
-            frappe.throw(_("Deposit Billable Offering {0} was not found.").format(self.deposit_billable_offering))
+            frappe.throw(
+                _("Deposit Billable Offering {billable_offering} was not found.").format(
+                    billable_offering=self.deposit_billable_offering
+                )
+            )
         if offering.get("organization") != self.organization:
             frappe.throw(_("Deposit Billable Offering must belong to the Applicant Enrollment Plan Organization."))
         if cint(offering.get("disabled") or 0):
@@ -970,7 +995,9 @@ class ApplicantEnrollmentPlan(Document):
             seen_courses.add(course)
         if duplicate_courses:
             frappe.throw(
-                _("Each selected course can only be submitted once: {0}.").format(", ".join(sorted(duplicate_courses)))
+                _("Each selected course can only be submitted once: {courses}.").format(
+                    courses=", ".join(sorted(duplicate_courses))
+                )
             )
 
         submitted_rows = _normalize_plan_rows(courses or [])
@@ -980,8 +1007,8 @@ class ApplicantEnrollmentPlan(Document):
         unknown_courses = sorted(course for course in submitted_by_course if course not in allowed_courses)
         if unknown_courses:
             frappe.throw(
-                _("One or more selected courses are not part of this Program Offering: {0}.").format(
-                    ", ".join(unknown_courses)
+                _("One or more selected courses are not part of this Program Offering: {courses}.").format(
+                    courses=", ".join(unknown_courses)
                 )
             )
 
@@ -1132,7 +1159,7 @@ def _validate_account_holder_scope(account_holder: str, organization: str) -> di
         as_dict=True,
     )
     if not row:
-        frappe.throw(_("Account Holder {0} was not found.").format(account_holder))
+        frappe.throw(_("Account Holder {account_holder} was not found.").format(account_holder=account_holder))
     if row.get("organization") != organization:
         frappe.throw(_("Account Holder must belong to the same Organization as the applicant."))
     if (row.get("status") or "").strip() == "Inactive":
@@ -1247,7 +1274,7 @@ def _account_holder_summary(account_holder: str) -> dict:
         as_dict=True,
     )
     if not row:
-        frappe.throw(_("Account Holder {0} was not found.").format(account_holder))
+        frappe.throw(_("Account Holder {account_holder} was not found.").format(account_holder=account_holder))
     return dict(row)
 
 
@@ -1280,14 +1307,16 @@ def create_account_holder_for_applicant(student_applicant: str):
         as_dict=True,
     )
     if not locked:
-        frappe.throw(_("Student Applicant {0} was not found.").format(applicant_name))
+        frappe.throw(_("Student Applicant {student_applicant} was not found.").format(student_applicant=applicant_name))
 
     applicant = frappe.get_doc("Student Applicant", applicant_name)
     _ensure_account_holder_create_actor(applicant)
 
     if _as_clean_text(getattr(applicant, "application_status", "")) in {"Rejected", "Withdrawn", "Promoted"}:
         frappe.throw(
-            _("Account Holder cannot be created when the applicant is {0}.").format(applicant.application_status)
+            _("Account Holder cannot be created when the applicant is {application_status}.").format(
+                application_status=applicant.application_status
+            )
         )
 
     existing = _as_clean_text(getattr(applicant, "account_holder", ""))
@@ -1346,7 +1375,7 @@ def _sales_invoice_summary(invoice_name: str) -> dict:
         as_dict=True,
     )
     if not invoice:
-        frappe.throw(_("Linked deposit Sales Invoice {0} was not found.").format(invoice_name))
+        frappe.throw(_("Linked deposit Sales Invoice {invoice} was not found.").format(invoice=invoice_name))
     return _invoice_summary_from_row(invoice)
 
 
@@ -1362,7 +1391,7 @@ def generate_deposit_invoice_from_offer(applicant_enrollment_plan: str):
         as_dict=True,
     )
     if not locked:
-        frappe.throw(_("Applicant Enrollment Plan {0} was not found.").format(plan_name))
+        frappe.throw(_("Applicant Enrollment Plan {plan} was not found.").format(plan=plan_name))
 
     plan = frappe.get_doc("Applicant Enrollment Plan", plan_name)
     _ensure_deposit_invoice_actor(plan)
@@ -1424,7 +1453,7 @@ def generate_deposit_invoice_from_offer(applicant_enrollment_plan: str):
     plan.save(ignore_permissions=True)
     plan.add_comment(
         "Comment",
-        text=_("Deposit Sales Invoice {0} created.").format(frappe.bold(invoice.name)),
+        text=_("Deposit Sales Invoice {invoice} created.").format(invoice=frappe.bold(invoice.name)),
     )
 
     return {

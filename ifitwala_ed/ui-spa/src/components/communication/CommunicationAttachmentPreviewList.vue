@@ -6,8 +6,8 @@
 			:class="attachmentCardClasses(attachment)"
 		>
 			<AttachmentPreviewCard
-				v-if="attachment.attachment_preview"
-				:attachment="attachment.attachment_preview"
+				v-if="attachment.attachment"
+				:attachment="attachment.attachment"
 				variant="communication"
 				:title="attachmentLabel(attachment)"
 				:description="attachment.description"
@@ -44,12 +44,12 @@ function attachmentLabel(attachment: OrgCommunicationAttachmentRow): string {
 }
 
 function isWideAttachment(attachment: OrgCommunicationAttachmentRow): boolean {
-	const preview = attachment.attachment_preview;
+	const preview = attachment.attachment;
 	return preview?.kind === 'image' || preview?.kind === 'pdf';
 }
 
 function attachmentChips(attachment: OrgCommunicationAttachmentRow): string[] {
-	const preview = attachment.attachment_preview;
+	const preview = attachment.attachment;
 	if (!preview) return [];
 	if (preview.kind === 'link') {
 		return ['Link'];

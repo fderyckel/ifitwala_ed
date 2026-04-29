@@ -408,7 +408,10 @@ def _build_timetable_weeks(
             {
                 "page_number": page_number,
                 "total_pages": total_pages,
-                "page_label": _("Week {0} of {1}").format(page_number, total_pages),
+                "page_label": _("Week {page_number} of {total_pages}").format(
+                    page_number=page_number,
+                    total_pages=total_pages,
+                ),
                 "range_label": _format_date_span(current_week_start, week_range_end),
                 "days": week_days,
                 "event_count": event_count,

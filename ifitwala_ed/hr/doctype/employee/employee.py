@@ -233,8 +233,11 @@ class Employee(NestedSet):
             frappe.throw(_("Date of Joining must be after Date of Birth"))
         if self.notice_date and self.relieving_date and getdate(self.relieving_date) < getdate(self.notice_date):
             frappe.throw(
-                _("Date of Notice {0} should be before Relieving Date {1}. Please adjust dates.").format(
-                    getdate(self.notice_date), getdate(self.relieving_date)
+                _(
+                    "Date of Notice {notice_date} should be before Relieving Date {relieving_date}. Please adjust dates."
+                ).format(
+                    notice_date=getdate(self.notice_date),
+                    relieving_date=getdate(self.relieving_date),
                 )
             )
         if (
@@ -243,8 +246,11 @@ class Employee(NestedSet):
             and getdate(self.relieving_date) < getdate(self.date_of_joining)
         ):
             frappe.throw(
-                _("Date of Joining {0} should be before Relieving Date {1}. Please adjust dates.").format(
-                    getdate(self.date_of_joining), getdate(self.relieving_date)
+                _(
+                    "Date of Joining {joining_date} should be before Relieving Date {relieving_date}. Please adjust dates."
+                ).format(
+                    joining_date=getdate(self.date_of_joining),
+                    relieving_date=getdate(self.relieving_date),
                 )
             )
 
@@ -269,8 +275,8 @@ class Employee(NestedSet):
                     frappe.utils.get_link_to_form("Employee", employee.name, label=employee.employee_full_name)
                     for employee in reports_to
                 ]
-                message = _("The following employees are currently still reporting to {0}:").format(
-                    frappe.bold(self.employee_full_name)
+                message = _("The following employees are currently still reporting to {employee}:").format(
+                    employee=frappe.bold(self.employee_full_name)
                 )
                 message += "<br><br><ul><li>" + "</li><li>".join(link_to_employees)
                 message += "</li></ul><br>"
@@ -349,7 +355,9 @@ class Employee(NestedSet):
             )
             if exists:
                 frappe.throw(
-                    _("Another employee in this school already uses the public profile slug '{0}'.").format(slug),
+                    _("Another employee in this school already uses the public profile slug '{slug}'.").format(
+                        slug=slug
+                    ),
                     frappe.ValidationError,
                 )
 
@@ -383,8 +391,13 @@ class Employee(NestedSet):
             if report["organization"] not in valid_orgs:
                 frappe.throw(
                     _(
-                        "Direct report '{0}' (Organization: {1}) cannot belong to an organization outside the hierarchy of '{2}' (Organization: {3})."
-                    ).format(report["name"], report["organization"], self.name, self.organization)
+                        "Direct report '{report}' (Organization: {report_organization}) cannot belong to an organization outside the hierarchy of '{employee}' (Organization: {employee_organization})."
+                    ).format(
+                        report=report["name"],
+                        report_organization=report["organization"],
+                        employee=self.name,
+                        employee_organization=self.organization,
+                    )
                 )
 
     # call on validate. Check that there is at least one email to use.
@@ -402,9 +415,9 @@ class Employee(NestedSet):
         """
         if self.preferred_contact_email:
             if self.preferred_contact_email == "User ID" and not self.get("user_id"):
-                frappe.msgprint(_("Please enter {0}").format(self.preferred_contact_email))
+                frappe.msgprint(_("Please enter {field_label}").format(field_label=self.preferred_contact_email))
             elif self.preferred_contact_email and not self.get("employee_" + scrub(self.preferred_contact_email)):
-                frappe.msgprint(_("Please enter {0}").format(self.preferred_contact_email))
+                frappe.msgprint(_("Please enter {field_label}").format(field_label=self.preferred_contact_email))
 
     def update_user_default_school(self):
         _refresh_runtime_bindings()
@@ -421,7 +434,10 @@ class Employee(NestedSet):
             frappe.defaults.set_user_default("school", self.school, self.user_id)
             frappe.cache().hdel("user:" + self.user_id, "defaults")
             frappe.msgprint(
-                _("Default school set to {0} for user {1} (first-time setup).").format(self.school, self.user_id)
+                _("Default school set to {school} for user {user} (first-time setup).").format(
+                    school=self.school,
+                    user=self.user_id,
+                )
             )
             return
 
@@ -430,14 +446,16 @@ class Employee(NestedSet):
             if current_default:
                 frappe.defaults.clear_default("school", self.user_id)
                 frappe.cache().hdel("user:" + self.user_id, "defaults")
-                frappe.msgprint(_("Default school cleared for user {0}.").format(self.user_id))
+                frappe.msgprint(_("Default school cleared for user {user}.").format(user=self.user_id))
                 return
 
         # Update default school only if it has changed
         if self.school != current_default:
             frappe.defaults.set_user_default("school", self.school, self.user_id)
             frappe.cache().hdel("user:" + self.user_id, "defaults")
-            frappe.msgprint(_("Default school set to {0} for user {1}.").format(self.school, self.user_id))
+            frappe.msgprint(
+                _("Default school set to {school} for user {user}.").format(school=self.school, user=self.user_id)
+            )
 
     def update_user_default_organization(self):
         _refresh_runtime_bindings()
@@ -453,7 +471,10 @@ class Employee(NestedSet):
             frappe.defaults.set_user_default("organization", target_org, self.user_id)
             frappe.cache().hdel("user:" + self.user_id, "defaults")
             frappe.msgprint(
-                _("Default organization set to {0} for user {1} (first-time setup).").format(target_org, self.user_id)
+                _("Default organization set to {organization} for user {user} (first-time setup).").format(
+                    organization=target_org,
+                    user=self.user_id,
+                )
             )
             return
 
@@ -461,13 +482,18 @@ class Employee(NestedSet):
             if current_default:
                 frappe.defaults.clear_default("organization", self.user_id)
                 frappe.cache().hdel("user:" + self.user_id, "defaults")
-                frappe.msgprint(_("Default organization cleared for user {0}.").format(self.user_id))
+                frappe.msgprint(_("Default organization cleared for user {user}.").format(user=self.user_id))
             return
 
         if target_org != current_default:
             frappe.defaults.set_user_default("organization", target_org, self.user_id)
             frappe.cache().hdel("user:" + self.user_id, "defaults")
-            frappe.msgprint(_("Default organization set to {0} for user {1}.").format(target_org, self.user_id))
+            frappe.msgprint(
+                _("Default organization set to {organization} for user {user}.").format(
+                    organization=target_org,
+                    user=self.user_id,
+                )
+            )
 
     def validate_employee_history(self):
         """Validate history rows:
@@ -496,17 +522,20 @@ class Employee(NestedSet):
         for i, row in enumerate(history):
             # require from_date
             if not row.from_date:
-                frappe.throw(_("Please set 'From Date' for row #{0}.").format(i + 1))
+                frappe.throw(_("Please set 'From Date' for row #{row}.").format(row=i + 1))
 
             # row.from_date >= joining date
             if getdate(row.from_date) < join_d:
                 frappe.throw(
-                    _("Row #{0}: From Date cannot be before Date of Joining ({1}).").format(i + 1, self.date_of_joining)
+                    _("Row #{row}: From Date cannot be before Date of Joining ({date_of_joining}).").format(
+                        row=i + 1,
+                        date_of_joining=self.date_of_joining,
+                    )
                 )
 
             # to_date >= from_date (if set)
             if row.to_date and getdate(row.to_date) < getdate(row.from_date):
-                frappe.throw(_("Row #{0}: 'To Date' cannot be before 'From Date'.").format(i + 1))
+                frappe.throw(_("Row #{row}: 'To Date' cannot be before 'From Date'.").format(row=i + 1))
 
         # pairwise overlap ONLY for identical (designation, org, school)
         for i, a in enumerate(history):
@@ -521,8 +550,14 @@ class Employee(NestedSet):
                 # intervals intersect?
                 if b_start <= a_end and a_start <= b_end:
                     frappe.throw(
-                        _("Overlap detected for '{0}' @ '{1}/{2}' between row #{3} and row #{4}.").format(
-                            a.designation or "-", a.organization or "-", a.school or "-", i + 1, j + 1
+                        _(
+                            "Overlap detected for '{designation}' @ '{organization}/{school}' between row #{row_a} and row #{row_b}."
+                        ).format(
+                            designation=a.designation or "-",
+                            organization=a.organization or "-",
+                            school=a.school or "-",
+                            row_a=i + 1,
+                            row_b=j + 1,
                         )
                     )
 
@@ -638,7 +673,7 @@ class Employee(NestedSet):
 
         data = frappe.db.get_value("User", self.user_id, ["enabled"], as_dict=1)
         if not data:
-            frappe.throw(_("User {0} does not exist").format(self.user_id))
+            frappe.throw(_("User {user} does not exist").format(user=self.user_id))
 
         self.validate_for_enabled_user_id(data.get("enabled"))
         self.validate_duplicate_user_id()
@@ -649,9 +684,9 @@ class Employee(NestedSet):
         if not self.employment_status == "Active":
             return
         if enabled is None:
-            frappe.throw(_("User {0} does not exist").format(self.user_id))
+            frappe.throw(_("User {user} does not exist").format(user=self.user_id))
         if enabled == 0:
-            frappe.throw(_("User {0} is disabled").format(self.user_id), EmployeeUserDisabledError)
+            frappe.throw(_("User {user} is disabled").format(user=self.user_id), EmployeeUserDisabledError)
 
     # call on validate through validate_user_details().
     def validate_duplicate_user_id(self):
@@ -667,7 +702,10 @@ class Employee(NestedSet):
         ).run()
         if employee:
             frappe.throw(
-                _("User {0} is already assigned to Employee {1}").format(self.user_id, employee[0][0]),
+                _("User {user} is already assigned to Employee {employee}").format(
+                    user=self.user_id,
+                    employee=employee[0][0],
+                ),
                 frappe.DuplicateEntryError,
             )
 
@@ -1002,14 +1040,16 @@ def create_user(employee, user=None, email=None):
 
     # 3) Prevent duplicates
     if emp.user_id:
-        frappe.throw(_("This Employee already has a User: {0}").format(frappe.bold(emp.user_id)))
+        frappe.throw(_("This Employee already has a User: {user}").format(user=frappe.bold(emp.user_id)))
 
     if not emp.employee_professional_email:
         frappe.throw(_("Please set a Professional Email on the Employee before creating a User."))
 
     existing = frappe.db.exists("User", {"name": emp.employee_professional_email})
     if existing:
-        frappe.throw(_("A User with email {0} already exists.").format(frappe.bold(emp.employee_professional_email)))
+        frappe.throw(
+            _("A User with email {email} already exists.").format(email=frappe.bold(emp.employee_professional_email))
+        )
 
     # 4) Build the User document (keep your privacy handling)
     privacy = frappe.get_single("Org Setting")
@@ -1145,12 +1185,12 @@ def validate_employee_role(doc, method=None, ignore_emp_check=False):
 
     user_roles = [d.role for d in doc.get("roles")]
     if "Employee" in user_roles:
-        frappe.msgprint(_("User {0}: Removed Employee role as there is no mapped employee.").format(doc.name))
+        frappe.msgprint(_("User {user}: Removed Employee role as there is no mapped employee.").format(user=doc.name))
         doc.get("roles").remove(doc.get("roles", {"role": "Employee"})[0])
 
     if "Employee Self Service" in user_roles:
         frappe.msgprint(
-            _("User {0}: Removed Employee Self Service role as there is no mapped employee.").format(doc.name)
+            _("User {user}: Removed Employee Self Service role as there is no mapped employee.").format(user=doc.name)
         )
         doc.get("roles").remove(doc.get("roles", {"role": "Employee Self Service"})[0])
 

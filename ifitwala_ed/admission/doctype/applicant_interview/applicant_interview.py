@@ -153,11 +153,11 @@ class ApplicantInterview(Document):
         interview_link = get_link_to_form("Applicant Interview", self.name)
         applicant.add_comment(
             "Comment",
-            text=_("{0}: {1} by {2} on {3}.").format(
-                label,
-                interview_link,
-                frappe.bold(frappe.session.user),
-                now_datetime(),
+            text=_("{label}: {interview} by {user} on {timestamp}.").format(
+                label=label,
+                interview=interview_link,
+                user=frappe.bold(frappe.session.user),
+                timestamp=now_datetime(),
             ),
         )
 
@@ -729,7 +729,8 @@ def _assert_interview_workspace_permission(
 
     action = _("edit") if require_write else _("view")
     frappe.throw(
-        _("You do not have permission to {0} this interview workspace.").format(action), frappe.PermissionError
+        _("You do not have permission to {action} this interview workspace.").format(action=action),
+        frappe.PermissionError,
     )
 
 
@@ -753,7 +754,9 @@ def _normalize_feedback_status(value: str | None) -> str:
     status = (value or "Draft").strip() or "Draft"
     if status not in INTERVIEW_FEEDBACK_STATUS:
         frappe.throw(
-            _("Feedback Status must be one of: {0}.").format(", ".join(sorted(INTERVIEW_FEEDBACK_STATUS))),
+            _("Feedback Status must be one of: {statuses}.").format(
+                statuses=", ".join(sorted(INTERVIEW_FEEDBACK_STATUS))
+            ),
             title=_("Invalid Feedback Status"),
         )
     return status
@@ -803,7 +806,10 @@ def _load_or_create_my_feedback_doc(*, interview_name: str, user: str):
 
     student_applicant = frappe.db.get_value("Applicant Interview", interview_name, "student_applicant")
     if not student_applicant:
-        frappe.throw(_("Applicant Interview {0} was not found.").format(interview_name), frappe.DoesNotExistError)
+        frappe.throw(
+            _("Applicant Interview {interview} was not found.").format(interview=interview_name),
+            frappe.DoesNotExistError,
+        )
 
     return frappe.get_doc(
         {
@@ -882,7 +888,7 @@ def _get_applicant_workspace_context(student_applicant: str) -> dict:
     )
     if not row:
         frappe.throw(
-            _("Student Applicant {0} was not found.").format(student_applicant),
+            _("Student Applicant {student_applicant} was not found.").format(student_applicant=student_applicant),
             frappe.DoesNotExistError,
         )
 
@@ -1262,7 +1268,10 @@ def _load_interviews_for_applicant_workspace(*, student_applicant: str) -> list[
                 "feedback_expected_count": expected_count,
                 "feedback_complete": bool(expected_count and submitted_count >= expected_count),
                 "feedback_status_label": (
-                    _("{0}/{1} submitted").format(submitted_count, expected_count)
+                    _("{submitted_count}/{expected_count} submitted").format(
+                        submitted_count=submitted_count,
+                        expected_count=expected_count,
+                    )
                     if expected_count
                     else _("No interviewers assigned")
                 ),
@@ -1387,7 +1396,7 @@ def _get_applicant_context(student_applicant: str | None) -> frappe._dict:
     )
     if not row:
         frappe.throw(
-            _("Student Applicant {0} was not found.").format(applicant_name),
+            _("Student Applicant {student_applicant} was not found.").format(student_applicant=applicant_name),
             frappe.DoesNotExistError,
         )
 
@@ -1410,7 +1419,7 @@ def _assert_users_exist_and_enabled(user_ids: Sequence[str]) -> None:
     missing = [user for user in user_ids if user not in enabled_users]
     if missing:
         frappe.throw(
-            _("These interviewers are missing or disabled: {0}").format(", ".join(sorted(set(missing)))),
+            _("These interviewers are missing or disabled: {users}").format(users=", ".join(sorted(set(missing)))),
             title=_("Invalid Interviewers"),
         )
 
@@ -1430,8 +1439,8 @@ def _resolve_employee_rows_for_users(user_ids: Sequence[str]) -> list[frappe._di
 
     if missing:
         frappe.throw(
-            _("Interviewers must be linked to active Employee records. Missing: {0}").format(
-                ", ".join(sorted(set(missing)))
+            _("Interviewers must be linked to active Employee records. Missing: {users}").format(
+                users=", ".join(sorted(set(missing)))
             ),
             title=_("Missing Employee Link"),
         )
@@ -1490,7 +1499,7 @@ def _create_school_event_for_interview(
     applicant_label = _applicant_display_name(applicant_row)
 
     school_event = frappe.new_doc("School Event")
-    school_event.subject = _("Admission Interview - {0}").format(applicant_label)
+    school_event.subject = _("Admission Interview - {applicant}").format(applicant=applicant_label)
     school_event.event_category = "Appointment"
     school_event.all_day = 0
     school_event.starts_on = starts_on
@@ -1588,7 +1597,10 @@ def _to_datetime_or_throw(value, *, fieldname: str) -> datetime:
             "python_type": type(value).__name__,
         }
         frappe.throw(
-            _("Unable to resolve datetime for {0}. Debug: {1}").format(fieldname, frappe.as_json(debug_payload)),
+            _("Unable to resolve datetime for {fieldname}. Debug: {debug_payload}").format(
+                fieldname=fieldname,
+                debug_payload=frappe.as_json(debug_payload),
+            ),
             title=_("Invalid Datetime"),
         )
 
@@ -1608,7 +1620,10 @@ def _to_date_or_throw(value, *, fieldname: str):
             "python_type": type(value).__name__,
         }
         frappe.throw(
-            _("Unable to resolve date for {0}. Debug: {1}").format(fieldname, frappe.as_json(debug_payload)),
+            _("Unable to resolve date for {fieldname}. Debug: {debug_payload}").format(
+                fieldname=fieldname,
+                debug_payload=frappe.as_json(debug_payload),
+            ),
             title=_("Invalid Date"),
         )
 
@@ -1626,7 +1641,7 @@ def _to_positive_int(*, value, default: int, fieldname: str) -> int:
 
     if parsed <= 0:
         frappe.throw(
-            _("{0} must be a positive integer.").format(fieldname),
+            _("{fieldname} must be a positive integer.").format(fieldname=fieldname),
             title=_("Invalid Number"),
         )
 
@@ -1664,7 +1679,10 @@ def _coerce_time(value, *, fieldname: str) -> time:
         "python_type": type(value).__name__,
     }
     frappe.throw(
-        _("Unable to resolve time for {0}. Debug: {1}").format(fieldname, frappe.as_json(debug_payload)),
+        _("Unable to resolve time for {fieldname}. Debug: {debug_payload}").format(
+            fieldname=fieldname,
+            debug_payload=frappe.as_json(debug_payload),
+        ),
         title=_("Invalid Time"),
     )
 
@@ -1730,9 +1748,9 @@ def _suggest_common_free_slots(
                 {
                     "start": cursor.isoformat(),
                     "end": slot_end.isoformat(),
-                    "label": _("{0} to {1}").format(
-                        format_datetime(cursor),
-                        format_datetime(slot_end),
+                    "label": _("{start} to {end}").format(
+                        start=format_datetime(cursor),
+                        end=format_datetime(slot_end),
                     ),
                 }
             )

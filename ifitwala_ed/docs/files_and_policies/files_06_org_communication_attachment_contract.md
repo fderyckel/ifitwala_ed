@@ -114,19 +114,19 @@ Rules:
 ## 6. Visibility and Attachment Action URL Contract
 
 **Status:** Implemented
-**Code refs:** `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/org_communication_archive.py`, `ifitwala_ed/api/org_comm_utils.py`
-**Test refs:** `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_org_communication_archive.py`
+**Code refs:** `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/org_communication_archive.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/org_comm_utils.py`, `ifitwala_ed/ui-spa/src/components/communication/CommunicationAttachmentPreviewList.vue`
+**Test refs:** `ifitwala_ed/api/test_file_access.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_org_communication_attachments_unit.py`, `ifitwala_ed/ui-spa/src/components/communication/__tests__/CommunicationAttachmentPreviewList.test.ts`
 
 Rules:
 
 1. Attachment reads must continue to enforce the same communication visibility contract as archive/detail reads.
 2. Authorized viewers receive server-owned action URLs only.
-3. File rows expose stable Ed-owned `open_url` values, stable Ed-owned `preview_url` values for richer preview flows, and an optional `thumbnail_url` field that Org Communication currently points at the same governed preview route once Drive reports `preview_status = ready`, so inline cards render the richer preview asset instead of an undersized thumbnail. Rows still include a `preview_status` hint so SPA surfaces know when the governed preview route resolves a renderable preview asset instead of the original file, plus an additive nested `attachment_preview` block carrying the shared cross-surface preview DTO now consumed by the shared SPA attachment-preview card layer.
+3. File rows expose top-level `attachment: GovernedAttachmentRow | null`. The governed attachment row carries stable Ed-owned `open_url`, optional `preview_url`, optional `thumbnail_url`, and `preview_status`; Org Communication currently points `thumbnail_url` at the same governed preview route once Drive reports `preview_status = ready`, so inline cards render the richer preview asset instead of an undersized thumbnail.
 4. Those stable routes are not durable storage URLs; Drive grants remain short-lived and are resolved at request time.
 5. Private file URLs must never be constructed in the client.
 6. Authored-history owner access remains aligned with the existing `allow_owner=True` attachment-open rule.
 7. For staff, student, and guardian surfaces, Ed-owned Org Communication read routes are the permission boundary. After Ed authorizes the viewer through the communication audience contract, Drive grant issuance must run through the Org Communication communications wrapper and must not re-check raw `Org Communication` doctype role access for that end user.
-8. Archive/detail surfaces must prefer `thumbnail_url` for inline card previews. For Org Communication's current runtime, that field now resolves to the same governed preview route as `preview_url` once the richer preview is ready, so cards stop depending on the smaller dedicated thumbnail derivative. If no governed preview is ready, the surface must fall back to an action-led card instead of attempting to inline the original file.
+8. Archive/detail surfaces must prefer `attachment.thumbnail_url` for inline card previews. For Org Communication's current runtime, that field now resolves to the same governed preview route as `attachment.preview_url` once the richer preview is ready, so cards stop depending on the smaller dedicated thumbnail derivative. If no governed preview is ready, the surface must fall back to an action-led card instead of attempting to inline the original file.
 9. Thumbnail routes may use short-lived Ed-side redirect caching plus private browser cache headers, but the SPA still receives only stable Ed-owned action URLs rather than provider grants.
 10. External links and non-ready PDFs must still degrade to action-led metadata cards instead of blank embeds or raw-path guesses.
 11. Open and preview routes must not require a secondary `File` row lookup when a safe Drive grant URL is already resolved. If no safe public/external/Drive target exists, the route must fail closed instead of streaming local private bytes. The dedicated Org Communication thumbnail route remains available for explicit card-sized derivative callers and must still fail closed when no safe derivative grant exists; current archive/detail DTOs no longer depend on that route for inline cards.

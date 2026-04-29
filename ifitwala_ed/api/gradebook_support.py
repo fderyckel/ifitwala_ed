@@ -466,7 +466,7 @@ def _bool_flag(value):
 
 def _require(value, label):
     if not value:
-        frappe.throw(_("{0} is required.").format(label))
+        frappe.throw(_("{label} is required.").format(label=label))
 
 
 def _has_role(*roles):

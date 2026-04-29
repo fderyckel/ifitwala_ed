@@ -68,7 +68,11 @@ class ApplicantDocumentItem(Document):
         if not self.applicant_document:
             frappe.throw(_("Applicant Document is required."))
         if not frappe.db.exists("Applicant Document", self.applicant_document):
-            frappe.throw(_("Invalid Applicant Document: {0}.").format(self.applicant_document))
+            frappe.throw(
+                _("Invalid Applicant Document: {applicant_document}.").format(
+                    applicant_document=self.applicant_document
+                )
+            )
 
     def _validate_permissions(self, before):
         user_roles = set(frappe.get_roles(frappe.session.user))
@@ -114,7 +118,9 @@ class ApplicantDocumentItem(Document):
             return
         for field in ("applicant_document", "item_key"):
             if (before.get(field) or "").strip() != (self.get(field) or "").strip():
-                frappe.throw(_("{0} is immutable once set.").format(field.replace("_", " ").title()))
+                frappe.throw(
+                    _("{field_label} is immutable once set.").format(field_label=field.replace("_", " ").title())
+                )
 
     def _validate_unique_item_key(self):
         if not self.applicant_document or not self.item_key:

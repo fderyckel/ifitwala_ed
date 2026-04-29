@@ -163,7 +163,9 @@ class RecommendationRequest(Document):
             old_value = (before.get(fieldname) or "").strip()
             new_value = (self.get(fieldname) or "").strip()
             if old_value != new_value:
-                frappe.throw(_("{0} is immutable once set.").format(fieldname.replace("_", " ").title()))
+                frappe.throw(
+                    _("{field_label} is immutable once set.").format(field_label=fieldname.replace("_", " ").title())
+                )
 
     def _validate_item_key_uniqueness(self):
         if not self.student_applicant or not self.item_key:

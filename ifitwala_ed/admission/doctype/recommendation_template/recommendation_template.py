@@ -85,13 +85,21 @@ class RecommendationTemplate(Document):
 
         if created:
             frappe.msgprint(
-                _("Target Document Type was created in the background and linked: {0} ({1}).").format(
-                    frappe.bold(target_name), frappe.bold(target_row.get("document_type_name") or target_name)
+                _(
+                    "Target Document Type was created in the background and linked: "
+                    "{target_document_type} ({document_type_name})."
+                ).format(
+                    target_document_type=frappe.bold(target_name),
+                    document_type_name=frappe.bold(target_row.get("document_type_name") or target_name),
                 )
             )
             return
 
-        frappe.msgprint(_("Target Document Type was linked automatically: {0}.").format(frappe.bold(target_name)))
+        frappe.msgprint(
+            _("Target Document Type was linked automatically: {target_document_type}.").format(
+                target_document_type=frappe.bold(target_name)
+            )
+        )
 
     def _managed_target_document_type_code(self) -> str:
         seed = f"{self.organization}|{self.school}"
@@ -196,13 +204,17 @@ class RecommendationTemplate(Document):
             if not row.label:
                 frappe.throw(_("Template field label is required."))
             if row.field_type not in ALLOWED_FIELD_TYPES:
-                frappe.throw(_("Invalid template field type: {0}.").format(row.field_type or _("(empty)")))
+                frappe.throw(
+                    _("Invalid template field type: {field_type}.").format(field_type=row.field_type or _("(empty)"))
+                )
             if row.field_key in seen:
-                frappe.throw(_("Duplicate template field key: {0}.").format(row.field_key))
+                frappe.throw(_("Duplicate template field key: {field_key}.").format(field_key=row.field_key))
             seen.add(row.field_key)
 
             if row.field_type == "Select" and not row.options_json:
-                frappe.throw(_("Template select field {0} must define options.").format(row.label))
+                frappe.throw(
+                    _("Template select field {field_label} must define options.").format(field_label=row.label)
+                )
             if row.field_type in DISPLAY_ONLY_FIELD_TYPES:
                 row.is_required = 0
             if row.field_type == "Likert Scale":
@@ -210,23 +222,29 @@ class RecommendationTemplate(Document):
 
     def _normalize_likert_options(self, field_label: str, options_json: str) -> dict:
         if not options_json:
-            frappe.throw(_("Likert Scale field {0} must define scale options and rows.").format(field_label))
+            frappe.throw(
+                _("Likert Scale field {field_label} must define scale options and rows.").format(
+                    field_label=field_label
+                )
+            )
 
         try:
             config = frappe.parse_json(options_json)
         except Exception:
             config = None
         if not isinstance(config, dict):
-            frappe.throw(_("Likert Scale field {0} options must be valid JSON.").format(field_label))
+            frappe.throw(
+                _("Likert Scale field {field_label} options must be valid JSON.").format(field_label=field_label)
+            )
 
         columns = self._normalize_keyed_options(
             config.get("columns"),
-            label=_("scale options for {0}").format(field_label),
+            label=_("scale options for {field_label}").format(field_label=field_label),
             minimum=2,
         )
         rows = self._normalize_keyed_options(
             config.get("rows"),
-            label=_("rows for {0}").format(field_label),
+            label=_("rows for {field_label}").format(field_label=field_label),
             minimum=1,
         )
 
@@ -238,7 +256,7 @@ class RecommendationTemplate(Document):
 
     def _normalize_keyed_options(self, values, *, label: str, minimum: int) -> list[dict]:
         if not isinstance(values, list) or len(values) < minimum:
-            frappe.throw(_("{0} must include at least {1} entries.").format(label, minimum))
+            frappe.throw(_("{label} must include at least {minimum} entries.").format(label=label, minimum=minimum))
 
         normalized = []
         seen = set()
@@ -251,9 +269,9 @@ class RecommendationTemplate(Document):
                 key = frappe.scrub(option_label)[:80]
 
             if not key or not option_label:
-                frappe.throw(_("{0} cannot include blank entries.").format(label))
+                frappe.throw(_("{label} cannot include blank entries.").format(label=label))
             if key in seen:
-                frappe.throw(_("{0} cannot include duplicate key: {1}.").format(label, key))
+                frappe.throw(_("{label} cannot include duplicate key: {key}.").format(label=label, key=key))
             seen.add(key)
             normalized.append({"key": key, "label": option_label})
 

@@ -39,8 +39,8 @@ class LeaveAdjustment(Document):
             frappe.throw(
                 title=_("Duplicate Leave Adjustment"),
                 msg=_(
-                    "Leave Adjustment for this allocation already exists: {0}. Please amend existing adjustment."
-                ).format(get_link_to_form("Leave Adjustment", duplicate_adjustment)),
+                    "Leave Adjustment for this allocation already exists: {leave_adjustment}. Please amend existing adjustment."
+                ).format(leave_adjustment=get_link_to_form("Leave Adjustment", duplicate_adjustment)),
             )
 
     def validate_non_zero_adjustment(self):

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from ifitwala_ed.api.attachment_previews import build_attachment_preview_item, extract_file_extension
+from ifitwala_ed.api.attachment_rows import build_governed_attachment_row
 from ifitwala_ed.api.student_task_status import (
     DONE_SUBMISSION_STATUSES,
     build_student_task_status_label,
@@ -22,11 +23,38 @@ def _material_thumbnail_ready_map(api, entries: list[dict[str, Any]]) -> dict[st
     return api.get_academic_file_thumbnail_ready_map(file_names)
 
 
+def _build_material_attachment(
+    *,
+    attachment_surface: str | None = None,
+    row_id: Any = None,
+    item_id: Any,
+    owner_doctype: Any,
+    owner_name: Any,
+    **kwargs,
+) -> dict[str, Any]:
+    if attachment_surface:
+        return build_governed_attachment_row(
+            row_id=row_id,
+            surface=attachment_surface,
+            item_id=item_id,
+            owner_doctype=owner_doctype,
+            owner_name=owner_name,
+            **kwargs,
+        )
+    return build_attachment_preview_item(
+        item_id=item_id,
+        owner_doctype=owner_doctype,
+        owner_name=owner_name,
+        **kwargs,
+    )
+
+
 def serialize_material_entry(
     api,
     entry: dict[str, Any],
     *,
     thumbnail_ready_map: dict[str, bool] | None = None,
+    attachment_surface: str | None = None,
 ) -> dict[str, Any]:
     placement = (entry.get("placements") or [{}])[0]
     material_type = entry.get("material_type")
@@ -58,7 +86,9 @@ def serialize_material_entry(
             context_doctype="Material Placement" if placement.get("placement") else "Supporting Material",
             context_name=placement.get("placement") or entry.get("material"),
         )
-        attachment_preview = build_attachment_preview_item(
+        attachment = _build_material_attachment(
+            attachment_surface=attachment_surface,
+            row_id=owner_name,
             item_id=owner_name,
             owner_doctype=owner_doctype,
             owner_name=owner_name,
@@ -76,7 +106,9 @@ def serialize_material_entry(
         thumbnail_url = None
         preview_url = None
         open_url = entry.get("reference_url")
-        attachment_preview = build_attachment_preview_item(
+        attachment = _build_material_attachment(
+            attachment_surface=attachment_surface,
+            row_id=owner_name,
             item_id=owner_name,
             owner_doctype=owner_doctype,
             owner_name=owner_name,
@@ -86,16 +118,13 @@ def serialize_material_entry(
             open_url=open_url,
         )
 
-    return {
+    payload = {
         "material": entry.get("material"),
         "title": entry.get("title"),
         "material_type": material_type,
         "modality": entry.get("modality"),
         "description": entry.get("description"),
         "reference_url": entry.get("reference_url"),
-        "thumbnail_url": thumbnail_url,
-        "preview_url": preview_url,
-        "open_url": open_url,
         "file_name": entry.get("file_name"),
         "file_size": entry.get("file_size"),
         "placement": placement.get("placement"),
@@ -103,8 +132,19 @@ def serialize_material_entry(
         "usage_role": placement.get("usage_role"),
         "placement_note": placement.get("placement_note"),
         "placement_order": placement.get("placement_order"),
-        "attachment_preview": attachment_preview,
     }
+    if attachment_surface:
+        payload["attachment"] = attachment
+    else:
+        payload.update(
+            {
+                "thumbnail_url": thumbnail_url,
+                "preview_url": preview_url,
+                "open_url": open_url,
+                "attachment_preview": attachment,
+            }
+        )
+    return payload
 
 
 def fetch_course_quiz_question_banks(api, course: str | None) -> list[dict[str, Any]]:
@@ -245,18 +285,31 @@ def fetch_selected_quiz_question_bank(
     }
 
 
-def reload_anchor_material(api, anchor_doctype: str, anchor_name: str, material_name: str) -> dict[str, Any]:
+def reload_anchor_material(
+    api,
+    anchor_doctype: str,
+    anchor_name: str,
+    material_name: str,
+    *,
+    attachment_surface: str | None = None,
+) -> dict[str, Any]:
     rows = api.materials_domain.list_anchor_materials(anchor_doctype, anchor_name)
     created = next((row for row in rows if row.get("material") == material_name), None)
     if not created:
         api.frappe.throw(api._("Material was created but could not be reloaded."))
     thumbnail_ready_map = _material_thumbnail_ready_map(api, rows)
-    return api._serialize_material_entry(created, thumbnail_ready_map=thumbnail_ready_map)
+    return api._serialize_material_entry(
+        created,
+        thumbnail_ready_map=thumbnail_ready_map,
+        attachment_surface=attachment_surface,
+    )
 
 
 def fetch_material_map(
     api,
     anchor_refs: list[tuple[str, str]],
+    *,
+    attachment_surface: str | None = None,
 ) -> dict[tuple[str, str], list[dict[str, Any]]]:
     material_map = api.materials_domain.list_materials_for_anchors(anchor_refs)
     thumbnail_ready_map = _material_thumbnail_ready_map(
@@ -264,7 +317,14 @@ def fetch_material_map(
         [entry for entries in material_map.values() for entry in (entries or [])],
     )
     return {
-        anchor: [api._serialize_material_entry(entry, thumbnail_ready_map=thumbnail_ready_map) for entry in entries]
+        anchor: [
+            api._serialize_material_entry(
+                entry,
+                thumbnail_ready_map=thumbnail_ready_map,
+                attachment_surface=attachment_surface,
+            )
+            for entry in entries
+        ]
         for anchor, entries in material_map.items()
     }
 
@@ -794,6 +854,7 @@ def attach_resources_and_work(
     course_plan: str | None = None,
     class_teaching_plan: str | None = None,
     assigned_work: list[dict[str, Any]] | None = None,
+    attachment_surface: str | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     anchor_refs: list[tuple[str, str]] = []
     if course_plan:
@@ -809,7 +870,7 @@ def attach_resources_and_work(
             if session.get("class_session"):
                 anchor_refs.append(("Class Session", session["class_session"]))
 
-    materials_by_anchor = api._fetch_material_map(anchor_refs)
+    materials_by_anchor = api._fetch_material_map(anchor_refs, attachment_surface=attachment_surface)
     session_lookup = api._index_sessions_by_name(units)
     for unit in units:
         unit["shared_resources"] = materials_by_anchor.get(("Unit Plan", unit.get("unit_plan")), [])

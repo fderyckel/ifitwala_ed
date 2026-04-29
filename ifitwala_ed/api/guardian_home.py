@@ -1193,9 +1193,9 @@ def _build_attendance_attention(anchor: date, student_names: List[str]) -> List[
         attendance_time = _coerce_time(row.get("attendance_time"), "attendance.time", [])
         code_label = (code.get("attendance_code") or code_name or _("Attendance exception")).strip()
         if int(row.get("whole_day") or 0) == 1:
-            summary = _("{0} (whole day)").format(code_label)
+            summary = _("{code} (whole day)").format(code=code_label)
         elif attendance_time:
-            summary = _("{0} at {1}").format(code_label, attendance_time)
+            summary = _("{code} at {time}").format(code=code_label, time=attendance_time)
         else:
             summary = code_label
 
@@ -1425,7 +1425,7 @@ def _build_preparation_items(
                     {
                         "student": student,
                         "date": day_date,
-                        "label": _("Due soon: {0}").format(chip.get("title") or _("Task")),
+                        "label": _("Due soon: {title}").format(title=chip.get("title") or _("Task")),
                         "source": "task",
                         "related": {"task_delivery": chip.get("task_delivery")},
                     },
@@ -1437,7 +1437,7 @@ def _build_preparation_items(
                     {
                         "student": student,
                         "date": day_date,
-                        "label": _("Prepare for: {0}").format(chip.get("title") or _("Assessment")),  # noqa: F823
+                        "label": _("Prepare for: {title}").format(title=chip.get("title") or _("Assessment")),  # noqa: F823
                         "source": "task",
                         "related": {"task_delivery": chip.get("task_delivery")},
                     },

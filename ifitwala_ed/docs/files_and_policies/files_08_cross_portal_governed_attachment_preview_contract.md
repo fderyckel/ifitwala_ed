@@ -174,16 +174,16 @@ Initial rollout target:
 
 ## Shared DTO Direction
 
-Status: Phase 7 in progress; top-level row contract implemented first for applicant-facing admissions documents
-Code refs: `ifitwala_ed/api/attachment_previews.py`, `ifitwala_ed/api/attachment_rows.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/api/task_submission.py`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantDocuments.vue`
-Test refs: `ifitwala_ed/api/test_attachment_previews.py`, `ifitwala_ed/api/test_attachment_rows.py`, `ifitwala_ed/api/test_admissions_document_items.py`, `ifitwala_ed/api/test_gradebook.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_org_communication_attachments_unit.py`, `ifitwala_ed/api/test_teaching_plans.py`
+Status: Phase 7 in progress; top-level row contract implemented for applicant-facing admissions documents, staff planning resources, and Org Communication attachments
+Code refs: `ifitwala_ed/api/attachment_previews.py`, `ifitwala_ed/api/attachment_rows.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/materials.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/api/teaching_plans_staff.py`, `ifitwala_ed/api/task_submission.py`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantDocuments.vue`, `ifitwala_ed/ui-spa/src/components/planning/PlanningResourcePanel.vue`, `ifitwala_ed/ui-spa/src/components/communication/CommunicationAttachmentPreviewList.vue`
+Test refs: `ifitwala_ed/api/test_attachment_previews.py`, `ifitwala_ed/api/test_attachment_rows.py`, `ifitwala_ed/api/test_admissions_document_items.py`, `ifitwala_ed/api/test_gradebook.py`, `ifitwala_ed/api/test_materials.py`, `ifitwala_ed/api/test_org_communication_attachments_unit.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/components/planning/__tests__/PlanningResourcePanel.test.ts`, `ifitwala_ed/ui-spa/src/components/communication/__tests__/CommunicationAttachmentPreviewList.test.ts`
 
 The shared DTO is now implemented in two layers:
 
 - `AttachmentPreviewItem` is the existing display DTO consumed by the shared SPA card.
 - `GovernedAttachmentRow` is the Phase 7 top-level surface row. It adds `id` and `surface` to the display DTO and is returned directly as `attachment` by migrated surfaces.
 
-Applicant-facing admissions documents are the first migrated surface. Their list/upload payloads now expose `attachment` directly and no longer expose the legacy nested `attachment_preview` adapter. Other surfaces remain additive until migrated one by one; when a surface migrates, its legacy adapter must be removed in the same change.
+Applicant-facing admissions documents are the first migrated surface. Staff planning resources rendered through `PlanningResourcePanel.vue` are the second migrated surface. Org Communication attachments rendered through `CommunicationAttachmentPreviewList.vue` are the third migrated surface. Migrated payloads expose `attachment` directly and no longer expose the legacy nested `attachment_preview` adapter for that surface. Other surfaces remain additive until migrated one by one; when a surface migrates, its legacy adapter must be removed in the same change.
 
 ```ts
 export type AttachmentPreviewItem = {
@@ -277,7 +277,7 @@ For every governed file surface:
 - show actionable upload/finalize errors from the server rather than swallowing them in the SPA
 - expose only stable `open_url`, optional `thumbnail_url`, and optional `preview_url`
 - treat `open_url` as the guaranteed fallback whenever preview generation is not ready or cannot apply
-- keep preview/open behavior consistent across staff, student, guardian, and admissions surfaces by consuming the shared nested `attachment_preview` object wherever possible
+- keep preview/open behavior consistent across staff, student, guardian, and admissions surfaces by consuming the shared attachment display object for each migrated or additive surface
 
 ## Surface Endpoint Rule
 
@@ -377,8 +377,8 @@ Remaining items are future scope, not unfinished Phase 6 work: the top-level sha
 ## Phase 7 Attachment Convergence
 
 Status: Approved and in progress
-Code refs: `ifitwala_ed/api/attachment_rows.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/ui-spa/src/types/contracts/attachments/shared.ts`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantDocuments.vue`
-Test refs: `ifitwala_ed/api/test_attachment_rows.py`, `ifitwala_ed/api/test_admissions_document_items.py`, `ifitwala_ed/ui-spa/src/lib/services/admissions/__tests__/admissionsService.test.ts`
+Code refs: `ifitwala_ed/api/attachment_rows.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/api/org_communication_attachments.py`, `ifitwala_ed/api/teaching_plans_read_models.py`, `ifitwala_ed/api/teaching_plans_staff.py`, `ifitwala_ed/ui-spa/src/types/contracts/attachments/shared.ts`, `ifitwala_ed/ui-spa/src/types/contracts/org_communication_attachments/shared.ts`, `ifitwala_ed/ui-spa/src/types/contracts/staff_teaching/get_staff_class_planning_surface.ts`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantDocuments.vue`, `ifitwala_ed/ui-spa/src/components/planning/PlanningResourcePanel.vue`, `ifitwala_ed/ui-spa/src/components/communication/CommunicationAttachmentPreviewList.vue`
+Test refs: `ifitwala_ed/api/test_attachment_rows.py`, `ifitwala_ed/api/test_admissions_document_items.py`, `ifitwala_ed/api/test_org_communication_archive.py`, `ifitwala_ed/api/test_org_communication_attachments_unit.py`, `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/ui-spa/src/lib/services/admissions/__tests__/admissionsService.test.ts`, `ifitwala_ed/ui-spa/src/components/planning/__tests__/PlanningResourcePanel.test.ts`, `ifitwala_ed/ui-spa/src/components/communication/__tests__/CommunicationAttachmentPreviewList.test.ts`
 
 Rules:
 
@@ -395,6 +395,22 @@ First migrated surface:
 - server list/upload endpoints return top-level `attachment`
 - `ApplicantDocuments.vue` renders the shared preview card from `item.attachment`
 - the legacy `item.attachment_preview` adapter is removed for that surface
+
+Second migrated surface:
+
+- staff planning resource cards rendered by `PlanningResourcePanel.vue`
+- staff class-planning and course-plan resource read payloads return top-level `attachment` for Course Plan, Unit Plan, Class Teaching Plan, and Class Session materials
+- create/upload planning-resource mutation responses return `resource.attachment`
+- `PlanningResourcePanel.vue` renders the shared preview card from `resource.attachment`
+- the legacy `resource.attachment_preview` adapter is removed for that surface
+
+Third migrated surface:
+
+- Org Communication attachment cards rendered by `CommunicationAttachmentPreviewList.vue`
+- staff archive/detail, student communication center, and guardian communication center receive communication attachment rows with top-level `attachment`
+- Org Communication file/link row DTOs no longer duplicate `open_url`, `preview_url`, `thumbnail_url`, or `preview_status` outside the governed attachment row
+- `CommunicationAttachmentPreviewList.vue` renders the shared preview card from `attachment.attachment`
+- the legacy `attachment.attachment_preview` adapter is removed for that surface
 
 ## Important Non-Goals
 

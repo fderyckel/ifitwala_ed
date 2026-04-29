@@ -461,7 +461,7 @@ def _normalize_inquiry_assignment_lane(lane: str | None) -> str | None:
         return "Admission"
     if normalized == "staff":
         return "Staff"
-    frappe.throw(_("Invalid Inquiry assignment lane: {0}.").format(value))
+    frappe.throw(_("Invalid Inquiry assignment lane: {lane}.").format(lane=value))
     return None
 
 
@@ -475,10 +475,10 @@ def _resolve_inquiry_assignment_lane_for_user(*, user: str, requested_lane: str 
     requested = _normalize_inquiry_assignment_lane(requested_lane)
     if requested and requested != derived_lane:
         frappe.throw(
-            _("Assignee {0} belongs to lane {1}; requested lane {2} is not allowed.").format(
-                frappe.bold(user),
-                frappe.bold(derived_lane),
-                frappe.bold(requested),
+            _("Assignee {user} belongs to lane {derived_lane}; requested lane {requested_lane} is not allowed.").format(
+                user=frappe.bold(user),
+                derived_lane=frappe.bold(derived_lane),
+                requested_lane=frappe.bold(requested),
             )
         )
     return requested or derived_lane
@@ -521,7 +521,7 @@ def _validate_inquiry_assignee_scope(user: str, inquiry_doc) -> dict:
     if inquiry_org:
         org_scope = _get_inquiry_assignment_organization_scope(inquiry_org)
         if not org_scope:
-            frappe.throw(_("Invalid Inquiry Organization scope: {0}.").format(inquiry_org))
+            frappe.throw(_("Invalid Inquiry Organization scope: {organization}.").format(organization=inquiry_org))
         if (employee.get("organization") or "").strip() not in set(org_scope):
             message = _(
                 "Assignee must belong to Organization {organization}, an ancestor organization, "
@@ -532,7 +532,7 @@ def _validate_inquiry_assignee_scope(user: str, inquiry_doc) -> dict:
     if inquiry_school:
         school_scope = _get_inquiry_assignment_school_scope(inquiry_school)
         if not school_scope:
-            frappe.throw(_("Invalid Inquiry School scope: {0}.").format(inquiry_school))
+            frappe.throw(_("Invalid Inquiry School scope: {school}.").format(school=inquiry_school))
         employee_school = (employee.get("school") or "").strip()
         if employee_school and employee_school not in set(school_scope):
             message = _("Assignee must belong to School {school}, an ancestor school, or a descendant school.").format(
@@ -940,7 +940,7 @@ def upsert_contact_email(contact_name: str, email: str, *, set_primary_if_missin
 
     existing_parent = frappe.db.get_value("Contact Email", {"email_id": email}, "parent")
     if existing_parent and existing_parent != contact_name:
-        frappe.throw(_("Email {0} is already linked to another Contact.").format(frappe.bold(email)))
+        frappe.throw(_("Email {email} is already linked to another Contact.").format(email=frappe.bold(email)))
 
     contact = frappe.get_doc("Contact", contact_name)
     has_primary = False
@@ -985,7 +985,7 @@ def ensure_contact_dynamic_link(*, contact_name: str, link_doctype: str, link_na
     if not link_name:
         frappe.throw(_("Link name is required."))
     if not frappe.db.exists("Contact", contact_name):
-        frappe.throw(_("Invalid Contact: {0}").format(contact_name))
+        frappe.throw(_("Invalid Contact: {contact}").format(contact=contact_name))
 
     link_exists = frappe.db.exists(
         "Dynamic Link",
@@ -1016,7 +1016,7 @@ def sync_student_applicant_contact_binding(*, student_applicant: str, contact_na
     if not resolved_contact:
         return {"contact": None, "link_added": False, "emails_synced": []}
     if not frappe.db.exists("Contact", resolved_contact):
-        frappe.throw(_("Invalid Contact: {0}").format(resolved_contact))
+        frappe.throw(_("Invalid Contact: {contact}").format(contact=resolved_contact))
 
     link_added = ensure_contact_dynamic_link(
         contact_name=resolved_contact,
@@ -1097,7 +1097,9 @@ def ensure_contact_for_email(
 
     if preferred_contact:
         if email_parent and email_parent != preferred_contact:
-            frappe.throw(_("Email {0} is already linked to another Contact.").format(frappe.bold(normalized_email)))
+            frappe.throw(
+                _("Email {email} is already linked to another Contact.").format(email=frappe.bold(normalized_email))
+            )
         contact_name = preferred_contact
     elif email_parent:
         contact_name = email_parent
@@ -1171,17 +1173,17 @@ def bind_inquiry_student_applicant(*, inquiry_name: str, student_applicant: str)
     if not student_applicant:
         frappe.throw(_("Student Applicant is required."))
     if not frappe.db.exists("Inquiry", inquiry_name):
-        frappe.throw(_("Invalid Inquiry: {0}").format(inquiry_name))
+        frappe.throw(_("Invalid Inquiry: {inquiry}").format(inquiry=inquiry_name))
     if not frappe.db.exists("Student Applicant", student_applicant):
-        frappe.throw(_("Invalid Student Applicant: {0}").format(student_applicant))
+        frappe.throw(_("Invalid Student Applicant: {student_applicant}").format(student_applicant=student_applicant))
 
     current = (frappe.db.get_value("Inquiry", inquiry_name, "student_applicant") or "").strip()
     if current and current != student_applicant:
         frappe.throw(
-            _("Inquiry {0} is already linked to Student Applicant {1}; cannot relink to {2}.").format(
-                frappe.bold(inquiry_name),
-                frappe.bold(current),
-                frappe.bold(student_applicant),
+            _("Inquiry {inquiry} is already linked to Student Applicant {current}; cannot relink to {target}.").format(
+                inquiry=frappe.bold(inquiry_name),
+                current=frappe.bold(current),
+                target=frappe.bold(student_applicant),
             )
         )
     if current == student_applicant:
@@ -1230,8 +1232,8 @@ def assign_inquiry(doctype, docname, assigned_to, assignment_lane: str | None = 
     # Prevent double-assign in our custom field
     if doc.assigned_to:
         frappe.throw(
-            _("{0} is already assigned to this inquiry. Please use the Reassign button instead.").format(
-                doc.assigned_to
+            _("{assigned_to} is already assigned to this inquiry. Please use the Reassign button instead.").format(
+                assigned_to=doc.assigned_to
             )
         )
 
@@ -1530,7 +1532,7 @@ def from_inquiry_invite(
         frappe.throw(_("School is required to invite an applicant."))
 
     if not frappe.db.exists("School", school):
-        frappe.throw(_("Invalid School: {0}").format(school))
+        frappe.throw(_("Invalid School: {school}").format(school=school))
 
     school_org = (frappe.db.get_value("School", school, "organization") or "").strip()
     if not school_org:
@@ -1587,7 +1589,7 @@ def from_inquiry_invite(
             frappe.throw(_("Organization must be provided or derivable from the selected School."))
 
         if not frappe.db.exists("Organization", organization):
-            frappe.throw(_("Invalid Organization: {0}").format(organization))
+            frappe.throw(_("Invalid Organization: {organization}").format(organization=organization))
 
         if not _school_belongs_to_organization_scope(school, organization):
             frappe.throw(_("Selected School does not belong to the selected Organization."))
@@ -1633,10 +1635,10 @@ def from_inquiry_invite(
         # ------------------------------------------------------------------
         applicant.add_comment(
             "Comment",
-            text=_("Applicant invited from Inquiry {0} for School {1} by {2}.").format(
-                frappe.bold(inquiry.name),
-                frappe.bold(school),
-                frappe.bold(frappe.session.user),
+            text=_("Applicant invited from Inquiry {inquiry} for School {school} by {user}.").format(
+                inquiry=frappe.bold(inquiry.name),
+                school=frappe.bold(school),
+                user=frappe.bold(frappe.session.user),
             ),
         )
 

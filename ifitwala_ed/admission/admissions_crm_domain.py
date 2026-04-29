@@ -40,7 +40,7 @@ def get_inquiry_context(inquiry: str | None) -> dict:
         as_dict=True,
     )
     if not row:
-        frappe.throw(_("Inquiry not found: {0}").format(inquiry_name))
+        frappe.throw(_("Inquiry not found: {inquiry}").format(inquiry=inquiry_name))
     return dict(row)
 
 
@@ -55,7 +55,7 @@ def get_student_applicant_context(student_applicant: str | None) -> dict:
         as_dict=True,
     )
     if not row:
-        frappe.throw(_("Student Applicant not found: {0}").format(applicant_name))
+        frappe.throw(_("Student Applicant not found: {student_applicant}").format(student_applicant=applicant_name))
     return dict(row)
 
 
@@ -70,7 +70,7 @@ def get_channel_account_context(channel_account: str | None) -> dict:
         as_dict=True,
     )
     if not row:
-        frappe.throw(_("Admission Channel Account not found: {0}").format(account_name))
+        frappe.throw(_("Admission Channel Account not found: {channel_account}").format(channel_account=account_name))
     return dict(row)
 
 
@@ -80,12 +80,12 @@ def apply_scope_value(doc, *, organization: str | None, school: str | None, sour
 
     if organization_name:
         if clean(doc.organization) and clean(doc.organization) != organization_name:
-            frappe.throw(_("Organization does not match {0}.").format(source_label))
+            frappe.throw(_("Organization does not match {source_label}.").format(source_label=source_label))
         doc.organization = organization_name
 
     if school_name:
         if clean(doc.school) and clean(doc.school) != school_name:
-            frappe.throw(_("School does not match {0}.").format(source_label))
+            frappe.throw(_("School does not match {source_label}.").format(source_label=source_label))
         doc.school = school_name
 
 

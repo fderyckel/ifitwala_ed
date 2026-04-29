@@ -78,7 +78,7 @@ class ApplicantDocumentType(Document):
 
         if missing:
             labels = ", ".join(fieldname.replace("classification_", "").replace("_", " ") for fieldname in missing)
-            frappe.throw(_("Incomplete classification settings. Missing: {0}.").format(labels))
+            frappe.throw(_("Incomplete classification settings. Missing: {labels}.").format(labels=labels))
 
     def _validate_repeatable_contract(self):
         is_repeatable = cint(self.is_repeatable)

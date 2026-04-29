@@ -51,6 +51,7 @@ WEBSITE_ROUTE_RULES = [
     # Canonical portal namespace ingress.
     {"from_route": "/hub", "to_route": "hub"},
     {"from_route": "/hub/<path:subpath>", "to_route": "hub"},
+    {"from_route": "/calendar/subscriptions/staff/<path:token>", "to_route": "calendar/subscriptions/staff"},
     {"from_route": "/portfolio/share/<path:token>", "to_route": "portfolio/share"},
     {"from_route": "/schools", "to_route": "index"},
     {"from_route": "/schools/<path:route>", "to_route": "website"},

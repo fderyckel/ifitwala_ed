@@ -102,14 +102,14 @@ def _summarize_context_labels(source_type: str, labels: list[str]) -> str | None
     if len(unique_labels) == 1:
         return unique_labels[0]
     if source_type == "course":
-        return _("{0} classes").format(len(unique_labels))
+        return _("{count} classes").format(count=len(unique_labels))
     if source_type == "activity":
-        return _("{0} activities").format(len(unique_labels))
+        return _("{count} activities").format(count=len(unique_labels))
     if source_type == "pastoral":
-        return _("{0} pastoral groups").format(len(unique_labels))
+        return _("{count} pastoral groups").format(count=len(unique_labels))
     if source_type == "cohort":
-        return _("{0} cohorts").format(len(unique_labels))
-    return _("{0} schools").format(len(unique_labels))
+        return _("{count} cohorts").format(count=len(unique_labels))
+    return _("{count} schools").format(count=len(unique_labels))
 
 
 def _resolve_guardian_communication_context() -> dict[str, Any]:

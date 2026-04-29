@@ -11,6 +11,15 @@
 				</h1>
 
 				<div class="flex items-center gap-3">
+					<RouterLink
+						:to="{ name: 'staff-calendar-sync' }"
+						class="staff-layout__desk-switch type-button-label"
+						title="Calendar sync"
+					>
+						<FeatherIcon name="calendar" class="h-4 w-4" />
+						<span>Calendar Sync</span>
+					</RouterLink>
+
 					<!-- Leaving SPA intentionally -->
 					<a href="/desk" class="staff-layout__desk-switch type-button-label">
 						<svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">

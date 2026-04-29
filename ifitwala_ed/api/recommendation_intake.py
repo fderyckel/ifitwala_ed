@@ -2090,7 +2090,7 @@ def get_recommendation_review_payload(
             "answers": _build_recommendation_answer_rows(snapshot, submission_row.get("answers_json")),
             "can_review": bool(
                 applicant_document_item_name
-                and (item_row.get("review_status") or "").strip() in {"", "Pending", "Needs Follow-Up", "Rejected"}
+                and (item_row.get("review_status") or "").strip() in {"", "Pending", "Needs Follow-Up"}
             ),
             "needs_review": bool(
                 applicant_document_item_name and (item_row.get("review_status") or "").strip() in {"", "Pending"}

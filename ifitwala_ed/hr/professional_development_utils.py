@@ -133,7 +133,7 @@ def _validate_account_organization(account: str | None, organization: str | None
 
     account_org = frappe.db.get_value("Account", account, "organization")
     if account_org != organization:
-        frappe.throw(_("{0} must belong to the selected Organization.").format(label))
+        frappe.throw(_("{label} must belong to the selected Organization.").format(label=label))
 
 
 def _compute_estimated_total(cost_rows) -> float:

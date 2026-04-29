@@ -781,7 +781,7 @@ def _assert_record_modified_matches(*, expected_modified, current_modified, sect
     if expected == current:
         return
     frappe.throw(
-        _("{0} was updated by another user. Reload this page before saving again.").format(section_label),
+        _("{section} was updated by another user. Reload this page before saving again.").format(section=section_label),
         frappe.ValidationError,
     )
 
@@ -3589,7 +3589,7 @@ def _resolve_applicant_contact(
 ) -> str | None:
     contact_name = (applicant_doc.get("applicant_contact") or "").strip()
     if contact_name and not frappe.db.exists("Contact", contact_name):
-        frappe.throw(_("Invalid Applicant Contact: {0}").format(contact_name))
+        frappe.throw(_("Invalid Applicant Contact: {contact}").format(contact=contact_name))
     if not contact_name:
         contact_name = _get_inquiry_contact_for_applicant(applicant_doc) or ""
 

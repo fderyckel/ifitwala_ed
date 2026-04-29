@@ -138,6 +138,7 @@ def build_staff_bundle(
         course_plan=doc.course_plan,
         class_teaching_plan=doc.name,
         assigned_work=assigned_work,
+        attachment_surface=api.PLANNING_ATTACHMENT_SURFACE,
     )
     course_plan_row = api.planning.get_course_plan_row(doc.course_plan)
     current_unit = api._resolve_current_curriculum_unit(
@@ -188,7 +189,8 @@ def build_staff_course_plan_bundle(
     )
     unit_lookup = api._build_unit_lookup(course_plan_doc.name, audience="staff")
     materials_by_anchor = api._fetch_material_map(
-        [("Course Plan", course_plan_doc.name), *[("Unit Plan", name) for name in unit_lookup.keys()]]
+        [("Course Plan", course_plan_doc.name), *[("Unit Plan", name) for name in unit_lookup.keys()]],
+        attachment_surface=api.PLANNING_ATTACHMENT_SURFACE,
     )
     unit_rows = list(unit_lookup.values())
     if not all(
