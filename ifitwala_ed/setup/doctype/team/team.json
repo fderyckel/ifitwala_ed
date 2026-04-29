@@ -193,7 +193,7 @@
  "index_web_pages_for_search": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-12-12 12:02:55",
+ "modified": "2026-04-29 11:28:31.948295",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Team",
@@ -286,6 +286,18 @@
    "write": 1
   },
   {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
    "email": 1,
    "export": 1,
    "print": 1,
@@ -311,6 +323,11 @@
    "report": 1,
    "role": "Employee",
    "share": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor"
   }
  ],
  "row_format": "Dynamic",
