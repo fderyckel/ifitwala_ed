@@ -18,14 +18,14 @@ def get_context(*, school, page, block_props):
     intent = block_props.get("intent")
     if intent not in INTENTS:
         frappe.throw(
-            _("Invalid admission CTA intent: {0}").format(intent),
+            _("Invalid admission CTA intent: {intent}").format(intent=intent),
             frappe.ValidationError,
         )
 
     style = block_props.get("style") or "primary"
     if style not in STYLES:
         frappe.throw(
-            _("Invalid admission CTA style: {0}").format(style),
+            _("Invalid admission CTA style: {style}").format(style=style),
             frappe.ValidationError,
         )
 

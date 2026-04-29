@@ -143,8 +143,11 @@ def _warn_if_basket_group_conflict(pe_name: str, course: str, offering_course_me
     if conflicts:
         frappe.msgprint(
             _(
-                "Basket-group note: Program Enrollment {0} already has a course in one of the same groups. (Existing: {1})"
-            ).format(get_link_to_form("Program Enrollment", pe_name), ", ".join(conflicts)),
+                "Basket-group note: Program Enrollment {enrollment} already has a course in one of the same groups. (Existing: {courses})"
+            ).format(
+                enrollment=get_link_to_form("Program Enrollment", pe_name),
+                courses=", ".join(conflicts),
+            ),
             alert=True,
         )
 
@@ -177,8 +180,9 @@ class CourseEnrollmentTool(Document):
         allowed_ays = _offering_ay_set(self.program_offering)
         if self.academic_year not in allowed_ays:
             frappe.throw(
-                _("Academic Year {0} is not part of {1} Offering AYs.").format(
-                    self.academic_year, get_link_to_form("Program Offering", self.program_offering)
+                _("Academic Year {academic_year} is not part of {offering} Offering AYs.").format(
+                    academic_year=self.academic_year,
+                    offering=get_link_to_form("Program Offering", self.program_offering),
                 )
             )
 
@@ -187,8 +191,9 @@ class CourseEnrollmentTool(Document):
         oc = offering_courses.get(self.course)
         if not oc:
             frappe.throw(
-                _("Course {0} is not listed in {1} Offering Courses. Please adjust selection.").format(
-                    get_link_to_form("Course", self.course), get_link_to_form("Program Offering", self.program_offering)
+                _("Course {course} is not listed in {offering} Offering Courses. Please adjust selection.").format(
+                    course=get_link_to_form("Course", self.course),
+                    offering=get_link_to_form("Program Offering", self.program_offering),
                 )
             )
         # If offering row says non-catalog, require exception_reason
@@ -226,8 +231,9 @@ class CourseEnrollmentTool(Document):
             pe_name = info["name"]
             if _pe_has_course(pe_name, self.course):
                 frappe.msgprint(
-                    _("Course {0} already exists in Program Enrollment {1}.").format(
-                        get_link_to_form("Course", self.course), get_link_to_form("Program Enrollment", pe_name)
+                    _("Course {course} already exists in Program Enrollment {enrollment}.").format(
+                        course=get_link_to_form("Course", self.course),
+                        enrollment=get_link_to_form("Program Enrollment", pe_name),
                     )
                 )
                 continue
@@ -244,8 +250,8 @@ class CourseEnrollmentTool(Document):
             elif not child["required"] and len(basket_groups) > 1:
                 frappe.throw(
                     _(
-                        "Course {0} belongs to multiple basket groups. Add it through a basket-aware enrollment flow and choose the credited group."
-                    ).format(get_link_to_form("Course", self.course))
+                        "Course {course} belongs to multiple basket groups. Add it through a basket-aware enrollment flow and choose the credited group."
+                    ).format(course=get_link_to_form("Course", self.course))
                 )
 
             if term_long:
@@ -264,8 +270,8 @@ class CourseEnrollmentTool(Document):
                 if not bounds.get("term_start") or not bounds.get("term_end"):
                     frappe.throw(
                         _(
-                            "Cannot determine term boundaries for School {0}, Academic Year {1}. Configure terms."
-                        ).format(info["school"], self.academic_year)
+                            "Cannot determine term boundaries for School {school}, Academic Year {academic_year}. Configure terms."
+                        ).format(school=info["school"], academic_year=self.academic_year)
                     )
                 child["term_start"] = bounds["term_start"]
                 child["term_end"] = bounds["term_end"]
@@ -280,16 +286,20 @@ class CourseEnrollmentTool(Document):
         # Inform about students with no matching PE
         if missed:
             frappe.msgprint(
-                _("No Program Enrollment found for the following student(s) in offering {0}, AY {1}: {2}").format(
-                    get_link_to_form("Program Offering", self.program_offering), self.academic_year, ", ".join(missed)
+                _(
+                    "No Program Enrollment found for the following student(s) in offering {offering}, AY {academic_year}: {students}"
+                ).format(
+                    offering=get_link_to_form("Program Offering", self.program_offering),
+                    academic_year=self.academic_year,
+                    students=", ".join(missed),
                 ),
                 indicator="orange",
             )
 
         if source_missed:
             frappe.msgprint(
-                _("These student(s) do not match the source-course filter and were skipped: {0}").format(
-                    ", ".join(source_missed)
+                _("These student(s) do not match the source-course filter and were skipped: {students}").format(
+                    students=", ".join(source_missed)
                 ),
                 indicator="orange",
             )
@@ -302,7 +312,7 @@ class CourseEnrollmentTool(Document):
             pe.save()
 
         if modified_pes:
-            frappe.msgprint(_("Courses added to {0} Program Enrollment(s).").format(len(modified_pes)))
+            frappe.msgprint(_("Courses added to {count} Program Enrollment(s).").format(count=len(modified_pes)))
         else:
             frappe.msgprint(_("Nothing to update."))
 

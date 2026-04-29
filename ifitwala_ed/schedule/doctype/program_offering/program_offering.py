@@ -1258,20 +1258,20 @@ def create_draft_tuition_invoice(program_offering: str, account_holder: str, pos
     for idx, row in enumerate(item_rows, start=1):
         billable_offering = (row or {}).get("billable_offering")
         if not billable_offering:
-            frappe.throw(_("Row {0}: Billable Offering is required").format(idx))
+            frappe.throw(_("Row {row}: Billable Offering is required").format(row=idx))
 
         qty = flt((row or {}).get("qty") or 0)
         if qty <= 0:
-            frappe.throw(_("Row {0}: Qty must be greater than zero").format(idx))
+            frappe.throw(_("Row {row}: Qty must be greater than zero").format(row=idx))
 
         rate = (row or {}).get("rate")
         if rate is None or rate == "":
-            frappe.throw(_("Row {0}: Rate is required").format(idx))
+            frappe.throw(_("Row {row}: Rate is required").format(row=idx))
         rate_val = flt(rate)
         if rate_val < 0:
-            frappe.throw(_("Row {0}: Rate cannot be negative").format(idx))
+            frappe.throw(_("Row {row}: Rate cannot be negative").format(row=idx))
         if rate_val == 0 and not (row or {}).get("description"):
-            frappe.throw(_("Row {0}: Description is required for zero-rate lines").format(idx))
+            frappe.throw(_("Row {row}: Description is required for zero-rate lines").format(row=idx))
 
         charge_source = (row or {}).get("charge_source") or "Program Offering"
         item = invoice.append(

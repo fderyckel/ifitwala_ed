@@ -184,7 +184,9 @@ def build_request_rows_for_student(
                 allow_blank=True,
             )
             if len(allowed_groups) > 1 and not applied_group:
-                review_notes.append(_("Request needs a basket-group choice for course {0}.").format(source_course))
+                review_notes.append(
+                    _("Request needs a basket-group choice for course {course}.").format(course=source_course)
+                )
         elif source_group and len(target_courses_by_group_map.get(source_group) or []) == 1:
             target_course = target_courses_by_group_map[source_group][0]
             allowed_groups = list((target_semantics.get(target_course) or {}).get("basket_groups") or [])

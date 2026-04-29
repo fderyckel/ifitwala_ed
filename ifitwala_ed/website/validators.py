@@ -33,7 +33,7 @@ def _validate_seo_h1_rules(*, blocks: list, definitions: dict):
     owns_h1 = [role for role in seo_roles if role == "owns_h1"]
     if len(owns_h1) != 1:
         frappe.throw(
-            _("Exactly one block must own the H1. Found {0}.").format(len(owns_h1)),
+            _("Exactly one block must own the H1. Found {count}.").format(count=len(owns_h1)),
             frappe.ValidationError,
         )
 
@@ -65,14 +65,14 @@ def _validate_context_allowed_blocks(*, page, blocks: list):
 
     context_label = parent_doctype or _("Unknown Parent")
     if parent_doctype == "School Website Page":
-        context_label = _("{0} ({1})").format(
-            parent_doctype,
-            page_type or _("Standard"),
+        context_label = _("{doctype} ({page_type})").format(
+            doctype=parent_doctype,
+            page_type=page_type or _("Standard"),
         )
     frappe.throw(
-        _("Block type(s) not allowed for {0}: {1}").format(
-            context_label,
-            ", ".join(disallowed),
+        _("Block type(s) not allowed for {context}: {block_types}").format(
+            context=context_label,
+            block_types=", ".join(disallowed),
         ),
         frappe.ValidationError,
     )
@@ -92,7 +92,7 @@ def validate_page_blocks(page):
     )
     if missing:
         frappe.throw(
-            _("Unknown block type: {0}").format(", ".join(missing)),
+            _("Unknown block type: {block_types}").format(block_types=", ".join(missing)),
             frappe.ValidationError,
         )
 

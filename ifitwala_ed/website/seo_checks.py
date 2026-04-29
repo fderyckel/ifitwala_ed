@@ -33,7 +33,7 @@ def _coerce_doc_payload(doc_json: Any) -> dict:
                 parsed = json.loads(doc_json)
             except Exception as exc:
                 frappe.throw(
-                    _("Invalid SEO check payload: {0}").format(str(exc)),
+                    _("Invalid SEO check payload: {error}").format(error=str(exc)),
                     frappe.ValidationError,
                 )
         if isinstance(parsed, dict):
@@ -187,7 +187,7 @@ def _check_h1_ownership(*, checks: list[dict], enabled_blocks: list[dict], defin
             checks,
             code="h1_unknown_block_type",
             severity="warning",
-            message=_("Unknown block type(s) in enabled rows: {0}").format(", ".join(unknown)),
+            message=_("Unknown block type(s) in enabled rows: {block_types}").format(block_types=", ".join(unknown)),
         )
         return
 
@@ -198,7 +198,7 @@ def _check_h1_ownership(*, checks: list[dict], enabled_blocks: list[dict], defin
             checks,
             code="h1_owner_count",
             severity="error",
-            message=_("Exactly one enabled block must own the H1. Found {0}.").format(owns_h1_count),
+            message=_("Exactly one enabled block must own the H1. Found {count}.").format(count=owns_h1_count),
         )
 
     first_type = (enabled_blocks[0].get("block_type") or "").strip()
@@ -302,9 +302,9 @@ def _check_meta_quality(*, checks: list[dict], meta: dict):
             checks,
             code="meta_title_too_long",
             severity="warning",
-            message=_("Meta title should be <= {0} characters (current: {1}).").format(
-                SEO_TITLE_MAX,
-                len(meta_title),
+            message=_("Meta title should be <= {max_length} characters (current: {current_length}).").format(
+                max_length=SEO_TITLE_MAX,
+                current_length=len(meta_title),
             ),
         )
 
@@ -320,9 +320,9 @@ def _check_meta_quality(*, checks: list[dict], meta: dict):
             checks,
             code="meta_description_too_long",
             severity="warning",
-            message=_("Meta description should be <= {0} characters (current: {1}).").format(
-                SEO_DESCRIPTION_MAX,
-                len(meta_description),
+            message=_("Meta description should be <= {max_length} characters (current: {current_length}).").format(
+                max_length=SEO_DESCRIPTION_MAX,
+                current_length=len(meta_description),
             ),
         )
 
@@ -347,7 +347,7 @@ def build_seo_assistant_report(*, parent_doctype: str, doc_payload: dict) -> dic
     parent_doctype = (parent_doctype or "").strip()
     if parent_doctype not in ALLOWED_PARENT_DOCTYPES:
         frappe.throw(
-            _("Unsupported parent doctype for SEO checks: {0}").format(parent_doctype),
+            _("Unsupported parent doctype for SEO checks: {doctype}").format(doctype=parent_doctype),
             frappe.ValidationError,
         )
 

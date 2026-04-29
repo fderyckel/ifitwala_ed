@@ -86,7 +86,7 @@ class ProgramEnrollmentTool(Document):
 
     def _dispatch_action(self, action: str):
         if action not in ACTION_META:
-            frappe.throw(_("Unsupported Program Enrollment Tool action: {0}").format(action))
+            frappe.throw(_("Unsupported Program Enrollment Tool action: {action}").format(action=action))
 
         total = len(self.students or [])
         if total == 0:
@@ -104,8 +104,9 @@ class ProgramEnrollmentTool(Document):
                 action=action,
             )
             frappe.msgprint(
-                _("{0} students queued for {1}. You will be notified when the job completes.").format(
-                    total, ACTION_META[action]["label"].lower()
+                _("{count} students queued for {action_label}. You will be notified when the job completes.").format(
+                    count=total,
+                    action_label=ACTION_META[action]["label"].lower(),
                 )
             )
             return
@@ -452,7 +453,7 @@ class ProgramEnrollmentTool(Document):
 
             out.sort(key=lambda row: ((row.get("student_name") or ""), (row.get("student") or "")))
         else:
-            frappe.throw(_("Unsupported source {0}.").format(self.get_students_from))
+            frappe.throw(_("Unsupported source {source}.").format(source=self.get_students_from))
         return out
 
     def _selected_student_ids(self) -> list[str]:
@@ -595,7 +596,8 @@ class ProgramEnrollmentTool(Document):
             frappe.publish_realtime("program_enrollment_tool_done", summary, user=self.owner)
         else:
             message = ", ".join(
-                _("{0}: {1}").format(self._humanize_count_key(key), value) for key, value in counts.items()
+                _("{label}: {count}").format(label=self._humanize_count_key(key), count=value)
+                for key, value in counts.items()
             )
             if summary.get("details_link"):
                 message += '<br><a href="{0}" target="_blank">{1}</a>'.format(

@@ -126,7 +126,7 @@ def _format_choice_validation_message(message: str | None) -> str | None:
     if text.startswith("Basket must include at least one course from group"):
         group_name = _extract_group_name(text)
         if group_name:
-            return _("Choose at least one course in {0}.").format(group_name)
+            return _("Choose at least one course in {group}.").format(group=group_name)
         return _("Choose at least one course in this section.")
 
     return text
@@ -149,7 +149,7 @@ def _format_choice_validation_violation(violation) -> str | None:
     if code == "require_group_coverage":
         group_name = _extract_group_name(message)
         if group_name:
-            return _("Choose at least one course in {0}.").format(group_name)
+            return _("Choose at least one course in {group}.").format(group=group_name)
         return _("Choose at least one course in this section.")
 
     return _format_choice_validation_message(message)
@@ -188,40 +188,40 @@ def _format_course_validation_message(*, course_label: str, message: str | None)
         return None
 
     if text == "Course is not part of the Program Offering.":
-        return _("{0} is no longer part of this selection window. Please refresh and review the choices again.").format(
-            course_label
-        )
+        return _(
+            "{course} is no longer part of this selection window. Please refresh and review the choices again."
+        ).format(course=course_label)
 
     if text == "Prerequisite requirements not met.":
         return _(
-            "The school needs to review whether {0} can be selected based on previous course requirements."
-        ).format(course_label)
+            "The school needs to review whether {course} can be selected based on previous course requirements."
+        ).format(course=course_label)
 
     if text == "Rule not supported by current schema.":
-        return _("The school needs to review whether {0} can be selected.").format(course_label)
+        return _("The school needs to review whether {course} can be selected.").format(course=course_label)
 
     if text.startswith("Required course ") and text.endswith(" not completed."):
         return _(
-            "The school needs to review whether {0} can be selected based on previous course requirements."
-        ).format(course_label)
+            "The school needs to review whether {course} can be selected based on previous course requirements."
+        ).format(course=course_label)
 
     if text.startswith("No numeric score evidence for "):
         return _(
-            "The school needs to review whether {0} can be selected based on previous course requirements."
-        ).format(course_label)
+            "The school needs to review whether {course} can be selected based on previous course requirements."
+        ).format(course=course_label)
 
     if text.startswith("Required ") and " score " in text and "; got " in text:
         return _(
-            "The school needs to review whether {0} can be selected based on previous course requirements."
-        ).format(course_label)
+            "The school needs to review whether {course} can be selected based on previous course requirements."
+        ).format(course=course_label)
 
     if text == "Course already completed and not repeatable.":
-        return _("{0} has already been completed and cannot be selected again.").format(course_label)
+        return _("{course} has already been completed and cannot be selected again.").format(course=course_label)
 
     if text == "Maximum attempts exceeded.":
-        return _("{0} cannot be selected again because the maximum number of attempts has already been used.").format(
-            course_label
-        )
+        return _(
+            "{course} cannot be selected again because the maximum number of attempts has already been used."
+        ).format(course=course_label)
 
     return text
 
@@ -258,8 +258,8 @@ def _course_validation_messages(engine_payload: dict, offering_semantics: dict[s
     if capacity_full_courses:
         if len(capacity_full_courses) == 1:
             message = _(
-                "No places are available in {0} right now. Please contact the school if this selection still needs review."
-            ).format(capacity_full_courses[0])
+                "No places are available in {course} right now. Please contact the school if this selection still needs review."
+            ).format(course=capacity_full_courses[0])
         else:
             message = _(
                 "Some selected courses are not available right now because no places are available in this offering. Please contact the school if this selection still needs review."
@@ -777,8 +777,8 @@ def store_program_enrollment_request_choices(request, *, courses: list[dict] | N
     unknown_courses = sorted(course for course in submitted_by_course if course not in allowed_courses)
     if unknown_courses:
         frappe.throw(
-            _("One or more selected courses are not part of this Program Offering: {0}.").format(
-                ", ".join(unknown_courses)
+            _("One or more selected courses are not part of this Program Offering: {courses}.").format(
+                courses=", ".join(unknown_courses)
             )
         )
 

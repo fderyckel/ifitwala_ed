@@ -39,7 +39,7 @@ def normalize_workflow_state(workflow_state: str | None) -> str:
     value = (workflow_state or "").strip() or WORKFLOW_DEFAULT_STATE
     if value not in WORKFLOW_STATES:
         frappe.throw(
-            _("Invalid workflow state: {0}").format(value),
+            _("Invalid workflow state: {workflow_state}").format(workflow_state=value),
             frappe.ValidationError,
         )
     return value

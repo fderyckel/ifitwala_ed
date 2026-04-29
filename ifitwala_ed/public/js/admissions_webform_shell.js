@@ -236,100 +236,134 @@
 		};
 	}
 
-	function renderInquiryAcknowledgement(successNode, payload) {
+	function getInquiryContextKey(context) {
+		context = context || {};
+		return [context.organization || '', context.school || '', context.type_of_inquiry || ''].join(
+			'|'
+		);
+	}
+
+	function buildActionLink(className, label, url) {
+		var link = createElement('a', className, label);
+		link.setAttribute('href', url);
+		if (/^https:\/\//.test(url)) {
+			link.setAttribute('target', '_blank');
+			link.setAttribute('rel', 'noopener');
+		}
+		return link;
+	}
+
+	function renderInquiryAcknowledgement(successNode, payload, context) {
 		if (!successNode || !payload) {
 			return;
 		}
 
-		var successTitleNode = successNode.querySelector('.success-title');
-		var successMessageNode = successNode.querySelector('.success-message');
 		var title = (payload.title || INQUIRY_SUCCESS_TITLE).trim();
 		var message = (payload.message || INQUIRY_SUCCESS_MESSAGE_DEFAULT).trim();
+		var contextKey = getInquiryContextKey(context);
+		clearNode(successNode);
+		successNode.classList.add('if-inquiry-confirmation-page');
+		successNode.setAttribute('data-if-inquiry-owned', '1');
+		successNode.setAttribute('data-if-ack-render-context', contextKey);
 
-		if (successTitleNode && successTitleNode.textContent !== title) {
-			successTitleNode.textContent = title;
-		}
-		if (successMessageNode && successMessageNode.textContent !== message) {
-			successMessageNode.textContent = message;
-		}
+		var confirmation = createElement('article', 'if-inquiry-confirmation');
+		var hero = createElement('div', 'if-inquiry-confirmation__hero');
+		var icon = createElement('span', 'if-inquiry-confirmation__icon');
+		icon.setAttribute('aria-hidden', 'true');
+		icon.appendChild(createElement('span', 'if-inquiry-confirmation__check'));
 
-		var existingDetails = successNode.querySelector('.if-inquiry-ack');
-		if (!existingDetails) {
-			existingDetails = createElement('div', 'if-inquiry-ack');
-			successNode.appendChild(existingDetails);
-		}
-		clearNode(existingDetails);
+		var heroCopy = createElement('div', 'if-inquiry-confirmation__hero-copy');
+		var heading = createElement('h1', 'if-inquiry-confirmation__title', title);
+		var body = createElement('p', 'if-inquiry-confirmation__message', message);
+		heroCopy.appendChild(heading);
+		heroCopy.appendChild(body);
+		hero.appendChild(icon);
+		hero.appendChild(heroCopy);
+		confirmation.appendChild(hero);
 
 		var brand = payload.brand || {};
 		if (brand.name || brand.logo) {
-			var brandRow = createElement('div', 'if-inquiry-ack-brand');
+			var brandRow = createElement('div', 'if-inquiry-confirmation__brand');
 			if (brand.logo) {
-				var logo = createElement('img', 'if-inquiry-ack-logo');
+				var logo = createElement('img', 'if-inquiry-confirmation__logo');
 				logo.setAttribute('src', brand.logo);
 				logo.setAttribute('alt', '');
 				brandRow.appendChild(logo);
 			}
 			if (brand.name) {
-				brandRow.appendChild(createElement('span', 'if-inquiry-ack-brand-name', brand.name));
+				var brandText = createElement('div', 'if-inquiry-confirmation__brand-copy');
+				brandText.appendChild(createElement('span', 'if-inquiry-confirmation__eyebrow', 'School'));
+				brandText.appendChild(
+					createElement('strong', 'if-inquiry-confirmation__brand-name', brand.name)
+				);
+				brandRow.appendChild(brandText);
 			}
-			existingDetails.appendChild(brandRow);
+			confirmation.appendChild(brandRow);
 		}
 
 		var timeline = Array.isArray(payload.timeline) ? payload.timeline : [];
 		if (timeline.length) {
-			var timelineTitle = createElement(
-				'p',
-				'if-inquiry-ack-timeline-title',
-				payload.timeline_intro || 'What happens next'
-			);
-			var timelineList = createElement('ol', 'if-inquiry-ack-timeline');
+			var timelineSection = createElement('section', 'if-inquiry-confirmation__timeline-section');
+			var timelineTitle = createElement('h2', 'if-inquiry-confirmation__section-title');
+			timelineTitle.textContent = payload.timeline_intro || 'What happens next';
+			var timelineList = createElement('div', 'if-inquiry-confirmation__timeline');
 			for (var i = 0; i < timeline.length; i++) {
 				var item = timeline[i] || {};
-				var itemNode = createElement('li', 'if-inquiry-ack-step');
+				var itemNode = createElement('div', 'if-inquiry-confirmation__step');
 				itemNode.appendChild(
-					createElement('span', 'if-inquiry-ack-step-label', item.label || 'Next step')
+					createElement('span', 'if-inquiry-confirmation__step-number', String(i + 1))
+				);
+				var itemBody = createElement('div', 'if-inquiry-confirmation__step-body');
+				itemBody.appendChild(
+					createElement('strong', 'if-inquiry-confirmation__step-label', item.label || 'Next step')
 				);
 				if (item.description) {
-					itemNode.appendChild(
-						createElement('span', 'if-inquiry-ack-step-description', item.description)
+					itemBody.appendChild(
+						createElement('p', 'if-inquiry-confirmation__step-description', item.description)
 					);
 				}
+				itemNode.appendChild(itemBody);
 				timelineList.appendChild(itemNode);
 			}
-			existingDetails.appendChild(timelineTitle);
-			existingDetails.appendChild(timelineList);
+			timelineSection.appendChild(timelineTitle);
+			timelineSection.appendChild(timelineList);
+			confirmation.appendChild(timelineSection);
 		}
 
 		var ctas = Array.isArray(payload.ctas) ? payload.ctas : [];
+		var ctaRow = createElement('div', 'if-inquiry-confirmation__actions');
 		if (ctas.length) {
-			var ctaRow = createElement('div', 'if-inquiry-ack-actions');
 			for (var j = 0; j < ctas.length; j++) {
 				var cta = ctas[j] || {};
 				if (!cta.url || !cta.label) {
 					continue;
 				}
-				var link = createElement(
-					'a',
-					'if-inquiry-ack-action if-inquiry-ack-action--' + (cta.kind || 'link'),
-					cta.label
+				ctaRow.appendChild(
+					buildActionLink(
+						'if-inquiry-confirmation__action if-inquiry-confirmation__action--' +
+							(cta.kind || 'link'),
+						cta.label,
+						cta.url
+					)
 				);
-				link.setAttribute('href', cta.url);
-				if (/^https:\/\//.test(cta.url)) {
-					link.setAttribute('target', '_blank');
-					link.setAttribute('rel', 'noopener');
-				}
-				ctaRow.appendChild(link);
-			}
-			if (ctaRow.children.length) {
-				existingDetails.appendChild(ctaRow);
 			}
 		}
+		ctaRow.appendChild(
+			buildActionLink(
+				'if-inquiry-confirmation__action if-inquiry-confirmation__action--secondary',
+				'Submit another inquiry',
+				INQUIRY_ROUTE_PREFIX
+			)
+		);
+		confirmation.appendChild(ctaRow);
 
 		if (payload.footer_note) {
-			existingDetails.appendChild(
-				createElement('p', 'if-inquiry-ack-footer-note', payload.footer_note)
+			confirmation.appendChild(
+				createElement('p', 'if-inquiry-confirmation__footer-note', payload.footer_note)
 			);
 		}
+
+		successNode.appendChild(confirmation);
 	}
 
 	function loadInquiryAcknowledgementContext(successNode, context) {
@@ -337,18 +371,18 @@
 			return;
 		}
 
-		var contextKey = [context.organization, context.school, context.type_of_inquiry].join('|');
-		if (successNode.getAttribute('data-if-ack-context') === contextKey) {
+		var contextKey = getInquiryContextKey(context);
+		if (successNode.getAttribute('data-if-ack-load-context') === contextKey) {
 			return;
 		}
-		successNode.setAttribute('data-if-ack-context', contextKey);
+		successNode.setAttribute('data-if-ack-load-context', contextKey);
 
 		window.frappe.call({
 			method: INQUIRY_ACKNOWLEDGEMENT_METHOD,
 			args: context,
 			callback: function (response) {
 				if (response && response.message) {
-					renderInquiryAcknowledgement(successNode, response.message);
+					renderInquiryAcknowledgement(successNode, response.message, context);
 				}
 			},
 		});
@@ -364,14 +398,18 @@
 			return;
 		}
 
-		var successMessageNode = successNode.querySelector('.success-message');
-		if (!successMessageNode) {
-			return;
-		}
-
 		var context = normalizeInquiryContext(contextOverride);
 		saveInquiryContext(context);
-		renderInquiryAcknowledgement(successNode, buildDefaultAcknowledgementPayload(context));
+		if (
+			successNode.getAttribute('data-if-inquiry-owned') !== '1' ||
+			successNode.getAttribute('data-if-ack-render-context') !== getInquiryContextKey(context)
+		) {
+			renderInquiryAcknowledgement(
+				successNode,
+				buildDefaultAcknowledgementPayload(context),
+				context
+			);
+		}
 		loadInquiryAcknowledgementContext(successNode, context);
 	}
 

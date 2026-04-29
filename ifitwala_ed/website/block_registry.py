@@ -614,7 +614,7 @@ def get_block_definition_for_builder(block_type: str) -> dict:
     definition = get_block_definition_map().get(block_type)
     if not definition:
         frappe.throw(
-            _("Unknown block type: {0}").format(block_type),
+            _("Unknown block type: {block_type}").format(block_type=block_type),
             frappe.ValidationError,
         )
     return {

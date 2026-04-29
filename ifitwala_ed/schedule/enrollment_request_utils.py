@@ -134,12 +134,16 @@ def _resolve_materialization_enrollment_date(academic_year: str, enrollment_date
 
     ay = frappe.get_doc("Academic Year", academic_year)
     if not ay.year_start_date or not ay.year_end_date:
-        frappe.throw(_("Academic Year {0} must have start and end dates.").format(academic_year))
+        frappe.throw(
+            _("Academic Year {academic_year} must have start and end dates.").format(academic_year=academic_year)
+        )
 
     if enrollment_date:
         resolved = getdate(enrollment_date)
         if resolved < getdate(ay.year_start_date) or resolved > getdate(ay.year_end_date):
-            frappe.throw(_("Enrollment Date must fall inside Academic Year {0}.").format(academic_year))
+            frappe.throw(
+                _("Enrollment Date must fall inside Academic Year {academic_year}.").format(academic_year=academic_year)
+            )
         return resolved
 
     return frappe.utils.nowdate()
@@ -351,7 +355,10 @@ def materialize_program_enrollment_request(request_name, enrollment_date=None):
     finally:
         frappe.flags.enrollment_from_request = False
 
-    enrollment.add_comment("Comment", _("Materialized from Program Enrollment Request {0}.").format(req.name))
+    enrollment.add_comment(
+        "Comment",
+        _("Materialized from Program Enrollment Request {request}.").format(request=req.name),
+    )
     return enrollment.name
 
 

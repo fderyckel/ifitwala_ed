@@ -317,19 +317,22 @@ def _get_block_definitions(block_types: list[str]) -> dict:
 def _resolve_provider(provider_path: str, block_type: str):
     if not provider_path:
         frappe.throw(
-            _("Missing provider for block type: {0}").format(block_type),
+            _("Missing provider for block type: {block_type}").format(block_type=block_type),
             frappe.ValidationError,
         )
     try:
         provider = frappe.get_attr(provider_path)
     except Exception as exc:
         frappe.throw(
-            _("Unable to load provider for block '{0}': {1}").format(block_type, str(exc)),
+            _("Unable to load provider for block '{block_type}': {error}").format(
+                block_type=block_type,
+                error=str(exc),
+            ),
             frappe.ValidationError,
         )
     if not callable(provider):
         frappe.throw(
-            _("Provider for block '{0}' is not callable.").format(block_type),
+            _("Provider for block '{block_type}' is not callable.").format(block_type=block_type),
             frappe.ValidationError,
         )
     return provider
@@ -351,7 +354,7 @@ def _enforce_seo_rules(blocks, definitions):
     owns_h1 = [role for role in seo_roles if role == "owns_h1"]
     if len(owns_h1) != 1:
         frappe.throw(
-            _("Exactly one block must own the H1. Found {0}.").format(len(owns_h1)),
+            _("Exactly one block must own the H1. Found {count}.").format(count=len(owns_h1)),
             frappe.ValidationError,
         )
 
@@ -371,7 +374,7 @@ def _build_blocks(*, page, school):
     missing = [bt for bt in block_types if bt not in definitions]
     if missing:
         frappe.throw(
-            _("Missing block definitions: {0}").format(", ".join(sorted(set(missing)))),
+            _("Missing block definitions: {block_types}").format(block_types=", ".join(sorted(set(missing)))),
             frappe.ValidationError,
         )
 
@@ -385,10 +388,10 @@ def _build_blocks(*, page, school):
             props = parse_props(block.props)
         except frappe.ValidationError as exc:
             frappe.throw(
-                _("Invalid block props JSON in row {0} ({1}): {2}").format(
-                    block.idx or "?",
-                    block.block_type or _("Unknown block"),
-                    frappe.as_unicode(exc),
+                _("Invalid block props JSON in row {row_index} ({block_type}): {error}").format(
+                    row_index=block.idx or "?",
+                    block_type=block.block_type or _("Unknown block"),
+                    error=frappe.as_unicode(exc),
                 ),
                 frappe.ValidationError,
             )
@@ -398,7 +401,7 @@ def _build_blocks(*, page, school):
         data = ctx.get("data") if isinstance(ctx, dict) else None
         if data is None:
             frappe.throw(
-                _("Provider for block '{0}' did not return data.").format(block.block_type),
+                _("Provider for block '{block_type}' did not return data.").format(block_type=block.block_type),
                 frappe.ValidationError,
             )
 
@@ -469,7 +472,7 @@ def _fetch_school_page(route: str, school, preview: bool):
     )
     if not page_name:
         frappe.throw(
-            _("Website page not found for {0} ({1}).").format(route, school.name),
+            _("Website page not found for {route} ({school}).").format(route=route, school=school.name),
             frappe.DoesNotExistError,
         )
     return frappe.get_doc("School Website Page", page_name)
@@ -483,7 +486,7 @@ def _fetch_program_profile(school, program_slug: str, preview: bool):
     )
     if not program_name:
         frappe.throw(
-            _("Program not found for slug: {0}.").format(program_slug),
+            _("Program not found for slug: {slug}.").format(slug=program_slug),
             frappe.DoesNotExistError,
         )
 
@@ -517,7 +520,7 @@ def _fetch_program_profile(school, program_slug: str, preview: bool):
     profile_name = frappe.db.get_value("Program Website Profile", filters, "name")
     if not profile_name:
         frappe.throw(
-            _("Program page not found for {0}.").format(program_slug),
+            _("Program page not found for {slug}.").format(slug=program_slug),
             frappe.DoesNotExistError,
         )
     profile = frappe.get_doc("Program Website Profile", profile_name)
@@ -534,7 +537,7 @@ def _fetch_course_profile(school, course_slug: str, preview: bool):
     profile_name = frappe.db.get_value("Course Website Profile", filters, "name")
     if not profile_name:
         frappe.throw(
-            _("Course page not found for {0}.").format(course_slug),
+            _("Course page not found for {slug}.").format(slug=course_slug),
             frappe.DoesNotExistError,
         )
 
@@ -566,7 +569,7 @@ def _fetch_story(school, story_slug: str, preview: bool):
     story_name = frappe.db.get_value("Website Story", filters, "name")
     if not story_name:
         frappe.throw(
-            _("Story not found for {0}.").format(story_slug),
+            _("Story not found for {slug}.").format(slug=story_slug),
             frappe.DoesNotExistError,
         )
     story = frappe.get_doc("Website Story", story_name)
@@ -712,7 +715,7 @@ def _build_person_profile_context(*, route: str, school, profile_slug: str):
     )
     if not person:
         frappe.throw(
-            _("Profile not found for {0}.").format(profile_slug),
+            _("Profile not found for {slug}.").format(slug=profile_slug),
             frappe.DoesNotExistError,
         )
 
@@ -909,7 +912,7 @@ def _build_school_directory_context(*, route: str):
 
     seo = _build_seo_context(
         route=route,
-        fallback_title=_("{0} Schools").format(landing["brand_name"]),
+        fallback_title=_("{brand_name} Schools").format(brand_name=landing["brand_name"]),
         fallback_description=_("Browse the public school directory and open each school website."),
         seo_profile=None,
     )
@@ -939,7 +942,7 @@ def build_render_context(*, route: str, preview: bool = False):
 
     if segments[0] != SCHOOL_ROUTE_PREFIX:
         frappe.throw(
-            _("Website page not found for route: {0}.").format(route),
+            _("Website page not found for route: {route}.").format(route=route),
             frappe.DoesNotExistError,
         )
 
@@ -956,7 +959,7 @@ def build_render_context(*, route: str, preview: bool = False):
     school_slug = (school.website_slug or "").strip()
     if segments[1] != school_slug:
         frappe.throw(
-            _("Website page not found for route: {0}.").format(route),
+            _("Website page not found for route: {route}.").format(route=route),
             frappe.DoesNotExistError,
         )
 

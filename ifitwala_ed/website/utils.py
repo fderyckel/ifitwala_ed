@@ -31,7 +31,7 @@ def resolve_school_from_route(route: str):
     segments = [seg for seg in route.split("/") if seg]
     if len(segments) < 2 or segments[0] != "schools":
         frappe.throw(
-            _("Website page not found for route: {0}.").format(normalize_route(route)),
+            _("Website page not found for route: {route}.").format(route=normalize_route(route)),
             frappe.DoesNotExistError,
         )
 
@@ -39,7 +39,7 @@ def resolve_school_from_route(route: str):
     school_name = frappe.db.get_value("School", {"website_slug": slug}, "name")
     if not school_name:
         frappe.throw(
-            _("School not found for slug: {0}.").format(slug),
+            _("School not found for slug: {slug}.").format(slug=slug),
             frappe.DoesNotExistError,
         )
     return frappe.get_doc("School", school_name)
@@ -61,7 +61,7 @@ def parse_props(raw_props: Any) -> dict:
             return json.loads(raw_props)
         except Exception as exc:
             frappe.throw(
-                _("Invalid block props JSON: {0}").format(str(exc)),
+                _("Invalid block props JSON: {error}").format(error=str(exc)),
                 frappe.ValidationError,
             )
     if isinstance(raw_props, bytes):
@@ -69,11 +69,11 @@ def parse_props(raw_props: Any) -> dict:
             return json.loads(raw_props.decode("utf-8"))
         except Exception as exc:
             frappe.throw(
-                _("Invalid block props JSON: {0}").format(str(exc)),
+                _("Invalid block props JSON: {error}").format(error=str(exc)),
                 frappe.ValidationError,
             )
     frappe.throw(
-        _("Unsupported block props type: {0}").format(type(raw_props)),
+        _("Unsupported block props type: {props_type}").format(props_type=type(raw_props)),
         frappe.ValidationError,
     )
 
@@ -116,11 +116,11 @@ def _load_schema(raw_schema: Any) -> dict | None:
             return json.loads(raw_schema)
         except Exception as exc:
             frappe.throw(
-                _("Invalid props schema JSON: {0}").format(str(exc)),
+                _("Invalid props schema JSON: {error}").format(error=str(exc)),
                 frappe.ValidationError,
             )
     frappe.throw(
-        _("Unsupported props schema type: {0}").format(type(raw_schema)),
+        _("Unsupported props schema type: {schema_type}").format(schema_type=type(raw_schema)),
         frappe.ValidationError,
     )
 
@@ -206,7 +206,7 @@ def validate_props_schema(props: dict, raw_schema: Any, *, block_type: str):
     schema = _load_schema(raw_schema)
     if not schema:
         frappe.throw(
-            _("Missing props schema for block type: {0}").format(block_type),
+            _("Missing props schema for block type: {block_type}").format(block_type=block_type),
             frappe.ValidationError,
         )
 
@@ -228,7 +228,10 @@ def validate_props_schema(props: dict, raw_schema: Any, *, block_type: str):
             formatted.append(f"{_format_error_path(path)}: {message}")
         message = "\n".join(formatted)
         frappe.throw(
-            _("Invalid props for block '{0}':\n{1}").format(block_type, message),
+            _("Invalid props for block '{block_type}':\n{message}").format(
+                block_type=block_type,
+                message=message,
+            ),
             frappe.ValidationError,
         )
 
@@ -264,7 +267,7 @@ def validate_cta_link(link: str | None) -> str | None:
     if clean.startswith("https://"):
         return clean
     frappe.throw(
-        _("CTA link must be an internal path or https URL: {0}").format(clean),
+        _("CTA link must be an internal path or https URL: {link}").format(link=clean),
         frappe.ValidationError,
     )
 
@@ -316,7 +319,7 @@ def resolve_admissions_cta_url(*, school, intent: str) -> str:
     candidates = field_priority_map.get(intent)
     if not candidates:
         frappe.throw(
-            _("Unknown admissions intent: {0}").format(intent),
+            _("Unknown admissions intent: {intent}").format(intent=intent),
             frappe.ValidationError,
         )
 
@@ -329,6 +332,6 @@ def resolve_admissions_cta_url(*, school, intent: str) -> str:
             return validate_cta_link(link)
 
     frappe.throw(
-        _("Admissions CTA target missing for intent: {0}.").format(intent),
+        _("Admissions CTA target missing for intent: {intent}.").format(intent=intent),
         frappe.ValidationError,
     )

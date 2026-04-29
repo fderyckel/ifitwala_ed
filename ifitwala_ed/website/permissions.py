@@ -148,8 +148,8 @@ def validate_website_story_content_owner(*, user: str | None, school: str | None
 
     frappe.throw(
         _(
-            "Content Owner must be an enabled System User with one of these roles: {0}. The user must also be scoped for this School. Portal Website Users are not allowed."
-        ).format(", ".join(WEBSITE_STORY_CONTENT_OWNER_ROLES)),
+            "Content Owner must be an enabled System User with one of these roles: {roles}. The user must also be scoped for this School. Portal Website Users are not allowed."
+        ).format(roles=", ".join(WEBSITE_STORY_CONTENT_OWNER_ROLES)),
         frappe.ValidationError,
     )
 

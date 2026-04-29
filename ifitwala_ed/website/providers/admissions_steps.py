@@ -21,7 +21,7 @@ def get_context(*, school, page, block_props):
         title = (step.get("title") or "").strip()
         if not key or key not in VALID_KEYS:
             frappe.throw(
-                _("Invalid admissions step key: {0}").format(key),
+                _("Invalid admissions step key: {step_key}").format(step_key=key),
                 frappe.ValidationError,
             )
         if not title:
@@ -43,7 +43,7 @@ def get_context(*, school, page, block_props):
     layout = block_props.get("layout") or "horizontal"
     if layout not in {"horizontal", "vertical"}:
         frappe.throw(
-            _("Invalid admissions steps layout: {0}").format(layout),
+            _("Invalid admissions steps layout: {layout}").format(layout=layout),
             frappe.ValidationError,
         )
 

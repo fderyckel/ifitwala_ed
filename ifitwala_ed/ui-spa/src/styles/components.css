@@ -2926,6 +2926,25 @@
 		color: rgb(var(--slate-rgb) / 0.75);
 	}
 
+	.zero-lost-grid {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: 0.75rem;
+		width: 100%;
+	}
+
+	@media (min-width: 700px) {
+		.zero-lost-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	@media (min-width: 1080px) {
+		.zero-lost-grid {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+	}
+
 	/* Avoid min-height on vue-echarts containers to prevent ResizeObserver loops. */
 	.analytics-chart {
 		width: 100%;
