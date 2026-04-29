@@ -34,7 +34,7 @@
 					</p>
 				</div>
 				<p v-if="enrollmentOffer.offer_expires_on" class="type-caption text-ink/60">
-					{{ __('Respond by {0}').replace('{0}', formatDate(enrollmentOffer.offer_expires_on)) }}
+					{{ __('Respond by {0}', [formatDate(enrollmentOffer.offer_expires_on)]) }}
 				</p>
 			</div>
 
@@ -64,25 +64,21 @@
 							{{ formatAmount(deposit.amount || deposit.deposit_amount) }}
 							<span v-if="deposit.due_date || deposit.deposit_due_date">
 								·
-								{{
-									__('Due {0}').replace(
-										'{0}',
-										formatDate(deposit.due_date || deposit.deposit_due_date)
-									)
-								}}
+								{{ __('Due {0}', [formatDate(deposit.due_date || deposit.deposit_due_date)]) }}
 							</span>
 						</p>
 						<p class="mt-1 type-caption text-ink/70">
 							{{
 								deposit.invoice
-									? __('Invoice {0} · {1}')
-											.replace('{0}', deposit.invoice)
-											.replace('{1}', deposit.invoice_status || __('Draft'))
+									? __('Invoice {0} · {1}', [
+											deposit.invoice,
+											deposit.invoice_status || __('Draft'),
+										])
 									: deposit.blocker_label || __('Deposit invoice has not been issued yet.')
 							}}
 						</p>
 						<p v-if="deposit.outstanding_amount > 0" class="mt-1 type-caption text-clay">
-							{{ __('Outstanding {0}').replace('{0}', formatAmount(deposit.outstanding_amount)) }}
+							{{ __('Outstanding {0}', [formatAmount(deposit.outstanding_amount)]) }}
 						</p>
 					</div>
 					<span
@@ -188,17 +184,13 @@
 				>
 					<p class="type-body text-ink">{{ row.template_name }}</p>
 					<p class="type-caption text-ink/60">
-						{{
-							__('Received {0} of required {1}')
-								.replace('{0}', String(row.submitted_count))
-								.replace('{1}', String(row.minimum_required))
-						}}
+						{{ __('Received {0} of required {1}', [row.submitted_count, row.minimum_required]) }}
 					</p>
 				</div>
 			</div>
 
 			<p v-if="missingTemplates.length" class="mt-3 type-caption text-clay">
-				{{ __('Still pending: {0}').replace('{0}', missingTemplates.join(', ')) }}
+				{{ __('Still pending: {0}', [missingTemplates.join(', ')]) }}
 			</p>
 		</div>
 	</div>
@@ -245,9 +237,7 @@ const recommendationSummaryLine = computed(() => {
 	const required = Number(summary.required_total || 0);
 	const received = Number(summary.received_total || 0);
 	if (required <= 0) return __('No recommendation requirements are configured.');
-	return __('Received {0} of required {1}')
-		.replace('{0}', String(received))
-		.replace('{1}', String(required));
+	return __('Received {0} of required {1}', [received, required]);
 });
 
 const recommendationRows = computed(() => snapshot.value?.recommendations_summary?.rows || []);

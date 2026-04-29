@@ -546,7 +546,7 @@
 							<div class="grid gap-3">
 								<div
 									v-for="attachment in drawer.selected_submission.attachments"
-									:key="attachment.row_name || attachment.file_name || attachment.open_url"
+									:key="attachment.row_name || attachment.attachment?.id || attachment.file_name"
 									class="rounded-2xl border border-border/70 bg-gray-50/40 p-4"
 								>
 									<GradebookPdfWorkspace
@@ -562,20 +562,18 @@
 										@save-comment-bank-entry="emitSaveCommentBankEntry"
 									/>
 									<AttachmentPreviewCard
-										v-else-if="attachment.attachment_preview"
-										:attachment="attachment.attachment_preview"
+										v-else-if="attachment.attachment"
+										:attachment="attachment.attachment"
 										variant="evidence"
 										:title="
-											attachment.attachment_preview.display_name ||
-											attachment.file_name ||
-											'Attachment'
+											attachment.attachment.display_name || attachment.file_name || 'Attachment'
 										"
 										:description="attachment.description || null"
 									>
 										<template #badges>
 											<Badge variant="subtle">{{ attachment.kind }}</Badge>
-											<Badge v-if="attachment.preview_status" variant="subtle">
-												Preview {{ attachment.preview_status }}
+											<Badge v-if="attachment.attachment.preview_status" variant="subtle">
+												Preview {{ attachment.attachment.preview_status }}
 											</Badge>
 											<Badge v-if="attachment.file_size" variant="subtle">
 												{{ formatBytes(attachment.file_size) }}
@@ -1934,7 +1932,7 @@ function annotationReadinessForAttachment(
 }
 
 function attachmentExtension(attachment: SubmissionAttachmentRow): string {
-	const explicitExtension = String(attachment.extension || '')
+	const explicitExtension = String(attachment.extension || attachment.attachment?.extension || '')
 		.trim()
 		.toLowerCase();
 	if (explicitExtension) return explicitExtension;
@@ -1949,7 +1947,9 @@ function attachmentExtension(attachment: SubmissionAttachmentRow): string {
 function isPdfAttachment(attachment: SubmissionAttachmentRow): boolean {
 	return (
 		attachment.kind === 'file' &&
-		(attachment.mime_type === 'application/pdf' || attachmentExtension(attachment) === 'pdf')
+		(attachment.mime_type === 'application/pdf' ||
+			attachment.attachment?.mime_type === 'application/pdf' ||
+			attachmentExtension(attachment) === 'pdf')
 	);
 }
 

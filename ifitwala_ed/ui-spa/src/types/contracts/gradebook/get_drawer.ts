@@ -1,4 +1,4 @@
-import type { AttachmentPreviewItem, AttachmentPreviewStatus } from '@/types/contracts/attachments/shared'
+import type { AttachmentPreviewStatus, GovernedAttachmentRow } from '@/types/contracts/attachments/shared'
 import type { FeedbackArtifact } from '@/types/contracts/assessment/feedback_artifact'
 import type { CommentBankPayload } from './comment_bank'
 import type { FeedbackThread, FeedbackWorkspacePayload } from './feedback_workspace'
@@ -51,18 +51,14 @@ export type SubmissionVersionSummary = {
 export type SubmissionAttachment = {
 	row_name?: string | null
 	kind: 'file' | 'link' | 'other'
-	file?: string | null
 	file_name?: string | null
 	file_size?: number | null
 	description?: string | null
 	public?: boolean
-	preview_status?: AttachmentPreviewStatus
-	preview_url?: string | null
-	open_url?: string | null
 	external_url?: string | null
 	mime_type?: string | null
 	extension?: string | null
-	attachment_preview?: AttachmentPreviewItem | null
+	attachment?: GovernedAttachmentRow | null
 }
 
 export type SubmissionEvidence = {

@@ -35,9 +35,9 @@ class StudentAttendance(Document):
             if exists:
                 frappe.throw(
                     _(
-                        "Daily attendance for student {0} on {1} already exists. "
+                        "Daily attendance for student {student} on {attendance_date} already exists. "
                         "Edit the existing record instead of creating a new one."
-                    ).format(self.student, self.attendance_date),
+                    ).format(student=self.student, attendance_date=self.attendance_date),
                     title=_("Duplicate Whole-Day Attendance"),
                 )
 

@@ -1,4 +1,4 @@
-import type { AttachmentPreviewItem } from '@/types/contracts/attachments/shared'
+import type { GovernedAttachmentRow } from '@/types/contracts/attachments/shared'
 import type { FeedbackArtifact } from './feedback_artifact'
 import type {
 	FeedbackPriority,
@@ -66,9 +66,7 @@ export type ReleasedFeedbackDetail = {
 		submission: SubmissionEvidence
 		primary_attachment?: {
 			row_name?: string | null
-			attachment_preview?: AttachmentPreviewItem | null
-			preview_url?: string | null
-			open_url?: string | null
+			attachment?: GovernedAttachmentRow | null
 		} | null
 	} | null
 	released_feedback_artifact?: FeedbackArtifact | null

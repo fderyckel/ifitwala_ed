@@ -162,10 +162,7 @@ function dueLabel(value?: string | null) {
 	if (!value) return __('No deadline');
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) return value;
-	return __('Due {0}').replace(
-		'{0}',
-		date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-	);
+	return __('Due {0}', [date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })]);
 }
 
 function requestSummary(window: PortalSelectionWindow) {

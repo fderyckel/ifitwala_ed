@@ -111,9 +111,9 @@ def _released_feedback_stub_modules(
                     "file_name": "submission.pdf",
                     "mime_type": "application/pdf",
                     "extension": "pdf",
-                    "preview_url": "/preview/submission",
-                    "open_url": "/open/submission",
-                    "attachment_preview": {
+                    "attachment": {
+                        "id": "ATT-PDF",
+                        "surface": "task_submission.evidence",
                         "display_name": "Submitted PDF",
                         "kind": "pdf",
                         "preview_mode": "pdf_embed",
@@ -234,7 +234,7 @@ class TestReleasedFeedbackApi(TestCase):
         self.assertEqual(payload["audience"], "student")
         self.assertEqual(payload["document"]["submission"]["submission_id"], "TSU-1")
         self.assertEqual(payload["document"]["primary_attachment"]["row_name"], "ATT-PDF")
-        self.assertEqual(payload["document"]["primary_attachment"]["open_url"], "/open/submission")
+        self.assertEqual(payload["document"]["primary_attachment"]["attachment"]["open_url"], "/open/submission")
         self.assertEqual(payload["released_feedback_artifact"]["open_url"], "/open/feedback-pdf")
 
     def test_guardian_detail_stays_text_first_without_document_surface(self):

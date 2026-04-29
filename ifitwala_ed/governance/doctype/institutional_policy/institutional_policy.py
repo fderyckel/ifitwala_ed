@@ -199,9 +199,9 @@ def _raise_policy_management_scope_permission_error(policy_organization: str, *,
         action = "edit"
     frappe.throw(
         _(
-            "You can {0} policies only for your organization or its descendants. "
-            "Organization '{1}' is outside your policy admin scope."
-        ).format(action, policy_organization),
+            "You can {action} policies only for your organization or its descendants. "
+            "Organization '{organization}' is outside your policy admin scope."
+        ).format(action=action, organization=policy_organization),
         frappe.PermissionError,
     )
 

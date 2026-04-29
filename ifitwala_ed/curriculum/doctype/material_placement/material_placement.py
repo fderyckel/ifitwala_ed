@@ -40,7 +40,7 @@ class MaterialPlacement(Document):
 
     def _validate_anchor(self):
         if self.anchor_doctype not in MATERIAL_ALLOWED_ANCHORS:
-            frappe.throw(_("Unsupported material anchor type: {0}").format(self.anchor_doctype))
+            frappe.throw(_("Unsupported material anchor type: {anchor_type}").format(anchor_type=self.anchor_doctype))
         if not frappe.db.exists(self.anchor_doctype, self.anchor_name):
             frappe.throw(
                 _("Anchor document does not exist: {doctype} {name}").format(

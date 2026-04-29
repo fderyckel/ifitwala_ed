@@ -106,7 +106,7 @@ def complete_initial_setup(org_name=None, org_abbr=None, school_name=None, schoo
             file_url = frappe.db.get_value("File", docname, "file_url") if docname else None
 
         if not file_url:
-            frappe.log_error(_("App logo file not found: {0}. Proceeding without it.").format(app_logo))
+            frappe.log_error(_("App logo file not found: {app_logo}. Proceeding without it.").format(app_logo=app_logo))
 
     # apply & save once
     if file_url:

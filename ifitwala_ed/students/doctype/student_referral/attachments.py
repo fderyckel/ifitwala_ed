@@ -30,7 +30,7 @@ def _get_referral_doc(referral: str):
         frappe.throw(_("Student Referral is required."))
     if not frappe.db.exists(STUDENT_REFERRAL_DOCTYPE, referral_name):
         frappe.throw(
-            _("Student Referral does not exist: {0}").format(referral_name),
+            _("Student Referral does not exist: {referral}").format(referral=referral_name),
             frappe.DoesNotExistError,
         )
     return frappe.get_doc(STUDENT_REFERRAL_DOCTYPE, referral_name)
@@ -143,8 +143,8 @@ def validate_student_referral_attachment_finalize_context(upload_session_doc) ->
         if getattr(upload_session_doc, session_field, None) != authoritative[authoritative_field]:
             frappe.throw(
                 _(
-                    "Upload session no longer matches the authoritative Student Referral attachment context for field '{0}'."
-                ).format(session_field)
+                    "Upload session no longer matches the authoritative Student Referral attachment context for field '{fieldname}'."
+                ).format(fieldname=session_field)
             )
 
     return authoritative

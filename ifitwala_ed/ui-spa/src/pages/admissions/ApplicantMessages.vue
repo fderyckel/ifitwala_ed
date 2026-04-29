@@ -28,7 +28,7 @@
 				<div class="mb-3 flex items-center justify-between">
 					<p class="type-body-strong text-ink">{{ __('Conversation') }}</p>
 					<p v-if="unreadCount > 0" class="chip chip-warm">
-						{{ __('Unread: {0}').replace('{0}', String(unreadCount)) }}
+						{{ __('Unread: {0}', [unreadCount]) }}
 					</p>
 				</div>
 
@@ -66,7 +66,7 @@
 					:placeholder="__('Write your message here...')"
 				/>
 				<p class="mt-1 type-caption text-ink/55">
-					{{ __('{0} / 300').replace('{0}', String(draftBody.length)) }}
+					{{ __('{0} / 300', [draftBody.length]) }}
 				</p>
 				<div v-if="sendError" class="if-banner if-banner--danger mt-3">
 					<p class="if-banner__body type-caption">{{ sendError }}</p>

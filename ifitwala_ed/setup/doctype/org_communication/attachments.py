@@ -87,7 +87,9 @@ def _assert_complete_class_attachment_context(context: dict[str, Any] | None) ->
         return
 
     frappe.throw(
-        _("Org Communication attachment class context is incomplete. Missing {0}.").format(", ".join(missing_fields))
+        _("Org Communication attachment class context is incomplete. Missing {fields}.").format(
+            fields=", ".join(missing_fields)
+        )
     )
 
 
@@ -95,7 +97,7 @@ def _get_doc(name: str, *, permission_type: str | None = None):
     _refresh_runtime_bindings()
 
     if not frappe.db.exists("Org Communication", name):
-        frappe.throw(_("Org Communication does not exist: {0}").format(name))
+        frappe.throw(_("Org Communication does not exist: {communication}").format(communication=name))
 
     doc = frappe.get_doc("Org Communication", name)
     if permission_type:
@@ -159,7 +161,7 @@ def _resolve_team_attachment_context(doc) -> dict[str, str | None]:
         as_dict=True,
     )
     if not team_row:
-        frappe.throw(_("Selected Team does not exist: {0}").format(team))
+        frappe.throw(_("Selected Team does not exist: {team}").format(team=team))
 
     return {
         "team": team,
@@ -185,7 +187,7 @@ def resolve_org_communication_attachment_context(doc) -> dict[str, str | None]:
             if course or school:
                 student_group_row = {"course": course, "school": school}
         if not student_group_row:
-            frappe.throw(_("Student Group does not exist: {0}").format(student_group))
+            frappe.throw(_("Student Group does not exist: {student_group}").format(student_group=student_group))
 
         course = _clean_link_value(student_group_row.get("course"))
         if not course:
@@ -290,8 +292,8 @@ def assert_org_communication_attachment_context_stable(doc, before_doc) -> None:
     changed_summary = ", ".join(changed_fields) or _("attachment context")
     frappe.throw(
         _(
-            "This communication already has governed file attachments. Remove the governed files before changing {0}."
-        ).format(changed_summary),
+            "This communication already has governed file attachments. Remove the governed files before changing {fields}."
+        ).format(fields=changed_summary),
         title=_("Attachment Context Locked"),
     )
 
@@ -304,7 +306,7 @@ def _assert_attachment_row_exists(doc, row_key: str) -> None:
     for row in doc.get("attachments") or []:
         if str(getattr(row, "name", "") or "").strip() == row_key:
             return
-    frappe.throw(_("Org Communication attachment row was not found: {0}.").format(row_key))
+    frappe.throw(_("Org Communication attachment row was not found: {row_key}.").format(row_key=row_key))
 
 
 def build_org_communication_attachment_upload_contract(
@@ -375,8 +377,8 @@ def validate_org_communication_attachment_finalize_context(upload_session_doc) -
         if getattr(upload_session_doc, session_field, None) != authoritative[authoritative_field]:
             frappe.throw(
                 _(
-                    "Upload session no longer matches the authoritative Org Communication attachment context for field '{0}'."
-                ).format(session_field)
+                    "Upload session no longer matches the authoritative Org Communication attachment context for field '{fieldname}'."
+                ).format(fieldname=session_field)
             )
 
     return authoritative

@@ -210,9 +210,7 @@ const documentLabel = computed(() => props.documentLabel || '');
 const description = computed(() => props.description || '');
 const mode = computed(() => (props.mode === 'replace' ? 'replace' : 'add'));
 const uploadProgressLabel = computed(() =>
-	selectedFile.value?.name
-		? __('Uploading {0}').replace('{0}', selectedFile.value.name)
-		: __('Uploading file')
+	selectedFile.value?.name ? __('Uploading {0}', [selectedFile.value.name]) : __('Uploading file')
 );
 
 function setError(err: unknown, fallback: string) {

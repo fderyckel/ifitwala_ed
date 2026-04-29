@@ -146,14 +146,22 @@ class TestTaskSubmissionApiUnit(TestCase):
         self.assertEqual(payload.get("evidence_note"), "Updated evidence")
         self.assertEqual(attachments[0].get("mime_type"), "application/pdf")
         self.assertEqual(attachments[0].get("extension"), "pdf")
-        self.assertEqual(attachments[0].get("preview_status"), "ready")
+        self.assertNotIn("attachment_preview", attachments[0])
+        self.assertNotIn("open_url", attachments[0])
+        self.assertNotIn("preview_url", attachments[0])
+        self.assertNotIn("thumbnail_url", attachments[0])
+        attachment_row = attachments[0].get("attachment") or {}
+        self.assertEqual(attachment_row.get("surface"), "task_submission.evidence")
+        self.assertEqual(attachment_row.get("owner_doctype"), "Task Submission")
+        self.assertEqual(attachment_row.get("owner_name"), "TSU-2026-00001")
+        self.assertEqual(attachment_row.get("preview_status"), "ready")
         self.assertEqual(payload.get("annotation_readiness", {}).get("mode"), "reduced")
         self.assertEqual(payload.get("annotation_readiness", {}).get("reason_code"), "pdf_preview_ready")
         self.assertEqual(payload.get("released_result", {}).get("outcome_id"), "TOUT-0001")
         self.assertEqual(payload.get("released_result", {}).get("task_submission"), "TSU-2026-00001")
 
-        secure_url = (attachments[0].get("file") or "").strip()
-        preview_url = (attachments[0].get("preview_url") or "").strip()
+        secure_url = (attachment_row.get("open_url") or "").strip()
+        preview_url = (attachment_row.get("preview_url") or "").strip()
         secure_parsed = urlparse(secure_url)
         preview_parsed = urlparse(preview_url)
         secure_query = parse_qs(secure_parsed.query)
@@ -170,7 +178,7 @@ class TestTaskSubmissionApiUnit(TestCase):
         self.assertEqual((secure_query.get("context_name") or [None])[0], "TSU-2026-00001")
         self.assertEqual((preview_query.get("file") or [None])[0], "FILE-TASK-0001")
         self.assertEqual(
-            (parse_qs(urlparse(attachments[0].get("thumbnail_url") or "").query).get("file") or [None])[0],
+            (parse_qs(urlparse(attachment_row.get("thumbnail_url") or "").query).get("file") or [None])[0],
             "FILE-TASK-0001",
         )
 
@@ -241,9 +249,11 @@ class TestTaskSubmissionApiUnit(TestCase):
         self.assertEqual(attachments[0].get("mime_type"), "application/pdf")
         self.assertEqual(payload.get("annotation_readiness", {}).get("mode"), "reduced")
         self.assertEqual(payload.get("annotation_readiness", {}).get("reason_code"), "pdf_preview_pending")
-        self.assertIsNone(attachments[0].get("preview_url"))
-        self.assertIsNone(attachments[0].get("attachment_preview", {}).get("preview_url"))
-        self.assertFalse(attachments[0].get("attachment_preview", {}).get("can_preview"))
+        self.assertNotIn("attachment_preview", attachments[0])
+        self.assertNotIn("preview_url", attachments[0])
+        attachment_row = attachments[0].get("attachment") or {}
+        self.assertIsNone(attachment_row.get("preview_url"))
+        self.assertFalse(attachment_row.get("can_preview"))
         self.assertIsNone(payload.get("annotation_readiness", {}).get("preview_url"))
         self.assertEqual(payload.get("released_result", {}).get("outcome_id"), "TOUT-0002")
 

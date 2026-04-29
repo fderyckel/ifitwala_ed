@@ -592,8 +592,8 @@ class StudentLog(Document):
             if old.get(fieldname) != self.get(fieldname):
                 frappe.throw(
                     _(
-                        "Field {0} cannot be changed after follow-up work has started. Use Add Clarification instead."
-                    ).format(fieldname),
+                        "Field {fieldname} cannot be changed after follow-up work has started. Use Add Clarification instead."
+                    ).format(fieldname=fieldname),
                     title=_("Immutable After Follow-Up"),
                 )
 
@@ -618,7 +618,10 @@ class StudentLog(Document):
         if new_status != old_status:
             if old_key not in allowed or new_status not in allowed[old_key]:
                 frappe.throw(
-                    _("Illegal follow-up status change: {0} → {1}").format(old_status or "None", new_status or "None"),
+                    _("Illegal follow-up status change: {old_status} → {new_status}").format(
+                        old_status=old_status or "None",
+                        new_status=new_status or "None",
+                    ),
                     title=_("Invalid Transition"),
                 )
 
@@ -635,7 +638,7 @@ class StudentLog(Document):
             for f in locked_fields:
                 if old.get(f) != self.get(f):
                     frappe.throw(
-                        _("Field {0} cannot be changed after the log is Completed.").format(f),
+                        _("Field {fieldname} cannot be changed after the log is Completed.").format(fieldname=f),
                         title=_("Locked After Completion"),
                     )
 
@@ -721,8 +724,10 @@ class StudentLog(Document):
             try:
                 actor = frappe.utils.get_fullname(frappe.session.user) or frappe.session.user
                 target = frappe.utils.get_fullname(user) or user
-                content = _("{} assigned {}: Follow up on the Student Log for {}").format(
-                    actor, target, self.student_name or self.name
+                content = _("{actor} assigned {target}: Follow up on the Student Log for {student}").format(
+                    actor=actor,
+                    target=target,
+                    student=self.student_name or self.name,
                 )
                 frappe.get_doc(
                     {

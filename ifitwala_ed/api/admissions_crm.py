@@ -3,10 +3,16 @@ from __future__ import annotations
 import frappe
 from frappe import _
 
+from ifitwala_ed.admission.admission_utils import (
+    assign_inquiry,
+    from_inquiry_invite,
+    reassign_inquiry,
+)
 from ifitwala_ed.admission.admissions_crm_domain import clean, get_channel_account_context
 from ifitwala_ed.admission.admissions_crm_permissions import (
     doc_is_in_admissions_crm_scope,
     ensure_admissions_crm_permission,
+    is_admissions_crm_user,
 )
 
 IDEMPOTENCY_TTL_SECONDS = 60 * 10
@@ -27,6 +33,28 @@ def _lock_key(*parts: str) -> str:
 
 def _idempotency_key(*parts: str) -> str:
     return _cache_key("idempotency", *parts)
+
+
+def _run_idempotent(*, user: str, action: str, target: str, client_request_id: str | None, fn):
+    request_id = clean(client_request_id)
+    cache = _cache()
+    cache_key = None
+    if request_id:
+        cache_key = _idempotency_key(action, user, target, request_id)
+        cached = cache.get_value(cache_key)
+        if cached:
+            return cached
+
+    with cache.lock(_lock_key(action, user, target), timeout=10):
+        if cache_key:
+            cached = cache.get_value(cache_key)
+            if cached:
+                return cached
+
+        response = fn()
+        if cache_key:
+            cache.set_value(cache_key, response, expires_in_sec=IDEMPOTENCY_TTL_SECONDS)
+        return response
 
 
 def _require_doc_read(user: str, doctype: str, name: str | None):
@@ -117,6 +145,38 @@ def _activity_summary(activity_name: str) -> dict:
     return dict(row or {})
 
 
+def _inquiry_summary(inquiry_name: str) -> dict:
+    row = frappe.db.get_value(
+        "Inquiry",
+        inquiry_name,
+        [
+            "name",
+            "workflow_state",
+            "assigned_to",
+            "assignment_lane",
+            "archive_reason",
+            "organization",
+            "school",
+            "student_applicant",
+            "first_contacted_at",
+            "followup_due_on",
+            "sla_status",
+        ],
+        as_dict=True,
+    )
+    return dict(row or {})
+
+
+def _applicant_summary(applicant_name: str) -> dict:
+    row = frappe.db.get_value(
+        "Student Applicant",
+        applicant_name,
+        ["name", "application_status", "organization", "school", "inquiry"],
+        as_dict=True,
+    )
+    return dict(row or {})
+
+
 def _require_conversation_write(user: str, conversation: str):
     conversation_name = clean(conversation)
     if not conversation_name:
@@ -125,6 +185,30 @@ def _require_conversation_write(user: str, conversation: str):
     if not frappe.has_permission("Admission Conversation", ptype="write", doc=doc, user=user):
         frappe.throw(_("You do not have permission to update this admissions conversation."), frappe.PermissionError)
     return doc
+
+
+def _require_inquiry_write(user: str, inquiry: str):
+    inquiry_name = clean(inquiry)
+    if not inquiry_name:
+        frappe.throw(_("Inquiry is required."))
+    doc = frappe.get_doc("Inquiry", inquiry_name)
+    if not frappe.has_permission("Inquiry", ptype="write", doc=doc, user=user):
+        frappe.throw(_("You do not have permission to update this Inquiry."), frappe.PermissionError)
+    return doc
+
+
+def _validate_crm_assignee(*, user: str, assigned_to: str, organization: str | None, school: str | None) -> None:
+    assignee = clean(assigned_to)
+    if not assignee:
+        frappe.throw(_("Assigned To is required."))
+    enabled = frappe.db.get_value("User", assignee, "enabled")
+    if not enabled:
+        frappe.throw(_("Assigned To must be an enabled admissions CRM user."))
+    if not is_admissions_crm_user(assignee):
+        frappe.throw(_("Assigned To must have an admissions CRM role."))
+    if not doc_is_in_admissions_crm_scope(user=assignee, organization=organization, school=school):
+        frappe.throw(_("Assigned To is outside this admissions CRM scope."))
+    _assert_scope_allowed(user, organization=organization, school=school)
 
 
 def _apply_identity_defaults(*, external_identity: str | None, values: dict) -> None:
@@ -168,6 +252,38 @@ def _candidate_conversation(values: dict) -> str | None:
         if existing:
             return existing
     return None
+
+
+def _valid_inquiry_option(fieldname: str, value: str | None) -> str | None:
+    text = clean(value)
+    if not text:
+        return None
+    field = frappe.get_meta("Inquiry").get_field(fieldname)
+    options = {clean(option) for option in (field.options or "").splitlines() if clean(option)}
+    if text not in options:
+        frappe.throw(_("Invalid Inquiry {field}: {value}.").format(field=field.label or fieldname, value=text))
+    return text
+
+
+def _source_from_channel(channel_type: str | None) -> str:
+    channel = clean(channel_type)
+    if channel == "WhatsApp":
+        return "WhatsApp"
+    if channel == "Line":
+        return "Line"
+    if channel in {"Facebook Messenger", "Instagram DM"}:
+        return "Facebook"
+    return "Other"
+
+
+def _name_parts(display_name: str | None, fallback: str | None) -> tuple[str | None, str | None]:
+    text = clean(display_name) or clean(fallback)
+    if not text:
+        return None, None
+    parts = text.split()
+    if len(parts) == 1:
+        return parts[0], None
+    return parts[0], " ".join(parts[1:])
 
 
 def _resolve_or_create_conversation(
@@ -566,3 +682,354 @@ def confirm_admission_external_identity(
         if cache_key:
             cache.set_value(cache_key, response, expires_in_sec=IDEMPOTENCY_TTL_SECONDS)
         return response
+
+
+@frappe.whitelist()
+def assign_admission_conversation(
+    *,
+    conversation: str | None = None,
+    assigned_to: str | None = None,
+    client_request_id: str | None = None,
+):
+    user = ensure_admissions_crm_permission()
+    conversation_name = clean(conversation)
+    if not conversation_name:
+        frappe.throw(_("Admission Conversation is required."))
+
+    def action():
+        doc = _require_conversation_write(user, conversation_name)
+        assignee = clean(assigned_to)
+        _validate_crm_assignee(
+            user=user,
+            assigned_to=assignee,
+            organization=doc.organization,
+            school=doc.school,
+        )
+        if clean(doc.assigned_to) == assignee:
+            return {"ok": True, "changed": False, "conversation": _conversation_summary(doc.name)}
+
+        doc.assigned_to = assignee
+        doc.save(ignore_permissions=True)
+        doc.add_comment(
+            "Comment",
+            text=_("Admissions conversation assigned to {user}.").format(user=frappe.bold(assignee)),
+        )
+        return {"ok": True, "changed": True, "conversation": _conversation_summary(doc.name)}
+
+    return _run_idempotent(
+        user=user,
+        action="assign_conversation",
+        target=conversation_name,
+        client_request_id=client_request_id,
+        fn=action,
+    )
+
+
+@frappe.whitelist()
+def update_admission_conversation_status(
+    *,
+    conversation: str | None = None,
+    status: str | None = None,
+    note: str | None = None,
+    client_request_id: str | None = None,
+):
+    user = ensure_admissions_crm_permission()
+    conversation_name = clean(conversation)
+    status_value = clean(status)
+    if not conversation_name:
+        frappe.throw(_("Admission Conversation is required."))
+    if status_value not in {"Open", "Closed", "Archived", "Spam"}:
+        frappe.throw(_("Invalid Admission Conversation status: {status}.").format(status=status_value))
+
+    def action():
+        doc = _require_conversation_write(user, conversation_name)
+        changed = clean(doc.status) != status_value
+        doc.status = status_value
+        if status_value != "Open":
+            doc.needs_reply = 0
+        doc.save(ignore_permissions=True)
+
+        activity_name = None
+        note_text = clean(note)
+        if status_value != "Open" or note_text:
+            activity_doc = frappe.get_doc(
+                {
+                    "doctype": "Admission CRM Activity",
+                    "conversation": doc.name,
+                    "activity_type": "Archived" if status_value in {"Closed", "Archived", "Spam"} else "Note",
+                    "outcome": status_value,
+                    "note": note_text,
+                }
+            )
+            activity_doc.insert(ignore_permissions=True)
+            activity_name = activity_doc.name
+
+        doc.add_comment(
+            "Comment",
+            text=_("Admissions conversation status set to {status}.").format(status=frappe.bold(status_value)),
+        )
+        response = {"ok": True, "changed": changed, "conversation": _conversation_summary(doc.name)}
+        if activity_name:
+            response["activity"] = _activity_summary(activity_name)
+        return response
+
+    return _run_idempotent(
+        user=user,
+        action="conversation_status",
+        target=conversation_name,
+        client_request_id=client_request_id,
+        fn=action,
+    )
+
+
+@frappe.whitelist()
+def create_inquiry_from_admission_conversation(
+    *,
+    conversation: str | None = None,
+    type_of_inquiry: str | None = None,
+    source: str | None = None,
+    message: str | None = None,
+    client_request_id: str | None = None,
+):
+    user = ensure_admissions_crm_permission()
+    conversation_name = clean(conversation)
+    if not conversation_name:
+        frappe.throw(_("Admission Conversation is required."))
+
+    def action():
+        conversation_doc = _require_conversation_write(user, conversation_name)
+        existing_inquiry = clean(conversation_doc.inquiry)
+        if existing_inquiry:
+            return {
+                "ok": True,
+                "changed": False,
+                "conversation": _conversation_summary(conversation_doc.name),
+                "inquiry": _inquiry_summary(existing_inquiry),
+            }
+
+        _assert_scope_allowed(user, organization=conversation_doc.organization, school=conversation_doc.school)
+        identity = {}
+        if clean(conversation_doc.external_identity):
+            identity = (
+                frappe.db.get_value(
+                    "Admission External Identity",
+                    conversation_doc.external_identity,
+                    ["display_name", "email", "phone_number", "channel_type"],
+                    as_dict=True,
+                )
+                or {}
+            )
+
+        first_name, last_name = _name_parts(identity.get("display_name"), conversation_doc.title)
+        source_value = _valid_inquiry_option("source", source) or _source_from_channel(identity.get("channel_type"))
+        type_value = _valid_inquiry_option("type_of_inquiry", type_of_inquiry) or "Admission"
+
+        inquiry_doc = frappe.get_doc(
+            {
+                "doctype": "Inquiry",
+                "first_name": first_name,
+                "last_name": last_name,
+                "email": clean(identity.get("email")),
+                "phone_number": clean(identity.get("phone_number")),
+                "type_of_inquiry": type_value,
+                "source": source_value,
+                "organization": conversation_doc.organization,
+                "school": conversation_doc.school,
+                "message": clean(message) or clean(conversation_doc.last_message_preview),
+            }
+        )
+        inquiry_doc.insert(ignore_permissions=True)
+
+        conversation_doc.inquiry = inquiry_doc.name
+        conversation_doc.save(ignore_permissions=True)
+        conversation_doc.add_comment(
+            "Comment",
+            text=_("Inquiry {inquiry} created from this admissions conversation.").format(
+                inquiry=frappe.bold(inquiry_doc.name)
+            ),
+        )
+        return {
+            "ok": True,
+            "changed": True,
+            "conversation": _conversation_summary(conversation_doc.name),
+            "inquiry": _inquiry_summary(inquiry_doc.name),
+        }
+
+    return _run_idempotent(
+        user=user,
+        action="create_inquiry_from_conversation",
+        target=conversation_name,
+        client_request_id=client_request_id,
+        fn=action,
+    )
+
+
+@frappe.whitelist()
+def assign_inquiry_from_inbox(
+    *,
+    inquiry: str | None = None,
+    assigned_to: str | None = None,
+    assignment_lane: str | None = None,
+    client_request_id: str | None = None,
+):
+    user = ensure_admissions_crm_permission()
+    inquiry_name = clean(inquiry)
+    assignee = clean(assigned_to)
+    if not inquiry_name:
+        frappe.throw(_("Inquiry is required."))
+    if not assignee:
+        frappe.throw(_("Assigned To is required."))
+
+    def action():
+        doc = _require_inquiry_write(user, inquiry_name)
+        if clean(doc.assigned_to) == assignee:
+            return {"ok": True, "changed": False, "inquiry": _inquiry_summary(doc.name)}
+
+        if clean(doc.assigned_to):
+            result = reassign_inquiry("Inquiry", doc.name, assignee, assignment_lane=assignment_lane)
+        else:
+            result = assign_inquiry("Inquiry", doc.name, assignee, assignment_lane=assignment_lane)
+
+        return {"ok": True, "changed": True, "result": result, "inquiry": _inquiry_summary(doc.name)}
+
+    return _run_idempotent(
+        user=user,
+        action="assign_inquiry",
+        target=inquiry_name,
+        client_request_id=client_request_id,
+        fn=action,
+    )
+
+
+@frappe.whitelist()
+def archive_inquiry_from_inbox(
+    *,
+    inquiry: str | None = None,
+    reason: str | None = None,
+    client_request_id: str | None = None,
+):
+    user = ensure_admissions_crm_permission()
+    inquiry_name = clean(inquiry)
+    archive_reason = clean(reason)
+    if not inquiry_name:
+        frappe.throw(_("Inquiry is required."))
+    if not archive_reason:
+        frappe.throw(_("Archive reason is required."))
+
+    def action():
+        doc = _require_inquiry_write(user, inquiry_name)
+        if clean(doc.workflow_state) == "Archived" and clean(doc.archive_reason):
+            return {"ok": True, "changed": False, "inquiry": _inquiry_summary(doc.name)}
+        result = doc.archive(reason=archive_reason)
+        return {
+            "ok": True,
+            "changed": bool(result.get("changed")),
+            "result": result,
+            "inquiry": _inquiry_summary(doc.name),
+        }
+
+    return _run_idempotent(
+        user=user,
+        action="archive_inquiry",
+        target=inquiry_name,
+        client_request_id=client_request_id,
+        fn=action,
+    )
+
+
+@frappe.whitelist()
+def mark_inquiry_contacted_from_inbox(
+    *,
+    inquiry: str | None = None,
+    complete_todo: int | str | None = 0,
+    client_request_id: str | None = None,
+):
+    user = ensure_admissions_crm_permission()
+    inquiry_name = clean(inquiry)
+    if not inquiry_name:
+        frappe.throw(_("Inquiry is required."))
+
+    def action():
+        doc = _require_inquiry_write(user, inquiry_name)
+        if clean(doc.workflow_state) in {"Contacted", "Qualified"}:
+            return {"ok": True, "changed": False, "inquiry": _inquiry_summary(doc.name)}
+        result = doc.mark_contacted(complete_todo=frappe.utils.cint(complete_todo))
+        return {"ok": True, "changed": True, "result": result, "inquiry": _inquiry_summary(doc.name)}
+
+    return _run_idempotent(
+        user=user,
+        action="mark_inquiry_contacted",
+        target=inquiry_name,
+        client_request_id=client_request_id,
+        fn=action,
+    )
+
+
+@frappe.whitelist()
+def qualify_inquiry_from_inbox(
+    *,
+    inquiry: str | None = None,
+    client_request_id: str | None = None,
+):
+    user = ensure_admissions_crm_permission()
+    inquiry_name = clean(inquiry)
+    if not inquiry_name:
+        frappe.throw(_("Inquiry is required."))
+
+    def action():
+        doc = _require_inquiry_write(user, inquiry_name)
+        if clean(doc.workflow_state) == "Qualified":
+            return {"ok": True, "changed": False, "inquiry": _inquiry_summary(doc.name)}
+        result = doc.mark_qualified()
+        return {
+            "ok": True,
+            "changed": bool(result.get("changed")),
+            "result": result,
+            "inquiry": _inquiry_summary(doc.name),
+        }
+
+    return _run_idempotent(
+        user=user,
+        action="qualify_inquiry",
+        target=inquiry_name,
+        client_request_id=client_request_id,
+        fn=action,
+    )
+
+
+@frappe.whitelist()
+def invite_inquiry_to_apply_from_inbox(
+    *,
+    inquiry: str | None = None,
+    school: str | None = None,
+    organization: str | None = None,
+    client_request_id: str | None = None,
+):
+    user = ensure_admissions_crm_permission()
+    inquiry_name = clean(inquiry)
+    school_name = clean(school)
+    if not inquiry_name:
+        frappe.throw(_("Inquiry is required."))
+    if not school_name:
+        frappe.throw(_("School is required to invite an applicant."))
+
+    def action():
+        _require_inquiry_write(user, inquiry_name)
+        applicant_name = from_inquiry_invite(
+            inquiry_name=inquiry_name,
+            school=school_name,
+            organization=clean(organization) or None,
+        )
+        return {
+            "ok": True,
+            "student_applicant": _applicant_summary(applicant_name),
+            "inquiry": _inquiry_summary(inquiry_name),
+        }
+
+    return _run_idempotent(
+        user=user,
+        action="invite_inquiry",
+        target=inquiry_name,
+        client_request_id=client_request_id,
+        fn=action,
+    )

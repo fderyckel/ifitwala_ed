@@ -90,7 +90,9 @@ class TaskFeedbackWorkspace(Document):
         for fieldname in ("feedback_visibility", "grade_visibility"):
             value = str(getattr(self, fieldname, "") or "").strip().lower()
             if value not in PUBLICATION_VISIBILITY_STATES:
-                frappe.throw(_("Invalid visibility state for {0}.").format(fieldname.replace("_", " ")))
+                frappe.throw(
+                    _("Invalid visibility state for {fieldname}.").format(fieldname=fieldname.replace("_", " "))
+                )
 
     def _normalize_feedback_items(self):
         for row in self.get("feedback_items") or []:

@@ -17,9 +17,7 @@
 					<Badge v-if="annotationReadiness" variant="subtle">
 						{{ annotationModeLabel(annotationReadiness) }}
 					</Badge>
-					<Badge v-if="attachment.preview_status" variant="subtle">
-						Preview {{ attachment.preview_status }}
-					</Badge>
+					<Badge v-if="previewStatus" variant="subtle"> Preview {{ previewStatus }} </Badge>
 					<Badge v-if="attachment.file_size" variant="subtle">
 						{{ formatBytes(attachment.file_size) }}
 					</Badge>
@@ -35,9 +33,9 @@
 
 			<div class="mt-4 flex flex-wrap gap-2">
 				<a
-					v-if="attachment.preview_url"
+					v-if="previewUrl"
 					class="if-button if-button--secondary"
-					:href="attachment.preview_url || undefined"
+					:href="previewUrl || undefined"
 					target="_blank"
 					rel="noreferrer"
 				>
@@ -253,7 +251,7 @@
 
 				<div v-else-if="showInlinePreviewFallback" class="p-3 pt-12">
 					<img
-						:src="attachment.preview_url || undefined"
+						:src="previewUrl || undefined"
 						:alt="`${attachment.file_name || 'PDF attachment'} first-page preview`"
 						class="h-72 w-full rounded-xl bg-white object-contain"
 						loading="lazy"
@@ -640,14 +638,17 @@ const criterionOptionsWithBlank = computed(() => {
 	return [{ label: 'No linked criterion', value: '' }, ...rows];
 });
 
+const governedAttachment = computed(() => props.attachment.attachment || null);
+const previewStatus = computed(() => governedAttachment.value?.preview_status || null);
+const previewUrl = computed(() => governedAttachment.value?.preview_url || null);
 const sourcePdfUrl = computed(
-	() => props.attachment.open_url || props.annotationReadiness?.open_url || null
+	() => governedAttachment.value?.open_url || props.annotationReadiness?.open_url || null
 );
 
 const showInlinePreviewFallback = computed(
 	() =>
-		Boolean(props.attachment.preview_url) &&
-		props.attachment.preview_status === 'ready' &&
+		Boolean(previewUrl.value) &&
+		previewStatus.value === 'ready' &&
 		(pageCount.value === 0 || Boolean(viewerError.value))
 );
 
@@ -657,7 +658,7 @@ const canAnnotateCurrentPage = computed(
 );
 
 const previewActionLabel = computed(() =>
-	props.attachment.preview_status === 'ready' ? 'Open preview' : 'Try preview'
+	previewStatus.value === 'ready' ? 'Open preview' : 'Try preview'
 );
 
 const currentPageLabel = computed(() => {
@@ -828,13 +829,13 @@ const fallbackMessage = computed(() => {
 	if (viewerError.value) {
 		return viewerError.value;
 	}
-	if (props.attachment.preview_status === 'pending') {
+	if (previewStatus.value === 'pending') {
 		return 'Preview generation is still processing. Open the source PDF to review the full document now.';
 	}
-	if (props.attachment.preview_status === 'failed') {
+	if (previewStatus.value === 'failed') {
 		return 'Preview generation failed for this PDF. Open the source PDF to continue review.';
 	}
-	if (props.attachment.preview_status === 'not_applicable') {
+	if (previewStatus.value === 'not_applicable') {
 		return 'This PDF does not currently expose a preview derivative. Open the source PDF to continue review.';
 	}
 	return 'Open the source PDF to continue review from this drawer.';

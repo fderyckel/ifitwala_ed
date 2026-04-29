@@ -131,7 +131,9 @@ def load_assessment_scheme_config(assessment_scheme: Optional[str]) -> Optional[
         as_dict=True,
     )
     if not scheme:
-        frappe.throw(_("Assessment Scheme {0} was not found.").format(assessment_scheme))
+        frappe.throw(
+            _("Assessment Scheme {assessment_scheme} was not found.").format(assessment_scheme=assessment_scheme)
+        )
 
     categories_by_parent = _load_assessment_scheme_categories([assessment_scheme])
     return _assessment_scheme_config_from_row(scheme, categories_by_parent)

@@ -30,8 +30,8 @@ class ReportingCycle(Document):
             if exists:
                 frappe.throw(
                     _(
-                        "A Reporting Cycle with the same School, Academic Year, Term and Program/Name already exists ({0})."
-                    ).format(exists[0].name)
+                        "A Reporting Cycle with the same School, Academic Year, Term and Program/Name already exists ({reporting_cycle})."
+                    ).format(reporting_cycle=exists[0].name)
                 )
 
         if self.status in ("Locked", "Published") and not self.teacher_edit_close:

@@ -301,10 +301,9 @@
 								<p class="type-body-strong text-amber-900">{{ __('Health declaration') }}</p>
 								<p class="type-caption text-amber-900/80">
 									{{
-										__('I confirm this is all known health information for {0}.').replace(
-											'{0}',
-											applicantDisplayName
-										)
+										__('I confirm this is all known health information for {0}.', [
+											applicantDisplayName,
+										])
 									}}
 								</p>
 								<label class="inline-flex items-center gap-2 type-body text-amber-900">
@@ -701,10 +700,9 @@ async function submit() {
 	if (invalidVaccinationIndex >= 0) {
 		setError(
 			'',
-			__('Each vaccination row requires vaccine name and date. Missing row: {0}.').replace(
-				'{0}',
-				String(invalidVaccinationIndex + 1)
-			)
+			__('Each vaccination row requires vaccine name and date. Missing row: {0}.', [
+				invalidVaccinationIndex + 1,
+			])
 		);
 		return;
 	}

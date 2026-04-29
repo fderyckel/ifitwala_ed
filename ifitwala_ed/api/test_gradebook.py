@@ -391,21 +391,25 @@ class TestGradebookApi(TestCase):
         self.assertFalse(payload["submission_versions"][1]["is_selected"])
 
         attachment = payload["selected_submission"]["attachments"][0]
-        self.assertEqual(attachment["preview_status"], "pending")
+        self.assertNotIn("attachment_preview", attachment)
+        self.assertNotIn("open_url", attachment)
+        self.assertNotIn("preview_url", attachment)
+        self.assertNotIn("thumbnail_url", attachment)
         self.assertEqual(attachment["mime_type"], "application/pdf")
         self.assertEqual(attachment["extension"], "pdf")
-        self.assertEqual(attachment["attachment_preview"]["owner_doctype"], "Task Submission")
-        self.assertEqual(attachment["attachment_preview"]["owner_name"], "TSU-2026-00001")
-        self.assertEqual(attachment["attachment_preview"]["kind"], "pdf")
-        self.assertFalse(attachment["attachment_preview"]["is_latest_version"])
-        self.assertEqual(attachment["attachment_preview"]["version_label"], "Version 1")
-        self.assertIsNone(attachment["preview_url"])
-        self.assertIsNone(attachment["thumbnail_url"])
-        self.assertIsNone(attachment["attachment_preview"]["preview_url"])
-        self.assertIsNone(attachment["attachment_preview"]["thumbnail_url"])
-        self.assertFalse(attachment["attachment_preview"]["can_preview"])
+        attachment_row = attachment["attachment"]
+        self.assertEqual(attachment_row["surface"], "task_submission.evidence")
+        self.assertEqual(attachment_row["preview_status"], "pending")
+        self.assertEqual(attachment_row["owner_doctype"], "Task Submission")
+        self.assertEqual(attachment_row["owner_name"], "TSU-2026-00001")
+        self.assertEqual(attachment_row["kind"], "pdf")
+        self.assertFalse(attachment_row["is_latest_version"])
+        self.assertEqual(attachment_row["version_label"], "Version 1")
+        self.assertIsNone(attachment_row["preview_url"])
+        self.assertIsNone(attachment_row["thumbnail_url"])
+        self.assertFalse(attachment_row["can_preview"])
         self.assertEqual(
-            urlparse(attachment["open_url"]).path,
+            urlparse(attachment_row["open_url"]).path,
             "/api/method/ifitwala_ed.api.file_access.download_academic_file",
         )
         self.assertEqual(payload["selected_submission"]["annotation_readiness"]["mode"], "reduced")

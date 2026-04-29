@@ -184,9 +184,7 @@
 									}}
 								</p>
 							</div>
-							<span class="chip">{{
-								__('{0} selected').replace('{0}', String(section.selected_count))
-							}}</span>
+							<span class="chip">{{ __('{0} selected', [section.selected_count]) }}</span>
 						</div>
 						<div class="space-y-3">
 							<article
@@ -219,12 +217,7 @@
 											</span>
 										</label>
 										<p v-if="course.selected_elsewhere" class="mt-2 type-caption text-ink/60">
-											{{
-												__('Already chosen in {0}.').replace(
-													'{0}',
-													course.applied_basket_group || ''
-												)
-											}}
+											{{ __('Already chosen in {0}.', [course.applied_basket_group || '']) }}
 										</p>
 									</div>
 
@@ -444,10 +437,7 @@ const subtitle = computed(() => {
 		props.payload.viewer.actor_type === 'Guardian'
 			? `${props.payload.student.full_name} · ${props.payload.window.academic_year}`
 			: props.payload.window.academic_year;
-	return __('Review the course choices and confirm your selections for {0}.').replace(
-		'{0}',
-		childLabel
-	);
+	return __('Review the course choices and confirm your selections for {0}.', [childLabel]);
 });
 
 const dueLabel = computed(() => {

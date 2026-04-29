@@ -149,16 +149,25 @@ def _attach_submission_files(submission_doc, outcome_row, uploaded_files, upload
             file_name=file_name,
             content=content,
         )
+        resolved_file_name = _clean_text(getattr(file_doc, "file_name", None)) or file_name
 
         submission_doc.append(
             "attachments",
             {
+                "section_break_sbex": resolved_file_name,
                 "file": file_doc.file_url,
-                "file_name": file_doc.file_name,
+                "file_name": resolved_file_name,
                 "file_size": file_doc.file_size,
                 "public": 0,
             },
         )
+
+
+def _clean_text(value):
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
 
 
 def _set_doc_flag(doc, flagname, value):

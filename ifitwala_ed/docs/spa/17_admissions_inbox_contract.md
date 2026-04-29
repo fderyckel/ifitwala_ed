@@ -1,12 +1,12 @@
 # Admissions Inbox SPA Contract
 
-Status: Backend context endpoint, Phase 3B staff SPA queue route, and Phase 3C controlled action drawer implemented; provider, assignment, archive, and media workflows planned
+Status: Backend context endpoint, Phase 3B staff SPA queue route, Phase 3C controlled action drawer, Phase 3D ownership/triage workflows, and Phase 3D.5 CRM intake implemented; provider and media workflows planned
 Code refs: `ifitwala_ed/api/admissions_inbox.py`, `ifitwala_ed/api/admissions_crm.py`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsInbox.vue`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsInboxService.ts`, `ifitwala_ed/ui-spa/src/types/contracts/admissions_inbox/get_admissions_inbox_context.ts`, CRM DocTypes under `ifitwala_ed/admission/doctype/admission_*`
 Test refs: `ifitwala_ed/api/test_admissions_inbox.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsInbox.test.ts`, `ifitwala_ed/ui-spa/src/lib/services/admissions/__tests__/admissionsInboxService.test.ts`, `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`
 
 This note defines the staff-side Admissions Inbox surface.
 
-Current runtime behavior includes the backend context endpoint, staff SPA queue route, and controlled action drawer for existing admissions CRM mutation endpoints. Provider replies, assignment/reassignment, archive, contact creation, Inquiry workflow transitions, and governed media conversion are still planned.
+Current runtime behavior includes the backend context endpoint, staff SPA queue route, controlled action drawer, ownership/triage actions for Admission Conversation and Inquiry records, and manual CRM intake. Provider replies, contact creation, applicant-stage message aggregation, and governed media conversion are still planned.
 
 ## 1. Authority
 
@@ -168,17 +168,93 @@ confirm_admission_external_identity
   client_request_id required by SPA service
 ```
 
+Implemented Phase 3D action payloads:
+
+```text
+assign_admission_conversation
+  conversation required
+  assigned_to required
+  client_request_id required by SPA service
+
+update_admission_conversation_status
+  conversation required
+  status required: Open | Closed | Archived | Spam
+  note optional
+  client_request_id required by SPA service
+
+create_inquiry_from_admission_conversation
+  conversation required
+  type_of_inquiry optional
+  source optional
+  message optional
+  client_request_id required by SPA service
+
+assign_inquiry_from_inbox
+  inquiry required
+  assigned_to required
+  assignment_lane optional: Admission | Staff
+  client_request_id required by SPA service
+
+archive_inquiry_from_inbox
+  inquiry required
+  reason required
+  client_request_id required by SPA service
+
+mark_inquiry_contacted_from_inbox
+  inquiry required
+  complete_todo optional
+  client_request_id required by SPA service
+
+qualify_inquiry_from_inbox
+  inquiry required
+  client_request_id required by SPA service
+
+invite_inquiry_to_apply_from_inbox
+  inquiry required
+  school required
+  organization optional
+  client_request_id required by SPA service
+```
+
+Implemented Phase 3D.5 intake payload:
+
+```text
+create_admissions_intake
+  organization required
+  school optional
+  type_of_inquiry required
+  source required
+  activity_channel required
+  first_name optional
+  last_name optional
+  email optional
+  phone_number optional
+  student_first_name optional
+  student_last_name optional
+  intended_academic_year optional
+  grade_level_interest optional
+  program_interest optional
+  student_name_or_id optional
+  relationship_to_student optional
+  organization_name optional
+  partnership_context optional
+  message optional
+  activity_type required
+  outcome optional
+  note optional
+  next_action_on optional
+  assigned_to optional
+  assignment_lane optional: Admission | Staff
+  client_request_id required by SPA service
+```
+
 Planned Inbox-specific mutation endpoints must continue to be named workflow endpoints, for example:
 
 ```text
 send_admission_reply
-assign_admission_conversation
 link_admission_identity
 link_admission_conversation_to_inquiry
 link_admission_conversation_to_applicant
-create_inquiry_from_admission_conversation
-record_admission_crm_activity
-archive_admission_conversation
 convert_admission_media_to_governed_file
 ```
 
@@ -257,16 +333,25 @@ Implemented Phase 3C UI actions:
 - link a conversation to Inquiry or Student Applicant through `link_admission_conversation`
 - resolve external identity status through `confirm_admission_external_identity`
 
+Implemented Phase 3D UI actions:
+
+- assign or reassign Admission Conversation owner
+- assign or reassign Inquiry owner through existing Inquiry assignment helpers
+- archive or mark spam Admission Conversation
+- create Inquiry from Admission Conversation
+- archive Inquiry through existing Inquiry archive method
+- mark Inquiry contacted through existing Inquiry controller method
+- qualify Inquiry through existing Inquiry controller method
+- invite Inquiry to apply through existing Inquiry-to-Applicant helper
+
+Implemented Phase 3D.5 UI action:
+
+- record manual CRM intake from the page header as a server-owned workflow that creates `Inquiry`, linked `Admission Conversation`, and first `Admission CRM Activity`
+
 Planned mutation actions:
 
 - send provider reply
-- assign or reassign
 - create or link Contact
-- create Inquiry from conversation
-- mark Inquiry contacted
-- qualify Inquiry
-- invite to apply
-- archive with reason
 - import external media through governed workflow when eligible
 
 Blocked actions must explain why they are blocked and what to do next.

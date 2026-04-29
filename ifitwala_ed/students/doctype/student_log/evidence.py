@@ -79,7 +79,9 @@ def _get_student_log_doc(name: str, *, permission_type: str | None = None):
     if not resolved_name:
         frappe.throw(_("Student Log is required."))
     if not frappe.db.exists(STUDENT_LOG_DOCTYPE, resolved_name):
-        frappe.throw(_("Student Log does not exist: {0}").format(resolved_name), frappe.DoesNotExistError)
+        frappe.throw(
+            _("Student Log does not exist: {student_log}").format(student_log=resolved_name), frappe.DoesNotExistError
+        )
 
     doc = frappe.get_doc(STUDENT_LOG_DOCTYPE, resolved_name)
     if permission_type:
@@ -99,7 +101,10 @@ def _find_evidence_row(doc, row_name: str):
             break
         return row
 
-    frappe.throw(_("Evidence attachment row was not found: {0}.").format(resolved_row_name), frappe.DoesNotExistError)
+    frappe.throw(
+        _("Evidence attachment row was not found: {row_name}.").format(row_name=resolved_row_name),
+        frappe.DoesNotExistError,
+    )
 
 
 def _has_open_follow_up_todo(log_name: str, user: str) -> bool:
@@ -294,8 +299,8 @@ def validate_student_log_evidence_finalize_context(upload_session_doc) -> dict[s
         if getattr(upload_session_doc, session_field, None) != authoritative[authoritative_field]:
             frappe.throw(
                 _(
-                    "Upload session no longer matches the authoritative Student Log evidence context for field '{0}'."
-                ).format(session_field)
+                    "Upload session no longer matches the authoritative Student Log evidence context for field '{fieldname}'."
+                ).format(fieldname=session_field)
             )
 
     return authoritative

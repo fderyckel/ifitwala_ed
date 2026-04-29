@@ -6,9 +6,9 @@ Test refs: `ifitwala_ed/admission/doctype/inquiry/test_inquiry.py`, `ifitwala_ed
 
 This note defines the planned admissions CRM model for Inquiry-stage lead handling and external-channel messaging.
 
-Phase 1 Inquiry dynamic capture, public family acknowledgement, Phase 2A CRM core manual mode, and the Phase 3A Admissions Inbox backend context endpoint are implemented.
+Phase 1 Inquiry dynamic capture, public family acknowledgement, Phase 2A CRM core manual mode, Phase 3A Admissions Inbox backend context endpoint, Phase 3B/3C staff Inbox route and action drawer, Phase 3D ownership/triage workflows, and Phase 3D.5 CRM intake are implemented.
 
-The staff Inbox SPA route, provider adapters, governed media conversion, and lead-scoring/read-model work remain planned until their referenced SPA surfaces, APIs, and tests are implemented.
+Provider adapters, governed media conversion, applicant-stage message aggregation, and lead-scoring/read-model work remain planned until their referenced SPA surfaces, APIs, and tests are implemented.
 
 ## 1. Authority
 
@@ -185,6 +185,76 @@ Rules:
 - the SPA command center must not mutate Inquiry workflow state directly from the analytics page until a separate workflow-overlay contract is approved
 - `Inquiry.archive_reason` is required for future archive transitions; the "Archived without reason" view exists to surface legacy or bypassed rows that need operator correction
 
+### 4.7 CRM Intake Contract
+
+Status: Implemented for manual staff intake.
+
+`Lead` is not a DocType.
+
+In admissions CRM language:
+
+```text
+Lead = early-stage Inquiry
+```
+
+The implemented lead-facing queues are views over `Inquiry`, `Admission Conversation`, and `Admission CRM Activity`; they do not create a second pre-applicant persistence model.
+
+Manual staff intake covers:
+
+- phone calls
+- walk-ins
+- community fairs
+- referrals
+- manually entered email or social conversations before a provider adapter exists
+
+Manual intake creates:
+
+```text
+Inquiry
+-> Admission Conversation
+-> Admission CRM Activity
+```
+
+The Intake action is appropriate only when the interaction is actionable admissions evidence:
+
+- the family left contact details
+- staff must follow up
+- the family expressed admissions interest
+- the interaction should remain part of the admissions record
+
+Anonymous questions with no follow-up requirement should not create CRM records.
+
+Source and channel are deliberately separate:
+
+```text
+Inquiry.source = where the lead originated
+Admission CRM Activity.activity_channel = how this staff interaction happened
+```
+
+Examples:
+
+```text
+source = Referral
+activity_channel = Phone
+
+source = Community Fair
+activity_channel = In Person
+
+source = Facebook
+activity_channel = Facebook
+```
+
+Provider-native messages remain a different ingestion path:
+
+```text
+Admission External Identity
+-> Admission Conversation
+-> Admission Message
+-> optional Inquiry when actionable
+```
+
+Manual social intake may use `Inquiry.source = Facebook` or `Instagram`, but it is not provider-ingested truth until a provider adapter records provider IDs, dedupe keys, and delivery metadata.
+
 ### 4.6 Public Family Acknowledgement
 
 Status: Implemented for the first transactional version.
@@ -302,6 +372,7 @@ Purpose:
 - follow-up scheduled
 - archive/lost reason
 - staff note that is not a channel message
+- activity channel for manual CRM intake and reporting
 
 It must not store chat history, reactions, or read receipts.
 
@@ -314,9 +385,22 @@ ifitwala_ed.api.admissions_crm.log_admission_message
 ifitwala_ed.api.admissions_crm.record_admission_crm_activity
 ifitwala_ed.api.admissions_crm.link_admission_conversation
 ifitwala_ed.api.admissions_crm.confirm_admission_external_identity
+ifitwala_ed.api.admissions_crm.assign_admission_conversation
+ifitwala_ed.api.admissions_crm.update_admission_conversation_status
+ifitwala_ed.api.admissions_crm.create_inquiry_from_admission_conversation
+ifitwala_ed.api.admissions_crm.assign_inquiry_from_inbox
+ifitwala_ed.api.admissions_crm.archive_inquiry_from_inbox
+ifitwala_ed.api.admissions_crm.mark_inquiry_contacted_from_inbox
+ifitwala_ed.api.admissions_crm.qualify_inquiry_from_inbox
+ifitwala_ed.api.admissions_crm.invite_inquiry_to_apply_from_inbox
+ifitwala_ed.api.admissions_crm.create_admissions_intake
 ```
 
 These endpoints use flat payloads, server-owned permission checks, scoped CRM writes, and short-lived idempotency keys via `client_request_id`.
+
+Phase 3D endpoints must reuse existing Inquiry controller/helper paths for Inquiry workflow changes. They must not write `Inquiry.workflow_state`, `Inquiry.assigned_to`, `Inquiry.assignment_lane`, or `Inquiry.archive_reason` directly from the SPA.
+
+Phase 3D.5 intake must create `Inquiry`, `Admission Conversation`, and `Admission CRM Activity` in one server-owned workflow. If assignment is requested, it must use existing Inquiry assignment helpers after the Inquiry is inserted; the SPA must not assemble separate CRUD calls.
 
 ## 6. Messaging Boundary
 
@@ -434,7 +518,14 @@ Status: implemented as Phase 2A backend foundation.
 - aggregate Inquiry, CRM conversation, and applicant case summaries
 - expose server-owned actions only
 
-Status: backend context endpoint implemented as Phase 3A; staff SPA route remains planned.
+Status: Phase 3A through Phase 3D.5 are implemented for manual mode.
+
+### Phase 3D.5: CRM Intake
+
+- staff records actionable phone, walk-in, fair, referral, email, or manual social intake from Admissions Inbox
+- server creates `Inquiry`, linked `Admission Conversation`, and first `Admission CRM Activity`
+- no `Lead` DocType is created
+- no provider metadata is invented for manually entered social/email conversations
 
 ### Phase 4: Governed Media Conversion
 

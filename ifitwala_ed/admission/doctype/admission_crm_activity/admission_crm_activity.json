@@ -15,6 +15,7 @@
   "student_applicant",
   "activity_section",
   "activity_type",
+  "activity_channel",
   "outcome",
   "note",
   "next_action_on",
@@ -83,6 +84,14 @@
    "reqd": 1
   },
   {
+   "fieldname": "activity_channel",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Activity Channel",
+   "options": "\nPhone\nIn Person\nEmail\nWhatsApp\nLine\nFacebook\nInstagram\nPortal\nOther"
+  },
+  {
    "fieldname": "outcome",
    "fieldtype": "Data",
    "label": "Outcome"
@@ -117,7 +126,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-28 08:56:27.000000",
+ "modified": "2026-04-29 15:38:03.000000",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Admission CRM Activity",

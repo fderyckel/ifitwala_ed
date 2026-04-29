@@ -10,11 +10,11 @@ import frappe
 from frappe import _
 
 from ifitwala_ed.api.attachment_previews import (
-    build_attachment_preview_item,
     extract_file_extension,
     guess_mime_type,
     preview_status_allows_preview,
 )
+from ifitwala_ed.api.attachment_rows import build_governed_attachment_row
 from ifitwala_ed.api.file_access import (
     get_drive_file_thumbnail_ready_map,
     resolve_academic_file_open_url,
@@ -22,6 +22,8 @@ from ifitwala_ed.api.file_access import (
     resolve_academic_file_thumbnail_url,
 )
 from ifitwala_ed.assessment import task_feedback_service, task_submission_service
+
+TASK_SUBMISSION_ATTACHMENT_SURFACE = "task_submission.evidence"
 
 
 def _frappe_module():
@@ -294,7 +296,9 @@ def _serialize_task_submission_attachment_row(
             context_name=submission_id,
             thumbnail_ready=bool(drive_file_meta.get("thumbnail_ready")),
         )
-        attachment_preview = build_attachment_preview_item(
+        attachment = build_governed_attachment_row(
+            row_id=row_name or resolved_drive_file_id or resolved_file_id or file_name,
+            surface=TASK_SUBMISSION_ATTACHMENT_SURFACE,
             item_id=row_name or resolved_drive_file_id or resolved_file_id or file_name,
             owner_doctype="Task Submission",
             owner_name=submission_id,
@@ -315,21 +319,18 @@ def _serialize_task_submission_attachment_row(
         return {
             "row_name": row_name,
             "kind": "file",
-            "file": open_url,
             "file_name": file_name or resolved_file_id,
             "file_size": file_size,
             "description": description,
             "public": _bool_flag(attachment_row.get("public")),
-            "preview_status": preview_status,
-            "thumbnail_url": thumbnail_url,
-            "preview_url": preview_url,
-            "open_url": open_url,
             "external_url": None,
             "mime_type": mime_type,
             "extension": extension,
-            "attachment_preview": attachment_preview,
+            "attachment": attachment,
         }
-    attachment_preview = build_attachment_preview_item(
+    attachment = build_governed_attachment_row(
+        row_id=row_name or external_url or file_name,
+        surface=TASK_SUBMISSION_ATTACHMENT_SURFACE,
         item_id=row_name or external_url or file_name,
         owner_doctype="Task Submission",
         owner_name=submission_id,
@@ -343,19 +344,14 @@ def _serialize_task_submission_attachment_row(
     return {
         "row_name": row_name,
         "kind": "link" if external_url else "other",
-        "file": None,
         "file_name": file_name,
         "file_size": file_size,
         "description": description,
         "public": _bool_flag(attachment_row.get("public")),
-        "preview_status": None,
-        "thumbnail_url": None,
-        "preview_url": None,
-        "open_url": external_url,
         "external_url": external_url,
         "mime_type": None,
         "extension": None,
-        "attachment_preview": attachment_preview,
+        "attachment": attachment,
     }
 
 
@@ -397,9 +393,12 @@ def _load_task_submission_attachment_rows(
 
 
 def _attachment_is_pdf(attachment_row: dict[str, Any]) -> bool:
-    if _clean_text(attachment_row.get("mime_type")) == "application/pdf":
+    attachment = attachment_row.get("attachment") or {}
+    if _clean_text(attachment_row.get("mime_type")) == "application/pdf" or (
+        _clean_text(attachment.get("mime_type")) == "application/pdf"
+    ):
         return True
-    explicit_extension = _clean_text(attachment_row.get("extension"))
+    explicit_extension = _clean_text(attachment_row.get("extension")) or _clean_text(attachment.get("extension"))
     if explicit_extension:
         return explicit_extension.lower() == "pdf"
     return extract_file_extension(file_name=attachment_row.get("file_name")) == "pdf"
@@ -443,7 +442,8 @@ def _build_annotation_readiness_payload(
             "open_url": None,
         }
 
-    preview_status = _clean_text(primary_pdf.get("preview_status"))
+    primary_attachment = primary_pdf.get("attachment") or {}
+    preview_status = _clean_text(primary_attachment.get("preview_status"))
     if preview_status == "ready":
         mode = "reduced"
         reason_code = "pdf_preview_ready"
@@ -488,8 +488,8 @@ def _build_annotation_readiness_payload(
         "attachment_row_name": _clean_text(primary_pdf.get("row_name")),
         "attachment_file_name": _clean_text(primary_pdf.get("file_name")),
         "preview_status": preview_status,
-        "preview_url": _clean_text(primary_pdf.get("preview_url")),
-        "open_url": _clean_text(primary_pdf.get("open_url")),
+        "preview_url": _clean_text(primary_attachment.get("preview_url")),
+        "open_url": _clean_text(primary_attachment.get("open_url")),
     }
 
 

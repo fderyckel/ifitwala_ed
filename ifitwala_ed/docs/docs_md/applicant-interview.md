@@ -3,8 +3,8 @@ title: "Applicant Interview: Interview Event Record"
 slug: applicant-interview
 category: Admission
 doc_order: 8
-version: "1.7.3"
-last_change_date: "2026-04-25"
+version: "1.7.4"
+last_change_date: "2026-04-29"
 summary: "Record the interview event, participants, calendar projection, and operational context while keeping interviewer opinion only in Applicant Interview Feedback."
 seo_title: "Applicant Interview: Interview Event Record"
 seo_description: "Record the interview event, participants, calendar projection, and operational context while keeping interviewer opinion only in Applicant Interview Feedback."
@@ -62,6 +62,7 @@ Controller logic remains on the parent doctype; child table controller is intent
    - guardian rows inside the applicant workspace open a stacked guardian-details overlay using the same overlay host
 5. Feedback is saved per interviewer via `Applicant Interview Feedback` (`Draft` / `Submitted`).
    - the SPA presents this as one `Interview Notes` surface so users do not need to reason about the separate storage row
+   - the Desk `Applicant Interview` form exposes `Open My Feedback` for users listed in `interviewers`; it opens the existing personal feedback row or starts a prefilled draft
    - the parent `Applicant Interview` record does not store panel opinion or a shared interview outcome
 6. Update interview records as evidence evolves; timeline comments keep a visible audit trail.
 7. Interview completion contributes to applicant readiness and admissions decision confidence.
@@ -142,6 +143,8 @@ Runtime controller rule:
   - child table `Applicant Interviewer` embedded in parent
   - form script applies interviewer query filter `role = Employee` on `interviewers.interviewer`
   - form script defaults new docs to current date and appends current session user to interviewer rows when missing
+  - form script shows `Open My Feedback` to the current session user only when that user is listed in `interviewers`
+  - `Open My Feedback` routes to the existing `Applicant Interview Feedback` row for `(applicant_interview, interviewer_user)` or opens a new prefilled draft with `applicant_interview`, `student_applicant`, `interviewer_user`, and `feedback_status = Draft`
 - **Student Applicant integration**:
   - readiness snapshot uses `has_required_interviews()`
   - create/update posts audit comments onto applicant timeline with clickable interview links

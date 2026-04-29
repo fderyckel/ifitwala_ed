@@ -62,9 +62,10 @@
 					<p class="type-caption text-ink/60">{{ __('Optional choices saved') }}</p>
 					<p class="mt-1 type-body text-ink">
 						{{
-							__('{0} of {1}')
-								.replace('{0}', String(summary?.selected_optional_count || 0))
-								.replace('{1}', String(summary?.optional_course_count || 0))
+							__('{0} of {1}', [
+								summary?.selected_optional_count || 0,
+								summary?.optional_course_count || 0,
+							])
 						}}
 					</p>
 				</div>
@@ -129,7 +130,7 @@
 							</p>
 						</div>
 						<p class="type-caption text-ink/55">
-							{{ __('{0} course(s)').replace('{0}', String(requiredCourses.length)) }}
+							{{ __('{0} course(s)', [requiredCourses.length]) }}
 						</p>
 					</div>
 
@@ -152,12 +153,7 @@
 							</div>
 
 							<p v-if="course.basket_groups.length" class="mt-2 type-caption text-ink/60">
-								{{
-									__('Eligible enrollment baskets: {0}').replace(
-										'{0}',
-										course.basket_groups.join(', ')
-									)
-								}}
+								{{ __('Eligible enrollment baskets: {0}', [course.basket_groups.join(', ')]) }}
 							</p>
 
 							<div v-if="course.basket_groups.length > 1" class="mt-3 max-w-sm">
@@ -193,7 +189,7 @@
 								v-else-if="course.basket_groups.length === 1"
 								class="mt-3 type-caption text-ink/60"
 							>
-								{{ __('Counts toward {0}').replace('{0}', course.basket_groups[0]) }}
+								{{ __('Counts toward {0}', [course.basket_groups[0]]) }}
 							</p>
 						</div>
 					</div>
@@ -226,7 +222,7 @@
 							</p>
 						</div>
 						<p class="type-caption text-ink/55">
-							{{ __('Selected {0}').replace('{0}', String(section.selected_count)) }}
+							{{ __('Selected {0}', [section.selected_count]) }}
 						</p>
 					</div>
 
@@ -252,18 +248,17 @@
 											v-if="course.selected_elsewhere"
 											class="rounded-full border border-border/60 bg-surface px-3 py-1 type-caption text-ink/65"
 										>
-											{{ __('Selected in {0}').replace('{0}', course.applied_basket_group || '') }}
+											{{ __('Selected in {0}', [course.applied_basket_group || '']) }}
 										</span>
 									</div>
 									<p class="mt-1 type-caption text-ink/60">{{ course.course }}</p>
 									<p v-if="course.basket_groups.length > 1" class="mt-1 type-caption text-ink/55">
 										{{
-											__('Also available in: {0}').replace(
-												'{0}',
+											__('Also available in: {0}', [
 												course.basket_groups
 													.filter(group => group !== section.basket_group)
-													.join(', ')
-											)
+													.join(', '),
+											])
 										}}
 									</p>
 

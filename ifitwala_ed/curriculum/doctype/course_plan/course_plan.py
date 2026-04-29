@@ -53,7 +53,10 @@ class CoursePlan(Document):
 def _normalize_activation_mode(value: str | None) -> str:
     activation_mode = planning.normalize_text(value) or ACTIVATION_MODE_MANUAL
     if activation_mode not in _VALID_ACTIVATION_MODES:
-        frappe.throw(_("Unsupported activation mode: {0}").format(activation_mode), frappe.ValidationError)
+        frappe.throw(
+            _("Unsupported activation mode: {activation_mode}").format(activation_mode=activation_mode),
+            frappe.ValidationError,
+        )
     return activation_mode
 
 

@@ -151,7 +151,7 @@ const blockingMessage = computed(() => {
 	if (isReady.value) return '';
 	const first = blockingActions.value[0];
 	if (!first) return __('Complete all required sections before submitting.');
-	return __('Complete "{0}" before submitting.').replace('{0}', first.label);
+	return __('Complete "{0}" before submitting.', [first.label]);
 });
 
 const readinessItems = computed(() => {

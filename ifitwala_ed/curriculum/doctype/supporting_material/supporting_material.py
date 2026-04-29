@@ -53,7 +53,7 @@ class SupportingMaterial(Document):
             return
 
         if self.material_type != MATERIAL_TYPE_FILE:
-            frappe.throw(_("Unsupported material type: {0}").format(self.material_type))
+            frappe.throw(_("Unsupported material type: {material_type}").format(material_type=self.material_type))
 
         self.reference_url = None
         if self.file or getattr(self.flags, "allow_missing_file", False):
@@ -71,7 +71,7 @@ class SupportingMaterial(Document):
             as_dict=True,
         )
         if not file_row:
-            frappe.throw(_("Material file does not exist: {0}").format(self.file))
+            frappe.throw(_("Material file does not exist: {file}").format(file=self.file))
         if (
             file_row.get("attached_to_doctype") != "Supporting Material"
             or file_row.get("attached_to_name") != self.name

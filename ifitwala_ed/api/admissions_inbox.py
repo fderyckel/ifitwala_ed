@@ -325,25 +325,33 @@ def _conversation_actions(row: dict) -> list[dict]:
     actions = [
         {"id": "log_reply", "enabled": True},
         {"id": "record_activity", "enabled": True},
+        {"id": "assign_owner" if not clean(row.get("assigned_to")) else "reassign_owner", "enabled": True},
     ]
-    if not clean(row.get("inquiry")):
+    if clean(row.get("status")) == "Open" and not clean(row.get("inquiry")):
+        actions.append({"id": "create_inquiry", "enabled": True})
         actions.append({"id": "link_inquiry", "enabled": True})
     if not clean(row.get("student_applicant")):
         actions.append({"id": "link_applicant", "enabled": True})
     if clean(row.get("external_identity")):
         actions.append({"id": "resolve_identity_match", "enabled": True})
+    if clean(row.get("status")) == "Open":
+        actions.append({"id": "archive_conversation", "enabled": True})
+        actions.append({"id": "mark_spam", "enabled": True})
     return actions
 
 
 def _inquiry_actions(row: dict) -> list[dict]:
     state = clean(row.get("workflow_state"))
     actions = [{"id": "log_message", "enabled": True}]
+    actions.append({"id": "assign_owner" if not clean(row.get("assigned_to")) else "reassign_owner", "enabled": True})
     if state in {"New", "Assigned"}:
         actions.append({"id": "mark_contacted", "enabled": True})
     if state == "Contacted":
         actions.append({"id": "qualify", "enabled": True})
     if state == "Qualified" and not clean(row.get("student_applicant")):
         actions.append({"id": "invite_to_apply", "enabled": True})
+    if state != "Archived":
+        actions.append({"id": "archive_inquiry", "enabled": True})
     return actions
 
 

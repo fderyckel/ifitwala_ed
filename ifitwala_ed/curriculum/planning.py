@@ -187,7 +187,7 @@ def assert_can_read_course_curriculum(
 
     if action_label:
         frappe.throw(
-            _("You do not have access to {0}.").format(action_label),
+            _("You do not have access to {action}.").format(action=action_label),
             frappe.PermissionError,
         )
     frappe.throw(_("You do not have access to this course curriculum."), frappe.PermissionError)
@@ -205,7 +205,7 @@ def assert_can_manage_course_curriculum(
 
     if action_label:
         frappe.throw(
-            _("You do not have access to {0}.").format(action_label),
+            _("You do not have access to {action}.").format(action=action_label),
             frappe.PermissionError,
         )
     frappe.throw(_("You do not have access to manage this course curriculum."), frappe.PermissionError)
@@ -901,7 +901,9 @@ def _resolve_unit_standard_catalog_row(
         return linked_row
 
     frappe.throw(
-        _("Learning Standard {0} does not exist. Re-select it from the picker.").format(linked_name),
+        _("Learning Standard {learning_standard} does not exist. Re-select it from the picker.").format(
+            learning_standard=linked_name
+        ),
         frappe.ValidationError,
     )
 
@@ -955,8 +957,8 @@ def ensure_linked_unit_plan_standards(doc) -> None:
             frappe.throw(_("Each standards alignment row must select an existing Learning Standard."))
         if learning_standard in seen:
             frappe.throw(
-                _("Learning Standard {0} is already aligned to this unit.").format(
-                    catalog_row.get("standard_code") or learning_standard,
+                _("Learning Standard {learning_standard} is already aligned to this unit.").format(
+                    learning_standard=catalog_row.get("standard_code") or learning_standard,
                 ),
                 frappe.ValidationError,
             )

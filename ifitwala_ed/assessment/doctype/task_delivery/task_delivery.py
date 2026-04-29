@@ -88,7 +88,7 @@ class TaskDelivery(Document):
             if not getattr(self, fieldname, None)
         ]
         if missing:
-            frappe.throw(_("Missing context on Student Group: {0}.").format(", ".join(missing)))
+            frappe.throw(_("Missing context on Student Group: {fields}.").format(fields=", ".join(missing)))
 
     def _get_task_course(self):
         return frappe.db.get_value("Task", self.task, "default_course")
@@ -476,7 +476,9 @@ class TaskDelivery(Document):
 
         for fieldname in ("student_group", "task", "course", "academic_year", "school"):
             if getattr(before, fieldname) != getattr(self, fieldname):
-                frappe.throw(_("Cannot change {0} after submission.").format(fieldname.replace("_", " ")))
+                frappe.throw(
+                    _("Cannot change {fieldname} after submission.").format(fieldname=fieldname.replace("_", " "))
+                )
 
         if frappe.db.get_value("Task Outcome", {"task_delivery": self.name}, "name"):
             for fieldname in (

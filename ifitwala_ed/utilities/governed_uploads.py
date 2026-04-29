@@ -108,9 +108,9 @@ def _require_supporting_material_upload_doc(material: str | None):
 
 def _require_clean_saved_doc(doc, *, action_label: str):
     if doc.is_new():
-        frappe.throw(_("Please save the document before using {0}.").format(action_label))
+        frappe.throw(_("Please save the document before using {action}.").format(action=action_label))
     if doc.get("__unsaved"):
-        frappe.throw(_("Please save the document before using {0}.").format(action_label))
+        frappe.throw(_("Please save the document before using {action}.").format(action=action_label))
     return doc
 
 
@@ -209,15 +209,15 @@ def _get_drive_media_callable(attribute: str):
     try:
         from ifitwala_drive.api import media as drive_media_api
     except ImportError as exc:
-        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {error}").format(error=exc))
     create_session_callable = getattr(drive_media_api, attribute, None)
     if create_session_callable:
         return create_session_callable
 
     frappe.throw(
         _(
-            "Ifitwala Drive is missing public media method '{0}'. Deploy the matching Drive API before using governed media uploads."
-        ).format(attribute)
+            "Ifitwala Drive is missing public media method '{method}'. Deploy the matching Drive API before using governed media uploads."
+        ).format(method=attribute)
     )
 
 
@@ -225,7 +225,7 @@ def _drive_upload_and_finalize(*, create_session_callable, payload: dict, conten
     try:
         from ifitwala_drive.api import uploads as drive_uploads_api
     except ImportError as exc:
-        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {error}").format(error=exc))
 
     if "idempotency_key" not in payload:
         payload = {
@@ -416,7 +416,7 @@ def upload_applicant_image(student_applicant: str | None = None, **_kwargs):
     try:
         from ifitwala_drive.api import admissions as drive_admissions_api
     except ImportError as exc:
-        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {error}").format(error=exc))
     _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
         create_session_callable=drive_admissions_api.upload_applicant_profile_image,
         payload={
@@ -446,7 +446,7 @@ def upload_task_submission_attachment(task_submission: str | None = None, **_kwa
     try:
         from ifitwala_drive.api import submissions as drive_submissions_api
     except ImportError as exc:
-        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {error}").format(error=exc))
 
     _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
         create_session_callable=drive_submissions_api.upload_task_submission_artifact,
@@ -479,7 +479,7 @@ def upload_supporting_material_file(material: str | None = None, **_kwargs):
     try:
         from ifitwala_drive.api import materials as drive_materials_api
     except ImportError as exc:
-        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {error}").format(error=exc))
 
     _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
         create_session_callable=drive_materials_api.upload_supporting_material,
@@ -546,7 +546,7 @@ def upload_school_gallery_image(school: str | None = None, row_name: str | None 
     try:
         from ifitwala_drive.api import media as drive_media_api
     except ImportError as exc:
-        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {error}").format(error=exc))
 
     session_response, finalize_response, file_doc = _drive_upload_and_finalize(
         create_session_callable=drive_media_api.upload_school_gallery_image,
@@ -616,7 +616,7 @@ def upload_organization_media_asset(
     try:
         from ifitwala_drive.api import media as drive_media_api
     except ImportError as exc:
-        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {error}").format(error=exc))
     _session_response, _finalize_response, file_doc = _drive_upload_and_finalize(
         create_session_callable=drive_media_api.upload_organization_media_asset,
         payload={

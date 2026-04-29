@@ -1129,16 +1129,32 @@ describe('Gradebook page', () => {
 						{
 							row_name: 'ATT-1',
 							kind: 'file',
-							file: '/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
 							file_name: 'essay.pdf',
 							file_size: 256,
 							description: 'Essay PDF',
-							preview_status: 'pending',
-							preview_url: null,
-							open_url:
-								'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
 							mime_type: 'application/pdf',
 							extension: 'pdf',
+							attachment: {
+								id: 'ATT-1',
+								surface: 'task_submission.evidence',
+								item_id: 'ATT-1',
+								owner_doctype: 'Task Submission',
+								owner_name: 'TSU-1',
+								file_id: 'FILE-TASK-1',
+								display_name: 'essay.pdf',
+								kind: 'pdf',
+								preview_mode: 'pdf_embed',
+								preview_status: 'pending',
+								open_url:
+									'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
+								preview_url: null,
+								thumbnail_url: null,
+								download_url:
+									'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-TASK-1',
+								can_preview: false,
+								can_open: true,
+								can_download: true,
+							},
 						},
 					],
 					annotation_readiness: {

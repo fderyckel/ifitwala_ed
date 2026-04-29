@@ -132,20 +132,16 @@ def _select_primary_document_attachment(submission: dict[str, Any]) -> dict[str,
             if _clean_text(row.get("row_name")) == target_row_name:
                 return {
                     "row_name": target_row_name,
-                    "attachment_preview": row.get("attachment_preview"),
-                    "preview_url": row.get("preview_url"),
-                    "open_url": row.get("open_url"),
+                    "attachment": row.get("attachment"),
                 }
     for row in attachments:
-        attachment_preview = row.get("attachment_preview") or {}
-        extension = _clean_text(row.get("extension")) or _clean_text(attachment_preview.get("extension"))
-        mime_type = _clean_text(row.get("mime_type")) or _clean_text(attachment_preview.get("mime_type"))
+        attachment = row.get("attachment") or {}
+        extension = _clean_text(row.get("extension")) or _clean_text(attachment.get("extension"))
+        mime_type = _clean_text(row.get("mime_type")) or _clean_text(attachment.get("mime_type"))
         if mime_type == "application/pdf" or extension == "pdf":
             return {
                 "row_name": _clean_text(row.get("row_name")),
-                "attachment_preview": row.get("attachment_preview"),
-                "preview_url": row.get("preview_url"),
-                "open_url": row.get("open_url"),
+                "attachment": row.get("attachment"),
             }
     return None
 

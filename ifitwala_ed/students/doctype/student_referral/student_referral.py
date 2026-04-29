@@ -132,7 +132,11 @@ class StudentReferral(Document):
                 as_dict=True,
             )
             if not pe:
-                frappe.throw(_("Program Enrollment {0} not found.").format(self.program_enrollment))
+                frappe.throw(
+                    _("Program Enrollment {program_enrollment} not found.").format(
+                        program_enrollment=self.program_enrollment
+                    )
+                )
             if pe.student != self.student:
                 frappe.throw(_("Selected Program Enrollment belongs to another student."))
             self.program = self.program or pe.program
@@ -159,8 +163,8 @@ class StudentReferral(Document):
             label = ", ".join([f.replace("_", " ").title() for f in missing])
             frappe.throw(
                 _(
-                    "Missing linked context on submit: {0}. Select a Program Enrollment or set Program/Academic Year/School."
-                ).format(label)
+                    "Missing linked context on submit: {fields}. Select a Program Enrollment or set Program/Academic Year/School."
+                ).format(fields=label)
             )
 
     @frappe.whitelist()
@@ -273,7 +277,7 @@ def _push_bell_notifications(users: list[str]):
 def _required_on_submit(doc: Document, fields: tuple[str, ...]):
     for f in fields:
         if not doc.get(f):
-            frappe.throw(_("{0} is required before submit.").format(f.replace("_", " ").title()))
+            frappe.throw(_("{field} is required before submit.").format(field=f.replace("_", " ").title()))
 
 
 def _user_has_any_role(roles: set[str]) -> bool:

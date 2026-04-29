@@ -55,7 +55,9 @@ class AssessmentScheme(Document):
                 frappe.throw(_("Weighted category schemes require at least one active final-grade category."))
             if abs(active_final_total - 100.0) > 0.01:
                 frappe.throw(
-                    _("Weighted category schemes must total 100%. Current total: {0:.2f}%.").format(active_final_total)
+                    _("Weighted category schemes must total 100%. Current total: {total:.2f}%.").format(
+                        total=active_final_total
+                    )
                 )
 
     def _validate_active_scope(self):

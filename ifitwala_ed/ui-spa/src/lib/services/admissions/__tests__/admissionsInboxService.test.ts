@@ -16,7 +16,10 @@ vi.mock('@/lib/uiSignals', () => ({
 	SIGNAL_ADMISSIONS_INBOX_INVALIDATE: 'admissions_inbox:invalidate',
 }));
 
-import { logAdmissionMessage } from '@/lib/services/admissions/admissionsInboxService';
+import {
+	assignInquiryFromInbox,
+	logAdmissionMessage,
+} from '@/lib/services/admissions/admissionsInboxService';
 
 describe('admissionsInboxService', () => {
 	beforeEach(() => {
@@ -45,6 +48,27 @@ describe('admissionsInboxService', () => {
 				delivery_status: 'Logged',
 				body: 'Manual reply',
 				client_request_id: expect.stringMatching(/^admission-message-/),
+			})
+		);
+		expect(emitMock).toHaveBeenCalledWith('admissions_inbox:invalidate');
+	});
+
+	it('uses the Inquiry assignment endpoint with an assignment idempotency prefix', async () => {
+		apiMock.mockResolvedValue({ ok: true });
+
+		await assignInquiryFromInbox({
+			inquiry: 'INQ-0001',
+			assigned_to: 'admissions@example.com',
+			assignment_lane: 'Admission',
+		});
+
+		expect(apiMock).toHaveBeenCalledWith(
+			'ifitwala_ed.api.admissions_crm.assign_inquiry_from_inbox',
+			expect.objectContaining({
+				inquiry: 'INQ-0001',
+				assigned_to: 'admissions@example.com',
+				assignment_lane: 'Admission',
+				client_request_id: expect.stringMatching(/^admission-inquiry-assign-/),
 			})
 		);
 		expect(emitMock).toHaveBeenCalledWith('admissions_inbox:invalidate');

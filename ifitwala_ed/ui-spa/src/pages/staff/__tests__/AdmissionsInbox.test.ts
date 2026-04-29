@@ -13,12 +13,28 @@ const {
 	recordAdmissionCrmActivityMock,
 	linkAdmissionConversationMock,
 	confirmAdmissionExternalIdentityMock,
+	assignAdmissionConversationMock,
+	updateAdmissionConversationStatusMock,
+	createInquiryFromAdmissionConversationMock,
+	assignInquiryFromInboxMock,
+	archiveInquiryFromInboxMock,
+	markInquiryContactedFromInboxMock,
+	qualifyInquiryFromInboxMock,
+	inviteInquiryToApplyFromInboxMock,
 } = vi.hoisted(() => ({
 	getAdmissionsInboxContextMock: vi.fn(),
 	logAdmissionMessageMock: vi.fn(),
 	recordAdmissionCrmActivityMock: vi.fn(),
 	linkAdmissionConversationMock: vi.fn(),
 	confirmAdmissionExternalIdentityMock: vi.fn(),
+	assignAdmissionConversationMock: vi.fn(),
+	updateAdmissionConversationStatusMock: vi.fn(),
+	createInquiryFromAdmissionConversationMock: vi.fn(),
+	assignInquiryFromInboxMock: vi.fn(),
+	archiveInquiryFromInboxMock: vi.fn(),
+	markInquiryContactedFromInboxMock: vi.fn(),
+	qualifyInquiryFromInboxMock: vi.fn(),
+	inviteInquiryToApplyFromInboxMock: vi.fn(),
 }));
 
 vi.mock('frappe-ui', () => ({
@@ -39,6 +55,14 @@ vi.mock('@/lib/services/admissions/admissionsInboxService', () => ({
 	recordAdmissionCrmActivity: recordAdmissionCrmActivityMock,
 	linkAdmissionConversation: linkAdmissionConversationMock,
 	confirmAdmissionExternalIdentity: confirmAdmissionExternalIdentityMock,
+	assignAdmissionConversation: assignAdmissionConversationMock,
+	updateAdmissionConversationStatus: updateAdmissionConversationStatusMock,
+	createInquiryFromAdmissionConversation: createInquiryFromAdmissionConversationMock,
+	assignInquiryFromInbox: assignInquiryFromInboxMock,
+	archiveInquiryFromInbox: archiveInquiryFromInboxMock,
+	markInquiryContactedFromInbox: markInquiryContactedFromInboxMock,
+	qualifyInquiryFromInbox: qualifyInquiryFromInboxMock,
+	inviteInquiryToApplyFromInbox: inviteInquiryToApplyFromInboxMock,
 }));
 
 import { SIGNAL_ADMISSIONS_INBOX_INVALIDATE, uiSignals } from '@/lib/uiSignals';
@@ -73,6 +97,10 @@ function row(overrides: Partial<AdmissionsInboxRow>): AdmissionsInboxRow {
 		actions: [
 			{ id: 'log_reply', enabled: true },
 			{ id: 'record_activity', enabled: true },
+			{ id: 'reassign_owner', enabled: true },
+			{ id: 'archive_conversation', enabled: true },
+			{ id: 'mark_spam', enabled: true },
+			{ id: 'create_inquiry', enabled: true },
 			{ id: 'link_inquiry', enabled: true },
 			{ id: 'link_applicant', enabled: true },
 			{ id: 'resolve_identity_match', enabled: true },
@@ -121,7 +149,13 @@ function context(overrides: Partial<AdmissionsInboxContext> = {}): AdmissionsInb
 						owner: null,
 						last_message_preview: 'Interested in Grade 4.',
 						needs_reply: false,
-						actions: [{ id: 'mark_contacted', enabled: true }],
+						actions: [
+							{ id: 'assign_owner', enabled: true },
+							{ id: 'mark_contacted', enabled: true },
+							{ id: 'archive_inquiry', enabled: true },
+							{ id: 'qualify', enabled: true },
+							{ id: 'invite_to_apply', enabled: true },
+						],
 					}),
 				],
 			}),
@@ -186,6 +220,14 @@ afterEach(() => {
 	recordAdmissionCrmActivityMock.mockReset();
 	linkAdmissionConversationMock.mockReset();
 	confirmAdmissionExternalIdentityMock.mockReset();
+	assignAdmissionConversationMock.mockReset();
+	updateAdmissionConversationStatusMock.mockReset();
+	createInquiryFromAdmissionConversationMock.mockReset();
+	assignInquiryFromInboxMock.mockReset();
+	archiveInquiryFromInboxMock.mockReset();
+	markInquiryContactedFromInboxMock.mockReset();
+	qualifyInquiryFromInboxMock.mockReset();
+	inviteInquiryToApplyFromInboxMock.mockReset();
 	uiSignals._clearAllForTests();
 	while (cleanupFns.length) {
 		cleanupFns.pop()?.();
@@ -332,6 +374,88 @@ describe('AdmissionsInbox', () => {
 		expect(document.body.textContent || '').toContain('Saved. Refreshing queue.');
 	});
 
+	it('submits conversation ownership changes through the CRM assignment endpoint', async () => {
+		getAdmissionsInboxContextMock.mockResolvedValue(context());
+		assignAdmissionConversationMock.mockResolvedValue({ ok: true });
+
+		mountAdmissionsInbox();
+		await flushUi();
+
+		clickByTestId('inbox-actions-conversation:AC-0001');
+		await flushUi();
+		clickByTestId('inbox-action-reassign_owner');
+		await flushUi();
+		setControlValue('action-assigned-to', 'new.owner@example.com');
+		clickByTestId('action-submit');
+		await flushUi();
+
+		expect(assignAdmissionConversationMock).toHaveBeenCalledWith({
+			conversation: 'AC-0001',
+			assigned_to: 'new.owner@example.com',
+		});
+		expect(document.body.textContent || '').toContain('Saved. Refreshing queue.');
+	});
+
+	it('creates an Inquiry from a CRM conversation without client-side schema assembly', async () => {
+		getAdmissionsInboxContextMock.mockResolvedValue(context());
+		createInquiryFromAdmissionConversationMock.mockResolvedValue({ ok: true });
+
+		mountAdmissionsInbox();
+		await flushUi();
+
+		clickByTestId('inbox-actions-conversation:AC-0001');
+		await flushUi();
+		clickByTestId('inbox-action-create_inquiry');
+		await flushUi();
+		setControlValue('action-create-inquiry-message', 'Family is interested in Grade 4 admission.');
+		clickByTestId('action-submit');
+		await flushUi();
+
+		expect(createInquiryFromAdmissionConversationMock).toHaveBeenCalledWith({
+			conversation: 'AC-0001',
+			type_of_inquiry: 'Admission',
+			source: 'WhatsApp',
+			message: 'Family is interested in Grade 4 admission.',
+		});
+		expect(document.body.textContent || '').toContain('Saved. Refreshing queue.');
+	});
+
+	it('submits Inquiry ownership and workflow actions through approved Inquiry endpoints', async () => {
+		getAdmissionsInboxContextMock.mockResolvedValue(context());
+		assignInquiryFromInboxMock.mockResolvedValue({ ok: true });
+		markInquiryContactedFromInboxMock.mockResolvedValue({ ok: true });
+
+		mountAdmissionsInbox();
+		await flushUi();
+
+		clickByTestId('queue-unassigned');
+		await flushUi();
+		clickByTestId('inbox-actions-inquiry:INQ-0001');
+		await flushUi();
+		clickByTestId('inbox-action-assign_owner');
+		await flushUi();
+		setControlValue('action-assigned-to', 'admissions.owner@example.com');
+		setControlValue('action-assignment-lane', 'Admission');
+		clickByTestId('action-submit');
+		await flushUi();
+
+		expect(assignInquiryFromInboxMock).toHaveBeenCalledWith({
+			inquiry: 'INQ-0001',
+			assigned_to: 'admissions.owner@example.com',
+			assignment_lane: 'Admission',
+		});
+
+		clickByTestId('inbox-action-mark_contacted');
+		await flushUi();
+		clickByTestId('action-submit');
+		await flushUi();
+
+		expect(markInquiryContactedFromInboxMock).toHaveBeenCalledWith({
+			inquiry: 'INQ-0001',
+			complete_todo: 0,
+		});
+	});
+
 	it('shows inline mutation errors without hiding the drawer', async () => {
 		getAdmissionsInboxContextMock.mockResolvedValue(context());
 		logAdmissionMessageMock.mockRejectedValue(new Error('Message body rejected'));
@@ -351,7 +475,29 @@ describe('AdmissionsInbox', () => {
 	});
 
 	it('lists unsupported server actions as source-record workflows instead of executable buttons', async () => {
-		getAdmissionsInboxContextMock.mockResolvedValue(context());
+		getAdmissionsInboxContextMock.mockResolvedValue(
+			context({
+				queues: [
+					queue({}),
+					queue({
+						id: 'unassigned',
+						label: 'Unassigned',
+						count: 1,
+						rows: [
+							row({
+								id: 'inquiry:INQ-0001',
+								kind: 'inquiry',
+								stage: 'inquiry',
+								title: 'Bea Lead',
+								inquiry: 'INQ-0001',
+								conversation: null,
+								actions: [{ id: 'legacy_action', enabled: true }],
+							}),
+						],
+					}),
+				],
+			})
+		);
 
 		mountAdmissionsInbox();
 		await flushUi();
@@ -362,11 +508,11 @@ describe('AdmissionsInbox', () => {
 		await flushUi();
 
 		expect(document.body.textContent || '').toContain(
-			'Handled from the source record in this phase: Mark Contacted.'
+			'Handled from the source record in this phase: Legacy Action.'
 		);
 		expect(document.body.textContent || '').toContain(
 			'No executable Inbox workflow is available for this item yet.'
 		);
-		expect(document.querySelector('[data-testid="inbox-action-mark_contacted"]')).toBeFalsy();
+		expect(document.querySelector('[data-testid="inbox-action-legacy_action"]')).toBeFalsy();
 	});
 });

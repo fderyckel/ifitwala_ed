@@ -274,12 +274,9 @@ const isDocumentLoading = ref(false);
 const isPageRendering = ref(false);
 const viewerError = ref('');
 
-const primaryAttachment = computed(
-	() => props.document?.primary_attachment?.attachment_preview || null
-);
+const primaryAttachment = computed(() => props.document?.primary_attachment?.attachment || null);
 const sourcePdfUrl = computed(
 	() =>
-		props.document?.primary_attachment?.open_url ||
 		primaryAttachment.value?.open_url ||
 		props.document?.submission.annotation_readiness?.open_url ||
 		null

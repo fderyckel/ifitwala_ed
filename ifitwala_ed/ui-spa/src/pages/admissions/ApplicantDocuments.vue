@@ -313,33 +313,28 @@ function summarizeDocumentStatus(doc: {
 	if (doc.uploaded_count < doc.required_count) {
 		return {
 			key: 'missing',
-			label: __('Uploaded {0} of {1} required files.')
-				.replace('{0}', String(doc.uploaded_count))
-				.replace('{1}', String(doc.required_count)),
+			label: __('Uploaded {0} of {1} required files.', [doc.uploaded_count, doc.required_count]),
 		};
 	}
 	if (doc.approved_count < doc.required_count) {
 		if (doc.has_rejected) {
 			return {
 				key: 'rejected',
-				label: __('Approved {0} of {1} required files (replace rejected files).')
-					.replace('{0}', String(doc.approved_count))
-					.replace('{1}', String(doc.required_count)),
+				label: __('Approved {0} of {1} required files (replace rejected files).', [
+					doc.approved_count,
+					doc.required_count,
+				]),
 			};
 		}
 		return {
 			key: 'pending',
-			label: __('Approved {0} of {1} required files.')
-				.replace('{0}', String(doc.approved_count))
-				.replace('{1}', String(doc.required_count)),
+			label: __('Approved {0} of {1} required files.', [doc.approved_count, doc.required_count]),
 		};
 	}
 
 	return {
 		key: 'approved',
-		label: __('Approved {0} of {1} required files.')
-			.replace('{0}', String(doc.approved_count))
-			.replace('{1}', String(doc.required_count)),
+		label: __('Approved {0} of {1} required files.', [doc.approved_count, doc.required_count]),
 	};
 }
 
@@ -394,11 +389,9 @@ const displayDocuments = computed<DisplayDocument[]>(() => {
 		const countSummary = requirementOverride
 			? ''
 			: requiredCount
-				? __('Approved {0} of {1} required files.')
-						.replace('{0}', String(approvedCount))
-						.replace('{1}', String(requiredCount))
+				? __('Approved {0} of {1} required files.', [approvedCount, requiredCount])
 				: uploadedCount
-					? __('Uploaded {0} file(s).').replace('{0}', String(uploadedCount))
+					? __('Uploaded {0} file(s).', [uploadedCount])
 					: '';
 
 		return {
@@ -452,9 +445,7 @@ const displayDocuments = computed<DisplayDocument[]>(() => {
 			statusKey: String(doc.requirement_state || '').trim() || 'optional',
 			statusLabel: String(doc.requirement_state_label || '').trim() || __('Optional'),
 			statusTone: statusToneFor(String(doc.requirement_state || '').trim() || 'optional'),
-			countSummary: uploadedCount
-				? __('Uploaded {0} file(s).').replace('{0}', String(uploadedCount))
-				: '',
+			countSummary: uploadedCount ? __('Uploaded {0} file(s).', [uploadedCount]) : '',
 			canUpload: !doc.requirement_override,
 			canAddItem:
 				!doc.requirement_override && (Boolean(doc.is_repeatable) || documentItems.length === 0),
@@ -488,13 +479,9 @@ const requiredSummaryText = computed(() => {
 	const approved = requiredApprovedCount.value;
 	if (!total) return __('No required documents configured.');
 	if (approved < total) {
-		return __('Complete or approved {0} of {1} required document types.')
-			.replace('{0}', String(approved))
-			.replace('{1}', String(total));
+		return __('Complete or approved {0} of {1} required document types.', [approved, total]);
 	}
-	return __('Complete or approved {0} of {1} required document types.')
-		.replace('{0}', String(approved))
-		.replace('{1}', String(total));
+	return __('Complete or approved {0} of {1} required document types.', [approved, total]);
 });
 
 async function loadDocuments() {

@@ -8,10 +8,18 @@ import type {
 	AdmissionsInboxContext,
 	AdmissionsInboxRequest,
 	AdmissionsInboxMutationResponse,
+	ArchiveInquiryFromInboxRequest,
+	AssignAdmissionConversationRequest,
+	AssignInquiryFromInboxRequest,
 	ConfirmAdmissionExternalIdentityRequest,
+	CreateInquiryFromAdmissionConversationRequest,
+	InviteInquiryToApplyFromInboxRequest,
 	LinkAdmissionConversationRequest,
 	LogAdmissionMessageRequest,
+	MarkInquiryContactedFromInboxRequest,
+	QualifyInquiryFromInboxRequest,
 	RecordAdmissionCrmActivityRequest,
+	UpdateAdmissionConversationStatusRequest,
 } from '@/types/contracts/admissions_inbox/get_admissions_inbox_context';
 
 export async function getAdmissionsInboxContext(
@@ -80,5 +88,73 @@ export function confirmAdmissionExternalIdentity(payload: ConfirmAdmissionExtern
 		'ifitwala_ed.api.admissions_crm.confirm_admission_external_identity',
 		payload,
 		'admission-identity'
+	);
+}
+
+export function assignAdmissionConversation(payload: AssignAdmissionConversationRequest) {
+	return submitMutation(
+		'ifitwala_ed.api.admissions_crm.assign_admission_conversation',
+		payload,
+		'admission-conversation-assign'
+	);
+}
+
+export function updateAdmissionConversationStatus(
+	payload: UpdateAdmissionConversationStatusRequest
+) {
+	return submitMutation(
+		'ifitwala_ed.api.admissions_crm.update_admission_conversation_status',
+		payload,
+		'admission-conversation-status'
+	);
+}
+
+export function createInquiryFromAdmissionConversation(
+	payload: CreateInquiryFromAdmissionConversationRequest
+) {
+	return submitMutation(
+		'ifitwala_ed.api.admissions_crm.create_inquiry_from_admission_conversation',
+		payload,
+		'admission-create-inquiry'
+	);
+}
+
+export function assignInquiryFromInbox(payload: AssignInquiryFromInboxRequest) {
+	return submitMutation(
+		'ifitwala_ed.api.admissions_crm.assign_inquiry_from_inbox',
+		payload,
+		'admission-inquiry-assign'
+	);
+}
+
+export function archiveInquiryFromInbox(payload: ArchiveInquiryFromInboxRequest) {
+	return submitMutation(
+		'ifitwala_ed.api.admissions_crm.archive_inquiry_from_inbox',
+		payload,
+		'admission-inquiry-archive'
+	);
+}
+
+export function markInquiryContactedFromInbox(payload: MarkInquiryContactedFromInboxRequest) {
+	return submitMutation(
+		'ifitwala_ed.api.admissions_crm.mark_inquiry_contacted_from_inbox',
+		payload,
+		'admission-inquiry-contacted'
+	);
+}
+
+export function qualifyInquiryFromInbox(payload: QualifyInquiryFromInboxRequest) {
+	return submitMutation(
+		'ifitwala_ed.api.admissions_crm.qualify_inquiry_from_inbox',
+		payload,
+		'admission-inquiry-qualify'
+	);
+}
+
+export function inviteInquiryToApplyFromInbox(payload: InviteInquiryToApplyFromInboxRequest) {
+	return submitMutation(
+		'ifitwala_ed.api.admissions_crm.invite_inquiry_to_apply_from_inbox',
+		payload,
+		'admission-inquiry-invite'
 	);
 }

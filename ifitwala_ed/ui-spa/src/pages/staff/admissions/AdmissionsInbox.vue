@@ -246,6 +246,85 @@
 						</label>
 					</template>
 
+					<template v-else-if="isAssignAction(activeActionId)">
+						<label class="action-field">
+							<span>Assigned To</span>
+							<input
+								v-model="actionForm.assigned_to"
+								data-testid="action-assigned-to"
+								type="text"
+								placeholder="Admissions user email"
+							/>
+						</label>
+						<label v-if="selectedRow?.inquiry" class="action-field">
+							<span>Assignment Lane</span>
+							<select v-model="actionForm.assignment_lane" data-testid="action-assignment-lane">
+								<option v-for="lane in assignmentLanes" :key="lane || 'default'" :value="lane">
+									{{ lane || 'Default' }}
+								</option>
+							</select>
+						</label>
+					</template>
+
+					<template v-else-if="activeActionId === 'create_inquiry'">
+						<label class="action-field">
+							<span>Type of Inquiry</span>
+							<select v-model="actionForm.type_of_inquiry" data-testid="action-inquiry-type">
+								<option v-for="type in inquiryTypes" :key="type" :value="type">{{ type }}</option>
+							</select>
+						</label>
+						<label class="action-field">
+							<span>Source</span>
+							<select v-model="actionForm.inquiry_source" data-testid="action-inquiry-source">
+								<option v-for="source in inquirySources" :key="source" :value="source">
+									{{ source }}
+								</option>
+							</select>
+						</label>
+						<label class="action-field">
+							<span>Message</span>
+							<textarea
+								v-model="actionForm.create_inquiry_message"
+								data-testid="action-create-inquiry-message"
+								rows="4"
+								placeholder="Optional Inquiry message"
+							/>
+						</label>
+					</template>
+
+					<template v-else-if="isArchiveAction(activeActionId)">
+						<label class="action-field">
+							<span>Reason</span>
+							<textarea
+								v-model="actionForm.archive_reason"
+								data-testid="action-archive-reason"
+								rows="4"
+								placeholder="Reason for closing this admissions item"
+							/>
+						</label>
+					</template>
+
+					<template v-else-if="activeActionId === 'invite_to_apply'">
+						<label class="action-field">
+							<span>School</span>
+							<input
+								v-model="actionForm.invite_school"
+								data-testid="action-invite-school"
+								type="text"
+								placeholder="School document name"
+							/>
+						</label>
+						<label class="action-field">
+							<span>Organization</span>
+							<input
+								v-model="actionForm.invite_organization"
+								data-testid="action-invite-organization"
+								type="text"
+								placeholder="Optional Organization document name"
+							/>
+						</label>
+					</template>
+
 					<template v-else-if="activeActionId === 'link_inquiry'">
 						<label class="action-field">
 							<span>Inquiry</span>
@@ -336,11 +415,19 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { FeatherIcon } from 'frappe-ui';
 
 import {
+	archiveInquiryFromInbox,
+	assignAdmissionConversation,
+	assignInquiryFromInbox,
 	confirmAdmissionExternalIdentity,
+	createInquiryFromAdmissionConversation,
 	getAdmissionsInboxContext,
+	inviteInquiryToApplyFromInbox,
 	linkAdmissionConversation,
 	logAdmissionMessage,
+	markInquiryContactedFromInbox,
+	qualifyInquiryFromInbox,
 	recordAdmissionCrmActivity,
+	updateAdmissionConversationStatus,
 } from '@/lib/services/admissions/admissionsInboxService';
 import { SIGNAL_ADMISSIONS_INBOX_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 import type {
@@ -356,9 +443,18 @@ const SUPPORTED_ACTION_IDS = [
 	'log_reply',
 	'log_message',
 	'record_activity',
+	'assign_owner',
+	'reassign_owner',
+	'archive_conversation',
+	'mark_spam',
+	'create_inquiry',
 	'link_inquiry',
 	'link_applicant',
 	'resolve_identity_match',
+	'archive_inquiry',
+	'mark_contacted',
+	'qualify',
+	'invite_to_apply',
 ] as const;
 
 type SupportedActionId = (typeof SUPPORTED_ACTION_IDS)[number];
@@ -374,6 +470,14 @@ type ActionForm = {
 	contact: string;
 	guardian: string;
 	match_status: AdmissionExternalIdentityMatchStatus;
+	assigned_to: string;
+	assignment_lane: '' | 'Admission' | 'Staff';
+	archive_reason: string;
+	type_of_inquiry: string;
+	inquiry_source: string;
+	create_inquiry_message: string;
+	invite_school: string;
+	invite_organization: string;
 };
 
 type ActionState = {
@@ -391,6 +495,7 @@ const actionDefinitions: Record<
 		description: string;
 		requiresConversation?: boolean;
 		requiresExternalIdentity?: boolean;
+		requiresInquiry?: boolean;
 	}
 > = {
 	log_reply: {
@@ -404,6 +509,29 @@ const actionDefinitions: Record<
 	record_activity: {
 		label: 'Record activity',
 		description: 'Add a structured CRM activity outcome.',
+		requiresConversation: true,
+	},
+	assign_owner: {
+		label: 'Assign owner',
+		description: 'Set the admissions owner for this Inbox item.',
+	},
+	reassign_owner: {
+		label: 'Reassign owner',
+		description: 'Move this Inbox item to another admissions owner.',
+	},
+	archive_conversation: {
+		label: 'Archive conversation',
+		description: 'Close this CRM conversation and clear reply pressure.',
+		requiresConversation: true,
+	},
+	mark_spam: {
+		label: 'Mark spam',
+		description: 'Remove this CRM conversation from active admissions queues.',
+		requiresConversation: true,
+	},
+	create_inquiry: {
+		label: 'Create Inquiry',
+		description: 'Create a controlled Inquiry from this CRM conversation.',
 		requiresConversation: true,
 	},
 	link_inquiry: {
@@ -420,6 +548,26 @@ const actionDefinitions: Record<
 		label: 'Resolve identity',
 		description: 'Confirm, reject, or update the external identity match status.',
 		requiresExternalIdentity: true,
+	},
+	archive_inquiry: {
+		label: 'Archive Inquiry',
+		description: 'Archive the linked Inquiry through the approved workflow.',
+		requiresInquiry: true,
+	},
+	mark_contacted: {
+		label: 'Mark contacted',
+		description: 'Move the linked Inquiry to contacted through the approved workflow.',
+		requiresInquiry: true,
+	},
+	qualify: {
+		label: 'Qualify',
+		description: 'Move the linked Inquiry to qualified through the approved workflow.',
+		requiresInquiry: true,
+	},
+	invite_to_apply: {
+		label: 'Invite to apply',
+		description: 'Create or open the applicant from the linked qualified Inquiry.',
+		requiresInquiry: true,
 	},
 };
 
@@ -441,6 +589,24 @@ const matchStatuses: AdmissionExternalIdentityMatchStatus[] = [
 	'Rejected',
 	'Suggested',
 	'Unmatched',
+];
+const assignmentLanes: ActionForm['assignment_lane'][] = ['', 'Admission', 'Staff'];
+const inquiryTypes = [
+	'Admission',
+	'Current Family',
+	'General Inquiry',
+	'Partnership / Agent',
+	'Other',
+];
+const inquirySources = [
+	'Website',
+	'WhatsApp',
+	'Line',
+	'Facebook',
+	'Open Day',
+	'Referral',
+	'Agent',
+	'Other',
 ];
 
 const context = ref<AdmissionsInboxContext | null>(null);
@@ -526,6 +692,14 @@ function createActionForm(row?: AdmissionsInboxRow): ActionForm {
 		contact: '',
 		guardian: '',
 		match_status: 'Confirmed',
+		assigned_to: String(row?.owner || ''),
+		assignment_lane: '',
+		archive_reason: '',
+		type_of_inquiry: 'Admission',
+		inquiry_source: defaultInquirySource(row),
+		create_inquiry_message: String(row?.last_message_preview || ''),
+		invite_school: String(row?.school || ''),
+		invite_organization: String(row?.organization || ''),
 	};
 }
 
@@ -561,6 +735,11 @@ function rowActionStates(row: AdmissionsInboxRow): ActionState[] {
 		if (enabled && definition.requiresExternalIdentity && !row.external_identity) {
 			enabled = false;
 			disabledReason = 'This action requires an external identity from a CRM conversation.';
+		}
+		if (enabled && definition.requiresInquiry && !row.inquiry) {
+			enabled = false;
+			disabledReason =
+				'This action requires a linked Inquiry. Create or link an Inquiry before continuing.';
 		}
 
 		return {
@@ -599,6 +778,26 @@ function selectAction(actionId: SupportedActionId) {
 
 function isLogAction(actionId: SupportedActionId | '') {
 	return actionId === 'log_reply' || actionId === 'log_message';
+}
+
+function isAssignAction(actionId: SupportedActionId | '') {
+	return actionId === 'assign_owner' || actionId === 'reassign_owner';
+}
+
+function isArchiveAction(actionId: SupportedActionId | '') {
+	return (
+		actionId === 'archive_conversation' ||
+		actionId === 'mark_spam' ||
+		actionId === 'archive_inquiry'
+	);
+}
+
+function defaultInquirySource(row?: AdmissionsInboxRow) {
+	const channel = String(row?.channel_type || '').trim();
+	if (channel === 'WhatsApp') return 'WhatsApp';
+	if (channel === 'Line') return 'Line';
+	if (channel === 'Facebook Messenger' || channel === 'Instagram DM') return 'Facebook';
+	return 'Other';
 }
 
 function countForQueue(queueId: string) {
@@ -700,6 +899,16 @@ function requireExternalIdentity(row: AdmissionsInboxRow) {
 	return externalIdentity;
 }
 
+function requireInquiry(row: AdmissionsInboxRow) {
+	const inquiry = blankToNull(String(row.inquiry || ''));
+	if (!inquiry) {
+		actionError.value =
+			'This action requires a linked Inquiry. Create or link an Inquiry before continuing.';
+		return null;
+	}
+	return inquiry;
+}
+
 async function submitActiveAction() {
 	const row = selectedRow.value;
 	const actionId = activeActionId.value;
@@ -714,12 +923,28 @@ async function submitActiveAction() {
 			await submitLogAction(row);
 		} else if (actionId === 'record_activity') {
 			await submitRecordActivity(row);
+		} else if (isAssignAction(actionId)) {
+			await submitAssignOwner(row);
+		} else if (actionId === 'archive_conversation') {
+			await submitConversationStatus(row, 'Archived');
+		} else if (actionId === 'mark_spam') {
+			await submitConversationStatus(row, 'Spam');
+		} else if (actionId === 'create_inquiry') {
+			await submitCreateInquiry(row);
 		} else if (actionId === 'link_inquiry') {
 			await submitLinkInquiry(row);
 		} else if (actionId === 'link_applicant') {
 			await submitLinkApplicant(row);
 		} else if (actionId === 'resolve_identity_match') {
 			await submitResolveIdentity(row);
+		} else if (actionId === 'archive_inquiry') {
+			await submitArchiveInquiry(row);
+		} else if (actionId === 'mark_contacted') {
+			await submitMarkInquiryContacted(row);
+		} else if (actionId === 'qualify') {
+			await submitQualifyInquiry(row);
+		} else if (actionId === 'invite_to_apply') {
+			await submitInviteInquiry(row);
 		}
 
 		if (!actionError.value) {
@@ -771,6 +996,58 @@ async function submitRecordActivity(row: AdmissionsInboxRow) {
 	actionForm.value.note = '';
 }
 
+async function submitAssignOwner(row: AdmissionsInboxRow) {
+	const assignedTo = blankToNull(actionForm.value.assigned_to);
+	if (!assignedTo) {
+		actionError.value = 'Assigned To is required.';
+		return;
+	}
+
+	if (row.conversation && row.kind === 'conversation') {
+		await assignAdmissionConversation({
+			conversation: row.conversation,
+			assigned_to: assignedTo,
+		});
+		return;
+	}
+
+	const inquiry = requireInquiry(row);
+	if (!inquiry) return;
+	await assignInquiryFromInbox({
+		inquiry,
+		assigned_to: assignedTo,
+		assignment_lane: actionForm.value.assignment_lane || null,
+	});
+}
+
+async function submitConversationStatus(row: AdmissionsInboxRow, status: 'Archived' | 'Spam') {
+	const conversation = requireConversation(row);
+	if (!conversation) return;
+	const reason = blankToNull(actionForm.value.archive_reason);
+	if (!reason) {
+		actionError.value = 'Reason is required.';
+		return;
+	}
+
+	await updateAdmissionConversationStatus({
+		conversation,
+		status,
+		note: reason,
+	});
+}
+
+async function submitCreateInquiry(row: AdmissionsInboxRow) {
+	const conversation = requireConversation(row);
+	if (!conversation) return;
+
+	await createInquiryFromAdmissionConversation({
+		conversation,
+		type_of_inquiry: blankToNull(actionForm.value.type_of_inquiry),
+		source: blankToNull(actionForm.value.inquiry_source),
+		message: blankToNull(actionForm.value.create_inquiry_message),
+	});
+}
+
 async function submitLinkInquiry(row: AdmissionsInboxRow) {
 	const conversation = requireConversation(row);
 	if (!conversation) return;
@@ -812,6 +1089,54 @@ async function submitResolveIdentity(row: AdmissionsInboxRow) {
 		guardian: blankToNull(actionForm.value.guardian),
 		inquiry: blankToNull(actionForm.value.inquiry),
 		student_applicant: blankToNull(actionForm.value.student_applicant),
+	});
+}
+
+async function submitArchiveInquiry(row: AdmissionsInboxRow) {
+	const inquiry = requireInquiry(row);
+	if (!inquiry) return;
+	const reason = blankToNull(actionForm.value.archive_reason);
+	if (!reason) {
+		actionError.value = 'Reason is required.';
+		return;
+	}
+
+	await archiveInquiryFromInbox({
+		inquiry,
+		reason,
+	});
+}
+
+async function submitMarkInquiryContacted(row: AdmissionsInboxRow) {
+	const inquiry = requireInquiry(row);
+	if (!inquiry) return;
+
+	await markInquiryContactedFromInbox({
+		inquiry,
+		complete_todo: 0,
+	});
+}
+
+async function submitQualifyInquiry(row: AdmissionsInboxRow) {
+	const inquiry = requireInquiry(row);
+	if (!inquiry) return;
+
+	await qualifyInquiryFromInbox({ inquiry });
+}
+
+async function submitInviteInquiry(row: AdmissionsInboxRow) {
+	const inquiry = requireInquiry(row);
+	if (!inquiry) return;
+	const school = blankToNull(actionForm.value.invite_school);
+	if (!school) {
+		actionError.value = 'School is required.';
+		return;
+	}
+
+	await inviteInquiryToApplyFromInbox({
+		inquiry,
+		school,
+		organization: blankToNull(actionForm.value.invite_organization),
 	});
 }
 

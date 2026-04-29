@@ -892,21 +892,32 @@
 										<div class="mt-2 space-y-2">
 											<div
 												v-for="attachment in selectedTaskSubmission.attachments"
-												:key="attachment.row_name || attachment.open_url || attachment.file_name"
-												class="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line-soft px-3 py-2"
+												:key="
+													attachment.row_name || attachment.attachment?.id || attachment.file_name
+												"
+												class="rounded-2xl border border-line-soft px-3 py-2"
 											>
-												<p class="type-caption text-ink/80">
+												<AttachmentPreviewCard
+													v-if="attachment.attachment"
+													:attachment="attachment.attachment"
+													variant="evidence"
+													:title="
+														attachment.attachment.display_name ||
+														attachment.file_name ||
+														'Attachment'
+													"
+													:description="attachment.description || null"
+												>
+													<template #badges>
+														<span class="chip">{{ attachment.kind }}</span>
+														<span v-if="attachment.file_size" class="chip">
+															{{ formatSelectedSubmissionFileSize(attachment.file_size) }}
+														</span>
+													</template>
+												</AttachmentPreviewCard>
+												<p v-else class="type-caption text-ink/80">
 													{{ attachment.file_name || attachment.description || 'Attachment' }}
 												</p>
-												<a
-													v-if="attachment.open_url"
-													:href="attachment.open_url"
-													target="_blank"
-													rel="noreferrer"
-													class="type-caption text-jacaranda underline"
-												>
-													Open
-												</a>
 											</div>
 										</div>
 									</div>
@@ -1294,6 +1305,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { toast } from 'frappe-ui';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 
+import AttachmentPreviewCard from '@/components/attachments/AttachmentPreviewCard.vue';
 import StudentLearningResourceCard from '@/components/learning/StudentLearningResourceCard.vue';
 import { createReflectionEntry } from '@/lib/services/portfolio/portfolioService';
 import { getStudentLearningSpace } from '@/lib/services/student/studentLearningHubService';

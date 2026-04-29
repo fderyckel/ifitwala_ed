@@ -1,6 +1,7 @@
 # Copyright (c) 2026, François de Ryckel and contributors
 # For license information, please see license.txt
 
+import types
 from types import SimpleNamespace
 from unittest import TestCase
 
@@ -245,6 +246,71 @@ class TestTaskSubmissionService(TestCase):
 
         self.assertEqual(result["submission_id"], "TSU-FILE-ONLY")
         self.assertEqual(order, ["insert", "attach", "save"])
+
+    def test_attach_submission_files_sets_required_attached_document_title(self):
+        drive_pkg = types.ModuleType("ifitwala_drive")
+        drive_api_pkg = types.ModuleType("ifitwala_drive.api")
+        drive_submissions = types.ModuleType("ifitwala_drive.api.submissions")
+        content_uploads = types.ModuleType("ifitwala_ed.integrations.drive.content_uploads")
+
+        create_session_callable = object()
+        drive_submissions.upload_task_submission_artifact = create_session_callable
+        captured_upload = {}
+
+        def fake_upload_content_via_drive(**kwargs):
+            captured_upload.update(kwargs)
+            return (
+                None,
+                None,
+                SimpleNamespace(
+                    file_url="/private/files/lab-report.pdf",
+                    file_name="lab-report.pdf",
+                    file_size=3,
+                ),
+            )
+
+        content_uploads.upload_content_via_drive = fake_upload_content_via_drive
+
+        with stubbed_frappe(
+            extra_modules={
+                "ifitwala_drive": drive_pkg,
+                "ifitwala_drive.api": drive_api_pkg,
+                "ifitwala_drive.api.submissions": drive_submissions,
+                "ifitwala_ed.integrations.drive.content_uploads": content_uploads,
+            }
+        ):
+            rows = []
+            test_case = self
+
+            class FakeSubmissionDoc:
+                name = "TSU-NEW"
+
+                def append(self, fieldname, value):
+                    test_case.assertEqual(fieldname, "attachments")
+                    rows.append(value)
+
+            module = import_fresh("ifitwala_ed.assessment.task_submission_service")
+            module._attach_submission_files(
+                FakeSubmissionDoc(),
+                {"student": "STU-1"},
+                [{"file_name": "lab-report.pdf", "content": b"pdf"}],
+                upload_source="Student Course Page",
+            )
+
+        self.assertEqual(captured_upload["create_session_callable"], create_session_callable)
+        self.assertEqual(
+            captured_upload["session_payload"],
+            {
+                "task_submission": "TSU-NEW",
+                "student": "STU-1",
+                "upload_source": "Student Course Page",
+            },
+        )
+        self.assertEqual(rows[0]["section_break_sbex"], "lab-report.pdf")
+        self.assertEqual(rows[0]["file"], "/private/files/lab-report.pdf")
+        self.assertEqual(rows[0]["file_name"], "lab-report.pdf")
+        self.assertEqual(rows[0]["file_size"], 3)
+        self.assertEqual(rows[0]["public"], 0)
 
 
 class TestTaskContributionService(TestCase):

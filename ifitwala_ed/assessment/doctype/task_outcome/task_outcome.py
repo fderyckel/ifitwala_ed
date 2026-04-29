@@ -85,7 +85,9 @@ class TaskOutcome(Document):
                 title="Task Outcome Backfill Failure",
             )
             frappe.throw(
-                _("Task Outcome is missing required context fields: {0}.").format(", ".join(still_missing_required))
+                _("Task Outcome is missing required context fields: {fields}.").format(
+                    fields=", ".join(still_missing_required)
+                )
             )
 
     def _guard_identity_mutation(self):
@@ -108,7 +110,11 @@ class TaskOutcome(Document):
 
         for field in fields:
             if previous.get(field) != getattr(self, field, None):
-                frappe.throw(_("Cannot change {0} on an existing Task Outcome.").format(field.replace("_", " ")))
+                frappe.throw(
+                    _("Cannot change {fieldname} on an existing Task Outcome.").format(
+                        fieldname=field.replace("_", " ")
+                    )
+                )
 
     def _guard_duplicate_outcome(self):
         if self.is_new() and self.task_delivery and self.student:

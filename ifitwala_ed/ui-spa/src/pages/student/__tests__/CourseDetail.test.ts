@@ -915,10 +915,18 @@ describe('CourseDetail', () => {
 							row_name: 'ATT-1',
 							kind: 'file',
 							file_name: 'lab-report.pdf',
-							open_url:
-								'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-UPLOAD-1',
-							preview_url:
-								'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-UPLOAD-1',
+							attachment: buildAttachmentPreview({
+								id: 'ATT-1',
+								surface: 'task_submission.evidence',
+								display_name: 'lab-report.pdf',
+								kind: 'pdf',
+								extension: 'pdf',
+								preview_mode: 'pdf_embed',
+								open_url:
+									'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-UPLOAD-1',
+								preview_url:
+									'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-UPLOAD-1',
+							}),
 						},
 					],
 				})

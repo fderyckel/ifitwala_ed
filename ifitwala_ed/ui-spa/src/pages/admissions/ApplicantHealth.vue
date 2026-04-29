@@ -61,10 +61,10 @@
 				>
 					{{
 						isDeclaredComplete
-							? __('Confirmed for {0}.').replace('{0}', applicantDisplayName)
-							: __(
-									'Please open Edit and confirm this is all known health information for {0}.'
-								).replace('{0}', applicantDisplayName)
+							? __('Confirmed for {0}.', [applicantDisplayName])
+							: __('Please open Edit and confirm this is all known health information for {0}.', [
+									applicantDisplayName,
+								])
 					}}
 				</p>
 			</section>

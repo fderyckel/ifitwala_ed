@@ -323,7 +323,7 @@ def upload_self_referral_file(referral_name: str):
     try:
         from ifitwala_drive.api import uploads as drive_uploads_api
     except ImportError as exc:
-        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
+        frappe.throw(_("Ifitwala Drive is required for governed upload execution: {error}").format(error=exc))
 
     from ifitwala_ed.utilities.governed_uploads import (
         _drive_upload_and_finalize,

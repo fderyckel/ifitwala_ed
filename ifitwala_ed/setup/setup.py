@@ -88,7 +88,9 @@ def ensure_root_organization():
 
     if len(roots) > 1:
         frappe.throw(
-            _("Multiple root Organization records found: {0}").format(", ".join(d.name for d in roots)),
+            _("Multiple root Organization records found: {organizations}").format(
+                organizations=", ".join(d.name for d in roots)
+            ),
             title=_("Initial Setup Aborted"),
         )
 
@@ -105,7 +107,10 @@ def ensure_root_organization():
             ).insert(ignore_permissions=True)
         except Exception as e:
             # Bubble up any DB/validation issue
-            frappe.throw(_("Unable to create root Organization: {0}").format(str(e)), title=_("Initial Setup Aborted"))
+            frappe.throw(
+                _("Unable to create root Organization: {error}").format(error=str(e)),
+                title=_("Initial Setup Aborted"),
+            )
 
 
 def ensure_setup_tree_roots():

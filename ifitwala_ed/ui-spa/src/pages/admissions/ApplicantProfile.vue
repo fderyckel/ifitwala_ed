@@ -164,7 +164,7 @@
 					}}
 				</p>
 				<p v-if="!completeness.ok" class="mt-1 type-caption text-clay/85">
-					{{ __('Missing: {0}').replace('{0}', completeness.missing.join(', ')) }}
+					{{ __('Missing: {0}', [completeness.missing.join(', ')]) }}
 				</p>
 			</div>
 
@@ -374,7 +374,7 @@
 					>
 						<div class="flex flex-wrap items-center justify-between gap-3">
 							<p class="type-body-strong text-ink">
-								{{ __('Guardian #{0}').replace('{0}', String(idx + 1)) }}
+								{{ __('Guardian #{0}', [idx + 1]) }}
 							</p>
 							<button
 								type="button"
@@ -758,7 +758,7 @@ const hasApplicantImage = computed(() =>
 );
 const imageUploadProgressLabel = computed(() =>
 	selectedImageFile.value?.name
-		? __('Uploading {0}').replace('{0}', selectedImageFile.value.name)
+		? __('Uploading {0}', [selectedImageFile.value.name])
 		: __('Uploading image')
 );
 const canUseApplicantContact = computed(() => Boolean(applicantContactPrefill.value.available));
@@ -1188,7 +1188,7 @@ function guardianUploadProgress(index: number): UploadProgressState | null {
 
 function guardianUploadProgressLabel(index: number): string {
 	const fileName = selectedGuardianImageFiles.value[index]?.name || '';
-	return fileName ? __('Uploading {0}').replace('{0}', fileName) : __('Uploading image');
+	return fileName ? __('Uploading {0}', [fileName]) : __('Uploading image');
 }
 
 let unsubscribe: (() => void) | null = null;

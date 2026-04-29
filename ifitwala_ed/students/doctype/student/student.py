@@ -435,10 +435,10 @@ def get_contact_linked_to_student(student_name):
 def _require_student_access(student_name: str, *, ptype: str = "read") -> "Student":
     student_name = (student_name or "").strip()
     if not student_name or not frappe.db.exists("Student", student_name):
-        frappe.throw(_("Invalid Student: {0}").format(student_name or _("missing")))
+        frappe.throw(_("Invalid Student: {student}").format(student=student_name or _("missing")))
     student = frappe.get_doc("Student", student_name)
     if not frappe.has_permission("Student", doc=student, ptype=ptype):
-        frappe.throw(_("You do not have permission to {0} this Student.").format(ptype))
+        frappe.throw(_("You do not have permission to {permission_type} this Student.").format(permission_type=ptype))
     return student
 
 
@@ -537,7 +537,7 @@ def _ensure_address_link(
     link_name = (link_name or "").strip()
 
     if not address_name or not frappe.db.exists("Address", address_name):
-        frappe.throw(_("Invalid Address: {0}").format(address_name or _("missing")))
+        frappe.throw(_("Invalid Address: {address}").format(address=address_name or _("missing")))
     if not link_doctype:
         frappe.throw(_("Link DocType is required."))
     if not link_name:
@@ -782,7 +782,12 @@ def get_family_address_link_proposal(student_name: str, address_name: str | None
     resolved_address = (address_name or "").strip()
     if resolved_address:
         if resolved_address not in student_address_names:
-            frappe.throw(_("Address {0} is not linked to Student {1}.").format(resolved_address, student.name))
+            frappe.throw(
+                _("Address {address} is not linked to Student {student}.").format(
+                    address=resolved_address,
+                    student=student.name,
+                )
+            )
     elif len(student_address_names) == 1:
         resolved_address = student_address_names[0]
     else:

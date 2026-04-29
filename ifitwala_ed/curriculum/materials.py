@@ -54,7 +54,7 @@ def resolve_anchor_context(anchor_doctype: str, anchor_name: str) -> dict[str, s
     anchor_doctype = _normalize_text(anchor_doctype)
     anchor_name = _normalize_text(anchor_name)
     if anchor_doctype not in MATERIAL_ALLOWED_ANCHORS:
-        frappe.throw(_("Unsupported material anchor type: {0}").format(anchor_doctype))
+        frappe.throw(_("Unsupported material anchor type: {anchor_type}").format(anchor_type=anchor_doctype))
     if not anchor_name:
         frappe.throw(_("Anchor Name is required."))
 
@@ -141,14 +141,14 @@ def resolve_material_origin(anchor_doctype: str) -> str:
 def normalize_material_modality(value: str | None) -> str:
     modality = _normalize_text(value) or "Read"
     if modality not in MATERIAL_MODALITIES:
-        frappe.throw(_("Unsupported material modality: {0}").format(modality))
+        frappe.throw(_("Unsupported material modality: {modality}").format(modality=modality))
     return modality
 
 
 def normalize_material_usage_role(value: str | None) -> str:
     usage_role = _normalize_text(value) or "Reference"
     if usage_role not in MATERIAL_USAGE_ROLES:
-        frappe.throw(_("Unsupported material usage role: {0}").format(usage_role))
+        frappe.throw(_("Unsupported material usage role: {usage_role}").format(usage_role=usage_role))
     return usage_role
 
 
@@ -157,7 +157,7 @@ def normalize_material_origin(value: str | None, *, anchor_doctype: str | None =
     if not origin and anchor_doctype:
         origin = resolve_material_origin(anchor_doctype)
     if origin not in MATERIAL_ORIGINS:
-        frappe.throw(_("Unsupported material origin: {0}").format(origin))
+        frappe.throw(_("Unsupported material origin: {origin}").format(origin=origin))
     return origin
 
 

@@ -3,8 +3,8 @@ title: "Task Submission: Versioned Student Evidence with Governance"
 slug: task-submission
 category: Assessment
 doc_order: 8
-version: "1.2.2"
-last_change_date: "2026-04-25"
+version: "1.2.3"
+last_change_date: "2026-04-29"
 summary: "Capture append-only student evidence (files, text, links), enforce versioning, and keep outcomes and portfolio workflows synchronized."
 seo_title: "Task Submission: Versioned Student Evidence with Governance"
 seo_description: "Capture append-only student evidence (files, text, links), enforce versioning, and keep outcomes and portfolio workflows synchronized."
@@ -58,7 +58,7 @@ Status: Implemented current-state baseline
 Code refs: `ifitwala_ed/api/task_submission.py`, `ifitwala_ed/api/gradebook_reads.py`, `ifitwala_ed/api/file_access.py`
 Test refs: `ifitwala_ed/api/test_task_submission.py`, `ifitwala_ed/api/test_gradebook.py`
 
-- The student-side latest-submission read now returns governed attachment rows with stable `preview_url` and `open_url` values instead of raw private file paths.
+- The student-side latest-submission read now returns governed attachment rows as top-level `attachment` payloads. Stable `preview_url` and `open_url` values live inside that governed row instead of raw private file paths or legacy nested preview adapters.
 - The staff gradebook drawer now supports strict version selection: it returns a version list summary plus one selected submission payload for the requested version, defaulting to the latest version when no selection is provided.
 - Attachment preview is still governed by the owning submission and student scope. The SPA must not guess file paths or bypass the server-owned route contract.
 - Preview remains additive to open/download. When no ready derivative exists, the preview route may degrade to the canonical file while still preserving permission checks.

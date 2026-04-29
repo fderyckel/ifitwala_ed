@@ -141,3 +141,57 @@ export type ConfirmAdmissionExternalIdentityRequest = {
 	student_applicant?: string | null;
 	client_request_id?: string | null;
 };
+
+export type AssignAdmissionConversationRequest = {
+	conversation: string;
+	assigned_to: string;
+	client_request_id?: string | null;
+};
+
+export type AdmissionConversationStatus = 'Open' | 'Closed' | 'Archived' | 'Spam';
+
+export type UpdateAdmissionConversationStatusRequest = {
+	conversation: string;
+	status: AdmissionConversationStatus;
+	note?: string | null;
+	client_request_id?: string | null;
+};
+
+export type CreateInquiryFromAdmissionConversationRequest = {
+	conversation: string;
+	type_of_inquiry?: string | null;
+	source?: string | null;
+	message?: string | null;
+	client_request_id?: string | null;
+};
+
+export type AssignInquiryFromInboxRequest = {
+	inquiry: string;
+	assigned_to: string;
+	assignment_lane?: 'Admission' | 'Staff' | '' | null;
+	client_request_id?: string | null;
+};
+
+export type ArchiveInquiryFromInboxRequest = {
+	inquiry: string;
+	reason: string;
+	client_request_id?: string | null;
+};
+
+export type MarkInquiryContactedFromInboxRequest = {
+	inquiry: string;
+	complete_todo?: number | string | null;
+	client_request_id?: string | null;
+};
+
+export type QualifyInquiryFromInboxRequest = {
+	inquiry: string;
+	client_request_id?: string | null;
+};
+
+export type InviteInquiryToApplyFromInboxRequest = {
+	inquiry: string;
+	school: string;
+	organization?: string | null;
+	client_request_id?: string | null;
+};

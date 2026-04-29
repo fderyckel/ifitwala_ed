@@ -97,7 +97,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Source",
-   "options": "\nWebsite\nWhatsApp\nLine\nFacebook\nOpen Day\nReferral\nAgent\nOther",
+   "options": "\nWebsite\nEmail\nPhone\nWhatsApp\nLine\nFacebook\nInstagram\nOpen Day\nWalk-in\nCommunity Fair\nReferral\nAgent\nOther",
    "search_index": 1
   },
   {
@@ -400,7 +400,7 @@
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2026-04-28 12:58:20.221213",
+ "modified": "2026-04-29 15:38:03.000000",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Inquiry",
