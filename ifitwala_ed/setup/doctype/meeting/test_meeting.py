@@ -14,6 +14,7 @@ from ifitwala_ed.setup.doctype.meeting.meeting import (
     _invalidate_student_calendar_caches_for_participants,
     _participant_user_ids,
     get_academic_year_for_date,
+    get_team_participants,
 )
 
 
@@ -71,4 +72,38 @@ class TestMeeting(TestCase):
             users=["student.current@example.com", "student.previous@example.com"],
             source="meeting",
             source_name="MTG-0001",
+        )
+
+    def test_get_team_participants_resolves_user_from_employee_when_member_is_blank(self):
+        def fake_get_all(doctype, **kwargs):
+            if doctype == "Team Member":
+                return [
+                    frappe._dict(
+                        employee="EMP-0001",
+                        member="",
+                        member_name="",
+                    )
+                ]
+            if doctype == "Employee":
+                return [
+                    frappe._dict(
+                        name="EMP-0001",
+                        user_id="teacher@example.com",
+                        employee_full_name="Teacher Example",
+                    )
+                ]
+            raise AssertionError(f"Unexpected get_all doctype: {doctype}")
+
+        with patch("ifitwala_ed.setup.doctype.meeting.meeting.frappe.get_all", side_effect=fake_get_all):
+            rows = get_team_participants("TEAM-1")
+
+        self.assertEqual(
+            rows,
+            [
+                {
+                    "user_id": "teacher@example.com",
+                    "full_name": "Teacher Example",
+                    "employee": "EMP-0001",
+                }
+            ],
         )

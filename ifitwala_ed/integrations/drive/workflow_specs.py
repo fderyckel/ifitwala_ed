@@ -31,7 +31,7 @@ class GovernedUploadSpec:
 
 
 def _throw_missing_field(fieldname: str) -> None:
-    frappe.throw(_("Missing required field: {0}").format(fieldname))
+    frappe.throw(_("Missing required field: {fieldname}").format(fieldname=fieldname))
 
 
 def _as_non_empty_string(payload: dict[str, Any], fieldname: str) -> str:
@@ -44,7 +44,7 @@ def _as_non_empty_string(payload: dict[str, Any], fieldname: str) -> str:
 def _validate_workflow_slot(payload: dict[str, Any], authoritative: dict[str, Any], *, label: str) -> None:
     provided_slot = str(payload.get("slot") or "").strip()
     if provided_slot and provided_slot != str(authoritative.get("slot") or "").strip():
-        frappe.throw(_("{0} slot does not match the authoritative workflow context.").format(label))
+        frappe.throw(_("{label} slot does not match the authoritative workflow context.").format(label=label))
 
 
 def _no_attached_field_override(_upload_session_doc) -> str | None:
@@ -845,7 +845,9 @@ def normalize_workflow_id(workflow_id: str | None) -> str | None:
 def get_upload_spec(workflow_id: str) -> GovernedUploadSpec:
     normalized = normalize_workflow_id(workflow_id)
     if not normalized or normalized not in _WORKFLOW_SPEC_BY_ID:
-        frappe.throw(_("Unknown governed upload workflow: {0}").format(workflow_id or _("unknown")))
+        frappe.throw(
+            _("Unknown governed upload workflow: {workflow_id}").format(workflow_id=workflow_id or _("unknown"))
+        )
     return _WORKFLOW_SPEC_BY_ID[normalized]
 
 

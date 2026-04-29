@@ -68,7 +68,7 @@ def build_task_submission_upload_contract(task_submission_doc) -> dict[str, Any]
 def _build_task_feedback_export_slot(*, audience: str | None = None) -> str:
     resolved_audience = str(audience or "student").strip().lower() or "student"
     if resolved_audience not in {"student"}:
-        frappe.throw(_("Unsupported feedback export audience: {0}").format(resolved_audience))
+        frappe.throw(_("Unsupported feedback export audience: {audience}").format(audience=resolved_audience))
     return f"{_TASK_FEEDBACK_EXPORT_SLOT_PREFIX}{resolved_audience}"
 
 

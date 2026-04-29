@@ -746,16 +746,32 @@ def get_team_participants(team: str) -> list[dict]:
 
     out: list[dict] = []
     seen_users: set[str] = set()
+    employee_names = [r.get("employee") for r in rows if r.get("employee")]
+    employee_by_name = {}
+    if employee_names:
+        employee_rows = frappe.get_all(
+            "Employee",
+            filters={"name": ["in", sorted(set(employee_names))]},
+            fields=["name", "user_id", "employee_full_name"],
+            limit=max(len(set(employee_names)), 1),
+        )
+        employee_by_name = {row.get("name"): row for row in employee_rows if row.get("name")}
 
     for r in rows:
-        user_id = r.get("member")
+        employee_row = employee_by_name.get(r.get("employee")) or {}
+        user_id = r.get("member") or employee_row.get("user_id")
         if not user_id:
             continue
 
         if user_id in seen_users:
             continue
 
-        full_name = r.get("member_name") or frappe.db.get_value("User", user_id, "full_name") or user_id
+        full_name = (
+            r.get("member_name")
+            or employee_row.get("employee_full_name")
+            or frappe.db.get_value("User", user_id, "full_name")
+            or user_id
+        )
 
         out.append(
             {

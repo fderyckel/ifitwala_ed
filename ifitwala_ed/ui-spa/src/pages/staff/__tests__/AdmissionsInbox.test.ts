@@ -7,8 +7,18 @@ import type {
 	AdmissionsInboxRow,
 } from '@/types/contracts/admissions_inbox/get_admissions_inbox_context';
 
-const { getAdmissionsInboxContextMock } = vi.hoisted(() => ({
+const {
+	getAdmissionsInboxContextMock,
+	logAdmissionMessageMock,
+	recordAdmissionCrmActivityMock,
+	linkAdmissionConversationMock,
+	confirmAdmissionExternalIdentityMock,
+} = vi.hoisted(() => ({
 	getAdmissionsInboxContextMock: vi.fn(),
+	logAdmissionMessageMock: vi.fn(),
+	recordAdmissionCrmActivityMock: vi.fn(),
+	linkAdmissionConversationMock: vi.fn(),
+	confirmAdmissionExternalIdentityMock: vi.fn(),
 }));
 
 vi.mock('frappe-ui', () => ({
@@ -25,8 +35,13 @@ vi.mock('frappe-ui', () => ({
 
 vi.mock('@/lib/services/admissions/admissionsInboxService', () => ({
 	getAdmissionsInboxContext: getAdmissionsInboxContextMock,
+	logAdmissionMessage: logAdmissionMessageMock,
+	recordAdmissionCrmActivity: recordAdmissionCrmActivityMock,
+	linkAdmissionConversation: linkAdmissionConversationMock,
+	confirmAdmissionExternalIdentity: confirmAdmissionExternalIdentityMock,
 }));
 
+import { SIGNAL_ADMISSIONS_INBOX_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 import AdmissionsInbox from '@/pages/staff/admissions/AdmissionsInbox.vue';
 
 const cleanupFns: Array<() => void> = [];
@@ -44,7 +59,7 @@ function row(overrides: Partial<AdmissionsInboxRow>): AdmissionsInboxRow {
 		student_applicant: null,
 		conversation: 'AC-0001',
 		open_url: '/desk/admission-conversation/AC-0001',
-		external_identity: null,
+		external_identity: 'EXT-0001',
 		channel_type: 'WhatsApp',
 		channel_account: null,
 		owner: 'admissions@example.com',
@@ -55,7 +70,13 @@ function row(overrides: Partial<AdmissionsInboxRow>): AdmissionsInboxRow {
 		unread_count: 0,
 		next_action_on: null,
 		permissions: { can_open: true },
-		actions: [{ id: 'log_reply', enabled: true }],
+		actions: [
+			{ id: 'log_reply', enabled: true },
+			{ id: 'record_activity', enabled: true },
+			{ id: 'link_inquiry', enabled: true },
+			{ id: 'link_applicant', enabled: true },
+			{ id: 'resolve_identity_match', enabled: true },
+		],
 		...overrides,
 	};
 }
@@ -140,8 +161,32 @@ function mountAdmissionsInbox() {
 	});
 }
 
+function clickByTestId(testId: string) {
+	const element = document.querySelector(`[data-testid="${testId}"]`) as HTMLElement | null;
+	expect(element).toBeTruthy();
+	element?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+}
+
+function setControlValue(testId: string, value: string) {
+	const element = document.querySelector(`[data-testid="${testId}"]`) as
+		| HTMLInputElement
+		| HTMLTextAreaElement
+		| HTMLSelectElement
+		| null;
+	expect(element).toBeTruthy();
+	if (!element) return;
+	element.value = value;
+	element.dispatchEvent(new Event('input', { bubbles: true }));
+	element.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
 afterEach(() => {
 	getAdmissionsInboxContextMock.mockReset();
+	logAdmissionMessageMock.mockReset();
+	recordAdmissionCrmActivityMock.mockReset();
+	linkAdmissionConversationMock.mockReset();
+	confirmAdmissionExternalIdentityMock.mockReset();
+	uiSignals._clearAllForTests();
 	while (cleanupFns.length) {
 		cleanupFns.pop()?.();
 	}
@@ -227,5 +272,101 @@ describe('AdmissionsInbox', () => {
 
 		expect(getAdmissionsInboxContextMock).toHaveBeenCalledTimes(2);
 		expect(document.body.textContent || '').toContain('Ada Parent');
+	});
+
+	it('submits a log reply with the controlled CRM message payload and refreshes on signal', async () => {
+		getAdmissionsInboxContextMock
+			.mockResolvedValueOnce(context())
+			.mockResolvedValueOnce(context({ queues: [queue({ rows: [row({ title: 'Ada Parent Updated' })] })] }));
+		logAdmissionMessageMock.mockImplementation(async () => {
+			uiSignals.emit(SIGNAL_ADMISSIONS_INBOX_INVALIDATE);
+			return { ok: true };
+		});
+
+		mountAdmissionsInbox();
+		await flushUi();
+
+		clickByTestId('inbox-actions-conversation:AC-0001');
+		await flushUi();
+		setControlValue('action-message-body', 'Called parent and confirmed interest.');
+		clickByTestId('action-submit');
+		await flushUi();
+
+		expect(logAdmissionMessageMock).toHaveBeenCalledWith({
+			conversation: 'AC-0001',
+			inquiry: null,
+			student_applicant: null,
+			external_identity: 'EXT-0001',
+			channel_account: null,
+			organization: 'ORG-1',
+			school: 'SCH-1',
+			assigned_to: 'admissions@example.com',
+			direction: 'Outbound',
+			message_type: 'Text',
+			delivery_status: 'Logged',
+			body: 'Called parent and confirmed interest.',
+		});
+		expect(getAdmissionsInboxContextMock).toHaveBeenCalledTimes(2);
+		expect(document.body.textContent || '').toContain('Saved. Refreshing queue.');
+	});
+
+	it('submits a link applicant action with only the approved link payload', async () => {
+		getAdmissionsInboxContextMock.mockResolvedValue(context());
+		linkAdmissionConversationMock.mockResolvedValue({ ok: true });
+
+		mountAdmissionsInbox();
+		await flushUi();
+
+		clickByTestId('inbox-actions-conversation:AC-0001');
+		await flushUi();
+		clickByTestId('inbox-action-link_applicant');
+		await flushUi();
+		setControlValue('action-link-applicant', 'APP-0001');
+		clickByTestId('action-submit');
+		await flushUi();
+
+		expect(linkAdmissionConversationMock).toHaveBeenCalledWith({
+			conversation: 'AC-0001',
+			student_applicant: 'APP-0001',
+		});
+		expect(document.body.textContent || '').toContain('Saved. Refreshing queue.');
+	});
+
+	it('shows inline mutation errors without hiding the drawer', async () => {
+		getAdmissionsInboxContextMock.mockResolvedValue(context());
+		logAdmissionMessageMock.mockRejectedValue(new Error('Message body rejected'));
+
+		mountAdmissionsInbox();
+		await flushUi();
+
+		clickByTestId('inbox-actions-conversation:AC-0001');
+		await flushUi();
+		setControlValue('action-message-body', 'Follow-up note');
+		clickByTestId('action-submit');
+		await flushUi();
+
+		expect(document.querySelector('[data-testid="admissions-inbox-action-drawer"]')).toBeTruthy();
+		expect(document.querySelector('[data-testid="admissions-inbox-action-error"]')).toBeTruthy();
+		expect(document.body.textContent || '').toContain('Message body rejected');
+	});
+
+	it('lists unsupported server actions as source-record workflows instead of executable buttons', async () => {
+		getAdmissionsInboxContextMock.mockResolvedValue(context());
+
+		mountAdmissionsInbox();
+		await flushUi();
+
+		clickByTestId('queue-unassigned');
+		await flushUi();
+		clickByTestId('inbox-actions-inquiry:INQ-0001');
+		await flushUi();
+
+		expect(document.body.textContent || '').toContain(
+			'Handled from the source record in this phase: Mark Contacted.'
+		);
+		expect(document.body.textContent || '').toContain(
+			'No executable Inbox workflow is available for this item yet.'
+		);
+		expect(document.querySelector('[data-testid="inbox-action-mark_contacted"]')).toBeFalsy();
 	});
 });

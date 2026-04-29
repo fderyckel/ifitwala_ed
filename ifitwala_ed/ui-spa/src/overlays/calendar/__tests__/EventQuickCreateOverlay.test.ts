@@ -233,6 +233,13 @@ function clickButton(text: string) {
 	button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 }
 
+function updateSelectByLabel(labelText: string, value: string) {
+	const select = getSelectByLabel(labelText);
+	if (!select) throw new Error(`Missing select with label: ${labelText}`);
+	select.value = value;
+	select.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
 afterEach(() => {
 	createMeetingQuickMock.mockReset();
 	createSchoolEventQuickMock.mockReset();
@@ -322,5 +329,42 @@ describe('EventQuickCreateOverlay school event publishing', () => {
 			publish_announcement: 1,
 			announcement_message: 'Workshop presentation',
 		});
+	});
+});
+
+describe('EventQuickCreateOverlay meeting attendees', () => {
+	it('bulk-adds team attendees when an ad-hoc meeting team is selected', async () => {
+		getEventQuickCreateOptionsMock.mockResolvedValue({
+			...baseOptions,
+			can_create_meeting: true,
+			can_create_school_event: false,
+			attendee_kinds: [{ value: 'employee', label: 'Employees' }],
+		});
+		getMeetingTeamAttendeesMock.mockResolvedValue({
+			team: 'TEAM-1',
+			results: [
+				{
+					value: 'teacher@example.com',
+					label: 'Teacher Example',
+					meta: 'TEAM-1',
+					kind: 'employee',
+					availability_mode: 'authoritative',
+				},
+			],
+		});
+
+		mountOverlay({
+			eventType: 'meeting',
+			lockEventType: true,
+			meetingMode: 'ad_hoc',
+		});
+		await flushUi();
+
+		updateSelectByLabel('Bulk-add a team', 'TEAM-1');
+		await flushUi();
+
+		expect(getMeetingTeamAttendeesMock).toHaveBeenCalledWith({ team: 'TEAM-1' });
+		expect(document.body.textContent || '').toContain('Teacher Example');
+		expect(document.body.textContent || '').toContain('1 invitee + organizer');
 	});
 });

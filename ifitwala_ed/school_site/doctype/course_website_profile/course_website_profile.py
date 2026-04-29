@@ -182,14 +182,17 @@ class CourseWebsiteProfile(Document):
         transition = WORKFLOW_TRANSITIONS.get(action_key)
         if not transition:
             frappe.throw(
-                _("Unknown workflow action: {0}").format(action_key or _("(empty)")),
+                _("Unknown workflow action: {action}").format(action=action_key or _("(empty)")),
                 frappe.ValidationError,
             )
 
         current_state = normalize_workflow_state(self.workflow_state)
         if current_state not in transition["from_states"]:
             frappe.throw(
-                _("Cannot run '{0}' from workflow state '{1}'.").format(action_key, current_state),
+                _("Cannot run '{action}' from workflow state '{state}'.").format(
+                    action=action_key,
+                    state=current_state,
+                ),
                 frappe.ValidationError,
             )
 
@@ -197,7 +200,7 @@ class CourseWebsiteProfile(Document):
         allowed_roles = set(transition["roles"])
         if not user_roles.intersection(allowed_roles):
             frappe.throw(
-                _("You do not have permission to run workflow action: {0}.").format(action_key),
+                _("You do not have permission to run workflow action: {action}.").format(action=action_key),
                 frappe.PermissionError,
             )
         return action_key
@@ -239,10 +242,10 @@ class CourseWebsiteProfile(Document):
                 json.loads(raw_props)
             except Exception as exc:
                 frappe.throw(
-                    _("Invalid block props JSON in row {0} ({1}): {2}").format(
-                        row.idx or "?",
-                        row.block_type or _("Unknown block"),
-                        str(exc),
+                    _("Invalid block props JSON in row {row_index} ({block_type}): {error}").format(
+                        row_index=row.idx or "?",
+                        block_type=row.block_type or _("Unknown block"),
+                        error=str(exc),
                     ),
                     frappe.ValidationError,
                 )

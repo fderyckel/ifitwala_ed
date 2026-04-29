@@ -1,12 +1,12 @@
 # Admissions Inbox SPA Contract
 
-Status: Backend context endpoint and Phase 3B staff SPA queue route implemented; mutation workflows planned
+Status: Backend context endpoint, Phase 3B staff SPA queue route, and Phase 3C controlled action drawer implemented; provider, assignment, archive, and media workflows planned
 Code refs: `ifitwala_ed/api/admissions_inbox.py`, `ifitwala_ed/api/admissions_crm.py`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsInbox.vue`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsInboxService.ts`, `ifitwala_ed/ui-spa/src/types/contracts/admissions_inbox/get_admissions_inbox_context.ts`, CRM DocTypes under `ifitwala_ed/admission/doctype/admission_*`
-Test refs: `ifitwala_ed/api/test_admissions_inbox.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsInbox.test.ts`, `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`
+Test refs: `ifitwala_ed/api/test_admissions_inbox.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsInbox.test.ts`, `ifitwala_ed/ui-spa/src/lib/services/admissions/__tests__/admissionsInboxService.test.ts`, `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`
 
 This note defines the staff-side Admissions Inbox surface.
 
-Current runtime behavior includes the backend context endpoint and a staff SPA queue route. Workflow actions such as reply, assignment, linking, archive, and governed media conversion are still planned.
+Current runtime behavior includes the backend context endpoint, staff SPA queue route, and controlled action drawer for existing admissions CRM mutation endpoints. Provider replies, assignment/reassignment, archive, contact creation, Inquiry workflow transitions, and governed media conversion are still planned.
 
 ## 1. Authority
 
@@ -124,10 +124,53 @@ ifitwala_ed.api.admissions_crm.link_admission_conversation
 ifitwala_ed.api.admissions_crm.confirm_admission_external_identity
 ```
 
-Planned Inbox-specific mutation endpoints must continue to be named workflow endpoints, for example:
+Implemented Phase 3C action payloads:
 
 ```text
 log_admission_message
+  conversation optional
+  inquiry optional
+  student_applicant optional
+  external_identity optional
+  channel_account optional
+  organization optional
+  school optional
+  assigned_to optional
+  direction = Outbound
+  message_type = Text
+  delivery_status = Logged
+  body required
+  client_request_id required by SPA service
+
+record_admission_crm_activity
+  conversation required
+  activity_type required
+  outcome optional
+  note optional
+  next_action_on optional
+  client_request_id required by SPA service
+
+link_admission_conversation
+  conversation required
+  inquiry optional
+  student_applicant optional
+  external_identity optional
+  channel_account optional
+  client_request_id required by SPA service
+
+confirm_admission_external_identity
+  external_identity required
+  match_status required: Unmatched | Suggested | Confirmed | Rejected
+  contact optional
+  guardian optional
+  inquiry optional
+  student_applicant optional
+  client_request_id required by SPA service
+```
+
+Planned Inbox-specific mutation endpoints must continue to be named workflow endpoints, for example:
+
+```text
 send_admission_reply
 assign_admission_conversation
 link_admission_identity
@@ -207,24 +250,32 @@ Implemented Phase 3B UI actions:
 - retry a failed page-owned context load
 - switch queues client-side using the server-returned queue DTO
 
+Implemented Phase 3C UI actions:
+
+- log reply or log message through `log_admission_message`
+- record CRM activity through `record_admission_crm_activity`
+- link a conversation to Inquiry or Student Applicant through `link_admission_conversation`
+- resolve external identity status through `confirm_admission_external_identity`
+
 Planned mutation actions:
 
-- reply or log reply
+- send provider reply
 - assign or reassign
 - create or link Contact
-- create or link Inquiry
-- link to Student Applicant
+- create Inquiry from conversation
 - mark Inquiry contacted
 - qualify Inquiry
 - invite to apply
-- record CRM activity
 - archive with reason
-- resolve identity match
 - import external media through governed workflow when eligible
 
 Blocked actions must explain why they are blocked and what to do next.
 
-Phase 3B must not render inert mutation buttons. Until a mutation endpoint and payload contract exists, staff should open the source record rather than trigger a silent or client-only workflow.
+The SPA must not render inert mutation buttons. Until a mutation endpoint and payload contract exists, staff should open the source record rather than trigger a silent or client-only workflow.
+
+Unsupported server-returned actions may be listed as source-record workflows, but they must not be presented as executable Inbox actions.
+
+Successful Phase 3C mutations must emit `SIGNAL_ADMISSIONS_INBOX_INVALIDATE`; the page remains the refresh owner and reloads the single context endpoint.
 
 ## 9. Messaging UX Boundary
 
@@ -319,5 +370,8 @@ SPA tests must cover:
 - queue filtering without request waterfalls
 - blocked open-link explanation
 - page-owned manual refresh
-- signal-driven refresh when mutation workflows are added
+- action drawer rendering from server-owned actions
+- mutation payload shape
+- inline mutation failure
+- signal-driven refresh after successful mutation
 - no raw media URL rendering

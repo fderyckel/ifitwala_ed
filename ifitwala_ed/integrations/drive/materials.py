@@ -116,7 +116,7 @@ def assert_supporting_material_read_access(
     if not material_name:
         frappe.throw(_("Missing required field: material"))
     if not frappe.db.exists("Supporting Material", material_name):
-        frappe.throw(_("Supporting Material does not exist: {0}").format(material_name))
+        frappe.throw(_("Supporting Material does not exist: {material}.").format(material=material_name))
 
     course = str(frappe.db.get_value("Supporting Material", material_name, "course") or "").strip() or None
     if placement_name:

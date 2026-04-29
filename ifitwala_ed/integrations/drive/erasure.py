@@ -48,7 +48,7 @@ def _normalize_decision(value: Any) -> str:
     decision = _clean_text(value).lower()
     decision = _DECISION_ALIASES.get(decision, decision)
     if decision not in _ALLOWED_DECISIONS:
-        frappe.throw(_("Invalid erasure decision: {0}").format(decision or "<empty>"))
+        frappe.throw(_("Invalid erasure decision: {decision}").format(decision=decision or "<empty>"))
     return decision
 
 
@@ -139,7 +139,7 @@ def _load_drive_erasure_api():
     try:
         return import_module("ifitwala_drive.api.erasure")
     except ImportError as exc:
-        frappe.throw(_("Ifitwala Drive is required for governed erasure execution: {0}").format(exc))
+        frappe.throw(_("Ifitwala Drive is required for governed erasure execution: {error}").format(error=exc))
 
 
 def create_subject_file_erasure_request(

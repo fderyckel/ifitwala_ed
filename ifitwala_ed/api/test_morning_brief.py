@@ -25,7 +25,7 @@ class TestMorningBrief(IfitwalaFrappeTestCase):
                     message="<p>New</p>",
                     communication_type="Information",
                     priority="Normal",
-                    brief_end_date=None,
+                    brief_end_date="2026-04-21",
                     brief_start_date="2026-04-19",
                     interaction_mode="Staff Comments",
                     allow_private_notes=0,
@@ -67,6 +67,7 @@ class TestMorningBrief(IfitwalaFrappeTestCase):
         self.assertIn("ORDER BY brief_start_date DESC, creation DESC", captured["query"])
         self.assertEqual([row["name"] for row in rows], ["COMM-NEW", "COMM-OLD"])
         self.assertEqual(rows[0]["brief_start_date"], "2026-04-19")
+        self.assertEqual(rows[0]["brief_end_date"], "2026-04-21")
         self.assertTrue(rows[0]["is_unread"])
         self.assertFalse(rows[1]["is_unread"])
 

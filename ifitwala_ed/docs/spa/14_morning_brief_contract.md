@@ -18,9 +18,11 @@ If Morning Brief behavior changes, update this note with the code.
 4. Drill-down overlays must preserve the context of the card that launched them instead of reopening in a different default mode.
 5. Announcement attachments are drill-down detail, not page-bootstrap payload. The page may load governed attachment metadata only after the user opens a specific announcement.
 6. Announcement drill-downs must reuse the Org Communication detail endpoint and governed attachment preview/open URLs. Morning Brief must not construct raw file paths or bypass the shared attachment preview contract.
-7. Morning Brief announcement cards are a single vertical stack, not a carousel plus secondary list. With the bounded briefing volume, all visible announcements should render directly in newest-first order on the page.
+7. Morning Brief announcement cards render directly in a responsive card grid, not a carousel plus secondary list. The grid is one column on smaller screens and two columns on wide screens; DOM order remains newest-first so visual reading order follows recency left-to-right, then top-to-bottom.
 8. Morning Brief announcement ordering is newest first, oldest last. Priority remains a visual treatment only and must not override recency ordering on this surface.
 9. Morning Brief bootstrap may include per-announcement `is_unread` state derived from the canonical Org Communication read-state model so the SPA can render read/unread without extra per-row calls.
+10. Announcement detail headers must keep operational metadata quiet and scannable: the `Announcement` label and title share the first header row, while type, Morning Brief appearance window, and Desk link render as aligned metadata below the title rather than stacked labels.
+11. Morning Brief announcement DTOs must include `brief_start_date` and `brief_end_date` so the modal can show the publish window without a second per-row lookup. The Desk link points to the same `Org Communication` record already authorized for the Morning Brief row.
 
 ---
 
@@ -63,6 +65,7 @@ If Morning Brief behavior changes, update this note with the code.
 3. Weekend and holiday filtering must be derived from canonical calendar helpers, not from repeated per-row document loads.
 4. Opening an announcement may trigger one bounded detail read for that announcement's body/attachments, but Morning Brief must not prefetch attachment DTOs for the whole announcement list.
 5. Read/unread indicators for Morning Brief announcements must arrive in the bounded bootstrap payload; the SPA must not issue per-row read-state fetches.
+6. The announcement Desk link and appearance window must be derived from the bounded bootstrap/detail state already in hand, not from an additional per-announcement request.
 
 ---
 

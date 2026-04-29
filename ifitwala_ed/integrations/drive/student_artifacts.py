@@ -29,7 +29,7 @@ _HEALTH_VACCINATION_SLOT_PREFIX = "health_vaccination_proof_"
 def _require_text(payload: dict[str, Any], fieldname: str) -> str:
     value = str(payload.get(fieldname) or "").strip()
     if not value:
-        frappe.throw(_("Missing required field: {0}").format(fieldname))
+        frappe.throw(_("Missing required field: {fieldname}").format(fieldname=fieldname))
     return value
 
 
@@ -70,9 +70,11 @@ def _validate_session_fields(upload_session_doc, authoritative: dict[str, Any], 
     for session_field, context_field in field_map.items():
         if getattr(upload_session_doc, session_field, None) != authoritative.get(context_field):
             frappe.throw(
-                _("Upload session no longer matches the authoritative {0} context for field '{1}'.").format(
-                    label,
-                    session_field,
+                _(
+                    "Upload session no longer matches the authoritative {context} context for field '{fieldname}'."
+                ).format(
+                    context=label,
+                    fieldname=session_field,
                 )
             )
     return authoritative
@@ -115,7 +117,7 @@ def get_student_export_context(payload: dict[str, Any]) -> dict[str, Any]:
     export_kind = _require_text(payload, "export_kind").lower()
     export_contract = _WORKFLOW_EXPORTS.get(export_kind)
     if not export_contract:
-        frappe.throw(_("Unsupported student export kind: {0}").format(export_kind))
+        frappe.throw(_("Unsupported student export kind: {export_kind}").format(export_kind=export_kind))
 
     scope = _resolve_student_scope(student)
     return {
@@ -240,7 +242,9 @@ def get_promoted_admissions_document_context(payload: dict[str, Any]) -> dict[st
     applicant_document = str(item_row.get("applicant_document") or "").strip()
     if not applicant_document:
         frappe.throw(
-            _("Applicant Document Item '{0}' is missing its parent Applicant Document.").format(source_item_name)
+            _("Applicant Document Item '{item}' is missing its parent Applicant Document.").format(
+                item=source_item_name
+            )
         )
 
     document_row = (
@@ -254,22 +258,24 @@ def get_promoted_admissions_document_context(payload: dict[str, Any]) -> dict[st
     )
     if str(document_row.get("student_applicant") or "").strip() != student_applicant:
         frappe.throw(
-            _("Applicant Document Item '{0}' does not belong to Student Applicant '{1}'.").format(
-                source_item_name,
-                student_applicant,
+            _("Applicant Document Item '{item}' does not belong to Student Applicant '{applicant}'.").format(
+                item=source_item_name,
+                applicant=student_applicant,
             )
         )
 
     document_type = str(document_row.get("document_type") or "").strip()
     if not document_type:
-        frappe.throw(_("Applicant Document '{0}' is missing its document type.").format(applicant_document))
+        frappe.throw(
+            _("Applicant Document '{document}' is missing its document type.").format(document=applicant_document)
+        )
 
     doc_type_code = frappe.db.get_value("Applicant Document Type", document_type, "code") or document_type
     slot_spec = get_applicant_document_slot_spec(document_type=document_type, doc_type_code=doc_type_code)
     if not slot_spec:
         frappe.throw(
-            _("Applicant Document Type {0} is missing upload classification settings.").format(
-                doc_type_code or document_type
+            _("Applicant Document Type {document_type} is missing upload classification settings.").format(
+                document_type=doc_type_code or document_type
             )
         )
 

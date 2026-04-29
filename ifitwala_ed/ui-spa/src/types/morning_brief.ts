@@ -78,6 +78,7 @@ export interface Announcement {
 		| 'Alert'
 	priority: OrgPriority
 	brief_start_date?: string | null
+	brief_end_date?: string | null
 	is_unread: boolean
 	interaction_mode: InteractionMode
 	allow_public_thread: 0 | 1

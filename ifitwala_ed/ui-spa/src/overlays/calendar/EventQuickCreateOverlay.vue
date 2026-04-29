@@ -1885,11 +1885,13 @@ async function addTeamAttendees(optionsArg?: { auto?: boolean }) {
 	}
 	if (optionsArg?.auto && teamHydratedFor.value === meetingForm.team) return;
 
+	const requestedTeam = meetingForm.team;
 	teamHydrating.value = true;
 	clearErrorState();
 
 	try {
-		const response = await getMeetingTeamAttendees({ team: meetingForm.team });
+		const response = await getMeetingTeamAttendees({ team: requestedTeam });
+		if (meetingForm.team !== requestedTeam) return;
 		const teamMembers = response.results || [];
 
 		if (effectiveMeetingMode.value === 'team') {
@@ -1906,7 +1908,7 @@ async function addTeamAttendees(optionsArg?: { auto?: boolean }) {
 					: 'All team members are already in the attendee list.';
 		}
 
-		teamHydratedFor.value = meetingForm.team;
+		teamHydratedFor.value = requestedTeam;
 		if (!optionsArg?.auto && attendeeSearchQuery.value.trim().length >= 2) {
 			void runAttendeeSearch();
 		}
@@ -2392,15 +2394,22 @@ watch(
 watch(
 	() => meetingForm.team,
 	(nextTeam, previousTeam) => {
-		if (!props.open || effectiveMeetingMode.value !== 'team') return;
+		if (!props.open) return;
 		if (nextTeam === previousTeam) return;
+		teamHydratedFor.value = null;
+
+		if (effectiveMeetingMode.value !== 'team') {
+			if (nextTeam) {
+				void addTeamAttendees({ auto: true });
+			}
+			return;
+		}
 
 		const previousLockedUsers = new Set(lockedTeamAttendeeUsers.value);
 		selectedAttendees.value = selectedAttendees.value.filter(
 			attendee => !previousLockedUsers.has(attendee.value)
 		);
 		lockedTeamAttendeeUsers.value = [];
-		teamHydratedFor.value = null;
 
 		if (nextTeam) {
 			void addTeamAttendees({ auto: true });

@@ -102,6 +102,8 @@ function mountDialog(
 		attachments?: Array<Record<string, unknown>>;
 		attachmentsLoading?: boolean;
 		attachmentsError?: string;
+		deskHref?: string;
+		publishWindow?: string;
 	} = {}
 ) {
 	const host = document.createElement('div');
@@ -121,6 +123,8 @@ function mountDialog(
 					attachments: options.attachments || [],
 					attachmentsLoading: options.attachmentsLoading ?? false,
 					attachmentsError: options.attachmentsError || '',
+					deskHref: options.deskHref || '',
+					publishWindow: options.publishWindow || '',
 					interaction: {
 						counts: {},
 						self: null,
@@ -184,6 +188,26 @@ describe('ContentDialog', () => {
 		expect(text).not.toContain('Comments');
 		expect(text).toContain('Acknowledge or react without leaving the briefing.');
 		expect(document.body.querySelector('[data-testid="interaction-chips-stub"]')).not.toBeNull();
+	});
+
+	it('renders the announcement title and quiet Desk/date metadata in the modal header', async () => {
+		mountDialog('<p>Hello world</p>', {
+			deskHref: '/desk/org-communication/COMM-0001',
+			publishWindow: 'Appears Tues. 28th April until Wed. 6th May',
+		});
+
+		await flushUi();
+
+		const title = document.body.querySelector('[data-testid="content-dialog-title"]');
+		expect(title?.textContent || '').toContain('Announcement detail');
+		const deskLink = document.body.querySelector(
+			'a[href="/desk/org-communication/COMM-0001"]'
+		);
+		expect(deskLink).not.toBeNull();
+		expect(deskLink?.textContent || '').toContain('Open Org Communication in Desk');
+		expect(document.body.textContent || '').toContain(
+			'Appears Tues. 28th April until Wed. 6th May'
+		);
 	});
 
 	it('renders governed attachment previews when announcement attachments are provided', async () => {

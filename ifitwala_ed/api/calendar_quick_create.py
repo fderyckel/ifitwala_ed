@@ -28,6 +28,7 @@ from ifitwala_ed.schedule.schedule_utils import iter_student_group_room_slots
 from ifitwala_ed.school_settings.doctype.school_event.school_event import (
     publish_companion_org_communication_for_event,
 )
+from ifitwala_ed.utilities.employee_utils import get_descendant_organizations
 from ifitwala_ed.utilities.location_utils import find_room_conflicts, get_visible_location_rows_for_school
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
 
@@ -236,30 +237,80 @@ def _school_options_for_scope(school_scope: list[str]) -> list[dict]:
     return [{"value": row.name, "label": row.school_name or row.name} for row in rows]
 
 
-def _team_options_for_scope(user: str, school_scope: list[str], is_admin_like: bool) -> list[dict]:
-    if school_scope:
-        rows = frappe.get_all(
+def _team_option_rows(rows: list[dict]) -> list[dict]:
+    options = []
+    seen = set()
+    for row in sorted(rows, key=lambda item: (item.get("team_name") or item.get("name") or "").lower()):
+        team_name = row.get("name")
+        if not team_name or team_name in seen:
+            continue
+        seen.add(team_name)
+        options.append({"value": team_name, "label": row.get("team_name") or team_name})
+    return options
+
+
+def _team_options_for_scope(
+    user: str,
+    school_scope: list[str],
+    is_admin_like: bool,
+    organization_scope: list[str] | None = None,
+) -> list[dict]:
+    rows: list[dict] = []
+    school_values = [school for school in (school_scope or []) if school]
+    organization_values = [org for org in (organization_scope or []) if org]
+
+    if school_values:
+        rows.extend(
+            frappe.get_all(
+                "Team",
+                filters={"school": ["in", school_values], "enabled": 1},
+                fields=["name", "team_name", "school", "organization"],
+                order_by="team_name asc",
+                limit=500,
+            )
+        )
+
+    if organization_values:
+        organization_rows = frappe.get_all(
             "Team",
-            filters={"school": ["in", school_scope], "enabled": 1},
-            fields=["name", "team_name"],
+            filters={"organization": ["in", organization_values], "enabled": 1},
+            fields=["name", "team_name", "school", "organization"],
             order_by="team_name asc",
             limit=500,
         )
-        return [{"value": row.name, "label": row.team_name or row.name} for row in rows]
+        if school_values:
+            school_set = set(school_values)
+            rows.extend([row for row in organization_rows if not row.get("school") or row.get("school") in school_set])
+        else:
+            rows.extend(organization_rows)
+
+    if school_values or organization_values:
+        return _team_option_rows(rows)
 
     if is_admin_like:
         rows = frappe.get_all(
             "Team",
             filters={"enabled": 1},
-            fields=["name", "team_name"],
+            fields=["name", "team_name", "school", "organization"],
             order_by="team_name asc",
             limit=500,
         )
-        return [{"value": row.name, "label": row.team_name or row.name} for row in rows]
+        return _team_option_rows(rows)
+
+    employee_row = _resolve_employee_for_user(
+        user,
+        fields=["name"],
+        employment_status_filter=["!=", "Inactive"],
+    )
+    employee_name = _safe_text((employee_row or {}).get("name"))
+    team_or_filters: dict[str, str | list[str]] = {"member": user}
+    if employee_name:
+        team_or_filters["employee"] = employee_name
 
     team_names = frappe.get_all(
         "Team Member",
-        filters={"parenttype": "Team", "member": user},
+        filters={"parenttype": "Team"},
+        or_filters=team_or_filters,
         pluck="parent",
         limit=500,
     )
@@ -269,11 +320,11 @@ def _team_options_for_scope(user: str, school_scope: list[str], is_admin_like: b
     rows = frappe.get_all(
         "Team",
         filters={"name": ["in", sorted(set(team_names))]},
-        fields=["name", "team_name"],
+        fields=["name", "team_name", "school", "organization"],
         order_by="team_name asc",
         limit=500,
     )
-    return [{"value": row.name, "label": row.team_name or row.name} for row in rows]
+    return _team_option_rows(rows)
 
 
 def _student_group_options_for_scope(user: str, school_scope: list[str]) -> list[dict]:
@@ -453,6 +504,7 @@ def _get_quick_create_scope(user: str) -> dict:
         frappe.defaults.get_user_default("school", user=user)
     )
     organization = _safe_text((employee_row or {}).get("organization"))
+    organization_scope = get_descendant_organizations(organization) if organization else []
 
     school_scope: list[str] = []
     if base_school:
@@ -472,6 +524,7 @@ def _get_quick_create_scope(user: str) -> dict:
         "is_admin_like": bool(is_admin_like),
         "base_school": base_school or None,
         "organization": organization or None,
+        "organization_scope": organization_scope,
         "school_scope": school_scope,
         "student_scope": student_scope,
     }
@@ -576,6 +629,7 @@ def _ensure_allowed_team(user: str, team: str | None) -> str | None:
         user,
         scope.get("school_scope") or [],
         bool(scope.get("is_admin_like")),
+        scope.get("organization_scope") or [],
     )
     allowed = {row.get("value") for row in team_options if row.get("value")}
     if not bool(scope.get("is_admin_like")) and team_value not in allowed:
@@ -1668,7 +1722,12 @@ def get_event_quick_create_options():
         "school_event_categories": school_event_category_options,
         "audience_types": audience_options,
         "schools": school_options,
-        "teams": _team_options_for_scope(user, scope.get("school_scope") or [], bool(scope.get("is_admin_like"))),
+        "teams": _team_options_for_scope(
+            user,
+            scope.get("school_scope") or [],
+            bool(scope.get("is_admin_like")),
+            scope.get("organization_scope") or [],
+        ),
         "student_groups": _student_group_options_for_scope(user, scope.get("school_scope") or []),
         "locations": default_locations,
         "locations_by_school": locations_by_school,

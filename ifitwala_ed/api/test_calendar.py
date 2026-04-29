@@ -626,6 +626,86 @@ class TestCalendarApi(TestCase):
             },
         )
 
+    def test_team_options_include_school_and_organization_scoped_teams(self):
+        def fake_get_all(doctype, filters=None, fields=None, order_by=None, limit=None, **kwargs):
+            self.assertEqual(doctype, "Team")
+            if filters.get("school"):
+                return [
+                    frappe._dict(
+                        name="TEAM-SCHOOL",
+                        team_name="School Team",
+                        school="ISS",
+                        organization="ORG-1",
+                    )
+                ]
+            if filters.get("organization"):
+                return [
+                    frappe._dict(
+                        name="TEAM-ORG",
+                        team_name="Organization Team",
+                        school="",
+                        organization="ORG-1",
+                    ),
+                    frappe._dict(
+                        name="TEAM-SIBLING",
+                        team_name="Sibling Team",
+                        school="SIBLING",
+                        organization="ORG-1",
+                    ),
+                ]
+            raise AssertionError(f"Unexpected filters: {filters!r}")
+
+        with patch("ifitwala_ed.api.calendar_quick_create.frappe.get_all", side_effect=fake_get_all):
+            options = calendar_quick_create._team_options_for_scope(
+                "staff@example.com",
+                ["ISS"],
+                False,
+                ["ORG-1"],
+            )
+
+        self.assertEqual(
+            options,
+            [
+                {"value": "TEAM-ORG", "label": "Organization Team"},
+                {"value": "TEAM-SCHOOL", "label": "School Team"},
+            ],
+        )
+
+    def test_team_options_membership_fallback_uses_employee_link_when_member_is_blank(self):
+        def fake_get_all(doctype, filters=None, fields=None, or_filters=None, pluck=None, **kwargs):
+            if doctype == "Team Member":
+                self.assertEqual(filters, {"parenttype": "Team"})
+                self.assertEqual(or_filters, {"member": "staff@example.com", "employee": "EMP-0001"})
+                self.assertEqual(pluck, "parent")
+                return ["TEAM-EMPLOYEE"]
+            if doctype == "Team":
+                self.assertEqual(filters, {"name": ["in", ["TEAM-EMPLOYEE"]]})
+                return [
+                    frappe._dict(
+                        name="TEAM-EMPLOYEE",
+                        team_name="Employee Team",
+                        school="",
+                        organization="ORG-1",
+                    )
+                ]
+            raise AssertionError(f"Unexpected doctype: {doctype}")
+
+        with (
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.get_all", side_effect=fake_get_all),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._resolve_employee_for_user",
+                return_value={"name": "EMP-0001"},
+            ),
+        ):
+            options = calendar_quick_create._team_options_for_scope(
+                "staff@example.com",
+                [],
+                False,
+                [],
+            )
+
+        self.assertEqual(options, [{"value": "TEAM-EMPLOYEE", "label": "Employee Team"}])
+
     def test_create_school_event_quick_can_publish_matching_org_communication(self):
         cache = _DummyCache()
         captured_event_payloads = []

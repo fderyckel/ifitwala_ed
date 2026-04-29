@@ -7,7 +7,8 @@ from typing import Any
 import frappe
 from frappe import _
 
-from ifitwala_ed.api.attachment_previews import build_attachment_preview_item, extract_file_extension
+from ifitwala_ed.api.attachment_previews import extract_file_extension
+from ifitwala_ed.api.attachment_rows import build_governed_attachment_row
 from ifitwala_ed.api.file_access import (
     get_academic_file_thumbnail_ready_map,
     resolve_academic_file_open_url,
@@ -24,6 +25,7 @@ ALLOWED_TASK_ATTACHMENT_MIME_TYPES = {
     "image/webp",
     "application/pdf",
 }
+TASK_MATERIAL_ATTACHMENT_SURFACE = "task.material"
 
 
 def _normalize_payload(value) -> dict[str, Any]:
@@ -74,7 +76,9 @@ def _serialize_material(entry: dict[str, Any], *, thumbnail_ready_map: dict[str,
             context_doctype="Material Placement" if first_placement.get("placement") else "Supporting Material",
             context_name=first_placement.get("placement") or entry.get("material"),
         )
-        attachment_preview = build_attachment_preview_item(
+        attachment = build_governed_attachment_row(
+            row_id=owner_name,
+            surface=TASK_MATERIAL_ATTACHMENT_SURFACE,
             item_id=owner_name,
             owner_doctype=owner_doctype,
             owner_name=owner_name,
@@ -92,7 +96,9 @@ def _serialize_material(entry: dict[str, Any], *, thumbnail_ready_map: dict[str,
         thumbnail_url = None
         preview_url = None
         open_url = entry.get("reference_url")
-        attachment_preview = build_attachment_preview_item(
+        attachment = build_governed_attachment_row(
+            row_id=owner_name,
+            surface=TASK_MATERIAL_ATTACHMENT_SURFACE,
             item_id=owner_name,
             owner_doctype=owner_doctype,
             owner_name=owner_name,
@@ -110,14 +116,10 @@ def _serialize_material(entry: dict[str, Any], *, thumbnail_ready_map: dict[str,
         "modality": entry.get("modality"),
         "description": entry.get("description"),
         "reference_url": entry.get("reference_url"),
-        "thumbnail_url": thumbnail_url,
-        "preview_url": preview_url,
-        "open_url": open_url,
-        "file": entry.get("file"),
         "file_name": entry.get("file_name"),
         "file_size": entry.get("file_size"),
         "placements": entry.get("placements") or [],
-        "attachment_preview": attachment_preview,
+        "attachment": attachment,
     }
 
 

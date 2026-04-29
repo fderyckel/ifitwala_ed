@@ -125,17 +125,29 @@
 						</dl>
 
 						<footer class="inbox-row-card__footer">
-							<a
-								v-if="safeOpenUrl(row)"
-								:href="safeOpenUrl(row)"
-								target="_blank"
-								rel="noopener noreferrer"
-								class="if-button if-button--quiet"
-							>
-								<FeatherIcon name="external-link" class="h-4 w-4" />
-								<span>Open</span>
-							</a>
-							<p v-else class="type-caption text-slate-token/70">
+							<div class="inbox-row-card__footer-actions">
+								<button
+									v-if="hasRowActions(row)"
+									type="button"
+									:data-testid="`inbox-actions-${row.id}`"
+									class="if-button if-button--quiet"
+									@click="openActionDrawer(row)"
+								>
+									<FeatherIcon name="sliders" class="h-4 w-4" />
+									<span>Actions</span>
+								</button>
+								<a
+									v-if="safeOpenUrl(row)"
+									:href="safeOpenUrl(row)"
+									target="_blank"
+									rel="noopener noreferrer"
+									class="if-button if-button--quiet"
+								>
+									<FeatherIcon name="external-link" class="h-4 w-4" />
+									<span>Open</span>
+								</a>
+							</div>
+							<p v-if="!safeOpenUrl(row)" class="type-caption text-slate-token/70">
 								Open unavailable: no permitted destination returned. Refresh or ask an admissions
 								manager to check access.
 							</p>
@@ -148,6 +160,174 @@
 				</p>
 			</section>
 		</section>
+
+		<aside
+			v-if="selectedRow"
+			data-testid="admissions-inbox-action-drawer"
+			class="action-drawer"
+			aria-label="Admissions inbox action drawer"
+		>
+			<header class="action-drawer__header">
+				<div class="min-w-0">
+					<p class="type-overline text-slate-token/70">Selected item</p>
+					<h2 class="type-h2 text-ink">{{ selectedRow.title }}</h2>
+					<p v-if="selectedRow.subtitle" class="type-caption text-slate-token/70">
+						{{ selectedRow.subtitle }}
+					</p>
+				</div>
+				<button
+					type="button"
+					data-testid="admissions-inbox-action-close"
+					class="if-button if-button--quiet"
+					@click="closeActionDrawer"
+				>
+					<FeatherIcon name="x" class="h-4 w-4" />
+					<span>Close</span>
+				</button>
+			</header>
+
+			<div class="action-drawer__body">
+				<section class="action-choice-list" aria-label="Available inbox actions">
+					<button
+						v-for="action in selectedRowActionStates"
+						:key="action.id"
+						type="button"
+						:data-testid="`inbox-action-${action.id}`"
+						class="action-choice"
+						:class="{ 'action-choice--active': action.id === activeActionId }"
+						:disabled="!action.enabled"
+						@click="selectAction(action.id)"
+					>
+						<span>{{ action.label }}</span>
+						<small>{{ action.enabled ? action.description : action.disabledReason }}</small>
+					</button>
+				</section>
+
+				<p v-if="unsupportedActionLabels.length" class="action-drawer__note">
+					Handled from the source record in this phase: {{ unsupportedActionLabels.join(', ') }}.
+				</p>
+
+				<div v-if="!activeActionId" class="action-drawer__empty">
+					No executable Inbox workflow is available for this item yet. Open the source record to
+					continue.
+				</div>
+
+				<form v-else class="action-form" @submit.prevent="submitActiveAction">
+					<template v-if="isLogAction(activeActionId)">
+						<label class="action-field">
+							<span>Message</span>
+							<textarea
+								v-model="actionForm.body"
+								data-testid="action-message-body"
+								rows="5"
+								placeholder="Record the admissions reply or message outcome"
+							/>
+						</label>
+					</template>
+
+					<template v-else-if="activeActionId === 'record_activity'">
+						<label class="action-field">
+							<span>Activity Type</span>
+							<select v-model="actionForm.activity_type" data-testid="action-activity-type">
+								<option v-for="type in activityTypes" :key="type" :value="type">{{ type }}</option>
+							</select>
+						</label>
+						<label class="action-field">
+							<span>Outcome</span>
+							<input v-model="actionForm.outcome" type="text" placeholder="Optional outcome" />
+						</label>
+						<label class="action-field">
+							<span>Next Action On</span>
+							<input v-model="actionForm.next_action_on" type="date" />
+						</label>
+						<label class="action-field">
+							<span>Note</span>
+							<textarea v-model="actionForm.note" rows="4" placeholder="Structured CRM note" />
+						</label>
+					</template>
+
+					<template v-else-if="activeActionId === 'link_inquiry'">
+						<label class="action-field">
+							<span>Inquiry</span>
+							<input
+								v-model="actionForm.inquiry"
+								data-testid="action-link-inquiry"
+								type="text"
+								placeholder="Inquiry document name"
+							/>
+						</label>
+					</template>
+
+					<template v-else-if="activeActionId === 'link_applicant'">
+						<label class="action-field">
+							<span>Student Applicant</span>
+							<input
+								v-model="actionForm.student_applicant"
+								data-testid="action-link-applicant"
+								type="text"
+								placeholder="Student Applicant document name"
+							/>
+						</label>
+					</template>
+
+					<template v-else-if="activeActionId === 'resolve_identity_match'">
+						<label class="action-field">
+							<span>Match Status</span>
+							<select v-model="actionForm.match_status" data-testid="action-match-status">
+								<option v-for="status in matchStatuses" :key="status" :value="status">
+									{{ status }}
+								</option>
+							</select>
+						</label>
+						<div class="action-form__grid">
+							<label class="action-field">
+								<span>Inquiry</span>
+								<input v-model="actionForm.inquiry" type="text" placeholder="Optional Inquiry" />
+							</label>
+							<label class="action-field">
+								<span>Student Applicant</span>
+								<input
+									v-model="actionForm.student_applicant"
+									type="text"
+									placeholder="Optional Student Applicant"
+								/>
+							</label>
+							<label class="action-field">
+								<span>Contact</span>
+								<input v-model="actionForm.contact" type="text" placeholder="Optional Contact" />
+							</label>
+							<label class="action-field">
+								<span>Guardian</span>
+								<input v-model="actionForm.guardian" type="text" placeholder="Optional Guardian" />
+							</label>
+						</div>
+					</template>
+
+					<p v-if="actionError" data-testid="admissions-inbox-action-error" class="action-error">
+						{{ actionError }}
+					</p>
+					<p
+						v-if="actionSuccess"
+						data-testid="admissions-inbox-action-success"
+						class="action-success"
+					>
+						{{ actionSuccess }}
+					</p>
+
+					<div class="action-form__footer">
+						<button
+							type="submit"
+							data-testid="action-submit"
+							class="if-button if-button--primary"
+							:disabled="actionSaving"
+						>
+							<FeatherIcon name="check" class="h-4 w-4" />
+							<span>{{ actionSaving ? 'Saving' : activeActionSubmitLabel }}</span>
+						</button>
+					</div>
+				</form>
+			</div>
+		</aside>
 	</div>
 </template>
 
@@ -155,20 +335,124 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { FeatherIcon } from 'frappe-ui';
 
-import { getAdmissionsInboxContext } from '@/lib/services/admissions/admissionsInboxService';
+import {
+	confirmAdmissionExternalIdentity,
+	getAdmissionsInboxContext,
+	linkAdmissionConversation,
+	logAdmissionMessage,
+	recordAdmissionCrmActivity,
+} from '@/lib/services/admissions/admissionsInboxService';
 import { SIGNAL_ADMISSIONS_INBOX_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 import type {
+	AdmissionCrmActivityType,
+	AdmissionExternalIdentityMatchStatus,
 	AdmissionsInboxContext,
 	AdmissionsInboxQueue,
 	AdmissionsInboxRow,
 } from '@/types/contracts/admissions_inbox/get_admissions_inbox_context';
 
 const DEFAULT_LIMIT = 40;
+const SUPPORTED_ACTION_IDS = [
+	'log_reply',
+	'log_message',
+	'record_activity',
+	'link_inquiry',
+	'link_applicant',
+	'resolve_identity_match',
+] as const;
+
+type SupportedActionId = (typeof SUPPORTED_ACTION_IDS)[number];
+
+type ActionForm = {
+	body: string;
+	activity_type: AdmissionCrmActivityType;
+	outcome: string;
+	note: string;
+	next_action_on: string;
+	inquiry: string;
+	student_applicant: string;
+	contact: string;
+	guardian: string;
+	match_status: AdmissionExternalIdentityMatchStatus;
+};
+
+type ActionState = {
+	id: SupportedActionId;
+	label: string;
+	description: string;
+	enabled: boolean;
+	disabledReason: string;
+};
+
+const actionDefinitions: Record<
+	SupportedActionId,
+	{
+		label: string;
+		description: string;
+		requiresConversation?: boolean;
+		requiresExternalIdentity?: boolean;
+	}
+> = {
+	log_reply: {
+		label: 'Log reply',
+		description: 'Record a staff reply in the CRM conversation.',
+	},
+	log_message: {
+		label: 'Log message',
+		description: 'Create or update a CRM conversation with a manual message.',
+	},
+	record_activity: {
+		label: 'Record activity',
+		description: 'Add a structured CRM activity outcome.',
+		requiresConversation: true,
+	},
+	link_inquiry: {
+		label: 'Link Inquiry',
+		description: 'Attach this CRM conversation to an existing Inquiry.',
+		requiresConversation: true,
+	},
+	link_applicant: {
+		label: 'Link Applicant',
+		description: 'Attach this CRM conversation to an existing Student Applicant.',
+		requiresConversation: true,
+	},
+	resolve_identity_match: {
+		label: 'Resolve identity',
+		description: 'Confirm, reject, or update the external identity match status.',
+		requiresExternalIdentity: true,
+	},
+};
+
+const activityTypes: AdmissionCrmActivityType[] = [
+	'Call Attempt',
+	'Reached',
+	'No Answer',
+	'Qualified',
+	'Not Interested',
+	'Booked Tour',
+	'Attended Tour',
+	'Follow-up Scheduled',
+	'Archived',
+	'Note',
+];
+
+const matchStatuses: AdmissionExternalIdentityMatchStatus[] = [
+	'Confirmed',
+	'Rejected',
+	'Suggested',
+	'Unmatched',
+];
 
 const context = ref<AdmissionsInboxContext | null>(null);
 const loading = ref(false);
 const error = ref<string | null>(null);
 const activeQueueId = ref('needs_reply');
+const selectedRow = ref<AdmissionsInboxRow | null>(null);
+const activeActionId = ref<SupportedActionId | ''>('');
+const actionForm = ref<ActionForm>(createActionForm());
+const actionSaving = ref(false);
+const actionError = ref<string | null>(null);
+const actionSuccess = ref<string | null>(null);
 
 let refreshSequence = 0;
 let disposeInboxInvalidate: (() => void) | null = null;
@@ -183,6 +467,20 @@ const totalVisibleRows = computed(() =>
 	queues.value.reduce((total, queue) => total + queue.rows.length, 0)
 );
 const lastRefreshedLabel = computed(() => formatDateTime(context.value?.generated_at || null));
+const selectedRowActionStates = computed<ActionState[]>(() =>
+	selectedRow.value ? rowActionStates(selectedRow.value) : []
+);
+const unsupportedActionLabels = computed(() => {
+	const row = selectedRow.value;
+	if (!row) return [];
+	return row.actions
+		.filter(action => !isSupportedActionId(action.id))
+		.map(action => actionLabel(action.id));
+});
+const activeActionSubmitLabel = computed(() => {
+	if (!activeActionId.value) return 'Save';
+	return actionDefinitions[activeActionId.value].label;
+});
 
 async function refreshInbox(reason: string) {
 	const sequence = ++refreshSequence;
@@ -214,6 +512,93 @@ function errorMessage(err: unknown, reason: string) {
 
 function selectQueue(queueId: string) {
 	activeQueueId.value = queueId;
+}
+
+function createActionForm(row?: AdmissionsInboxRow): ActionForm {
+	return {
+		body: '',
+		activity_type: 'Note',
+		outcome: '',
+		note: '',
+		next_action_on: '',
+		inquiry: String(row?.inquiry || ''),
+		student_applicant: String(row?.student_applicant || ''),
+		contact: '',
+		guardian: '',
+		match_status: 'Confirmed',
+	};
+}
+
+function hasRowActions(row: AdmissionsInboxRow) {
+	return row.actions.length > 0;
+}
+
+function isSupportedActionId(actionId: string): actionId is SupportedActionId {
+	return SUPPORTED_ACTION_IDS.includes(actionId as SupportedActionId);
+}
+
+function actionLabel(actionId: string) {
+	if (isSupportedActionId(actionId)) return actionDefinitions[actionId].label;
+	return actionId
+		.split('_')
+		.map(part => part.charAt(0).toUpperCase() + part.slice(1))
+		.join(' ');
+}
+
+function rowActionStates(row: AdmissionsInboxRow): ActionState[] {
+	return SUPPORTED_ACTION_IDS.map(actionId => {
+		const serverAction = row.actions.find(action => action.id === actionId);
+		if (!serverAction) return null;
+
+		const definition = actionDefinitions[actionId];
+		let enabled = Boolean(serverAction.enabled);
+		let disabledReason = serverAction.disabled_reason || '';
+		if (enabled && definition.requiresConversation && !row.conversation) {
+			enabled = false;
+			disabledReason =
+				'This action requires an admissions CRM conversation. Open the source record or link one first.';
+		}
+		if (enabled && definition.requiresExternalIdentity && !row.external_identity) {
+			enabled = false;
+			disabledReason = 'This action requires an external identity from a CRM conversation.';
+		}
+
+		return {
+			id: actionId,
+			label: definition.label,
+			description: definition.description,
+			enabled,
+			disabledReason: disabledReason || 'The server did not allow this action.',
+		};
+	}).filter((action): action is ActionState => Boolean(action));
+}
+
+function openActionDrawer(row: AdmissionsInboxRow) {
+	selectedRow.value = row;
+	actionForm.value = createActionForm(row);
+	actionError.value = null;
+	actionSuccess.value = null;
+	activeActionId.value = rowActionStates(row).find(action => action.enabled)?.id || '';
+}
+
+function closeActionDrawer() {
+	selectedRow.value = null;
+	activeActionId.value = '';
+	actionError.value = null;
+	actionSuccess.value = null;
+	actionSaving.value = false;
+}
+
+function selectAction(actionId: SupportedActionId) {
+	const state = selectedRowActionStates.value.find(action => action.id === actionId);
+	if (!state?.enabled) return;
+	activeActionId.value = actionId;
+	actionError.value = null;
+	actionSuccess.value = null;
+}
+
+function isLogAction(actionId: SupportedActionId | '') {
+	return actionId === 'log_reply' || actionId === 'log_message';
 }
 
 function countForQueue(queueId: string) {
@@ -289,6 +674,145 @@ function formatDate(value: string | null) {
 		month: 'short',
 		day: 'numeric',
 	}).format(parsed);
+}
+
+function blankToNull(value: string) {
+	const text = String(value || '').trim();
+	return text || null;
+}
+
+function requireConversation(row: AdmissionsInboxRow) {
+	const conversation = blankToNull(String(row.conversation || ''));
+	if (!conversation) {
+		actionError.value =
+			'This action requires an admissions CRM conversation. Open the source record or link one first.';
+		return null;
+	}
+	return conversation;
+}
+
+function requireExternalIdentity(row: AdmissionsInboxRow) {
+	const externalIdentity = blankToNull(String(row.external_identity || ''));
+	if (!externalIdentity) {
+		actionError.value = 'This action requires an external identity from a CRM conversation.';
+		return null;
+	}
+	return externalIdentity;
+}
+
+async function submitActiveAction() {
+	const row = selectedRow.value;
+	const actionId = activeActionId.value;
+	if (!row || !actionId || actionSaving.value) return;
+
+	actionError.value = null;
+	actionSuccess.value = null;
+	actionSaving.value = true;
+
+	try {
+		if (isLogAction(actionId)) {
+			await submitLogAction(row);
+		} else if (actionId === 'record_activity') {
+			await submitRecordActivity(row);
+		} else if (actionId === 'link_inquiry') {
+			await submitLinkInquiry(row);
+		} else if (actionId === 'link_applicant') {
+			await submitLinkApplicant(row);
+		} else if (actionId === 'resolve_identity_match') {
+			await submitResolveIdentity(row);
+		}
+
+		if (!actionError.value) {
+			actionSuccess.value = 'Saved. Refreshing queue.';
+		}
+	} catch (err) {
+		actionError.value = err instanceof Error ? err.message : String(err || 'Action failed.');
+	} finally {
+		actionSaving.value = false;
+	}
+}
+
+async function submitLogAction(row: AdmissionsInboxRow) {
+	const body = blankToNull(actionForm.value.body);
+	if (!body) {
+		actionError.value = 'Message is required.';
+		return;
+	}
+
+	await logAdmissionMessage({
+		conversation: blankToNull(String(row.conversation || '')),
+		inquiry: blankToNull(String(row.inquiry || '')),
+		student_applicant: blankToNull(String(row.student_applicant || '')),
+		external_identity: blankToNull(String(row.external_identity || '')),
+		channel_account: blankToNull(String(row.channel_account || '')),
+		organization: blankToNull(String(row.organization || '')),
+		school: blankToNull(String(row.school || '')),
+		assigned_to: blankToNull(String(row.owner || '')),
+		direction: 'Outbound',
+		message_type: 'Text',
+		delivery_status: 'Logged',
+		body,
+	});
+	actionForm.value.body = '';
+}
+
+async function submitRecordActivity(row: AdmissionsInboxRow) {
+	const conversation = requireConversation(row);
+	if (!conversation) return;
+
+	await recordAdmissionCrmActivity({
+		conversation,
+		activity_type: actionForm.value.activity_type,
+		outcome: blankToNull(actionForm.value.outcome),
+		note: blankToNull(actionForm.value.note),
+		next_action_on: blankToNull(actionForm.value.next_action_on),
+	});
+	actionForm.value.outcome = '';
+	actionForm.value.note = '';
+}
+
+async function submitLinkInquiry(row: AdmissionsInboxRow) {
+	const conversation = requireConversation(row);
+	if (!conversation) return;
+	const inquiry = blankToNull(actionForm.value.inquiry);
+	if (!inquiry) {
+		actionError.value = 'Inquiry is required.';
+		return;
+	}
+
+	await linkAdmissionConversation({
+		conversation,
+		inquiry,
+	});
+}
+
+async function submitLinkApplicant(row: AdmissionsInboxRow) {
+	const conversation = requireConversation(row);
+	if (!conversation) return;
+	const studentApplicant = blankToNull(actionForm.value.student_applicant);
+	if (!studentApplicant) {
+		actionError.value = 'Student Applicant is required.';
+		return;
+	}
+
+	await linkAdmissionConversation({
+		conversation,
+		student_applicant: studentApplicant,
+	});
+}
+
+async function submitResolveIdentity(row: AdmissionsInboxRow) {
+	const externalIdentity = requireExternalIdentity(row);
+	if (!externalIdentity) return;
+
+	await confirmAdmissionExternalIdentity({
+		external_identity: externalIdentity,
+		match_status: actionForm.value.match_status,
+		contact: blankToNull(actionForm.value.contact),
+		guardian: blankToNull(actionForm.value.guardian),
+		inquiry: blankToNull(actionForm.value.inquiry),
+		student_applicant: blankToNull(actionForm.value.student_applicant),
+	});
 }
 
 function onInboxInvalidated() {
@@ -545,6 +1069,159 @@ onBeforeUnmount(() => {
 	align-items: center;
 }
 
+.inbox-row-card__footer-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.action-drawer {
+	position: fixed;
+	inset-block: 0;
+	inset-inline-end: 0;
+	z-index: 40;
+	display: flex;
+	width: min(30rem, calc(100vw - 1rem));
+	flex-direction: column;
+	border-left: 1px solid var(--inbox-border);
+	background: white;
+	box-shadow: -18px 0 42px rgb(15 23 42 / 0.18);
+}
+
+.action-drawer__header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1rem;
+	border-bottom: 1px solid var(--inbox-border);
+	padding: 1rem;
+}
+
+.action-drawer__body {
+	display: grid;
+	gap: 1rem;
+	overflow-y: auto;
+	padding: 1rem;
+}
+
+.action-choice-list {
+	display: grid;
+	gap: 0.5rem;
+}
+
+.action-choice {
+	display: grid;
+	gap: 0.2rem;
+	border: 1px solid rgb(226 232 240);
+	border-radius: 0.5rem;
+	background: rgb(248 250 252);
+	padding: 0.75rem;
+	text-align: left;
+	transition:
+		background 0.15s ease,
+		border-color 0.15s ease;
+}
+
+.action-choice span {
+	color: rgb(var(--ink-rgb));
+	font-size: 0.9rem;
+	font-weight: 750;
+	overflow-wrap: anywhere;
+}
+
+.action-choice small {
+	color: rgb(var(--slate-rgb) / 0.72);
+	font-size: 0.78rem;
+	line-height: 1.35;
+	overflow-wrap: anywhere;
+}
+
+.action-choice:hover:not(:disabled),
+.action-choice--active {
+	border-color: rgb(var(--canopy-rgb) / 0.55);
+	background: rgb(var(--sky-rgb) / 0.16);
+}
+
+.action-choice:disabled {
+	cursor: not-allowed;
+	opacity: 0.72;
+}
+
+.action-drawer__note,
+.action-drawer__empty,
+.action-error,
+.action-success {
+	border-radius: 0.5rem;
+	font-size: 0.84rem;
+	line-height: 1.45;
+	padding: 0.75rem;
+}
+
+.action-drawer__note,
+.action-drawer__empty {
+	background: rgb(248 250 252);
+	color: rgb(var(--slate-rgb));
+}
+
+.action-form {
+	display: grid;
+	gap: 0.85rem;
+}
+
+.action-form__grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.75rem;
+}
+
+.action-field {
+	display: grid;
+	gap: 0.35rem;
+}
+
+.action-field span {
+	color: rgb(var(--slate-rgb) / 0.76);
+	font-size: 0.72rem;
+	font-weight: 750;
+	letter-spacing: 0;
+	text-transform: uppercase;
+}
+
+.action-field input,
+.action-field select,
+.action-field textarea {
+	min-width: 0;
+	width: 100%;
+	border: 1px solid rgb(203 213 225);
+	border-radius: 0.5rem;
+	background: white;
+	color: rgb(var(--ink-rgb));
+	font-size: 0.9rem;
+	line-height: 1.4;
+	padding: 0.6rem 0.7rem;
+}
+
+.action-field textarea {
+	resize: vertical;
+}
+
+.action-error {
+	border: 1px solid rgb(252 165 165);
+	background: rgb(254 242 242);
+	color: rgb(185 28 28);
+}
+
+.action-success {
+	border: 1px solid rgb(var(--canopy-rgb) / 0.3);
+	background: rgb(var(--canopy-rgb) / 0.1);
+	color: rgb(var(--canopy-rgb));
+}
+
+.action-form__footer {
+	display: flex;
+	justify-content: flex-end;
+}
+
 @media (max-width: 980px) {
 	.inbox-summary,
 	.admissions-inbox-layout {
@@ -570,6 +1247,10 @@ onBeforeUnmount(() => {
 
 	.inbox-row-card__pills {
 		justify-content: flex-start;
+	}
+
+	.action-form__grid {
+		grid-template-columns: 1fr;
 	}
 }
 </style>

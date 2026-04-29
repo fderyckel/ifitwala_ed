@@ -28,7 +28,7 @@ def upload_content_via_drive(
         try:
             from ifitwala_drive.api import uploads as drive_uploads_api
         except ImportError as exc:
-            frappe.throw(_("Ifitwala Drive is required for governed upload execution: {0}").format(exc))
+            frappe.throw(_("Ifitwala Drive is required for governed upload execution: {error}").format(error=exc))
         create_session_callable = drive_uploads_api.create_upload_session
         payload = {
             "workflow_id": str(workflow_id or "").strip(),

@@ -103,6 +103,14 @@ vi.mock('@/components/ContentDialog.vue', () => ({
 				type: String,
 				default: '',
 			},
+			deskHref: {
+				type: String,
+				default: '',
+			},
+			publishWindow: {
+				type: String,
+				default: '',
+			},
 			attachments: {
 				type: Array,
 				default: () => [],
@@ -126,6 +134,8 @@ vi.mock('@/components/ContentDialog.vue', () => ({
 				props.modelValue
 					? h('div', { 'data-testid': 'content-dialog-stub' }, [
 							h('div', { 'data-testid': 'content-dialog-title' }, props.title),
+							h('div', { 'data-testid': 'content-dialog-desk-href' }, props.deskHref),
+							h('div', { 'data-testid': 'content-dialog-publish-window' }, props.publishWindow),
 							h('div', { 'data-testid': 'content-dialog-content', innerHTML: props.content }),
 							h(
 								'div',
@@ -244,6 +254,7 @@ function buildAnnouncement(options?: {
 		type: 'Information',
 		priority: 'High',
 		brief_start_date: options?.briefStartDate || '2026-04-19',
+		brief_end_date: '2026-04-21',
 		is_unread: options?.isUnread ?? true,
 		interaction_mode: options?.interactionMode || 'Staff Comments',
 		allow_public_thread: options?.allowPublicThread ?? 0,
@@ -339,7 +350,7 @@ describe('MorningBriefing', () => {
 		expect(buttons.some(button => (button.textContent || '').includes('Comments'))).toBe(false);
 	});
 
-	it('supports unread-only filtering and keeps the payload order intact in the rendered stack', async () => {
+	it('supports unread-only filtering and keeps the payload order intact in the rendered grid', async () => {
 		widgetsPayloadRef.current = {
 			announcements: [
 				buildAnnouncement({
@@ -369,6 +380,9 @@ describe('MorningBriefing', () => {
 			document.querySelectorAll('[data-testid="morning-announcement-title"]')
 		).map(node => node.textContent || '');
 		expect(titles).toEqual(['Newest message', 'Older message']);
+		expect(document.querySelector('[data-testid="morning-announcements-grid"]')?.className || '').toContain(
+			'lg:grid-cols-2'
+		);
 		expect(
 			document.querySelector('[data-testid="morning-announcements-unread-count"]')?.textContent || ''
 		).toContain('1 unread');
@@ -418,6 +432,12 @@ describe('MorningBriefing', () => {
 		expect(
 			document.querySelector('[data-testid="content-dialog-title"]')?.textContent || ''
 		).toContain('High priority update');
+		expect(
+			document.querySelector('[data-testid="content-dialog-desk-href"]')?.textContent || ''
+		).toBe('/desk/org-communication/COMM-0001');
+		expect(
+			document.querySelector('[data-testid="content-dialog-publish-window"]')?.textContent || ''
+		).toBe('Appears Sun. 19th April until Tues. 21st April');
 		expect(
 			document.querySelector('[data-testid="morning-announcement-status"]')?.textContent || ''
 		).toContain('Read');

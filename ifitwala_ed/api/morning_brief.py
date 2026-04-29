@@ -126,6 +126,7 @@ def get_daily_bulletin(user, roles):
                     "type": c.communication_type,
                     "priority": c.priority,
                     "brief_start_date": c.brief_start_date,
+                    "brief_end_date": c.brief_end_date,
                     "interaction_mode": c.interaction_mode,
                     "allow_public_thread": c.allow_public_thread,
                     "allow_private_notes": c.allow_private_notes,

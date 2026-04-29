@@ -35,7 +35,7 @@ def _materials_module():
 
 
 class TestTaskMaterialSerialization(TestCase):
-    def test_serialize_task_material_includes_preview_url_for_file_materials(self):
+    def test_serialize_task_material_returns_governed_attachment_for_file_materials(self):
         with _materials_module() as materials_api:
             payload = materials_api._serialize_task_material(
                 {
@@ -59,14 +59,20 @@ class TestTaskMaterialSerialization(TestCase):
                 }
             )
 
-        self.assertEqual(payload["thumbnail_url"], "/thumbnail/material")
-        self.assertEqual(payload["preview_url"], "/preview/material")
-        self.assertEqual(payload["open_url"], "/open/material")
+        self.assertNotIn("thumbnail_url", payload)
+        self.assertNotIn("preview_url", payload)
+        self.assertNotIn("open_url", payload)
+        self.assertNotIn("file", payload)
+        self.assertNotIn("attachment_preview", payload)
         self.assertEqual(payload["placement"], "PLACEMENT-1")
-        self.assertEqual(payload["attachment_preview"]["owner_doctype"], "Material Placement")
-        self.assertEqual(payload["attachment_preview"]["owner_name"], "PLACEMENT-1")
-        self.assertEqual(payload["attachment_preview"]["kind"], "pdf")
-        self.assertEqual(payload["attachment_preview"]["download_url"], "/open/material")
+        self.assertEqual(payload["attachment"]["id"], "PLACEMENT-1")
+        self.assertEqual(payload["attachment"]["surface"], "task.material")
+        self.assertEqual(payload["attachment"]["owner_doctype"], "Material Placement")
+        self.assertEqual(payload["attachment"]["owner_name"], "PLACEMENT-1")
+        self.assertEqual(payload["attachment"]["kind"], "pdf")
+        self.assertEqual(payload["attachment"]["thumbnail_url"], "/thumbnail/material")
+        self.assertEqual(payload["attachment"]["preview_url"], "/preview/material")
+        self.assertEqual(payload["attachment"]["download_url"], "/open/material")
 
     def test_serialize_task_material_keeps_reference_links_previewless(self):
         with _materials_module() as materials_api:
@@ -81,11 +87,14 @@ class TestTaskMaterialSerialization(TestCase):
                 }
             )
 
-        self.assertIsNone(payload["thumbnail_url"])
-        self.assertIsNone(payload["preview_url"])
-        self.assertEqual(payload["open_url"], "https://example.com/article")
-        self.assertEqual(payload["attachment_preview"]["kind"], "link")
-        self.assertEqual(payload["attachment_preview"]["preview_mode"], "external_link")
+        self.assertNotIn("thumbnail_url", payload)
+        self.assertNotIn("preview_url", payload)
+        self.assertNotIn("open_url", payload)
+        self.assertNotIn("attachment_preview", payload)
+        self.assertEqual(payload["attachment"]["surface"], "task.material")
+        self.assertEqual(payload["attachment"]["kind"], "link")
+        self.assertEqual(payload["attachment"]["preview_mode"], "external_link")
+        self.assertEqual(payload["attachment"]["open_url"], "https://example.com/article")
 
     def test_upload_task_material_file_rejects_non_pdf_and_non_image_uploads(self):
         with _materials_module() as materials_api:
@@ -154,6 +163,8 @@ class TestTaskMaterialSerialization(TestCase):
 
         self.assertEqual(payload["material"], "MAT-1")
         self.assertEqual(payload["placement"], "PLACEMENT-1")
+        self.assertEqual(payload["attachment"]["surface"], "task.material")
+        self.assertNotIn("attachment_preview", payload)
         self.assertEqual(set_value_calls[0][0][0:2], ("Supporting Material", "MAT-1"))
         self.assertEqual(set_value_calls[0][0][2]["file"], "FILE-1")
         self.assertFalse(set_value_calls[0][1]["update_modified"])

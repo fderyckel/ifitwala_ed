@@ -92,16 +92,18 @@ def _build_finalize_contract(upload_session_doc, workflow_id: str) -> dict[str, 
     contract_version = metadata.get("contract_version")
     if contract_version and contract_version != spec.contract_version:
         frappe.throw(
-            _("Unsupported governed upload contract version '{0}' for workflow '{1}'.").format(
-                contract_version,
-                spec.workflow_id,
+            _("Unsupported governed upload contract version '{contract_version}' for workflow '{workflow_id}'.").format(
+                contract_version=contract_version,
+                workflow_id=spec.workflow_id,
             )
         )
 
     authoritative = spec.validate_finalize_context(upload_session_doc)
     if authoritative is None:
         frappe.throw(
-            _("Upload session no longer matches the authoritative workflow contract: {0}.").format(spec.workflow_id)
+            _("Upload session no longer matches the authoritative workflow contract: {workflow_id}.").format(
+                workflow_id=spec.workflow_id
+            )
         )
     authoritative_context = dict(authoritative)
     if spec.is_private is not None:

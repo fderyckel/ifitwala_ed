@@ -1428,8 +1428,8 @@
 												class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 											>
 												<AttachmentPreviewCard
-													v-if="material.attachment_preview"
-													:attachment="material.attachment_preview"
+													v-if="material.attachment"
+													:attachment="material.attachment"
 													variant="planning"
 													:title="material.title"
 													:description="material.description || null"
@@ -1534,7 +1534,7 @@ import PlanningRichTextField from '@/components/planning/PlanningRichTextField.v
 import { apiUpload } from '@/lib/client';
 import { emitTaskDeliveryCreatedSignal } from '@/lib/services/tasks/taskDeliveryWorkflowService';
 import type { UploadProgressState } from '@/lib/uploadProgress';
-import type { AttachmentPreviewItem } from '@/types/contracts/attachments/shared';
+import type { GovernedAttachmentRow } from '@/types/contracts/attachments/shared';
 import type {
 	AssessmentSetupForDeliveryPayload,
 	CreateTaskDeliveryInput,
@@ -1664,14 +1664,11 @@ type TaskMaterialRow = {
 	modality?: 'Read' | 'Watch' | 'Listen' | 'Use' | null;
 	description?: string | null;
 	reference_url?: string | null;
-	thumbnail_url?: string | null;
-	preview_url?: string | null;
-	open_url?: string | null;
 	file_name?: string | null;
 	file_size?: number | string | null;
 	usage_role?: 'Required' | 'Reference' | 'Template' | 'Example' | null;
 	placement_note?: string | null;
-	attachment_preview?: AttachmentPreviewItem | null;
+	attachment?: GovernedAttachmentRow | null;
 };
 
 const workflowOptions: Array<{ label: string; value: WorkflowMode; help: string }> = [

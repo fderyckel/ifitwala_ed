@@ -178,6 +178,7 @@ Test refs: `ifitwala_ed/api/test_teaching_plans.py`, `ifitwala_ed/api/test_file_
 Implemented now:
 
 - task-scoped link and file materials
+- staff task-material API rows expose governed display/open/preview data through top-level `attachment`, not duplicated row-level URL fields
 - shared course-plan and unit resource authoring
 - class-wide and session-specific resource authoring
 - student LMS resource shelves with governed preview/open URLs and inline image or compact PDF preview where available

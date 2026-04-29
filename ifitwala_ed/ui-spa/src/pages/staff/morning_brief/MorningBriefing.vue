@@ -77,15 +77,19 @@
 							</button>
 						</div>
 
-						<div v-if="filteredAnnouncements.length" class="space-y-3">
+						<div
+							v-if="filteredAnnouncements.length"
+							data-testid="morning-announcements-grid"
+							class="grid grid-cols-1 gap-4 lg:grid-cols-2"
+						>
 							<article
 								v-for="item in filteredAnnouncements"
 								:key="item.name"
 								:data-name="item.name"
 								data-testid="morning-announcement-card"
-								class="rounded-[1.75rem] border border-[rgb(var(--surface-strong-rgb)/0.72)] bg-[linear-gradient(180deg,rgb(var(--surface-strong-rgb)/0.88),rgb(var(--sand-rgb)/0.76))] p-4 shadow-[0_14px_32px_rgb(var(--ink-rgb)/0.04)] sm:p-5"
+								class="flex h-full flex-col rounded-[1.75rem] border border-[rgb(var(--surface-strong-rgb)/0.72)] bg-[linear-gradient(180deg,rgb(var(--surface-strong-rgb)/0.88),rgb(var(--sand-rgb)/0.76))] p-4 shadow-[0_14px_32px_rgb(var(--ink-rgb)/0.04)] sm:p-5"
 							>
-								<div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+								<div class="flex h-full flex-col gap-4">
 									<div class="min-w-0 flex-1">
 										<div class="flex flex-wrap items-center gap-2">
 											<span
@@ -150,9 +154,7 @@
 										</div>
 									</div>
 
-									<div
-										class="flex shrink-0 flex-wrap items-center gap-2 xl:max-w-[15rem] xl:justify-end"
-									>
+									<div class="mt-auto flex shrink-0 flex-wrap items-center gap-2">
 										<button
 											v-if="canReactToAnnouncement(item)"
 											type="button"
@@ -571,11 +573,14 @@
 		<ContentDialog
 			v-model="isContentDialogOpen"
 			:title="dialogContentTitle"
-			:subtitle="dialogContent.subtitle"
+			:subtitle="dialogContentSubtitle"
 			:content="dialogContentBody"
 			:image="dialogContent.image"
 			:image-fallback="dialogContent.imageFallback"
 			:badge="dialogContent.badge"
+			:is-announcement="Boolean(activeCommunication)"
+			:desk-href="activeAnnouncementDeskHref"
+			:publish-window="activeAnnouncementPublishWindow"
 			:attachments="dialogContentAttachments"
 			:attachments-loading="dialogContentAttachmentsLoading"
 			:attachments-error="dialogContentAttachmentsError"
@@ -745,6 +750,9 @@ const dialogContentTitle = computed<string>(() => {
 	}
 	return dialogContent.value.title;
 });
+const dialogContentSubtitle = computed<string>(() =>
+	activeCommunication.value ? '' : dialogContent.value.subtitle
+);
 const dialogContentBody = computed<string>(() => {
 	const detailBody = activeAnnouncementDetail.value?.message_html;
 	if (typeof detailBody === 'string' && detailBody.trim()) {
@@ -763,6 +771,16 @@ const dialogContentAttachmentsError = computed<string>(() =>
 		? announcementDetailError.value[activeAnnouncementName.value] || ''
 		: ''
 );
+const activeAnnouncementDeskHref = computed<string>(() => {
+	const name = activeCommunication.value?.name;
+	if (!name) return '';
+	return `/desk/org-communication/${encodeURIComponent(name)}`;
+});
+const activeAnnouncementPublishWindow = computed<string>(() => {
+	const item = activeCommunication.value;
+	if (!item) return '';
+	return formatAnnouncementWindow(item.brief_start_date, item.brief_end_date);
+});
 const unreadAnnouncementCount = computed(
 	() => (widgets.data?.announcements || []).filter(item => item.is_unread).length
 );
@@ -1242,6 +1260,59 @@ function formatAnnouncementDate(value?: string | null): string {
 		month: 'short',
 		year: 'numeric',
 	}).format(parsed);
+}
+
+function parseBriefDate(value?: string | null): Date | null {
+	const raw = String(value || '').trim();
+	const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+	if (!match) return null;
+
+	const year = Number.parseInt(match[1] || '', 10);
+	const month = Number.parseInt(match[2] || '', 10);
+	const day = Number.parseInt(match[3] || '', 10);
+	if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+	if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+	return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+}
+
+function formatOrdinalDay(day: number): string {
+	if (day % 100 >= 11 && day % 100 <= 13) return `${day}th`;
+	switch (day % 10) {
+		case 1:
+			return `${day}st`;
+		case 2:
+			return `${day}nd`;
+		case 3:
+			return `${day}rd`;
+		default:
+			return `${day}th`;
+	}
+}
+
+function formatBriefWindowDate(value?: string | null): string {
+	const parsed = parseBriefDate(value);
+	if (!parsed) return String(value || '').trim();
+
+	const weekdayLabels = ['Sun.', 'Mon.', 'Tues.', 'Wed.', 'Thurs.', 'Fri.', 'Sat.'];
+	const monthLabel = new Intl.DateTimeFormat('en-US', {
+		month: 'long',
+		timeZone: 'UTC',
+	}).format(parsed);
+
+	return `${weekdayLabels[parsed.getUTCDay()]} ${formatOrdinalDay(parsed.getUTCDate())} ${monthLabel}`;
+}
+
+function formatAnnouncementWindow(startValue?: string | null, endValue?: string | null): string {
+	const startLabel = formatBriefWindowDate(startValue);
+	const endLabel = formatBriefWindowDate(endValue);
+
+	if (startLabel && endLabel && startLabel !== endLabel) {
+		return `Appears ${startLabel} until ${endLabel}`;
+	}
+	if (startLabel) return `Appears ${startLabel}`;
+	if (endLabel) return `Appears until ${endLabel}`;
+	return '';
 }
 
 function getPriorityClasses(priority: OrgPriority): string {

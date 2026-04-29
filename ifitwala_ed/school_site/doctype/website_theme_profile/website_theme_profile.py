@@ -73,7 +73,7 @@ def _normalize_choice(*, value: str | None, allowed: tuple[str, ...], default: s
     text = (value or default).strip()
     if text not in allowed:
         frappe.throw(
-            _("{0} must be one of: {1}.").format(label, ", ".join(allowed)),
+            _("{label} must be one of: {choices}.").format(label=label, choices=", ".join(allowed)),
             frappe.ValidationError,
         )
     return text
@@ -128,12 +128,12 @@ def normalize_hex_color(value: str | None, *, field_label: str) -> str:
     text = (value or "").strip().lower()
     if not text:
         frappe.throw(
-            _("{0} is required.").format(field_label),
+            _("{label} is required.").format(label=field_label),
             frappe.ValidationError,
         )
     if not HEX_COLOR_PATTERN.match(text):
         frappe.throw(
-            _("{0} must be a valid hex color (e.g. #1d4ed8).").format(field_label),
+            _("{label} must be a valid hex color (e.g. #1d4ed8).").format(label=field_label),
             frappe.ValidationError,
         )
     return text

@@ -98,6 +98,21 @@ const {
 	},
 }));
 
+function buildTaskMaterialAttachment(overrides: Record<string, unknown> = {}) {
+	return {
+		id: 'PLACEMENT-1',
+		surface: 'task.material',
+		item_id: 'PLACEMENT-1',
+		owner_doctype: 'Material Placement',
+		owner_name: 'PLACEMENT-1',
+		file_id: 'FILE-1',
+		display_name: 'Attachment',
+		kind: 'other',
+		preview_mode: 'icon_only',
+		...overrides,
+	};
+}
+
 vi.mock('@headlessui/vue', () => {
 	const passthrough = (tag = 'div') =>
 		defineComponent({
@@ -942,6 +957,63 @@ describe('CreateTaskDeliveryOverlay', () => {
 		expect(uploadedTaskMaterialCalls[0].formData.get('task')).toBe('TASK-NEW-1');
 		expect(uploadedTaskMaterialCalls[0].formData.get('title')).toBe('lab-guide.pdf');
 		expect(closeMock).toHaveBeenCalledWith('programmatic');
+	});
+
+	it('renders task materials from the top-level governed attachment row', async () => {
+		resourceState.taskMaterialsRows = [
+			{
+				placement: 'PLACEMENT-1',
+				material: 'MAT-1',
+				title: 'Lab guide',
+				material_type: 'File',
+				file_name: 'lab-guide.pdf',
+				attachment: buildTaskMaterialAttachment({
+					id: 'PLACEMENT-1',
+					item_id: 'PLACEMENT-1',
+					display_name: 'Lab guide',
+					kind: 'pdf',
+					extension: 'pdf',
+					preview_mode: 'pdf_embed',
+					preview_url:
+						'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-1',
+					open_url:
+						'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1',
+				}),
+			},
+		];
+		apiUploadMock.mockImplementationOnce(async (url: string, formData: FormData) => {
+			uploadedTaskMaterialCalls.push({ url, formData });
+			throw new Error('Upload failed');
+		});
+
+		mountOverlay();
+		await flushUi();
+
+		await clickButton('Queue file or image');
+		const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement | null;
+		const file = new File(['pdf-bytes'], 'lab-guide.pdf', { type: 'application/pdf' });
+		Object.defineProperty(fileInput!, 'files', {
+			value: [file],
+			configurable: true,
+		});
+		fileInput!.dispatchEvent(new Event('change', { bubbles: true }));
+		await flushUi();
+		await clickButton('Queue attachment');
+
+		await setInput('Assignment title', 'Microscope reflection');
+		await clickButton('Create');
+		await flushUi();
+
+		const actions = Array.from(document.querySelectorAll('a.if-action'));
+		expect(actions[0]?.textContent?.trim()).toBe('Preview');
+		expect(actions[0]?.getAttribute('href')).toBe(
+			'/api/method/ifitwala_ed.api.file_access.preview_academic_file?file=FILE-1'
+		);
+		expect(actions[1]?.textContent?.trim()).toBe('Open original');
+		expect(actions[1]?.getAttribute('href')).toBe(
+			'/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1'
+		);
+		expect(closeMock).not.toHaveBeenCalled();
 	});
 
 	it('closes immediately after creating the task when nothing is queued', async () => {

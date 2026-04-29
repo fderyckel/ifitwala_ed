@@ -33,19 +33,39 @@
 						<DialogPanel class="if-overlay__panel content-dialog__panel">
 							<header class="content-dialog__hero">
 								<div class="content-dialog__hero-copy">
-									<p class="type-overline content-dialog__eyebrow">
-										{{ showInteractions ? __('Announcement') : __('Student Log') }}
-									</p>
-									<DialogTitle class="type-h2 text-ink mt-2">
-										{{ title || __('Detail') }}
-									</DialogTitle>
-									<p v-if="subtitle" class="type-caption mt-2 text-ink/65">
-										{{ subtitle }}
-									</p>
-									<div v-if="badge" class="mt-4">
-										<span class="content-dialog__badge">
+									<div class="content-dialog__title-row">
+										<p class="type-overline content-dialog__eyebrow">
+											{{ eyebrowLabel }}
+										</p>
+										<DialogTitle
+											class="type-h2 content-dialog__title"
+											data-testid="content-dialog-title"
+										>
+											{{ title || __('Detail') }}
+										</DialogTitle>
+									</div>
+
+									<div v-if="hasHeaderMetadata" class="content-dialog__meta-strip">
+										<span v-if="badge" class="content-dialog__badge">
 											{{ badge }}
 										</span>
+										<span v-if="subtitle" class="content-dialog__meta-item">
+											{{ subtitle }}
+										</span>
+										<span v-if="publishWindow" class="content-dialog__meta-item">
+											<FeatherIcon name="calendar" class="h-3.5 w-3.5" />
+											<span>{{ publishWindow }}</span>
+										</span>
+										<a
+											v-if="deskHref"
+											class="content-dialog__meta-link"
+											:href="deskHref"
+											target="_blank"
+											rel="noopener"
+										>
+											<FeatherIcon name="external-link" class="h-3.5 w-3.5" />
+											<span>{{ __('Open Org Communication in Desk') }}</span>
+										</a>
 									</div>
 								</div>
 
@@ -215,6 +235,9 @@ const props = defineProps<{
 	image?: string;
 	imageFallback?: string;
 	badge?: string;
+	isAnnouncement?: boolean;
+	deskHref?: string;
+	publishWindow?: string;
 	interaction?: InteractionSummary;
 	showInteractions?: boolean;
 	showComments?: boolean;
@@ -252,7 +275,13 @@ const stats = computed(() => getInteractionStats(interaction.value));
 const contentHtml = computed(() => props.content || '');
 const attachmentItems = computed<OrgCommunicationAttachmentRow[]>(() => props.attachments || []);
 const commentCount = computed(() => stats.value.comments_total ?? 0);
+const eyebrowLabel = computed(() =>
+	props.isAnnouncement || props.showInteractions ? __('Announcement') : __('Student Log')
+);
 const showCommentsAction = computed(() => props.showComments !== false);
+const hasHeaderMetadata = computed(() =>
+	Boolean(props.badge || props.subtitle || props.publishWindow || props.deskHref)
+);
 const showAttachmentSection = computed(() =>
 	Boolean(props.attachmentsLoading || props.attachmentsError || attachmentItems.value.length)
 );
@@ -451,6 +480,19 @@ onBeforeUnmount(() => {
 	flex: 1;
 }
 
+.content-dialog__title-row {
+	display: grid;
+	grid-template-columns: minmax(7.5rem, 0.34fr) minmax(0, 1fr);
+	align-items: baseline;
+	column-gap: 1rem;
+}
+
+.content-dialog__title {
+	margin: 0;
+	min-width: 0;
+	color: rgb(var(--ink-rgb) / 1);
+}
+
 .content-dialog__hero-meta {
 	display: flex;
 	align-items: flex-start;
@@ -461,11 +503,20 @@ onBeforeUnmount(() => {
 	color: rgb(var(--slate-rgb) / 0.75);
 }
 
+.content-dialog__meta-strip {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem;
+	margin-top: 0.85rem;
+	color: rgb(var(--slate-rgb) / 0.72);
+}
+
 .content-dialog__badge {
 	display: inline-flex;
 	align-items: center;
 	border-radius: 9999px;
-	padding: 0.4rem 0.8rem;
+	padding: 0.35rem 0.75rem;
 	font-size: 0.72rem;
 	font-weight: 700;
 	letter-spacing: 0.08em;
@@ -473,6 +524,37 @@ onBeforeUnmount(() => {
 	border: 1px solid rgb(var(--jacaranda-rgb) / 0.18);
 	background: rgb(var(--jacaranda-rgb) / 0.08);
 	color: rgb(var(--jacaranda-rgb) / 0.95);
+}
+
+.content-dialog__meta-item,
+.content-dialog__meta-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	min-height: 1.85rem;
+	border-radius: 9999px;
+	border: 1px solid rgb(var(--border-rgb) / 0.7);
+	background: rgb(var(--surface-strong-rgb) / 0.72);
+	padding: 0.35rem 0.75rem;
+	font-size: 0.78rem;
+	font-weight: 600;
+	line-height: 1.2;
+	color: rgb(var(--slate-rgb) / 0.78);
+}
+
+.content-dialog__meta-link {
+	text-decoration: none;
+	color: rgb(var(--canopy-rgb) / 0.95);
+	transition:
+		border-color 120ms ease,
+		background 120ms ease,
+		color 120ms ease;
+}
+
+.content-dialog__meta-link:hover {
+	border-color: rgb(var(--canopy-rgb) / 0.28);
+	background: rgb(var(--canopy-rgb) / 0.06);
+	color: rgb(var(--canopy-rgb) / 1);
 }
 
 .content-dialog__avatar {
@@ -593,6 +675,11 @@ onBeforeUnmount(() => {
 	.content-dialog__hero {
 		flex-direction: column;
 		padding: 1.1rem;
+	}
+
+	.content-dialog__title-row {
+		grid-template-columns: 1fr;
+		row-gap: 0.35rem;
 	}
 
 	.content-dialog__hero-meta {

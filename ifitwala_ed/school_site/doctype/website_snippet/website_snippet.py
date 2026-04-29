@@ -11,7 +11,7 @@ def normalize_scope_type(scope_type: str | None) -> str:
     scope = (scope_type or "").strip() or "Global"
     if scope not in VALID_SCOPES:
         frappe.throw(
-            _("Invalid scope type: {0}").format(scope),
+            _("Invalid scope type: {scope}.").format(scope=scope),
             frappe.ValidationError,
         )
     return scope
@@ -81,7 +81,9 @@ class WebsiteSnippet(Document):
         if not exists:
             return
         frappe.throw(
-            _("A Website Snippet with Snippet ID '{0}' already exists for this scope.").format(self.snippet_id),
+            _("A Website Snippet with Snippet ID '{snippet_id}' already exists for this scope.").format(
+                snippet_id=self.snippet_id
+            ),
             frappe.ValidationError,
         )
 
