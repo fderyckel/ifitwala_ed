@@ -1,6 +1,11 @@
 // ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsWorkspaceService.ts
 
 import { api } from '@/lib/client'
+import {
+	SIGNAL_ADMISSIONS_COCKPIT_INVALIDATE,
+	SIGNAL_CALENDAR_INVALIDATE,
+	uiSignals,
+} from '@/lib/uiSignals'
 
 import type {
 	ApplicantWorkspaceResponse,
@@ -13,6 +18,13 @@ import type {
 	SetDocumentRequirementOverrideRequest,
 	SetDocumentRequirementOverrideResponse,
 } from '@/types/contracts/admissions/admissions_workspace'
+import type {
+	InterviewScheduleOptionsResponse,
+	ScheduleApplicantInterviewRequest,
+	ScheduleApplicantInterviewResponse,
+	SuggestInterviewSlotsRequest,
+	SuggestInterviewSlotsResponse,
+} from '@/types/contracts/admissions/applicant_interview_schedule'
 
 export async function getInterviewWorkspace(interview: string): Promise<InterviewWorkspaceResponse> {
 	return api('ifitwala_ed.admission.doctype.applicant_interview.applicant_interview.get_interview_workspace', {
@@ -24,6 +36,38 @@ export async function getApplicantWorkspace(studentApplicant: string): Promise<A
 	return api('ifitwala_ed.admission.doctype.applicant_interview.applicant_interview.get_applicant_workspace', {
 		student_applicant: studentApplicant,
 	}) as Promise<ApplicantWorkspaceResponse>
+}
+
+export async function getInterviewScheduleOptions(
+	studentApplicant: string
+): Promise<InterviewScheduleOptionsResponse> {
+	return api(
+		'ifitwala_ed.admission.doctype.applicant_interview.applicant_interview.get_interview_schedule_options',
+		{ student_applicant: studentApplicant }
+	) as Promise<InterviewScheduleOptionsResponse>
+}
+
+export async function scheduleApplicantInterview(
+	payload: ScheduleApplicantInterviewRequest
+): Promise<ScheduleApplicantInterviewResponse> {
+	const response = await api(
+		'ifitwala_ed.admission.doctype.applicant_interview.applicant_interview.schedule_applicant_interview',
+		payload
+	) as ScheduleApplicantInterviewResponse
+	if (response?.ok) {
+		uiSignals.emit(SIGNAL_CALENDAR_INVALIDATE)
+		uiSignals.emit(SIGNAL_ADMISSIONS_COCKPIT_INVALIDATE)
+	}
+	return response
+}
+
+export async function suggestInterviewSlots(
+	payload: SuggestInterviewSlotsRequest
+): Promise<SuggestInterviewSlotsResponse> {
+	return api(
+		'ifitwala_ed.admission.doctype.applicant_interview.applicant_interview.suggest_interview_slots',
+		payload
+	) as Promise<SuggestInterviewSlotsResponse>
 }
 
 export async function getRecommendationReviewPayload(payload: {

@@ -3,8 +3,8 @@ title: "Applicant Interview Feedback: Per-Interviewer Notes"
 slug: applicant-interview-feedback
 category: Admission
 doc_order: 9
-version: "1.2.1"
-last_change_date: "2026-04-29"
+version: "1.3.0"
+last_change_date: "2026-04-30"
 summary: "Store the only canonical interviewer-opinion record per interviewer per admissions interview, avoiding collisions on any shared event note."
 seo_title: "Applicant Interview Feedback"
 seo_description: "Per-interviewer admissions interview feedback linked to Applicant Interview with Draft/Submitted status and row-level access control."
@@ -40,7 +40,9 @@ This is the only canonical store for interviewer opinion. It prevents multi-inte
 
 ## Surface Usage
 
-Used by `AdmissionsWorkspaceOverlay` opened from `StaffHome` calendar when the clicked `School Event` references `Applicant Interview`.
+Used by `AdmissionsWorkspaceOverlay` opened from:
+- Staff calendar when the clicked `School Event` references `Applicant Interview`
+- Admissions Cockpit interview/applicant workspace actions
 
 On Desk, selected interviewers can use `Open My Feedback` from the parent `Applicant Interview` form. The action opens the current user's existing feedback row for that interview or starts a prefilled draft.
 

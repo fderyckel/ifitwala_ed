@@ -10,7 +10,7 @@ from typing import Iterable, Sequence
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import format_datetime, get_datetime, get_link_to_form, getdate, now_datetime
+from frappe.utils import format_datetime, get_datetime, get_link_to_form, getdate, now_datetime, nowdate
 
 from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
@@ -24,6 +24,11 @@ from ifitwala_ed.admission.admission_utils import (
 from ifitwala_ed.api.file_access import resolve_admissions_file_open_url
 from ifitwala_ed.api.recommendation_intake import get_recommendation_status_for_applicant
 from ifitwala_ed.utilities.employee_booking import find_employee_conflicts
+from ifitwala_ed.utilities.location_utils import (
+    find_room_conflicts,
+    get_visible_location_rows_for_school,
+    is_schedulable_location,
+)
 
 TERMINAL_APPLICANT_STATES = {"Rejected", "Promoted"}
 DEFAULT_INTERVIEW_DURATION_MINUTES = 30
@@ -130,6 +135,14 @@ class ApplicantInterview(Document):
         if has_start != has_end:
             frappe.throw(_("Interview Start and Interview End must both be set."), title=_("Incomplete Time Window"))
 
+        if self._requires_schedule_interview_path():
+            frappe.throw(
+                _(
+                    "New interviews must be scheduled from Schedule Interview so interviewer calendars and rooms are checked."
+                ),
+                title=_("Use Schedule Interview"),
+            )
+
         if not has_start or not has_end:
             return
 
@@ -145,6 +158,14 @@ class ApplicantInterview(Document):
     def _sync_interview_date_from_start(self):
         if self.get("interview_start"):
             self.interview_date = getdate(self.interview_start)
+
+    def _requires_schedule_interview_path(self):
+        return (
+            self.is_new()
+            and not self.get("school_event")
+            and not getattr(self.flags, "from_schedule_applicant_interview", False)
+            and not getattr(self.flags, "ignore_permissions", False)
+        )
 
     def _add_audit_comment(self, label):
         if not self.student_applicant:
@@ -163,11 +184,65 @@ class ApplicantInterview(Document):
 
 
 @frappe.whitelist()
+def get_interview_schedule_options(*, student_applicant: str):
+    """
+    Return one bounded payload for Schedule Interview surfaces.
+
+    Desk and the Admissions Cockpit use this to avoid assembling the same
+    applicant, interviewer-default, and room context through separate calls.
+    """
+
+    _assert_manage_interview_permission(student_applicant=student_applicant)
+    applicant_row = _get_applicant_context(student_applicant)
+
+    room_rows = []
+    if applicant_row.get("school"):
+        room_rows = get_visible_location_rows_for_school(
+            applicant_row.get("school"),
+            include_groups=False,
+            only_schedulable=True,
+            fields=[
+                "name",
+                "location_name",
+                "school",
+                "parent_location",
+                "location_type",
+                "maximum_capacity",
+            ],
+            limit=200,
+        )
+
+    return {
+        "ok": True,
+        "applicant": {
+            "name": applicant_row.get("name"),
+            "display_name": _applicant_display_name(applicant_row),
+            "school": applicant_row.get("school"),
+        },
+        "defaults": {
+            "date": nowdate(),
+            "start_time": "09:00:00",
+            "duration_minutes": DEFAULT_INTERVIEW_DURATION_MINUTES,
+            "window_start_time": DEFAULT_SUGGESTION_WINDOW_START,
+            "window_end_time": DEFAULT_SUGGESTION_WINDOW_END,
+            "current_user": frappe.session.user,
+        },
+        "rooms": [_serialize_room_option(row) for row in room_rows],
+        "interview_types": ["Family", "Student", "Joint"],
+        "modes": ["In Person", "Online", "Phone"],
+        "confidentiality_levels": ["Admissions Team", "Leadership Only"],
+    }
+
+
+@frappe.whitelist()
 def suggest_interview_slots(
     *,
+    student_applicant: str | None = None,
     interview_date: str | None = None,
     primary_interviewer: str | None = None,
     interviewer_users: Sequence[str] | str | None = None,
+    mode: str | None = None,
+    location: str | None = None,
     duration_minutes: int | str | None = None,
     window_start_time=None,
     window_end_time=None,
@@ -179,7 +254,14 @@ def suggest_interview_slots(
     This endpoint is reusable by Desk dialogs and SPA overlays.
     """
 
-    _assert_manage_interview_permission()
+    _assert_manage_interview_permission(student_applicant=student_applicant)
+    applicant_row = _get_applicant_context(student_applicant) if student_applicant else None
+    location_value = _resolve_schedule_location(
+        location=location,
+        mode=mode,
+        applicant_row=applicant_row,
+        require_for_in_person=False,
+    )
 
     target_date = _to_date_or_throw(interview_date, fieldname="interview_date")
     selected_users = _normalize_interviewer_users(
@@ -216,6 +298,7 @@ def suggest_interview_slots(
     max_rows = _to_positive_int(value=limit, default=DEFAULT_SUGGESTION_LIMIT, fieldname="limit")
     slots = _suggest_common_free_slots(
         employees=[row["name"] for row in employee_rows],
+        location=location_value,
         window_start=window_start,
         window_end=window_end,
         duration_minutes=duration,
@@ -238,6 +321,7 @@ def suggest_interview_slots(
             "end": window_end.isoformat(),
             "duration_minutes": duration,
             "step_minutes": DEFAULT_SUGGESTION_STEP_MINUTES,
+            "location": location_value,
         },
         "slots": slots,
     }
@@ -340,6 +424,7 @@ def schedule_applicant_interview(
     duration_minutes: int | str | None = None,
     interview_type: str | None = None,
     mode: str | None = None,
+    location: str | None = None,
     confidentiality_level: str | None = None,
     notes: str | None = None,
     primary_interviewer: str | None = None,
@@ -351,13 +436,20 @@ def schedule_applicant_interview(
     """
     Atomically create Applicant Interview + linked School Event.
 
-    If the selected interviewers are busy, returns a structured conflict payload
-    with suggested alternative times instead of throwing a hard validation error.
+    If the selected interviewers or room are busy, returns a structured
+    conflict payload with suggested alternative times instead of throwing a hard
+    validation error.
     """
 
     _assert_manage_interview_permission(student_applicant=student_applicant)
 
     applicant_row = _get_applicant_context(student_applicant)
+    location_value = _resolve_schedule_location(
+        location=location,
+        mode=mode,
+        applicant_row=applicant_row,
+        require_for_in_person=True,
+    )
 
     selected_users = _normalize_interviewer_users(
         primary_interviewer=primary_interviewer,
@@ -383,11 +475,21 @@ def schedule_applicant_interview(
     if end_dt <= start_dt:
         frappe.throw(_("Interview End must be after Interview Start."), title=_("Invalid Time Window"))
 
-    conflict_rows = _collect_employee_conflicts(
+    employee_conflict_rows = _collect_employee_conflicts(
         employee_rows=employee_rows,
         start_dt=start_dt,
         end_dt=end_dt,
         exclude_source=None,
+    )
+    room_conflict_rows = _collect_room_conflicts(
+        location=location_value,
+        start_dt=start_dt,
+        end_dt=end_dt,
+        exclude_source=None,
+    )
+    conflict_rows = _combine_conflict_rows(
+        employee_conflict_rows=employee_conflict_rows,
+        room_conflict_rows=room_conflict_rows,
     )
 
     if conflict_rows:
@@ -407,6 +509,7 @@ def schedule_applicant_interview(
 
         suggestion_rows = _suggest_common_free_slots(
             employees=[row["name"] for row in employee_rows],
+            location=location_value,
             window_start=suggestion_window_start,
             window_end=suggestion_window_end,
             duration_minutes=int((end_dt - start_dt).total_seconds() // 60),
@@ -418,15 +521,22 @@ def schedule_applicant_interview(
             ),
         )
 
+        conflict_code = _schedule_conflict_code(
+            employee_conflict_rows=employee_conflict_rows,
+            room_conflict_rows=room_conflict_rows,
+        )
         return {
             "ok": False,
-            "code": "EMPLOYEE_CONFLICT",
-            "message": _("One or more interviewers are already booked for the selected time."),
+            "code": conflict_code,
+            "message": _schedule_conflict_message(conflict_code),
             "conflicts": conflict_rows,
+            "employee_conflicts": employee_conflict_rows,
+            "room_conflicts": room_conflict_rows,
             "suggestions": suggestion_rows,
             "window": {
                 "start": suggestion_window_start.isoformat(),
                 "end": suggestion_window_end.isoformat(),
+                "location": location_value,
             },
         }
 
@@ -441,6 +551,7 @@ def schedule_applicant_interview(
         interview_doc.interview_end = end_dt
         interview_doc.interview_date = getdate(start_dt)
         interview_doc.mode = mode
+        interview_doc.location = location_value
         interview_doc.confidentiality_level = confidentiality_level
         interview_doc.notes = notes
 
@@ -448,6 +559,7 @@ def schedule_applicant_interview(
             interview_doc.append("interviewers", {"interviewer": user})
 
         interview_doc.flags.ignore_permissions = True
+        interview_doc.flags.from_schedule_applicant_interview = True
         interview_doc.insert()
 
         school_event_doc = _create_school_event_for_interview(
@@ -456,6 +568,7 @@ def schedule_applicant_interview(
             interviewer_users=selected_users,
             starts_on=start_dt,
             ends_on=end_dt,
+            location=location_value,
         )
 
         interview_doc.db_set("school_event", school_event_doc.name, update_modified=False)
@@ -471,6 +584,7 @@ def schedule_applicant_interview(
         "window": {
             "start": start_dt.isoformat(),
             "end": end_dt.isoformat(),
+            "location": location_value,
         },
     }
 
@@ -825,11 +939,15 @@ def _load_or_create_my_feedback_doc(*, interview_name: str, user: str):
 def _serialize_interview_for_workspace(interview_doc: ApplicantInterview) -> dict:
     interviewer_users = _normalized_interviewer_rows(interview_doc.get("interviewers") or [])
     user_map = _user_display_map(interviewer_users)
+    location_name = (interview_doc.get("location") or "").strip()
+    location_label = (_location_label_map([location_name]).get(location_name) if location_name else None) or None
     return {
         "name": interview_doc.name,
         "student_applicant": interview_doc.student_applicant,
         "interview_type": interview_doc.interview_type,
         "mode": interview_doc.mode,
+        "location": location_name or None,
+        "location_label": location_label,
         "confidentiality_level": interview_doc.confidentiality_level,
         "interview_date": str(interview_doc.interview_date) if interview_doc.interview_date else None,
         "interview_start": interview_doc.interview_start,
@@ -1180,6 +1298,7 @@ def _load_interviews_for_applicant_workspace(*, student_applicant: str) -> list[
             "name",
             "interview_type",
             "mode",
+            "location",
             "confidentiality_level",
             "interview_date",
             "interview_start",
@@ -1212,6 +1331,8 @@ def _load_interviews_for_applicant_workspace(*, student_applicant: str) -> list[
     )
     users = [row.get("interviewer") for row in interviewer_rows if row.get("interviewer")]
     user_map = _user_display_map(users)
+    location_names = [row.get("location") for row in rows if row.get("location")]
+    location_map = _location_label_map(location_names)
 
     users_by_interview: dict[str, list[str]] = {}
     for row in interviewer_rows:
@@ -1255,6 +1376,8 @@ def _load_interviews_for_applicant_workspace(*, student_applicant: str) -> list[
                 "student_applicant": student_applicant,
                 "interview_type": row.get("interview_type"),
                 "mode": row.get("mode"),
+                "location": row.get("location"),
+                "location_label": location_map.get(row.get("location")) if row.get("location") else None,
                 "confidentiality_level": row.get("confidentiality_level"),
                 "interview_date": str(row.get("interview_date")) if row.get("interview_date") else None,
                 "interview_start": row.get("interview_start"),
@@ -1383,6 +1506,20 @@ def _user_display_map(users: Sequence[str]) -> dict[str, str]:
     return {row.get("name"): (row.get("full_name") or row.get("name")) for row in rows if row.get("name")}
 
 
+def _location_label_map(locations: Sequence[str]) -> dict[str, str]:
+    location_list = [location for location in locations if location]
+    if not location_list:
+        return {}
+    rows = frappe.get_all(
+        "Location",
+        filters={"name": ["in", list(sorted(set(location_list)))]},
+        fields=["name", "location_name"],
+        limit=max(len(set(location_list)), 1),
+        ignore_permissions=True,
+    )
+    return {row.get("name"): (row.get("location_name") or row.get("name")) for row in rows if row.get("name")}
+
+
 def _get_applicant_context(student_applicant: str | None) -> frappe._dict:
     applicant_name = (student_applicant or "").strip()
     if not applicant_name:
@@ -1404,6 +1541,71 @@ def _get_applicant_context(student_applicant: str | None) -> frappe._dict:
         frappe.throw(_("Applicant is read-only in terminal states."))
 
     return row
+
+
+def _serialize_room_option(row: dict) -> dict:
+    name = (row.get("name") or "").strip()
+    label = (row.get("location_name") or name).strip()
+    return {
+        "value": name,
+        "label": label or name,
+        "school": row.get("school"),
+        "parent_location": row.get("parent_location"),
+        "location_type": row.get("location_type"),
+        "location_type_name": row.get("location_type_name"),
+        "max_capacity": row.get("maximum_capacity"),
+    }
+
+
+def _resolve_schedule_location(
+    *,
+    location: str | None,
+    mode: str | None,
+    applicant_row: frappe._dict | None,
+    require_for_in_person: bool,
+) -> str | None:
+    mode_value = (mode or "").strip()
+    location_name = (location or "").strip()
+
+    if mode_value == "In Person" and require_for_in_person and not location_name:
+        frappe.throw(
+            _("Select a room for in-person interviews."),
+            title=_("Room Required"),
+        )
+
+    if not location_name:
+        return None
+
+    if not is_schedulable_location(location_name):
+        frappe.throw(
+            _("Selected room is not schedulable."),
+            title=_("Invalid Room"),
+        )
+
+    selected_school = (applicant_row.get("school") if applicant_row else None) or ""
+    if not selected_school:
+        if require_for_in_person:
+            frappe.throw(
+                _("Set the applicant school before selecting an interview room."),
+                title=_("School Required"),
+            )
+        return location_name
+
+    visible_rows = get_visible_location_rows_for_school(
+        selected_school,
+        include_groups=False,
+        only_schedulable=True,
+        fields=["name", "location_name", "school", "parent_location", "location_type", "maximum_capacity"],
+        limit=2000,
+    )
+    visible_names = {row.get("name") for row in visible_rows if row.get("name")}
+    if location_name not in visible_names:
+        frappe.throw(
+            _("Selected room is not available for this applicant school."),
+            title=_("Invalid Room"),
+        )
+
+    return location_name
 
 
 def _assert_users_exist_and_enabled(user_ids: Sequence[str]) -> None:
@@ -1472,6 +1674,7 @@ def _collect_employee_conflicts(
         for hit in conflicts:
             out.append(
                 {
+                    "kind": "employee",
                     "employee": employee_name,
                     "employee_name": employee_label,
                     "booking_type": hit.booking_type,
@@ -1488,6 +1691,84 @@ def _collect_employee_conflicts(
     return out
 
 
+def _collect_room_conflicts(
+    *,
+    location: str | None,
+    start_dt: datetime,
+    end_dt: datetime,
+    exclude_source: dict | None,
+) -> list[dict]:
+    location_name = (location or "").strip()
+    if not location_name:
+        return []
+
+    hits = find_room_conflicts(
+        location_name,
+        start_dt,
+        end_dt,
+        include_children=False,
+        exclude=exclude_source,
+    )
+    location_labels = _location_label_map(
+        [location_name, *[hit.get("location") for hit in hits if hit.get("location")]]
+    )
+
+    out: list[dict] = []
+    for hit in hits:
+        hit_location = (hit.get("location") or location_name).strip()
+        hit_start = get_datetime(hit.get("from"))
+        hit_end = get_datetime(hit.get("to"))
+        if not hit_start or not hit_end:
+            continue
+
+        out.append(
+            {
+                "kind": "room",
+                "location": hit_location,
+                "location_label": location_labels.get(hit_location) or hit_location,
+                "occupancy_type": (hit.get("extra") or {}).get("occupancy_type") or "Room Booking",
+                "source_doctype": hit.get("source_doctype"),
+                "source_name": hit.get("source_name"),
+                "start": hit_start.isoformat(),
+                "end": hit_end.isoformat(),
+                "start_label": format_datetime(hit_start),
+                "end_label": format_datetime(hit_end),
+            }
+        )
+
+    out.sort(key=lambda row: (row["start"], row["location"]))
+    return out
+
+
+def _combine_conflict_rows(*, employee_conflict_rows: Sequence[dict], room_conflict_rows: Sequence[dict]) -> list[dict]:
+    rows: list[dict] = []
+    for row in employee_conflict_rows or []:
+        item = dict(row)
+        item.setdefault("kind", "employee")
+        rows.append(item)
+    rows.extend(dict(row) for row in room_conflict_rows or [])
+    rows.sort(key=lambda row: (row.get("start") or "", row.get("kind") or "", row.get("source_name") or ""))
+    return rows
+
+
+def _schedule_conflict_code(*, employee_conflict_rows: Sequence[dict], room_conflict_rows: Sequence[dict]) -> str:
+    has_employee = bool(employee_conflict_rows)
+    has_room = bool(room_conflict_rows)
+    if has_employee and has_room:
+        return "SCHEDULING_CONFLICT"
+    if has_room:
+        return "ROOM_CONFLICT"
+    return "EMPLOYEE_CONFLICT"
+
+
+def _schedule_conflict_message(code: str) -> str:
+    if code == "ROOM_CONFLICT":
+        return _("The selected room is already booked for the selected time.")
+    if code == "SCHEDULING_CONFLICT":
+        return _("One or more interviewers and the selected room are already booked for the selected time.")
+    return _("One or more interviewers are already booked for the selected time.")
+
+
 def _create_school_event_for_interview(
     *,
     interview_doc: ApplicantInterview,
@@ -1495,6 +1776,7 @@ def _create_school_event_for_interview(
     interviewer_users: Sequence[str],
     starts_on: datetime,
     ends_on: datetime,
+    location: str | None = None,
 ):
     applicant_label = _applicant_display_name(applicant_row)
 
@@ -1505,6 +1787,7 @@ def _create_school_event_for_interview(
     school_event.starts_on = starts_on
     school_event.ends_on = ends_on
     school_event.school = applicant_row.get("school")
+    school_event.location = (location or "").strip() or None
     school_event.reference_type = INTERVIEW_EVENT_REFERENCE_TYPE
     school_event.reference_name = interview_doc.name
 
@@ -1703,6 +1986,7 @@ def _build_window_datetimes_for_date(*, target_date, start_time: time, end_time:
 def _suggest_common_free_slots(
     *,
     employees: Sequence[str],
+    location: str | None = None,
     window_start: datetime,
     window_end: datetime,
     duration_minutes: int,
@@ -1726,6 +2010,11 @@ def _suggest_common_free_slots(
         window_start=window_start,
         window_end=window_end,
     )
+    room_conflicts = _load_conflict_windows_for_room(
+        location=location,
+        window_start=window_start,
+        window_end=window_end,
+    )
 
     suggestions: list[dict] = []
     cursor = window_start
@@ -1742,6 +2031,13 @@ def _suggest_common_free_slots(
             ):
                 blocked = True
                 break
+
+        if not blocked and _slot_overlaps_any(
+            slot_start=cursor,
+            slot_end=slot_end,
+            conflicts=room_conflicts,
+        ):
+            blocked = True
 
         if not blocked:
             suggestions.append(
@@ -1808,6 +2104,38 @@ def _load_conflict_windows_for_employees(
     for employee in out:
         out[employee].sort(key=lambda item: item[0])
 
+    return out
+
+
+def _load_conflict_windows_for_room(
+    *,
+    location: str | None,
+    window_start: datetime,
+    window_end: datetime,
+) -> list[tuple[datetime, datetime]]:
+    location_name = (location or "").strip()
+    if not location_name:
+        return []
+
+    rows = find_room_conflicts(
+        location_name,
+        window_start,
+        window_end,
+        include_children=False,
+    )
+    out: list[tuple[datetime, datetime]] = []
+    for row in rows:
+        start = row.get("from")
+        end = row.get("to")
+        if not start or not end:
+            continue
+        start_dt = get_datetime(start)
+        end_dt = get_datetime(end)
+        if end_dt <= start_dt:
+            continue
+        out.append((start_dt, end_dt))
+
+    out.sort(key=lambda item: item[0])
     return out
 
 

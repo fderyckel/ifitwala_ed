@@ -21,6 +21,23 @@ frappe.ui.form.on("Applicant Interview", {
 	refresh(frm) {
 		add_my_feedback_action(frm);
 	},
+
+	validate(frm) {
+		if (!frm.is_new()) {
+			return;
+		}
+		if (frm.doc.school_event) {
+			return;
+		}
+		frappe.validated = false;
+		frappe.msgprint({
+			title: __("Use Schedule Interview"),
+			indicator: "orange",
+			message: __(
+				"New interviews must be scheduled from the Student Applicant or Admissions Cockpit so calendars and room availability are checked."
+			),
+		});
+	},
 });
 
 function apply_new_interview_defaults(frm) {

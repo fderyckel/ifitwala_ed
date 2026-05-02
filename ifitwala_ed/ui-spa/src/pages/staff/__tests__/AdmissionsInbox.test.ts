@@ -21,6 +21,8 @@ const {
 	markInquiryContactedFromInboxMock,
 	qualifyInquiryFromInboxMock,
 	inviteInquiryToApplyFromInboxMock,
+	createAdmissionsIntakeMock,
+	sendAdmissionsCaseMessageFromInboxMock,
 } = vi.hoisted(() => ({
 	getAdmissionsInboxContextMock: vi.fn(),
 	logAdmissionMessageMock: vi.fn(),
@@ -35,6 +37,8 @@ const {
 	markInquiryContactedFromInboxMock: vi.fn(),
 	qualifyInquiryFromInboxMock: vi.fn(),
 	inviteInquiryToApplyFromInboxMock: vi.fn(),
+	createAdmissionsIntakeMock: vi.fn(),
+	sendAdmissionsCaseMessageFromInboxMock: vi.fn(),
 }));
 
 vi.mock('frappe-ui', () => ({
@@ -63,6 +67,8 @@ vi.mock('@/lib/services/admissions/admissionsInboxService', () => ({
 	markInquiryContactedFromInbox: markInquiryContactedFromInboxMock,
 	qualifyInquiryFromInbox: qualifyInquiryFromInboxMock,
 	inviteInquiryToApplyFromInbox: inviteInquiryToApplyFromInboxMock,
+	createAdmissionsIntake: createAdmissionsIntakeMock,
+	sendAdmissionsCaseMessageFromInbox: sendAdmissionsCaseMessageFromInboxMock,
 }));
 
 import { SIGNAL_ADMISSIONS_INBOX_INVALIDATE, uiSignals } from '@/lib/uiSignals';
@@ -82,6 +88,7 @@ function row(overrides: Partial<AdmissionsInboxRow>): AdmissionsInboxRow {
 		inquiry: null,
 		student_applicant: null,
 		conversation: 'AC-0001',
+		org_communication: null,
 		open_url: '/desk/admission-conversation/AC-0001',
 		external_identity: 'EXT-0001',
 		channel_type: 'WhatsApp',
@@ -228,6 +235,8 @@ afterEach(() => {
 	markInquiryContactedFromInboxMock.mockReset();
 	qualifyInquiryFromInboxMock.mockReset();
 	inviteInquiryToApplyFromInboxMock.mockReset();
+	createAdmissionsIntakeMock.mockReset();
+	sendAdmissionsCaseMessageFromInboxMock.mockReset();
 	uiSignals._clearAllForTests();
 	while (cleanupFns.length) {
 		cleanupFns.pop()?.();
@@ -374,6 +383,55 @@ describe('AdmissionsInbox', () => {
 		expect(document.body.textContent || '').toContain('Saved. Refreshing queue.');
 	});
 
+	it('records manual CRM intake through one server-owned workflow payload', async () => {
+		getAdmissionsInboxContextMock.mockResolvedValue(context());
+		createAdmissionsIntakeMock.mockResolvedValue({ ok: true });
+
+		mountAdmissionsInbox();
+		await flushUi();
+
+		clickByTestId('admissions-inbox-record-intake');
+		await flushUi();
+		setControlValue('intake-organization', 'ORG-1');
+		setControlValue('intake-first-name', 'Phone');
+		setControlValue('intake-last-name', 'Parent');
+		setControlValue('intake-phone', '+66000000000');
+		setControlValue('intake-message', 'Family called to ask about admissions.');
+		setControlValue('intake-note', 'Send fee schedule and arrange a tour.');
+		setControlValue('intake-next-action-on', '2026-05-01');
+		clickByTestId('intake-submit');
+		await flushUi();
+
+		expect(createAdmissionsIntakeMock).toHaveBeenCalledWith({
+			organization: 'ORG-1',
+			school: null,
+			type_of_inquiry: 'Admission',
+			source: 'Phone',
+			activity_channel: 'Phone',
+			first_name: 'Phone',
+			last_name: 'Parent',
+			email: null,
+			phone_number: '+66000000000',
+			student_first_name: null,
+			student_last_name: null,
+			intended_academic_year: null,
+			grade_level_interest: null,
+			program_interest: null,
+			student_name_or_id: null,
+			relationship_to_student: null,
+			organization_name: null,
+			partnership_context: null,
+			message: 'Family called to ask about admissions.',
+			activity_type: 'Reached',
+			outcome: null,
+			note: 'Send fee schedule and arrange a tour.',
+			next_action_on: '2026-05-01',
+			assigned_to: null,
+			assignment_lane: null,
+		});
+		expect(document.body.textContent || '').toContain('Intake recorded. Refreshing queue.');
+	});
+
 	it('submits conversation ownership changes through the CRM assignment endpoint', async () => {
 		getAdmissionsInboxContextMock.mockResolvedValue(context());
 		assignAdmissionConversationMock.mockResolvedValue({ ok: true });
@@ -454,6 +512,56 @@ describe('AdmissionsInbox', () => {
 			inquiry: 'INQ-0001',
 			complete_todo: 0,
 		});
+	});
+
+	it('submits applicant case replies through the admissions communication endpoint', async () => {
+		getAdmissionsInboxContextMock.mockResolvedValue(
+			context({
+				queues: [
+					queue({
+						rows: [
+							row({
+								id: 'applicant_message:COMM-0001:APP-0001',
+								kind: 'applicant_message',
+								stage: 'applicant',
+								title: 'Applicant One',
+								subtitle: 'Applicant Case Message • In Progress',
+								inquiry: null,
+								student_applicant: 'APP-0001',
+								conversation: null,
+								org_communication: 'COMM-0001',
+								open_url: '/desk/student-applicant/APP-0001',
+								external_identity: null,
+								channel_type: null,
+								owner: null,
+								last_message_preview: 'Can I upload the passport tomorrow?',
+								needs_reply: true,
+								unread_count: 1,
+								actions: [{ id: 'reply_applicant_case', enabled: true }],
+							}),
+						],
+					}),
+				],
+			})
+		);
+		sendAdmissionsCaseMessageFromInboxMock.mockResolvedValue({ ok: true });
+
+		mountAdmissionsInbox();
+		await flushUi();
+
+		clickByTestId('inbox-actions-applicant_message:COMM-0001:APP-0001');
+		await flushUi();
+		setControlValue('action-message-body', 'Yes, tomorrow is fine.');
+		clickByTestId('action-submit');
+		await flushUi();
+
+		expect(sendAdmissionsCaseMessageFromInboxMock).toHaveBeenCalledWith({
+			context_doctype: 'Student Applicant',
+			context_name: 'APP-0001',
+			body: 'Yes, tomorrow is fine.',
+			applicant_visible: 1,
+		});
+		expect(document.body.textContent || '').toContain('Saved. Refreshing queue.');
 	});
 
 	it('shows inline mutation errors without hiding the drawer', async () => {

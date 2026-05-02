@@ -11,6 +11,15 @@
 				</p>
 				<button
 					type="button"
+					data-testid="admissions-inbox-record-intake"
+					class="if-button if-button--primary"
+					@click="openIntakeDrawer"
+				>
+					<FeatherIcon name="plus" class="h-4 w-4" />
+					<span>Record Intake</span>
+				</button>
+				<button
+					type="button"
 					data-testid="admissions-inbox-refresh"
 					class="if-button if-button--quiet"
 					:disabled="loading"
@@ -162,6 +171,254 @@
 		</section>
 
 		<aside
+			v-if="intakeDrawerOpen"
+			data-testid="admissions-intake-drawer"
+			class="action-drawer"
+			aria-label="Admissions intake drawer"
+		>
+			<header class="action-drawer__header">
+				<div class="min-w-0">
+					<p class="type-overline text-slate-token/70">Admissions CRM</p>
+					<h2 class="type-h2 text-ink">Record Intake</h2>
+				</div>
+				<button
+					type="button"
+					data-testid="admissions-intake-close"
+					class="if-button if-button--quiet"
+					@click="closeIntakeDrawer"
+				>
+					<FeatherIcon name="x" class="h-4 w-4" />
+					<span>Close</span>
+				</button>
+			</header>
+
+			<form class="action-drawer__body action-form" @submit.prevent="submitIntake">
+				<div class="action-form__grid">
+					<label class="action-field">
+						<span>Organization</span>
+						<input
+							v-model="intakeForm.organization"
+							data-testid="intake-organization"
+							type="text"
+							placeholder="Organization document name"
+						/>
+					</label>
+					<label class="action-field">
+						<span>School</span>
+						<input
+							v-model="intakeForm.school"
+							data-testid="intake-school"
+							type="text"
+							placeholder="Optional School document name"
+						/>
+					</label>
+					<label class="action-field">
+						<span>Type of Inquiry</span>
+						<select v-model="intakeForm.type_of_inquiry" data-testid="intake-type">
+							<option v-for="type in inquiryTypes" :key="type" :value="type">{{ type }}</option>
+						</select>
+					</label>
+					<label class="action-field">
+						<span>Source</span>
+						<select v-model="intakeForm.source" data-testid="intake-source">
+							<option v-for="source in inquirySources" :key="source" :value="source">
+								{{ source }}
+							</option>
+						</select>
+					</label>
+					<label class="action-field">
+						<span>Activity Channel</span>
+						<select v-model="intakeForm.activity_channel" data-testid="intake-activity-channel">
+							<option v-for="channel in activityChannels" :key="channel" :value="channel">
+								{{ channel }}
+							</option>
+						</select>
+					</label>
+					<label class="action-field">
+						<span>Activity Type</span>
+						<select v-model="intakeForm.activity_type" data-testid="intake-activity-type">
+							<option v-for="type in activityTypes" :key="type" :value="type">{{ type }}</option>
+						</select>
+					</label>
+				</div>
+
+				<div class="action-form__grid">
+					<label class="action-field">
+						<span>First Name</span>
+						<input v-model="intakeForm.first_name" data-testid="intake-first-name" type="text" />
+					</label>
+					<label class="action-field">
+						<span>Last Name</span>
+						<input v-model="intakeForm.last_name" data-testid="intake-last-name" type="text" />
+					</label>
+					<label class="action-field">
+						<span>Email</span>
+						<input v-model="intakeForm.email" data-testid="intake-email" type="email" />
+					</label>
+					<label class="action-field">
+						<span>Phone</span>
+						<input v-model="intakeForm.phone_number" data-testid="intake-phone" type="tel" />
+					</label>
+				</div>
+
+				<div v-if="intakeForm.type_of_inquiry === 'Admission'" class="action-form__grid">
+					<label class="action-field">
+						<span>Student First Name</span>
+						<input
+							v-model="intakeForm.student_first_name"
+							data-testid="intake-student-first-name"
+							type="text"
+						/>
+					</label>
+					<label class="action-field">
+						<span>Student Last Name</span>
+						<input
+							v-model="intakeForm.student_last_name"
+							data-testid="intake-student-last-name"
+							type="text"
+						/>
+					</label>
+					<label class="action-field">
+						<span>Academic Year</span>
+						<input
+							v-model="intakeForm.intended_academic_year"
+							data-testid="intake-academic-year"
+							type="text"
+						/>
+					</label>
+					<label class="action-field">
+						<span>Grade Level</span>
+						<input
+							v-model="intakeForm.grade_level_interest"
+							data-testid="intake-grade-level"
+							type="text"
+						/>
+					</label>
+					<label class="action-field">
+						<span>Program</span>
+						<input
+							v-model="intakeForm.program_interest"
+							data-testid="intake-program"
+							type="text"
+						/>
+					</label>
+				</div>
+
+				<div v-else-if="intakeForm.type_of_inquiry === 'Current Family'" class="action-form__grid">
+					<label class="action-field">
+						<span>Student Name or ID</span>
+						<input
+							v-model="intakeForm.student_name_or_id"
+							data-testid="intake-student-name-or-id"
+							type="text"
+						/>
+					</label>
+					<label class="action-field">
+						<span>Relationship</span>
+						<input
+							v-model="intakeForm.relationship_to_student"
+							data-testid="intake-relationship"
+							type="text"
+						/>
+					</label>
+				</div>
+
+				<div
+					v-else-if="intakeForm.type_of_inquiry === 'Partnership / Agent'"
+					class="action-form__grid"
+				>
+					<label class="action-field">
+						<span>External Organization</span>
+						<input
+							v-model="intakeForm.organization_name"
+							data-testid="intake-external-organization"
+							type="text"
+						/>
+					</label>
+					<label class="action-field">
+						<span>Partnership Context</span>
+						<input
+							v-model="intakeForm.partnership_context"
+							data-testid="intake-partnership-context"
+							type="text"
+						/>
+					</label>
+				</div>
+
+				<label class="action-field">
+					<span>Message</span>
+					<textarea
+						v-model="intakeForm.message"
+						data-testid="intake-message"
+						rows="4"
+						placeholder="Original question or summary"
+					/>
+				</label>
+
+				<label class="action-field">
+					<span>Note</span>
+					<textarea
+						v-model="intakeForm.note"
+						data-testid="intake-note"
+						rows="4"
+						placeholder="Internal CRM note"
+					/>
+				</label>
+
+				<div class="action-form__grid">
+					<label class="action-field">
+						<span>Outcome</span>
+						<input v-model="intakeForm.outcome" data-testid="intake-outcome" type="text" />
+					</label>
+					<label class="action-field">
+						<span>Next Action On</span>
+						<input
+							v-model="intakeForm.next_action_on"
+							data-testid="intake-next-action-on"
+							type="date"
+						/>
+					</label>
+					<label class="action-field">
+						<span>Assigned To</span>
+						<input
+							v-model="intakeForm.assigned_to"
+							data-testid="intake-assigned-to"
+							type="text"
+							placeholder="Optional admissions user email"
+						/>
+					</label>
+					<label class="action-field">
+						<span>Assignment Lane</span>
+						<select v-model="intakeForm.assignment_lane" data-testid="intake-assignment-lane">
+							<option v-for="lane in assignmentLanes" :key="lane || 'default'" :value="lane">
+								{{ lane || 'Default' }}
+							</option>
+						</select>
+					</label>
+				</div>
+
+				<p v-if="intakeError" data-testid="admissions-intake-error" class="action-error">
+					{{ intakeError }}
+				</p>
+				<p v-if="intakeSuccess" data-testid="admissions-intake-success" class="action-success">
+					{{ intakeSuccess }}
+				</p>
+
+				<div class="action-form__footer">
+					<button
+						type="submit"
+						data-testid="intake-submit"
+						class="if-button if-button--primary"
+						:disabled="intakeSaving"
+					>
+						<FeatherIcon name="check" class="h-4 w-4" />
+						<span>{{ intakeSaving ? 'Saving' : 'Record Intake' }}</span>
+					</button>
+				</div>
+			</form>
+		</aside>
+
+		<aside
 			v-if="selectedRow"
 			data-testid="admissions-inbox-action-drawer"
 			class="action-drawer"
@@ -213,7 +470,7 @@
 				</div>
 
 				<form v-else class="action-form" @submit.prevent="submitActiveAction">
-					<template v-if="isLogAction(activeActionId)">
+					<template v-if="isMessageBodyAction(activeActionId)">
 						<label class="action-field">
 							<span>Message</span>
 							<textarea
@@ -419,6 +676,7 @@ import {
 	assignAdmissionConversation,
 	assignInquiryFromInbox,
 	confirmAdmissionExternalIdentity,
+	createAdmissionsIntake,
 	createInquiryFromAdmissionConversation,
 	getAdmissionsInboxContext,
 	inviteInquiryToApplyFromInbox,
@@ -427,10 +685,12 @@ import {
 	markInquiryContactedFromInbox,
 	qualifyInquiryFromInbox,
 	recordAdmissionCrmActivity,
+	sendAdmissionsCaseMessageFromInbox,
 	updateAdmissionConversationStatus,
 } from '@/lib/services/admissions/admissionsInboxService';
 import { SIGNAL_ADMISSIONS_INBOX_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 import type {
+	AdmissionCrmActivityChannel,
 	AdmissionCrmActivityType,
 	AdmissionExternalIdentityMatchStatus,
 	AdmissionsInboxContext,
@@ -455,6 +715,7 @@ const SUPPORTED_ACTION_IDS = [
 	'mark_contacted',
 	'qualify',
 	'invite_to_apply',
+	'reply_applicant_case',
 ] as const;
 
 type SupportedActionId = (typeof SUPPORTED_ACTION_IDS)[number];
@@ -488,6 +749,34 @@ type ActionState = {
 	disabledReason: string;
 };
 
+type IntakeForm = {
+	organization: string;
+	school: string;
+	type_of_inquiry: string;
+	source: string;
+	activity_channel: AdmissionCrmActivityChannel;
+	first_name: string;
+	last_name: string;
+	email: string;
+	phone_number: string;
+	student_first_name: string;
+	student_last_name: string;
+	intended_academic_year: string;
+	grade_level_interest: string;
+	program_interest: string;
+	student_name_or_id: string;
+	relationship_to_student: string;
+	organization_name: string;
+	partnership_context: string;
+	message: string;
+	activity_type: AdmissionCrmActivityType;
+	outcome: string;
+	note: string;
+	next_action_on: string;
+	assigned_to: string;
+	assignment_lane: '' | 'Admission' | 'Staff';
+};
+
 const actionDefinitions: Record<
 	SupportedActionId,
 	{
@@ -496,6 +785,7 @@ const actionDefinitions: Record<
 		requiresConversation?: boolean;
 		requiresExternalIdentity?: boolean;
 		requiresInquiry?: boolean;
+		requiresStudentApplicant?: boolean;
 	}
 > = {
 	log_reply: {
@@ -569,6 +859,11 @@ const actionDefinitions: Record<
 		description: 'Create or open the applicant from the linked qualified Inquiry.',
 		requiresInquiry: true,
 	},
+	reply_applicant_case: {
+		label: 'Reply applicant',
+		description: 'Send a controlled applicant-visible case message.',
+		requiresStudentApplicant: true,
+	},
 };
 
 const activityTypes: AdmissionCrmActivityType[] = [
@@ -600,12 +895,28 @@ const inquiryTypes = [
 ];
 const inquirySources = [
 	'Website',
+	'Email',
+	'Phone',
 	'WhatsApp',
 	'Line',
 	'Facebook',
+	'Instagram',
 	'Open Day',
+	'Walk-in',
+	'Community Fair',
 	'Referral',
 	'Agent',
+	'Other',
+];
+const activityChannels: AdmissionCrmActivityChannel[] = [
+	'Phone',
+	'In Person',
+	'Email',
+	'WhatsApp',
+	'Line',
+	'Facebook',
+	'Instagram',
+	'Portal',
 	'Other',
 ];
 
@@ -616,9 +927,14 @@ const activeQueueId = ref('needs_reply');
 const selectedRow = ref<AdmissionsInboxRow | null>(null);
 const activeActionId = ref<SupportedActionId | ''>('');
 const actionForm = ref<ActionForm>(createActionForm());
+const intakeDrawerOpen = ref(false);
+const intakeForm = ref<IntakeForm>(createIntakeForm());
 const actionSaving = ref(false);
 const actionError = ref<string | null>(null);
 const actionSuccess = ref<string | null>(null);
+const intakeSaving = ref(false);
+const intakeError = ref<string | null>(null);
+const intakeSuccess = ref<string | null>(null);
 
 let refreshSequence = 0;
 let disposeInboxInvalidate: (() => void) | null = null;
@@ -703,6 +1019,36 @@ function createActionForm(row?: AdmissionsInboxRow): ActionForm {
 	};
 }
 
+function createIntakeForm(): IntakeForm {
+	return {
+		organization: '',
+		school: '',
+		type_of_inquiry: 'Admission',
+		source: 'Phone',
+		activity_channel: 'Phone',
+		first_name: '',
+		last_name: '',
+		email: '',
+		phone_number: '',
+		student_first_name: '',
+		student_last_name: '',
+		intended_academic_year: '',
+		grade_level_interest: '',
+		program_interest: '',
+		student_name_or_id: '',
+		relationship_to_student: '',
+		organization_name: '',
+		partnership_context: '',
+		message: '',
+		activity_type: 'Reached',
+		outcome: '',
+		note: '',
+		next_action_on: '',
+		assigned_to: '',
+		assignment_lane: '',
+	};
+}
+
 function hasRowActions(row: AdmissionsInboxRow) {
 	return row.actions.length > 0;
 }
@@ -741,6 +1087,10 @@ function rowActionStates(row: AdmissionsInboxRow): ActionState[] {
 			disabledReason =
 				'This action requires a linked Inquiry. Create or link an Inquiry before continuing.';
 		}
+		if (enabled && definition.requiresStudentApplicant && !row.student_applicant) {
+			enabled = false;
+			disabledReason = 'This action requires a linked Student Applicant.';
+		}
 
 		return {
 			id: actionId,
@@ -753,6 +1103,9 @@ function rowActionStates(row: AdmissionsInboxRow): ActionState[] {
 }
 
 function openActionDrawer(row: AdmissionsInboxRow) {
+	intakeDrawerOpen.value = false;
+	intakeError.value = null;
+	intakeSuccess.value = null;
 	selectedRow.value = row;
 	actionForm.value = createActionForm(row);
 	actionError.value = null;
@@ -768,6 +1121,20 @@ function closeActionDrawer() {
 	actionSaving.value = false;
 }
 
+function openIntakeDrawer() {
+	closeActionDrawer();
+	intakeDrawerOpen.value = true;
+	intakeError.value = null;
+	intakeSuccess.value = null;
+}
+
+function closeIntakeDrawer() {
+	intakeDrawerOpen.value = false;
+	intakeError.value = null;
+	intakeSuccess.value = null;
+	intakeSaving.value = false;
+}
+
 function selectAction(actionId: SupportedActionId) {
 	const state = selectedRowActionStates.value.find(action => action.id === actionId);
 	if (!state?.enabled) return;
@@ -778,6 +1145,10 @@ function selectAction(actionId: SupportedActionId) {
 
 function isLogAction(actionId: SupportedActionId | '') {
 	return actionId === 'log_reply' || actionId === 'log_message';
+}
+
+function isMessageBodyAction(actionId: SupportedActionId | '') {
+	return isLogAction(actionId) || actionId === 'reply_applicant_case';
 }
 
 function isAssignAction(actionId: SupportedActionId | '') {
@@ -811,6 +1182,7 @@ function sourceCount(key: string) {
 function rowKindLabel(row: AdmissionsInboxRow) {
 	if (row.kind === 'conversation') return 'CRM Conversation';
 	if (row.kind === 'inquiry') return 'Inquiry';
+	if (row.kind === 'applicant_message') return 'Applicant Case Message';
 	if (row.kind === 'student_applicant') return 'Applicant';
 	return row.kind || 'Admissions';
 }
@@ -880,6 +1252,18 @@ function blankToNull(value: string) {
 	return text || null;
 }
 
+function hasIntakeEvidence(form: IntakeForm) {
+	return Boolean(
+		blankToNull(form.first_name) ||
+		blankToNull(form.last_name) ||
+		blankToNull(form.email) ||
+		blankToNull(form.phone_number) ||
+		blankToNull(form.organization_name) ||
+		blankToNull(form.message) ||
+		blankToNull(form.note)
+	);
+}
+
 function requireConversation(row: AdmissionsInboxRow) {
 	const conversation = blankToNull(String(row.conversation || ''));
 	if (!conversation) {
@@ -907,6 +1291,15 @@ function requireInquiry(row: AdmissionsInboxRow) {
 		return null;
 	}
 	return inquiry;
+}
+
+function requireStudentApplicant(row: AdmissionsInboxRow) {
+	const studentApplicant = blankToNull(String(row.student_applicant || ''));
+	if (!studentApplicant) {
+		actionError.value = 'This action requires a linked Student Applicant.';
+		return null;
+	}
+	return studentApplicant;
 }
 
 async function submitActiveAction() {
@@ -945,6 +1338,8 @@ async function submitActiveAction() {
 			await submitQualifyInquiry(row);
 		} else if (actionId === 'invite_to_apply') {
 			await submitInviteInquiry(row);
+		} else if (actionId === 'reply_applicant_case') {
+			await submitApplicantCaseReply(row);
 		}
 
 		if (!actionError.value) {
@@ -954,6 +1349,65 @@ async function submitActiveAction() {
 		actionError.value = err instanceof Error ? err.message : String(err || 'Action failed.');
 	} finally {
 		actionSaving.value = false;
+	}
+}
+
+async function submitIntake() {
+	if (intakeSaving.value) return;
+	const form = intakeForm.value;
+	intakeError.value = null;
+	intakeSuccess.value = null;
+
+	const organization = blankToNull(form.organization);
+	if (!organization) {
+		intakeError.value = 'Organization is required.';
+		return;
+	}
+	if (!hasIntakeEvidence(form)) {
+		intakeError.value =
+			'At least one contact detail, organization name, message, or intake note is required.';
+		return;
+	}
+
+	intakeSaving.value = true;
+	try {
+		await createAdmissionsIntake({
+			organization,
+			school: blankToNull(form.school),
+			type_of_inquiry: form.type_of_inquiry,
+			source: form.source,
+			activity_channel: form.activity_channel,
+			first_name: blankToNull(form.first_name),
+			last_name: blankToNull(form.last_name),
+			email: blankToNull(form.email),
+			phone_number: blankToNull(form.phone_number),
+			student_first_name: blankToNull(form.student_first_name),
+			student_last_name: blankToNull(form.student_last_name),
+			intended_academic_year: blankToNull(form.intended_academic_year),
+			grade_level_interest: blankToNull(form.grade_level_interest),
+			program_interest: blankToNull(form.program_interest),
+			student_name_or_id: blankToNull(form.student_name_or_id),
+			relationship_to_student: blankToNull(form.relationship_to_student),
+			organization_name: blankToNull(form.organization_name),
+			partnership_context: blankToNull(form.partnership_context),
+			message: blankToNull(form.message),
+			activity_type: form.activity_type,
+			outcome: blankToNull(form.outcome),
+			note: blankToNull(form.note),
+			next_action_on: blankToNull(form.next_action_on),
+			assigned_to: blankToNull(form.assigned_to),
+			assignment_lane: form.assignment_lane || null,
+		});
+		intakeSuccess.value = 'Intake recorded. Refreshing queue.';
+		intakeForm.value = {
+			...createIntakeForm(),
+			organization: form.organization,
+			school: form.school,
+		};
+	} catch (err) {
+		intakeError.value = err instanceof Error ? err.message : String(err || 'Intake failed.');
+	} finally {
+		intakeSaving.value = false;
 	}
 }
 
@@ -977,6 +1431,24 @@ async function submitLogAction(row: AdmissionsInboxRow) {
 		message_type: 'Text',
 		delivery_status: 'Logged',
 		body,
+	});
+	actionForm.value.body = '';
+}
+
+async function submitApplicantCaseReply(row: AdmissionsInboxRow) {
+	const studentApplicant = requireStudentApplicant(row);
+	if (!studentApplicant) return;
+	const body = blankToNull(actionForm.value.body);
+	if (!body) {
+		actionError.value = 'Message is required.';
+		return;
+	}
+
+	await sendAdmissionsCaseMessageFromInbox({
+		context_doctype: 'Student Applicant',
+		context_name: studentApplicant,
+		body,
+		applicant_visible: 1,
 	});
 	actionForm.value.body = '';
 }

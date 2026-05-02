@@ -21,6 +21,7 @@ export type AdmissionsInboxRow = {
 	inquiry?: string | null;
 	student_applicant?: string | null;
 	conversation?: string | null;
+	org_communication?: string | null;
 	open_url?: string | null;
 	external_identity?: string | null;
 	channel_type?: string | null;
@@ -193,5 +194,53 @@ export type InviteInquiryToApplyFromInboxRequest = {
 	inquiry: string;
 	school: string;
 	organization?: string | null;
+	client_request_id?: string | null;
+};
+
+export type AdmissionCrmActivityChannel =
+	| 'Phone'
+	| 'In Person'
+	| 'Email'
+	| 'WhatsApp'
+	| 'Line'
+	| 'Facebook'
+	| 'Instagram'
+	| 'Portal'
+	| 'Other';
+
+export type CreateAdmissionsIntakeRequest = {
+	organization: string;
+	school?: string | null;
+	type_of_inquiry: string;
+	source: string;
+	activity_channel: AdmissionCrmActivityChannel | string;
+	first_name?: string | null;
+	last_name?: string | null;
+	email?: string | null;
+	phone_number?: string | null;
+	student_first_name?: string | null;
+	student_last_name?: string | null;
+	intended_academic_year?: string | null;
+	grade_level_interest?: string | null;
+	program_interest?: string | null;
+	student_name_or_id?: string | null;
+	relationship_to_student?: string | null;
+	organization_name?: string | null;
+	partnership_context?: string | null;
+	message?: string | null;
+	activity_type: AdmissionCrmActivityType;
+	outcome?: string | null;
+	note?: string | null;
+	next_action_on?: string | null;
+	assigned_to?: string | null;
+	assignment_lane?: 'Admission' | 'Staff' | '' | null;
+	client_request_id?: string | null;
+};
+
+export type SendAdmissionsCaseMessageFromInboxRequest = {
+	context_doctype: 'Student Applicant';
+	context_name: string;
+	body: string;
+	applicant_visible?: number | string | null;
 	client_request_id?: string | null;
 };

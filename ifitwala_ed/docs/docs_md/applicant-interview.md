@@ -3,9 +3,9 @@ title: "Applicant Interview: Interview Event Record"
 slug: applicant-interview
 category: Admission
 doc_order: 8
-version: "1.7.4"
-last_change_date: "2026-04-29"
-summary: "Record the interview event, participants, calendar projection, and operational context while keeping interviewer opinion only in Applicant Interview Feedback."
+version: "1.8.0"
+last_change_date: "2026-04-30"
+summary: "Record the scheduled interview event, participants, room, calendar projection, and operational context while keeping interviewer opinion only in Applicant Interview Feedback."
 seo_title: "Applicant Interview: Interview Event Record"
 seo_description: "Record the interview event, participants, calendar projection, and operational context while keeping interviewer opinion only in Applicant Interview Feedback."
 ---
@@ -13,7 +13,7 @@ seo_description: "Record the interview event, participants, calendar projection,
 ## Before You Start (Prerequisites)
 
 - Create the `Student Applicant` record first.
-- Have interview date/time and participants prepared before creating the record.
+- Have interview date/time, participants, and room prepared before scheduling an in-person interview.
 - Ensure interviewer users exist in the system for clean participant linkage.
 - Interviewer selection is intentionally constrained to users with role `Employee`.
 
@@ -21,11 +21,11 @@ seo_description: "Record the interview event, participants, calendar projection,
 
 ## What It Captures
 
-- Interview date plus scheduled time window (`interview_start` / `interview_end`) and mode (`In Person`, `Online`, `Phone`)
+- Interview date plus scheduled time window (`interview_start` / `interview_end`), mode (`In Person`, `Online`, `Phone`), and room (`location`) when relevant
 - Interview type (`Family`, `Student`, `Joint`)
 - Confidentiality level
 - Operational notes for staff preparation/context only
-- Linked scheduling artifact (`school_event`) when created through the scheduling API
+- Linked scheduling artifact (`school_event`) when created through Schedule Interview
 - Linked interviewer workspace in StaffHome calendar (only when `School Event.reference_type = Applicant Interview`)
 - Per-interviewer feedback rows in `Applicant Interview Feedback`, which are the only canonical store for interviewer opinion
 
@@ -47,15 +47,18 @@ Controller logic remains on the parent doctype; child table controller is intent
 
 ## Lifecycle and Linked Documents
 
-1. Create one interview record per interview event for the applicant.
-   - Desk quick-create entry points:
-     - `Student Applicant` form action: `Create Interview`
-     - Admissions Cockpit applicant card action: `Create Interview`
-   - New interview defaults: `student_applicant`, `interview_date = today`, and current session user appended to `interviewers`.
+1. Create one interview record per scheduled interview event for the applicant.
+   - Canonical entry points:
+     - Desk `Student Applicant` form action: `Schedule Interview`
+     - Admissions Cockpit applicant card action: `Schedule Interview`
+   - Raw `Applicant Interview` creates are blocked in Desk because they do not check room and interviewer calendars.
 2. Capture date/time, mode, participants, confidentiality level, and any operational context needed to run the interview.
-3. Preferred scheduling path uses `schedule_applicant_interview(...)` to atomically create:
+3. Schedule Interview uses `schedule_applicant_interview(...)` to atomically create:
    - `Applicant Interview` (admissions evidence)
    - linked `School Event` (calendar projection with participant audience)
+   - `Employee Booking` rows through the linked school event
+   - `Location Booking` row through the linked school event when a room is selected
+   - structured conflict responses with suggested free times when an interviewer or room is unavailable
 4. Staff can open the same `AdmissionsWorkspaceOverlay` from two entry points:
    - StaffHome calendar (`School Event.reference_type = Applicant Interview`) in interview mode
    - Admissions Cockpit applicant card in applicant mode (file summary + interview list with compact feedback completion labels, plus latest interview summary/open action)
@@ -121,6 +124,7 @@ Runtime controller rule:
 - **Scheduling fields**:
   - `interview_start` (`Datetime`, optional but paired with `interview_end`)
   - `interview_end` (`Datetime`, optional but paired with `interview_start`)
+  - `location` (`Link` -> `Location`, labeled `Room`)
   - `school_event` (`Link` -> `School Event`, read-only)
 - **Datetime invariant**:
   - when either `interview_start` or `interview_end` is set, both are required
@@ -128,6 +132,7 @@ Runtime controller rule:
   - `interview_date` is synchronized from `interview_start` when start is present
 - **Lifecycle hooks in controller**: `validate`, `after_insert`, `on_update`
 - **Operational/public methods**:
+  - `get_interview_schedule_options(...)`
   - `schedule_applicant_interview(...)`
   - `suggest_interview_slots(...)`
   - `get_interview_workspace(...)`
@@ -148,13 +153,19 @@ Runtime controller rule:
 - **Student Applicant integration**:
   - readiness snapshot uses `has_required_interviews()`
   - create/update posts audit comments onto applicant timeline with clickable interview links
+  - `Schedule Interview` is the only user-facing action for interview creation from Desk
   - interview summaries report feedback completion, not a shared parent-level outcome
-  - admissions cockpit cards expose latest interview context and open action without reading parent evaluative fields
+  - admissions cockpit cards expose `Schedule Interview`, latest interview context, and open action without reading parent evaluative fields
   - admissions workspace interview rows show compact feedback completion per interview from `Applicant Interview Feedback`
 - **Scheduling projection**:
+  - Desk and Admissions Cockpit scheduling surfaces call `get_interview_schedule_options(...)` once to load applicant defaults and school-scoped schedulable rooms
+  - in-person interviews require `location`; online/phone interviews may omit it
+  - `schedule_applicant_interview(...)` checks interviewer conflicts through `Employee Booking` and room conflicts through `Location Booking` before insert
+  - conflict payloads use `EMPLOYEE_CONFLICT`, `ROOM_CONFLICT`, or `SCHEDULING_CONFLICT` and include suggested free times when available
   - interview scheduling API creates linked `School Event` rows with:
     - `reference_type = "Applicant Interview"`
     - `reference_name = <interview name>`
+    - `location = <room>` when selected
     - audience row `Custom Users`
     - participants = selected interviewer users (employee-facing calendar surfacing)
   - staff calendar click routing opens interview workspace only for school events with `reference_type = "Applicant Interview"` and a valid `reference_name`

@@ -6,9 +6,9 @@ Test refs: `ifitwala_ed/admission/doctype/inquiry/test_inquiry.py`, `ifitwala_ed
 
 This note defines the planned admissions CRM model for Inquiry-stage lead handling and external-channel messaging.
 
-Phase 1 Inquiry dynamic capture, public family acknowledgement, Phase 2A CRM core manual mode, Phase 3A Admissions Inbox backend context endpoint, Phase 3B/3C staff Inbox route and action drawer, Phase 3D ownership/triage workflows, and Phase 3D.5 CRM intake are implemented.
+Phase 1 Inquiry dynamic capture, public family acknowledgement, Phase 2A CRM core manual mode, Phase 3A Admissions Inbox backend context endpoint, Phase 3B/3C staff Inbox route and action drawer, Phase 3D ownership/triage workflows, Phase 3D.5 CRM intake, and Phase 3E applicant-stage message aggregation are implemented.
 
-Provider adapters, governed media conversion, applicant-stage message aggregation, and lead-scoring/read-model work remain planned until their referenced SPA surfaces, APIs, and tests are implemented.
+Provider adapters, governed media conversion, and lead-scoring/read-model work remain planned until their referenced SPA surfaces, APIs, and tests are implemented.
 
 ## 1. Authority
 
@@ -420,6 +420,15 @@ The Admissions Inbox may aggregate both sources into one DTO, but storage remain
 
 Pre-applicant CRM messages must not be migrated into `Org Communication` by default. Historical provenance remains attached to the Inquiry-stage CRM records.
 
+Implemented Phase 3E aggregation projects applicant-stage case message summaries from `Org Communication` into Admissions Inbox. This is a read-model projection only:
+
+- source of truth remains `Org Communication`
+- runtime ledger remains `Communication Interaction Entry`
+- read state remains `Portal Read Receipt`
+- staff replies use `send_admissions_case_message`
+- Inbox rows label applicant-stage provenance as applicant case communication
+- no applicant-stage message is copied into `Admission Message`
+
 When an external channel message arrives after applicant conversion:
 
 ```text
@@ -518,7 +527,7 @@ Status: implemented as Phase 2A backend foundation.
 - aggregate Inquiry, CRM conversation, and applicant case summaries
 - expose server-owned actions only
 
-Status: Phase 3A through Phase 3D.5 are implemented for manual mode.
+Status: Phase 3A through Phase 3E are implemented for manual mode.
 
 ### Phase 3D.5: CRM Intake
 
@@ -526,6 +535,14 @@ Status: Phase 3A through Phase 3D.5 are implemented for manual mode.
 - server creates `Inquiry`, linked `Admission Conversation`, and first `Admission CRM Activity`
 - no `Lead` DocType is created
 - no provider metadata is invented for manually entered social/email conversations
+
+### Phase 3E: Applicant-Stage Message Aggregation
+
+- Inbox aggregates applicant portal case-message summaries from `Org Communication`
+- applicant messages needing staff reply appear in the existing `Needs Reply` queue
+- staff replies from Inbox call `send_admissions_case_message`
+- no migration from `Org Communication` to `Admission Conversation`
+- no file or media behavior changes
 
 ### Phase 4: Governed Media Conversion
 

@@ -67,7 +67,6 @@ frappe.ui.form.on("Student Applicant", {
 		add_enrollment_plan_action(frm);
 		add_account_holder_action(frm);
 		add_recommendation_actions(frm);
-		add_create_interview_action(frm);
 		add_schedule_interview_action(frm);
 	},
 
@@ -323,47 +322,6 @@ function create_account_holder_for_applicant(frm) {
 	});
 }
 
-function add_create_interview_action(frm) {
-	frm.remove_custom_button(__("Create Interview"), __("Actions"));
-	frm.remove_custom_button(__("Create Interview"));
-
-	if (!frm.doc || frm.is_new()) {
-		return;
-	}
-
-	const status = String(frm.doc.application_status || "").trim();
-	if (TERMINAL_INTERVIEW_STATUSES.has(status)) {
-		return;
-	}
-
-	frm.add_custom_button(__("Create Interview"), () => {
-		frappe.new_doc(
-			"Applicant Interview",
-			{
-				student_applicant: frm.doc.name,
-				interview_date: frappe.datetime.get_today(),
-			},
-			(doc) => {
-				const user = String(frappe.session.user || "").trim();
-				if (!user) {
-					return;
-				}
-
-				const rows = Array.isArray(doc.interviewers) ? doc.interviewers : [];
-				const hasCurrentUser = rows.some(
-					row => String(row?.interviewer || "").trim() === user
-				);
-				if (hasCurrentUser) {
-					return;
-				}
-
-				const row = frappe.model.add_child(doc, "Applicant Interviewer", "interviewers");
-				row.interviewer = user;
-			}
-		);
-	}, __("Actions"));
-}
-
 function add_schedule_interview_action(frm) {
 	frm.remove_custom_button(__("Schedule Interview"), __("Actions"));
 	frm.remove_custom_button(__("Schedule Interview"));
@@ -381,6 +339,31 @@ function add_schedule_interview_action(frm) {
 }
 
 function open_schedule_interview_dialog(frm) {
+	frappe.call({
+		method: "ifitwala_ed.admission.doctype.applicant_interview.applicant_interview.get_interview_schedule_options",
+		args: { student_applicant: frm.doc.name },
+		freeze: true,
+		freeze_message: __("Loading schedule options..."),
+	}).then((res) => {
+		render_schedule_interview_dialog(frm, res?.message || {});
+	}).catch((err) => {
+		frappe.msgprint({
+			title: __("Unable to open schedule interview"),
+			indicator: "red",
+			message: err?.message || __("Please try again."),
+		});
+	});
+}
+
+function render_schedule_interview_dialog(frm, optionsPayload) {
+	const defaults = optionsPayload?.defaults || {};
+	const roomRows = Array.isArray(optionsPayload?.rooms) ? optionsPayload.rooms : [];
+	const roomValues = roomRows
+		.map(row => String(row?.value || "").trim())
+		.filter(Boolean);
+	const roomOptions = ["", ...roomValues].join("\n");
+	const defaultRoom = roomValues.length === 1 ? roomValues[0] : "";
+
 	const d = new frappe.ui.Dialog({
 		title: __("Schedule Interview"),
 		size: "large",
@@ -390,21 +373,21 @@ function open_schedule_interview_dialog(frm) {
 				fieldtype: "Date",
 				label: __("Interview Date"),
 				reqd: 1,
-				default: frappe.datetime.get_today(),
+				default: defaults.date || frappe.datetime.get_today(),
 			},
 			{
 				fieldname: "start_time",
 				fieldtype: "Time",
 				label: __("Start Time"),
 				reqd: 1,
-				default: "09:00:00",
+				default: defaults.start_time || "09:00:00",
 			},
 			{
 				fieldname: "duration_minutes",
 				fieldtype: "Int",
 				label: __("Duration (minutes)"),
 				reqd: 1,
-				default: 30,
+				default: defaults.duration_minutes || 30,
 			},
 			{
 				fieldname: "column_break_interview_time",
@@ -414,13 +397,13 @@ function open_schedule_interview_dialog(frm) {
 				fieldname: "suggestion_window_start_time",
 				fieldtype: "Time",
 				label: __("Search Window Start"),
-				default: "07:00:00",
+				default: defaults.window_start_time || "07:00:00",
 			},
 			{
 				fieldname: "suggestion_window_end_time",
 				fieldtype: "Time",
 				label: __("Search Window End"),
-				default: "17:00:00",
+				default: defaults.window_end_time || "17:00:00",
 			},
 			{
 				fieldname: "section_break_people",
@@ -432,7 +415,7 @@ function open_schedule_interview_dialog(frm) {
 				options: "User",
 				label: __("Primary Interviewer"),
 				reqd: 1,
-				default: frappe.session.user,
+				default: defaults.current_user || frappe.session.user,
 				get_query: () => get_employee_user_query(),
 			},
 			{
@@ -450,21 +433,32 @@ function open_schedule_interview_dialog(frm) {
 				fieldname: "interview_type",
 				fieldtype: "Select",
 				label: __("Interview Type"),
-				options: __("Family\nStudent\nJoint"),
+				options: (optionsPayload?.interview_types || ["Family", "Student", "Joint"]).join("\n"),
 				default: "Student",
 			},
 			{
 				fieldname: "mode",
 				fieldtype: "Select",
 				label: __("Mode"),
-				options: __("In Person\nOnline\nPhone"),
+				options: (optionsPayload?.modes || ["In Person", "Online", "Phone"]).join("\n"),
 				default: "In Person",
+			},
+			{
+				fieldname: "location",
+				fieldtype: "Select",
+				label: __("Room"),
+				options: roomOptions,
+				default: defaultRoom,
+				depends_on: "eval:doc.mode === 'In Person'",
+				description: roomValues.length
+					? __("Required for in-person interviews.")
+					: __("No schedulable rooms are available for this applicant school."),
 			},
 			{
 				fieldname: "confidentiality_level",
 				fieldtype: "Select",
 				label: __("Confidentiality Level"),
-				options: __("Admissions Team\nLeadership Only"),
+				options: (optionsPayload?.confidentiality_levels || ["Admissions Team", "Leadership Only"]).join("\n"),
 			},
 			{
 				fieldname: "notes",
@@ -497,6 +491,10 @@ function open_schedule_interview_dialog(frm) {
 				frappe.msgprint(__("Please select at least one interviewer."));
 				return;
 			}
+			if (String(values.mode || "").trim() === "In Person" && !String(values.location || "").trim()) {
+				frappe.msgprint(__("Please select a room for an in-person interview."));
+				return;
+			}
 
 			const interviewStart = `${interviewDate} ${startTime}`;
 
@@ -509,6 +507,7 @@ function open_schedule_interview_dialog(frm) {
 					duration_minutes: duration,
 					interview_type: values.interview_type,
 					mode: values.mode,
+					location: values.location,
 					confidentiality_level: values.confidentiality_level,
 					notes: values.notes,
 					primary_interviewer: values.primary_interviewer,
@@ -531,15 +530,15 @@ function open_schedule_interview_dialog(frm) {
 						return;
 					}
 
-					if (payload.code === "EMPLOYEE_CONFLICT") {
+					if (["EMPLOYEE_CONFLICT", "ROOM_CONFLICT", "SCHEDULING_CONFLICT"].includes(payload.code)) {
 						render_suggestion_results(d, payload.suggestions || []);
 						apply_first_suggestion(d, payload.suggestions || []);
 						const conflictLabel = format_conflict_lines(payload.conflicts || []);
 						frappe.msgprint({
-							title: __("Interviewer Unavailable"),
+							title: __("Selected Time Unavailable"),
 							indicator: "orange",
 							message: `
-								<p>${__("One or more interviewers are already booked.")}</p>
+								<p>${escape_html(payload.message || __("The selected time is not available."))}</p>
 								${conflictLabel}
 								<p>${__("A suggested free time (if available) has been applied in the dialog.")}</p>
 							`,
@@ -583,13 +582,20 @@ function open_schedule_interview_dialog(frm) {
 				frappe.msgprint(__("Select at least one interviewer first."));
 				return;
 			}
+			if (String(values.mode || "").trim() === "In Person" && !String(values.location || "").trim()) {
+				frappe.msgprint(__("Select a room first."));
+				return;
+			}
 
 			frappe.call({
 				method: "ifitwala_ed.admission.doctype.applicant_interview.applicant_interview.suggest_interview_slots",
 				args: {
+					student_applicant: frm.doc.name,
 					interview_date: interviewDate,
 					primary_interviewer: values.primary_interviewer,
 					interviewer_users: interviewerUsers,
+					mode: values.mode,
+					location: values.location,
 					duration_minutes: duration,
 					window_start_time: values.suggestion_window_start_time,
 					window_end_time: values.suggestion_window_end_time,
@@ -698,6 +704,15 @@ function format_conflict_lines(conflicts) {
 	const items = conflicts
 		.slice(0, 10)
 		.map((row) => {
+			if (String(row?.kind || "").trim() === "room") {
+				const room = escape_html(String(row?.location_label || row?.location || __("Room")));
+				const sourceDoctype = escape_html(String(row?.source_doctype || ""));
+				const sourceName = escape_html(String(row?.source_name || ""));
+				const occupancyType = escape_html(String(row?.occupancy_type || __("Room Booking")));
+				const startLabel = escape_html(String(row?.start_label || ""));
+				const endLabel = escape_html(String(row?.end_label || ""));
+				return `<li><strong>${room}</strong>: ${occupancyType} (${sourceDoctype} ${sourceName}) ${startLabel} - ${endLabel}</li>`;
+			}
 			const employee = escape_html(String(row?.employee_name || row?.employee || "Employee"));
 			const sourceDoctype = escape_html(String(row?.source_doctype || ""));
 			const sourceName = escape_html(String(row?.source_name || ""));
@@ -1129,7 +1144,7 @@ function prompt_create_recommendation_request(frm) {
 									: __("Recommendation request created, but email could not be sent."),
 							];
 							const templateLabel = String(templateMeta.template_name || templateName);
-							parts.push(__("Template: {0}").replace("{0}", templateLabel));
+							parts.push(__("Template: {0}", [templateLabel]));
 							if (intakeUrl) {
 								const safeUrl = frappe.utils.escape_html(intakeUrl);
 								parts.push(
@@ -1162,11 +1177,11 @@ function render_recommendation_requests_table(payload) {
 	const counts = summary?.counts || {};
 
 	const summaryText = [
-		__("Submitted: {0}").replace("{0}", String(counts.Submitted || 0)),
-		__("Sent: {0}").replace("{0}", String(counts.Sent || 0)),
-		__("Opened: {0}").replace("{0}", String(counts.Opened || 0)),
-		__("Expired: {0}").replace("{0}", String(counts.Expired || 0)),
-		__("Revoked: {0}").replace("{0}", String(counts.Revoked || 0)),
+		__("Submitted: {0}", [counts.Submitted || 0]),
+		__("Sent: {0}", [counts.Sent || 0]),
+		__("Opened: {0}", [counts.Opened || 0]),
+		__("Expired: {0}", [counts.Expired || 0]),
+		__("Revoked: {0}", [counts.Revoked || 0]),
 	].join(" · ");
 
 	if (!rows.length) {
@@ -1904,11 +1919,11 @@ function bind_document_summary_actions(frm) {
 		const overrideValue = String(target.getAttribute("data-override") || "").trim();
 		const label = String(target.getAttribute("data-label") || documentType || applicantDocument || "Requirement").trim();
 
-		if (action === "clear_override") {
-			frappe.confirm(__("Clear the requirement override for {0}?").replace("{0}", label), () => {
-				apply_document_requirement_override(frm, {
-					applicant_document: applicantDocument || null,
-					document_type: documentType || null,
+			if (action === "clear_override") {
+				frappe.confirm(__("Clear the requirement override for {0}?", [label]), () => {
+					apply_document_requirement_override(frm, {
+						applicant_document: applicantDocument || null,
+						document_type: documentType || null,
 					requirement_override: "",
 					override_reason: "",
 				});
@@ -1955,11 +1970,11 @@ function bind_document_summary_actions(frm) {
 			return;
 		}
 
-		if (action === "approve_submission") {
-			frappe.confirm(__("Approve the submitted file for {0}?").replace("{0}", label), () => {
-				review_document_submission(frm, {
-					applicant_document_item: applicantDocumentItem,
-					decision: "Approved",
+			if (action === "approve_submission") {
+				frappe.confirm(__("Approve the submitted file for {0}?", [label]), () => {
+					review_document_submission(frm, {
+						applicant_document_item: applicantDocumentItem,
+						decision: "Approved",
 					notes: "",
 				});
 			});

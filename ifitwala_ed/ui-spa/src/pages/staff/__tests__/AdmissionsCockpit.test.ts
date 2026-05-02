@@ -282,4 +282,26 @@ describe('AdmissionsCockpit', () => {
 		expect(document.body.textContent || '').toContain('SI-0001 · Paid');
 		expect(document.body.textContent || '').not.toContain('Generate Invoice');
 	});
+
+	it('opens the schedule interview overlay from the applicant card', async () => {
+		getAdmissionsCockpitDataMock.mockResolvedValue(buildPayload('Committee Approved'));
+
+		mountAdmissionsCockpit();
+		await flushUi();
+
+		const scheduleButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').includes('Schedule Interview')
+		);
+		expect(scheduleButton).toBeTruthy();
+
+		scheduleButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(overlayOpenMock).toHaveBeenCalledWith('admissions-interview-schedule', {
+			studentApplicant: 'APP-0001',
+			applicantName: 'Ada Applicant',
+			school: 'SCH-1',
+		});
+		expect(document.body.textContent || '').not.toContain('Create Interview');
+	});
 });

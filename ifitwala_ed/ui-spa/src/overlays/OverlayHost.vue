@@ -73,6 +73,7 @@ import ApplicantDocumentUploadOverlay from '@/overlays/admissions/ApplicantDocum
 import ApplicantPolicyAcknowledgeOverlay from '@/overlays/admissions/ApplicantPolicyAcknowledgeOverlay.vue';
 import ApplicantSubmitOverlay from '@/overlays/admissions/ApplicantSubmitOverlay.vue';
 import AdmissionsWorkspaceOverlay from '@/overlays/admissions/AdmissionsWorkspaceOverlay.vue';
+import AdmissionsInterviewScheduleOverlay from '@/overlays/admissions/AdmissionsInterviewScheduleOverlay.vue';
 import CriticalIncidentsListOverlay from '@/overlays/morning_brief/CriticalIncidentsListOverlay.vue';
 import ConsentProfileWritebackOverlay from '@/overlays/portal/ConsentProfileWritebackOverlay.vue';
 
@@ -244,6 +245,8 @@ function resolveComponent(type: OverlayType) {
 			return ApplicantSubmitOverlay;
 		case 'admissions-workspace':
 			return AdmissionsWorkspaceOverlay;
+		case 'admissions-interview-schedule':
+			return AdmissionsInterviewScheduleOverlay;
 		case 'critical-incidents-list':
 			return CriticalIncidentsListOverlay;
 		case 'consent-profile-writeback':

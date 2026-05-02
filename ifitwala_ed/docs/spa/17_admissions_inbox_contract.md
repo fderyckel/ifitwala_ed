@@ -1,12 +1,12 @@
 # Admissions Inbox SPA Contract
 
-Status: Backend context endpoint, Phase 3B staff SPA queue route, Phase 3C controlled action drawer, Phase 3D ownership/triage workflows, and Phase 3D.5 CRM intake implemented; provider and media workflows planned
+Status: Backend context endpoint, Phase 3B staff SPA queue route, Phase 3C controlled action drawer, Phase 3D ownership/triage workflows, Phase 3D.5 CRM intake, and Phase 3E applicant-stage message aggregation implemented; provider and media workflows planned
 Code refs: `ifitwala_ed/api/admissions_inbox.py`, `ifitwala_ed/api/admissions_crm.py`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsInbox.vue`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsInboxService.ts`, `ifitwala_ed/ui-spa/src/types/contracts/admissions_inbox/get_admissions_inbox_context.ts`, CRM DocTypes under `ifitwala_ed/admission/doctype/admission_*`
 Test refs: `ifitwala_ed/api/test_admissions_inbox.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsInbox.test.ts`, `ifitwala_ed/ui-spa/src/lib/services/admissions/__tests__/admissionsInboxService.test.ts`, `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`
 
 This note defines the staff-side Admissions Inbox surface.
 
-Current runtime behavior includes the backend context endpoint, staff SPA queue route, controlled action drawer, ownership/triage actions for Admission Conversation and Inquiry records, and manual CRM intake. Provider replies, contact creation, applicant-stage message aggregation, and governed media conversion are still planned.
+Current runtime behavior includes the backend context endpoint, staff SPA queue route, controlled action drawer, ownership/triage actions for Admission Conversation and Inquiry records, manual CRM intake, and applicant-stage case message aggregation. Provider replies, contact creation, and governed media conversion are still planned.
 
 ## 1. Authority
 
@@ -75,8 +75,9 @@ Implemented Phase 3A backend context includes:
 - `Admission Conversation` summary rows
 - latest CRM message/activity summary fields stored on `Admission Conversation`
 - `Student Applicant` rows in `Invited` and `Missing Info`
+- applicant-stage case message summaries from `Org Communication` when a linked applicant thread exists
 
-Phase 3A does not yet aggregate applicant-stage `Org Communication` read state or portal-message needs-reply state.
+Phase 3E aggregates applicant-stage `Org Communication` read state and portal-message needs-reply state through the admissions communication summary helper.
 
 ## 5. Endpoint Shape
 
@@ -248,6 +249,17 @@ create_admissions_intake
   client_request_id required by SPA service
 ```
 
+Implemented Phase 3E applicant case reply payload:
+
+```text
+send_admissions_case_message
+  context_doctype required: Student Applicant
+  context_name required
+  body required
+  applicant_visible = 1
+  client_request_id required by SPA service
+```
+
 Planned Inbox-specific mutation endpoints must continue to be named workflow endpoints, for example:
 
 ```text
@@ -347,6 +359,10 @@ Implemented Phase 3D UI actions:
 Implemented Phase 3D.5 UI action:
 
 - record manual CRM intake from the page header as a server-owned workflow that creates `Inquiry`, linked `Admission Conversation`, and first `Admission CRM Activity`
+
+Implemented Phase 3E UI action:
+
+- reply to applicant-stage case messages through `send_admissions_case_message`
 
 Planned mutation actions:
 

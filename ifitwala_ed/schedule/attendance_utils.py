@@ -445,7 +445,7 @@ def bulk_upsert_attendance(payload=None):
         if not ctx:
             frappe.throw(_("Unknown student group: {student_group}").format(student_group=grp))
         if not is_admin and not ctx["allowed"]:
-            frappe.throw("You don't have rights to record attendance for this group.")
+            frappe.throw(_("You don't have rights to record attendance for this group."))
 
         # Term guard
         if ctx["term_guard"]:

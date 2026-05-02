@@ -34,6 +34,7 @@ export type OverlayType =
   | 'admissions-policy-ack'
   | 'admissions-submit'
   | 'admissions-workspace'
+  | 'admissions-interview-schedule'
   | 'critical-incidents-list'
   | 'consent-profile-writeback'
 

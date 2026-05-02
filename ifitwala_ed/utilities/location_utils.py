@@ -16,6 +16,7 @@ If a location is considered booked:
 from typing import Any, Dict, Iterable, List, Optional
 
 import frappe
+from frappe import _
 from frappe.utils import cint, get_datetime
 from frappe.utils.caching import redis_cache
 
@@ -586,7 +587,7 @@ def verify_room_conflicts_against_location_booking(
     start_dt = get_datetime(start)
     end_dt = get_datetime(end)
     if not start_dt or not end_dt or end_dt <= start_dt:
-        frappe.throw("Invalid datetime window for verification.")
+        frappe.throw(_("Invalid datetime window for verification."))
 
     inc_children = bool(int(include_children)) if isinstance(include_children, (int, str)) else bool(include_children)
 
@@ -606,11 +607,11 @@ def verify_room_conflicts_against_location_booking(
 
     if not scoped_locations:
         if conflict_slot_keys:
-            frappe.throw("Conflicts returned for non-bookable or empty scope.")
+            frappe.throw(_("Conflicts returned for non-bookable or empty scope."))
         return {"ok": True, "count": 0, "slot_keys": []}
 
     if not frappe.db.table_exists("Location Booking"):
-        frappe.throw("Location Booking table does not exist.")
+        frappe.throw(_("Location Booking table does not exist."))
 
     filters = {
         "location": ["in", scoped_locations],

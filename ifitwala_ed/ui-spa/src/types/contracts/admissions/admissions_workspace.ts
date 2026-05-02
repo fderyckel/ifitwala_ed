@@ -14,6 +14,8 @@ export interface InterviewWorkspaceInterview {
 	student_applicant: string
 	interview_type?: string | null
 	mode?: string | null
+	location?: string | null
+	location_label?: string | null
 	confidentiality_level?: string | null
 	interview_date?: string | null
 	interview_start?: string | null

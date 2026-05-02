@@ -222,8 +222,10 @@ class SchoolSchedule(Document):
         # Check if blocks already exist in the child table
         if self.get("school_schedule_block"):
             frappe.throw(
-                "Blocks already exist. If you want to regenerate them, please clear them first "
-                "or use the overwrite option."
+                _(
+                    "Blocks already exist. If you want to regenerate them, please clear them first "
+                    "or use the overwrite option."
+                )
             )
 
         # Generate blocks for each rotation day

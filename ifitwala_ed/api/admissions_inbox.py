@@ -15,6 +15,7 @@ from ifitwala_ed.admission.admissions_crm_permissions import (
     doc_is_in_admissions_crm_scope,
     ensure_admissions_crm_permission,
 )
+from ifitwala_ed.api.admissions_communication import get_admissions_thread_summaries_for_applicants
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_descendants_including_self,
     get_school_descendants_including_self,
@@ -256,8 +257,8 @@ def _fetch_inquiry_rows(*, scope: dict, limit: int) -> list[dict]:
 
 
 def _fetch_applicant_rows(*, scope: dict, limit: int) -> list[dict]:
-    conditions = ["sa.application_status IN ('Invited', 'Missing Info')"]
-    params = {"limit": limit * 2}
+    conditions = ["sa.application_status NOT IN ('Rejected', 'Withdrawn', 'Promoted')"]
+    params = {"limit": limit * 4}
     _apply_scope_conditions(conditions, params, alias="sa", scope=scope)
 
     return frappe.db.sql(
@@ -275,6 +276,7 @@ def _fetch_applicant_rows(*, scope: dict, limit: int) -> list[dict]:
             sa.application_status,
             sa.submitted_at,
             sa.inquiry,
+            sa.applicant_user,
             sa.modified
         FROM `tabStudent Applicant` sa
         {_where_clause(conditions)}
@@ -366,6 +368,13 @@ def _applicant_actions(*, has_conversation: bool) -> list[dict]:
     ]
 
 
+def _applicant_case_actions() -> list[dict]:
+    return [
+        {"id": "reply_applicant_case", "enabled": True},
+        {"id": "open_applicant", "enabled": True},
+    ]
+
+
 def _conversation_dto(row: dict) -> dict:
     stage = "applicant" if clean(row.get("student_applicant")) else "pre_applicant"
     channel_label = clean(row.get("channel_account_label")) or clean(row.get("channel_type"))
@@ -409,6 +418,8 @@ def _conversation_dto(row: dict) -> dict:
 def _inquiry_dto(row: dict, conversation: dict | None = None) -> dict:
     title = _name_from_parts(row.get("first_name"), row.get("last_name"), fallback=clean(row.get("name")) or "Inquiry")
     preview = clean(row.get("next_action_note")) or clean(row.get("message"))
+    conversation_next_action = conversation.get("next_action_on") if conversation else None
+    conversation_activity = conversation.get("last_activity_at") if conversation else None
     dto = {
         **_base_row(),
         "id": f"inquiry:{row.get('name')}",
@@ -427,10 +438,12 @@ def _inquiry_dto(row: dict, conversation: dict | None = None) -> dict:
         "channel_account": clean(conversation.get("channel_account")) if conversation else None,
         "owner": clean(row.get("assigned_to")),
         "sla_state": clean(row.get("sla_status")),
-        "last_activity_at": _as_text(row.get("modified") or row.get("submitted_at")),
+        "last_activity_at": _as_text(conversation_activity or row.get("modified") or row.get("submitted_at")),
         "last_message_preview": preview,
         "needs_reply": False,
-        "next_action_on": _as_text(row.get("followup_due_on") or row.get("first_contact_due_on")),
+        "next_action_on": _as_text(
+            conversation_next_action or row.get("followup_due_on") or row.get("first_contact_due_on")
+        ),
     }
     dto["permissions"].update(
         {
@@ -443,12 +456,13 @@ def _inquiry_dto(row: dict, conversation: dict | None = None) -> dict:
     return dto
 
 
-def _applicant_dto(row: dict, conversation: dict | None = None) -> dict:
+def _applicant_dto(row: dict, conversation: dict | None = None, case_summary: dict | None = None) -> dict:
     title = clean(row.get("title")) or _name_from_parts(
         row.get("first_name"),
         row.get("last_name"),
         fallback=clean(row.get("name")) or "Student Applicant",
     )
+    summary = case_summary or {}
     dto = {
         **_base_row(),
         "id": f"student_applicant:{row.get('name')}",
@@ -469,13 +483,59 @@ def _applicant_dto(row: dict, conversation: dict | None = None) -> dict:
         "channel_account": clean(conversation.get("channel_account")) if conversation else None,
         "owner": clean(conversation.get("assigned_to")) if conversation else None,
         "sla_state": clean(row.get("application_status")),
-        "last_activity_at": _as_text(row.get("modified") or row.get("submitted_at")),
-        "last_message_preview": None,
-        "needs_reply": False,
+        "last_activity_at": _as_text(summary.get("last_message_at") or row.get("modified") or row.get("submitted_at")),
+        "last_message_preview": clean(summary.get("last_message_preview")),
+        "needs_reply": _as_bool(summary.get("needs_reply")),
+        "unread_count": cint(summary.get("unread_count") or 0),
         "next_action_on": None,
+        "org_communication": clean(summary.get("thread_name")),
     }
-    dto["permissions"].update({"can_open_applicant": True, "can_record_activity": bool(conversation)})
+    dto["permissions"].update(
+        {
+            "can_open_applicant": True,
+            "can_record_activity": bool(conversation),
+            "can_reply_applicant_case": bool(clean(summary.get("thread_name"))),
+        }
+    )
     dto["actions"] = _applicant_actions(has_conversation=bool(conversation))
+    return dto
+
+
+def _applicant_message_dto(row: dict, case_summary: dict, conversation: dict | None = None) -> dict:
+    title = clean(row.get("title")) or _name_from_parts(
+        row.get("first_name"),
+        row.get("last_name"),
+        fallback=clean(row.get("name")) or "Student Applicant",
+    )
+    dto = {
+        **_base_row(),
+        "id": f"applicant_message:{case_summary.get('thread_name')}:{row.get('name')}",
+        "kind": "applicant_message",
+        "stage": "applicant",
+        "title": title,
+        "subtitle": _subtitle(
+            [_("Applicant Case Message"), clean(row.get("application_status")), clean(row.get("applicant_email"))]
+        ),
+        "organization": clean(row.get("organization")),
+        "school": clean(row.get("school")),
+        "inquiry": clean(row.get("inquiry")),
+        "student_applicant": clean(row.get("name")),
+        "conversation": clean(conversation.get("name")) if conversation else None,
+        "open_url": _desk_url("Student Applicant", row.get("name")),
+        "external_identity": clean(conversation.get("external_identity")) if conversation else None,
+        "channel_type": None,
+        "channel_account": None,
+        "owner": clean(conversation.get("assigned_to")) if conversation else None,
+        "sla_state": clean(row.get("application_status")),
+        "last_activity_at": _as_text(case_summary.get("last_message_at") or row.get("modified")),
+        "last_message_preview": clean(case_summary.get("last_message_preview")),
+        "needs_reply": _as_bool(case_summary.get("needs_reply")),
+        "unread_count": cint(case_summary.get("unread_count") or 0),
+        "next_action_on": None,
+        "org_communication": clean(case_summary.get("thread_name")),
+    }
+    dto["permissions"].update({"can_open_applicant": True, "can_reply_applicant_case": True})
+    dto["actions"] = _applicant_case_actions()
     return dto
 
 
@@ -528,7 +588,12 @@ def _active_first_contact_state(row: dict) -> bool:
 
 
 def _build_queues(
-    *, conversations: list[dict], inquiries: list[dict], applicants: list[dict], limit: int
+    *,
+    conversations: list[dict],
+    inquiries: list[dict],
+    applicants: list[dict],
+    applicant_case_summaries: dict[str, dict],
+    limit: int,
 ) -> list[dict]:
     queues = _queue_shell()
     today = getdate(nowdate())
@@ -544,6 +609,9 @@ def _build_queues(
             _append_queue_row(queues, "needs_reply", dto, limit=limit)
         if not clean(row.get("assigned_to")) and clean(row.get("status")) == "Open":
             _append_queue_row(queues, "unassigned", dto, limit=limit)
+        conversation_next_action = getdate(row.get("next_action_on")) if row.get("next_action_on") else None
+        if conversation_next_action and conversation_next_action == today and not clean(row.get("inquiry")):
+            _append_queue_row(queues, "due_today", dto, limit=limit)
         if clean(row.get("external_identity")) and clean(row.get("identity_match_status")) != "Confirmed":
             _append_queue_row(queues, "unmatched_messages", dto, limit=limit)
 
@@ -554,9 +622,17 @@ def _build_queues(
 
         first_contact_due = getdate(row.get("first_contact_due_on")) if row.get("first_contact_due_on") else None
         followup_due = getdate(row.get("followup_due_on")) if row.get("followup_due_on") else None
+        conversation = conversation_for_inquiry.get(clean(row.get("name")))
+        conversation_next_action = (
+            getdate(conversation.get("next_action_on")) if conversation and conversation.get("next_action_on") else None
+        )
         if _active_first_contact_state(row) and first_contact_due and first_contact_due < today:
             _append_queue_row(queues, "overdue_first_contact", dto, limit=limit)
-        if (first_contact_due and first_contact_due == today) or (followup_due and followup_due == today):
+        if (
+            (first_contact_due and first_contact_due == today)
+            or (followup_due and followup_due == today)
+            or (conversation_next_action and conversation_next_action == today)
+        ):
             _append_queue_row(queues, "due_today", dto, limit=limit)
         if clean(row.get("workflow_state")) == "Qualified" and not clean(row.get("student_applicant")):
             _append_queue_row(queues, "qualified_not_invited", dto, limit=limit)
@@ -570,7 +646,15 @@ def _build_queues(
 
     for row in applicants:
         conversation = conversation_for_applicant.get(clean(row.get("name")))
-        dto = _applicant_dto(row, conversation)
+        case_summary = applicant_case_summaries.get(clean(row.get("name"))) or {}
+        dto = _applicant_dto(row, conversation, case_summary)
+        if _as_bool(case_summary.get("needs_reply")):
+            _append_queue_row(
+                queues,
+                "needs_reply",
+                _applicant_message_dto(row, case_summary, conversation),
+                limit=limit,
+            )
         if clean(row.get("application_status")) == "Invited":
             _append_queue_row(queues, "invited_not_started", dto, limit=limit)
         if clean(row.get("application_status")) == "Missing Info":
@@ -593,6 +677,10 @@ def get_admissions_inbox_context(
     conversations = _fetch_conversation_rows(scope=scope, limit=resolved_limit)
     inquiries = _fetch_inquiry_rows(scope=scope, limit=resolved_limit)
     applicants = _fetch_applicant_rows(scope=scope, limit=resolved_limit)
+    applicant_case_summaries = get_admissions_thread_summaries_for_applicants(
+        applicant_rows=applicants,
+        user=user,
+    )
 
     return {
         "ok": True,
@@ -606,12 +694,15 @@ def get_admissions_inbox_context(
             conversations=conversations,
             inquiries=inquiries,
             applicants=applicants,
+            applicant_case_summaries=applicant_case_summaries,
             limit=resolved_limit,
         ),
         "sources": {
             "crm_conversations": len(conversations),
             "inquiries": len(inquiries),
             "student_applicants": len(applicants),
-            "org_communication_applicant_messages": 0,
+            "org_communication_applicant_messages": sum(
+                1 for summary in applicant_case_summaries.values() if clean(summary.get("thread_name"))
+            ),
         },
     }

@@ -3,6 +3,7 @@
 
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import get_datetime
 
@@ -58,7 +59,7 @@ def upsert_location_booking(
     Returns the Location Booking document name.
     """
     if not location:
-        frappe.throw("Location Booking: location is required.")
+        frappe.throw(_("Location Booking: location is required."))
     if not source_doctype or not source_name:
         frappe.throw("Location Booking: source_doctype and source_name are required.")
     if not slot_key:

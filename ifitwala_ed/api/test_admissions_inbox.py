@@ -1,8 +1,10 @@
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import add_days, nowdate
 
-from ifitwala_ed.api.admissions_crm import log_admission_message
+from ifitwala_ed.api.admissions_crm import create_admissions_intake, log_admission_message
 from ifitwala_ed.api.admissions_inbox import get_admissions_inbox_context
 
 
@@ -65,6 +67,70 @@ class TestAdmissionsInbox(FrappeTestCase):
         self.assertIn("log_reply", {action["id"] for action in row["actions"]})
         self.assertEqual(row["last_message_preview"], "Can someone call me about admissions?")
 
+    def test_context_uses_manual_intake_next_action_for_due_today(self):
+        organization = self._make_organization("Inbox Intake")
+
+        previous_user = frappe.session.user
+        try:
+            frappe.set_user("Administrator")
+            intake = create_admissions_intake(
+                organization=organization,
+                type_of_inquiry="Admission",
+                source="Community Fair",
+                activity_channel="In Person",
+                first_name="Fair",
+                last_name="Family",
+                message="Met family at the community fair.",
+                activity_type="Reached",
+                note="Call today to arrange a tour.",
+                next_action_on=nowdate(),
+                client_request_id=f"inbox-intake-{frappe.generate_hash(length=8)}",
+            )
+            context = get_admissions_inbox_context(organization=organization, limit=10)
+        finally:
+            frappe.set_user(previous_user)
+
+        due_today = self._queue(context, "due_today")
+        self.assertTrue(any(row["inquiry"] == intake["inquiry"]["name"] for row in due_today["rows"]))
+        row = next(row for row in due_today["rows"] if row["inquiry"] == intake["inquiry"]["name"])
+        self.assertEqual(row["kind"], "inquiry")
+        self.assertEqual(row["conversation"], intake["conversation"]["name"])
+        self.assertEqual(row["next_action_on"], nowdate())
+
+    def test_context_returns_applicant_case_message_needing_reply(self):
+        organization = self._make_organization("Inbox Applicant Message")
+        school = self._make_school(organization=organization)
+        applicant = self._make_applicant(organization=organization, school=school)
+
+        previous_user = frappe.session.user
+        try:
+            frappe.set_user("Administrator")
+            with patch(
+                "ifitwala_ed.api.admissions_inbox.get_admissions_thread_summaries_for_applicants",
+                return_value={
+                    applicant.name: {
+                        "thread_name": "COMM-0001",
+                        "unread_count": 1,
+                        "last_message_at": "2026-04-30 09:00:00",
+                        "last_message_preview": "Can I upload the passport tomorrow?",
+                        "last_message_from": "applicant",
+                        "needs_reply": True,
+                    }
+                },
+            ):
+                context = get_admissions_inbox_context(organization=organization, limit=10)
+        finally:
+            frappe.set_user(previous_user)
+
+        needs_reply = self._queue(context, "needs_reply")
+        self.assertTrue(any(row["student_applicant"] == applicant.name for row in needs_reply["rows"]))
+        row = next(row for row in needs_reply["rows"] if row["student_applicant"] == applicant.name)
+        self.assertEqual(row["kind"], "applicant_message")
+        self.assertEqual(row["org_communication"], "COMM-0001")
+        self.assertEqual(row["unread_count"], 1)
+        self.assertTrue(row["needs_reply"])
+        self.assertIn("reply_applicant_case", {action["id"] for action in row["actions"]})
+
     def test_context_scope_filter_excludes_other_organizations(self):
         included_org = self._make_organization("Inbox Included")
         excluded_org = self._make_organization("Inbox Excluded")
@@ -100,6 +166,35 @@ class TestAdmissionsInbox(FrappeTestCase):
         doc.flags.skip_coa_setup = True
         doc.insert(ignore_permissions=True)
         return doc.name
+
+    def _make_school(self, *, organization: str) -> str:
+        doc = frappe.get_doc(
+            {
+                "doctype": "School",
+                "school_name": f"Inbox School {frappe.generate_hash(length=6)}",
+                "abbr": f"IS{frappe.generate_hash(length=3)}",
+                "organization": organization,
+            }
+        )
+        doc.insert(ignore_permissions=True)
+        return doc.name
+
+    def _make_applicant(self, *, organization: str, school: str):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Student Applicant",
+                "first_name": "Inbox",
+                "last_name": f"Applicant-{frappe.generate_hash(length=6)}",
+                "organization": organization,
+                "school": school,
+                "application_status": "Draft",
+            }
+        )
+        doc.insert(ignore_permissions=True)
+        doc.db_set("applicant_user", f"applicant-{frappe.generate_hash(length=8)}@example.com", update_modified=False)
+        doc.db_set("application_status", "In Progress", update_modified=False)
+        doc.reload()
+        return doc
 
     def _make_inquiry(self, *, organization: str):
         doc = frappe.get_doc(

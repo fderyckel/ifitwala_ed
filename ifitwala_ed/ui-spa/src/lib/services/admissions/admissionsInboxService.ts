@@ -12,6 +12,7 @@ import type {
 	AssignAdmissionConversationRequest,
 	AssignInquiryFromInboxRequest,
 	ConfirmAdmissionExternalIdentityRequest,
+	CreateAdmissionsIntakeRequest,
 	CreateInquiryFromAdmissionConversationRequest,
 	InviteInquiryToApplyFromInboxRequest,
 	LinkAdmissionConversationRequest,
@@ -19,6 +20,7 @@ import type {
 	MarkInquiryContactedFromInboxRequest,
 	QualifyInquiryFromInboxRequest,
 	RecordAdmissionCrmActivityRequest,
+	SendAdmissionsCaseMessageFromInboxRequest,
 	UpdateAdmissionConversationStatusRequest,
 } from '@/types/contracts/admissions_inbox/get_admissions_inbox_context';
 
@@ -156,5 +158,23 @@ export function inviteInquiryToApplyFromInbox(payload: InviteInquiryToApplyFromI
 		'ifitwala_ed.api.admissions_crm.invite_inquiry_to_apply_from_inbox',
 		payload,
 		'admission-inquiry-invite'
+	);
+}
+
+export function createAdmissionsIntake(payload: CreateAdmissionsIntakeRequest) {
+	return submitMutation(
+		'ifitwala_ed.api.admissions_crm.create_admissions_intake',
+		payload,
+		'admission-intake'
+	);
+}
+
+export function sendAdmissionsCaseMessageFromInbox(
+	payload: SendAdmissionsCaseMessageFromInboxRequest
+) {
+	return submitMutation(
+		'ifitwala_ed.api.admissions_communication.send_admissions_case_message',
+		payload,
+		'admission-case-message'
 	);
 }

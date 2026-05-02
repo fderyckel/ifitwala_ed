@@ -37,7 +37,7 @@ def validate_account_holder_for_student(student_doc):
         return
 
     if not student_doc.anchor_school:
-        frappe.throw("Student must have an Anchor School to validate Account Holder organization.")
+        frappe.throw(_("Student must have an Anchor School to validate Account Holder organization."))
 
     student_org = get_school_organization(student_doc.anchor_school)
     ah_org = frappe.db.get_value("Account Holder", student_doc.account_holder, "organization")

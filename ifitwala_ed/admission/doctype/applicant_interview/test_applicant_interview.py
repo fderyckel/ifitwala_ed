@@ -18,6 +18,11 @@ from ifitwala_ed.api.recommendation_intake import (
     get_recommendation_review_payload,
     submit_recommendation,
 )
+from ifitwala_ed.stock.doctype.location_booking.location_booking import (
+    build_slot_key_single,
+    build_source_key,
+    upsert_location_booking,
+)
 from ifitwala_ed.utilities.employee_booking import upsert_employee_booking
 
 
@@ -119,6 +124,7 @@ class TestApplicantInterview(FrappeTestCase):
     def test_schedule_applicant_interview_creates_linked_school_event(self):
         interviewer = self._create_user("scheduler")
         employee = self._create_employee(interviewer, first_name="Case", last_name="Scheduler")
+        room = self._create_location("interview-room")
 
         payload = schedule_applicant_interview(
             student_applicant=self.applicant.name,
@@ -128,6 +134,7 @@ class TestApplicantInterview(FrappeTestCase):
             interviewer_users=[interviewer.name],
             interview_type="Student",
             mode="In Person",
+            location=room.name,
             confidentiality_level="Admissions Team",
             notes="Bring all prior records.",
         )
@@ -146,15 +153,27 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertEqual(interview.interview_end.strftime("%H:%M:%S"), "10:45:00")
         self.assertEqual(interview.interview_date.isoformat(), "2030-05-01")
         self.assertEqual(interview.interviewers[0].interviewer, interviewer.name)
+        self.assertEqual(interview.location, room.name)
 
         school_event = frappe.get_doc("School Event", school_event_name)
         self.assertEqual(school_event.reference_type, "Applicant Interview")
         self.assertEqual(school_event.reference_name, interview_name)
         self.assertEqual(school_event.event_category, "Appointment")
+        self.assertEqual(school_event.location, room.name)
         self.assertEqual(len(school_event.participants), 1)
         self.assertEqual(school_event.participants[0].participant, interviewer.name)
         self.assertEqual(len(school_event.audience), 1)
         self.assertEqual(school_event.audience[0].audience_type, "Custom Users")
+        self.assertTrue(
+            frappe.db.exists(
+                "Location Booking",
+                {
+                    "source_doctype": "School Event",
+                    "source_name": school_event_name,
+                    "location": room.name,
+                },
+            )
+        )
 
         self.assertEqual(employee.user_id, interviewer.name)
 
@@ -190,6 +209,46 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertFalse(payload.get("ok"))
         self.assertEqual(payload.get("code"), "EMPLOYEE_CONFLICT")
         self.assertGreaterEqual(len(payload.get("conflicts") or []), 1)
+        self.assertGreaterEqual(len(payload.get("suggestions") or []), 1)
+        self.assertEqual(before_count, after_count)
+
+    def test_schedule_applicant_interview_returns_room_conflict(self):
+        interviewer = self._create_user("room_conflict")
+        self._create_employee(interviewer, first_name="Room", last_name="Conflict")
+        room = self._create_location("room-conflict")
+
+        source_key = build_source_key("Student Applicant", self.applicant.name)
+        booking_name = upsert_location_booking(
+            location=room.name,
+            from_datetime="2030-05-03 09:00:00",
+            to_datetime="2030-05-03 10:00:00",
+            occupancy_type="Meeting",
+            source_doctype="Student Applicant",
+            source_name=self.applicant.name,
+            slot_key=build_slot_key_single(source_key, room.name),
+            school=self.school,
+        )
+        if booking_name:
+            self._created.append(("Location Booking", booking_name))
+
+        before_count = frappe.db.count("Applicant Interview", {"student_applicant": self.applicant.name})
+        payload = schedule_applicant_interview(
+            student_applicant=self.applicant.name,
+            interview_start="2030-05-03 09:15:00",
+            duration_minutes=30,
+            primary_interviewer=interviewer.name,
+            interviewer_users=[interviewer.name],
+            mode="In Person",
+            location=room.name,
+            suggestion_window_start_time="08:00:00",
+            suggestion_window_end_time="12:00:00",
+        )
+        after_count = frappe.db.count("Applicant Interview", {"student_applicant": self.applicant.name})
+
+        self.assertFalse(payload.get("ok"))
+        self.assertEqual(payload.get("code"), "ROOM_CONFLICT")
+        self.assertEqual(len(payload.get("employee_conflicts") or []), 0)
+        self.assertGreaterEqual(len(payload.get("room_conflicts") or []), 1)
         self.assertGreaterEqual(len(payload.get("suggestions") or []), 1)
         self.assertEqual(before_count, after_count)
 
@@ -1302,6 +1361,20 @@ class TestApplicantInterview(FrappeTestCase):
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Employee", doc.name))
+        return doc
+
+    def _create_location(self, label: str):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Location",
+                "location_name": f"{label}-{frappe.generate_hash(length=6)}",
+                "school": self.school,
+                "organization": self.organization,
+                "is_group": 0,
+                "maximum_capacity": 6,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Location", doc.name))
         return doc
 
     def _link_applicant_to_student(self, *, anchor_school: str):

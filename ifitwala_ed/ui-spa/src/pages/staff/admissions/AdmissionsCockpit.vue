@@ -131,9 +131,9 @@
 										<button
 											type="button"
 											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
-											@click="openCreateInterview(item)"
+											@click="openScheduleInterview(item)"
 										>
-											Create Interview
+											Schedule Interview
 										</button>
 										<button
 											type="button"
@@ -546,11 +546,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
+import { SIGNAL_ADMISSIONS_COCKPIT_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 import {
 	getAdmissionsCaseThread,
 	getAdmissionsCockpitData,
@@ -730,6 +731,7 @@ const filters = ref({
 
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 let requestToken = 0;
+let unsubscribeCockpitInvalidate: (() => void) | null = null;
 
 const organizations = computed(() => data.value?.config?.organizations || []);
 const schools = computed(() => data.value?.config?.schools || []);
@@ -1003,37 +1005,18 @@ function openBlockerTarget(card: CockpitCard, issue: CockpitCardTarget) {
 	window.open(targetUrl, '_blank', 'noopener,noreferrer');
 }
 
-function deskSlug(value: string) {
-	return String(value || '')
-		.trim()
-		.toLowerCase()
-		.replace(/_/g, '-')
-		.replace(/\s+/g, '-');
-}
-
-function buildNewInterviewUrl(studentApplicant: string) {
-	const slug = deskSlug('Applicant Interview');
-	const base = `/desk/${slug}/new-${slug}-1`;
-	const now = new Date();
-	const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
-		now.getDate()
-	).padStart(2, '0')}`;
-	const params = new URLSearchParams({
-		student_applicant: studentApplicant,
-		interview_date: localToday,
-	});
-	return `${base}?${params.toString()}`;
-}
-
-function openCreateInterview(card: CockpitCard) {
+function openScheduleInterview(card: CockpitCard) {
 	const applicantName = String(card?.name || '').trim();
 	if (!applicantName) {
-		error.value = 'Applicant reference is missing for interview create.';
+		error.value = 'Applicant reference is missing for interview scheduling.';
 		return;
 	}
 
-	const url = buildNewInterviewUrl(applicantName);
-	window.open(url, '_blank', 'noopener,noreferrer');
+	overlay.open('admissions-interview-schedule', {
+		studentApplicant: applicantName,
+		applicantName: String(card?.display_name || '').trim() || applicantName,
+		school: String(card?.school || '').trim() || null,
+	});
 }
 
 async function sendEnrollmentOffer(card: CockpitCard) {
@@ -1218,6 +1201,18 @@ watch(
 );
 
 onMounted(() => {
+	unsubscribeCockpitInvalidate = uiSignals.subscribe(SIGNAL_ADMISSIONS_COCKPIT_INVALIDATE, () => {
+		queueRefresh();
+	});
 	void refreshNow();
+});
+
+onUnmounted(() => {
+	if (refreshTimer) {
+		clearTimeout(refreshTimer);
+		refreshTimer = null;
+	}
+	unsubscribeCockpitInvalidate?.();
+	unsubscribeCockpitInvalidate = null;
 });
 </script>

@@ -5,6 +5,7 @@ from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.api.admissions_crm import (
     archive_inquiry_from_inbox,
+    create_admissions_intake,
     create_inquiry_from_admission_conversation,
     log_admission_message,
     mark_inquiry_contacted_from_inbox,
@@ -16,16 +17,20 @@ from ifitwala_ed.api.admissions_crm import (
 
 class TestAdmissionConversation(FrappeTestCase):
     def test_crm_metadata_keeps_messages_and_media_separate_from_files(self):
+        inquiry_meta = frappe.get_meta("Inquiry")
         conversation_meta = frappe.get_meta("Admission Conversation")
         message_meta = frappe.get_meta("Admission Message")
         activity_meta = frappe.get_meta("Admission CRM Activity")
 
         self.assertEqual(conversation_meta.get_field("inquiry").options, "Inquiry")
+        self.assertIn("Phone", inquiry_meta.get_field("source").options)
+        self.assertIn("Community Fair", inquiry_meta.get_field("source").options)
         self.assertEqual(conversation_meta.get_field("student_applicant").options, "Student Applicant")
         self.assertEqual(message_meta.get_field("conversation").options, "Admission Conversation")
         self.assertIsNotNone(message_meta.get_field("media_provider_id"))
         self.assertIsNone(message_meta.get_field("media_file"))
         self.assertEqual(activity_meta.get_field("activity_type").fieldtype, "Select")
+        self.assertIn("Phone", activity_meta.get_field("activity_channel").options)
 
     def test_manual_message_logging_updates_needs_reply(self):
         organization = self._make_organization("CRM Manual")
@@ -87,6 +92,67 @@ class TestAdmissionConversation(FrappeTestCase):
 
         self.assertEqual(str(response["conversation"]["next_action_on"]), "2026-05-01")
         self.assertEqual(response["activity"]["activity_type"], "Follow-up Scheduled")
+
+    def test_create_admissions_intake_creates_inquiry_conversation_and_activity(self):
+        organization = self._make_organization("CRM Intake")
+
+        previous_user = frappe.session.user
+        try:
+            frappe.set_user("Administrator")
+            response = create_admissions_intake(
+                organization=organization,
+                type_of_inquiry="Admission",
+                source="Phone",
+                activity_channel="Phone",
+                first_name="Phone",
+                last_name="Parent",
+                phone_number="+66000000000",
+                student_first_name="Prospect",
+                grade_level_interest="Grade 4",
+                message="Family called the school asking about admissions.",
+                activity_type="Reached",
+                outcome="Follow-up required",
+                note="Send fee schedule and book a tour.",
+                next_action_on=frappe.utils.nowdate(),
+                client_request_id=f"crm-intake-{frappe.generate_hash(length=8)}",
+            )
+        finally:
+            frappe.set_user(previous_user)
+
+        inquiry_name = response["inquiry"]["name"]
+        conversation_name = response["conversation"]["name"]
+        activity_name = response["activity"]["name"]
+        inquiry = frappe.db.get_value(
+            "Inquiry",
+            inquiry_name,
+            ["organization", "source", "type_of_inquiry", "student_first_name", "grade_level_interest", "message"],
+            as_dict=True,
+        )
+        conversation = frappe.db.get_value(
+            "Admission Conversation",
+            conversation_name,
+            ["inquiry", "organization", "next_action_on"],
+            as_dict=True,
+        )
+        activity = frappe.db.get_value(
+            "Admission CRM Activity",
+            activity_name,
+            ["conversation", "activity_type", "activity_channel", "note"],
+            as_dict=True,
+        )
+
+        self.assertEqual(inquiry.organization, organization)
+        self.assertEqual(inquiry.source, "Phone")
+        self.assertEqual(inquiry.type_of_inquiry, "Admission")
+        self.assertEqual(inquiry.student_first_name, "Prospect")
+        self.assertEqual(inquiry.grade_level_interest, "Grade 4")
+        self.assertEqual(conversation.inquiry, inquiry_name)
+        self.assertEqual(conversation.organization, organization)
+        self.assertEqual(str(conversation.next_action_on), frappe.utils.nowdate())
+        self.assertEqual(activity.conversation, conversation_name)
+        self.assertEqual(activity.activity_type, "Reached")
+        self.assertEqual(activity.activity_channel, "Phone")
+        self.assertEqual(activity.note, "Send fee schedule and book a tour.")
 
     def test_create_inquiry_from_conversation_links_existing_crm_case(self):
         organization = self._make_organization("CRM Create Inquiry")

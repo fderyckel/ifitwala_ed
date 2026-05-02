@@ -46,7 +46,7 @@ def _assert_instructor(student_group: str) -> None:
         frappe.throw("student_group is required")
 
     if not frappe.db.exists("Student Group", student_group):
-        frappe.throw("Student Group not found")
+        frappe.throw(_("Student Group not found"))
 
     user = frappe.session.user
     if not user or user == "Guest":
