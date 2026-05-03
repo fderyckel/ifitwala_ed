@@ -53,11 +53,11 @@ export type Snapshot = {
 		student: string;
 		full_name: string;
 		photo?: string | null;
-		cohort?: string | null;
-		gender?: string | null;
-		age?: number | null;
-		date_of_birth?: string | null;
-		school?: { name: string; label?: string };
+			cohort?: string | null;
+			gender?: string | null;
+			age?: number | null;
+			student_age?: string | null;
+			school?: { name: string; label?: string };
 		program_enrollment?: {
 			name: string;
 			program: string;

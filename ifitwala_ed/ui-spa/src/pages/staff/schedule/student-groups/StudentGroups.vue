@@ -107,9 +107,9 @@
 							<span class="truncate">{{ stu.student_name }}</span>
 
 							<span
-								v-if="hasUpcomingBirthday(stu.birth_date)"
+								v-if="stu.birthday_in_window"
 								class="text-amber-500"
-								:title="`Birthday on ${birthdayTooltip(stu.birth_date)}`"
+								:title="birthdayTitle(stu)"
 							>
 								🎂
 							</span>
@@ -282,7 +282,10 @@ type StudentEntry = {
 	preferred_name?: string;
 	student_image?: string;
 	medical_info?: string | null;
-	birth_date?: string | null;
+	student_age?: string | null;
+	birthday_in_window?: boolean;
+	birthday_today?: boolean;
+	birthday_label?: string | null;
 	has_ssg?: boolean;
 };
 
@@ -446,28 +449,10 @@ function onImgError(e: Event, fallback?: string) {
 	el.src = fallback || DEFAULT_IMG;
 }
 
-function birthdayTooltip(birthDate?: string | null) {
-	if (!birthDate) return '';
-	try {
-		const today = new Date();
-		const target = new Date(birthDate);
-		const thisYear = new Date(today.getFullYear(), target.getMonth(), target.getDate());
-		const diffDays = Math.round((thisYear.getTime() - today.getTime()) / 86400000);
-		if (Math.abs(diffDays) <= 5) {
-			return thisYear.toLocaleDateString(undefined, {
-				weekday: 'long',
-				month: 'long',
-				day: 'numeric',
-			});
-		}
-	} catch (error) {
-		console.warn('Failed to parse birth date', birthDate, error);
-	}
-	return '';
-}
-
-function hasUpcomingBirthday(birthDate?: string | null) {
-	return !!birthdayTooltip(birthDate);
+function birthdayTitle(student: StudentEntry) {
+	if (student.birthday_today) return 'Birthday today';
+	if (student.birthday_label) return `Birthday on ${student.birthday_label}`;
+	return 'Birthday';
 }
 
 async function openSSG(stu: StudentEntry) {

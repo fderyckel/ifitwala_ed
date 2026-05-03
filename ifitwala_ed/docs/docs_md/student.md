@@ -3,8 +3,8 @@ title: "Student: Your Learner Records Made Simple"
 slug: student
 category: Students
 doc_order: 1
-version: "1.3.4"
-last_change_date: "2026-04-25"
+version: "1.3.6"
+last_change_date: "2026-05-03"
 summary: "Manage learner records with confidence—from admissions intake to alumni status. Understand when to use the admissions pipeline versus importing existing students."
 seo_title: "Student: Your Learner Records Made Simple"
 seo_description: "Learn how to manage Student records in Ifitwala Ed—from admissions promotion to bulk importing existing students with full portal access and health record integration."
@@ -127,10 +127,11 @@ When you import students, all the same automation runs as with admissions:
 | **First / Middle / Last Name** | Legal name | All three are used to generate the full name automatically |
 | **Preferred Name** | What the student likes to be called | Shows in lists and parent communications |
 | **Email** | Portal username and primary contact | Must be unique; becomes their login username |
-| **Date of Birth** | For age calculations and grade placement | Cannot be after today or the joining date |
+| **Date of Birth** | Restricted source field for age calculations and approved identity/medical workflows | Cannot be after today or the joining date; visible on the Student record only to Academic Admin and System Manager |
+| **Student Age** | Derived display age shown in day-to-day academic views | Used instead of full date of birth where staff need age context but not identity data |
 | **Gender** | Demographics and reporting | Used for housing, sports, and diversity metrics |
 | **Joining Date** | When they started at your school | Used for anniversary calculations and reporting |
-| **First / Second Language** | Language proficiency tracking | Set up Language Xtra records first |
+| **First / Second Language** | Language proficiency tracking | Teacher-facing academic context; set up Language Xtra records first |
 | **Nationality** | Citizenship information | Links to Country records |
 | **Anchor School** | Primary school affiliation | Every student needs this for scoping |
 | **Cohort** | Graduating class (e.g., "Class of 2030") | Great for longitudinal tracking |
@@ -202,9 +203,9 @@ This flow is especially useful after migration/import when staff have already li
 | Role | Read | Write | Create | Delete | Import | Notes |
 |------|------|-------|--------|--------|--------|-------|
 | `System Manager` | Yes | Yes | Yes | Yes | No | No import by default (intentional) |
-| `Academic Admin` | Yes | Yes | Yes | No | Yes | Full academic access |
-| `Academic Assistant` | Yes | Yes | Yes | No | Yes | Can create and import |
-| `Instructor` | Yes | Yes | No | No | No | Owns students they teach |
+| `Academic Admin` | Yes* | Yes* | Yes | No | Yes | School-branch academic access |
+| `Academic Assistant` | Yes* | Yes* | Yes | No | Yes | School-branch academic access |
+| `Instructor` | Yes* | No | No | No | No | Active students in assigned Student Groups only |
 | `Nurse` | Yes | Yes | No | No | No | Medical context access |
 | `Counselor` | Yes | Yes | No | No | No | Assigned student access |
 | `Admission Manager` | Yes | Yes | Yes | No | No | Admissions context |
@@ -212,7 +213,9 @@ This flow is especially useful after migration/import when staff have already li
 | `Guardian` | Yes* | No | No | No | No | Own children only (portal) |
 | `Student` | Yes* | No | No | No | No | Self only (portal) |
 
-*Read access is scoped by relationship (own children, own record, or enrolled students)
+*Read and write access is scoped by relationship or staff scope. Academic Admin and Academic Assistant users see only students whose Anchor School is inside their visible school branch. Instructors see only active students in active Student Groups where they are assigned as an instructor.
+
+Sensitive identity fields are additionally separated by field permission level. `student_date_of_birth` is restricted on the Student record; non-admin attendance, student-group, morning-brief, and profile-print surfaces use `student_age` or birthday labels instead of returning the full date. Student Patient quick-info returns raw DOB only to Nurse, Academic Admin, and system-wide users; other Student Patient readers get age.
 
 ## Related Docs
 
@@ -227,6 +230,8 @@ This flow is especially useful after migration/import when staff have already li
 - **Autoname**: `STUD-.YY.-.####` format (auto-generated)
 - **Creation Paths**: Applicant promotion (canonical) or Data Import (exception)
 - **Import Flag**: `allow_direct_creation` check field required for imports
+- **Desk visibility**: Student List, Image, Report, and form access are server-scoped through scripted permissions. Academic Admin and Academic Assistant users use `Student.anchor_school` plus the active Employee school branch. Instructors use active `Student Group Instructor` and `Student Group Student` rows.
+- **DOB visibility**: `student_date_of_birth` is `permlevel 2` on Student; `student_age` is the derived read-only field for general academic display.
 - **Side Effects**: imported/direct student creation keeps user creation, Student Patient creation, contact linking, and image sync; applicant promotion now also materializes the canonical `Contact.links -> Student` binding synchronously.
 - **Legacy remediation**: existing sites backfill missing `Contact.links -> Student` rows through the one-shot patch `ifitwala_ed.patches.backfill_student_contact_links`
 - **Profile-image cleanup**: runtime Student saves no longer rename or repair legacy image files; existing sites normalize legacy `Student.student_image` rows through the one-shot patch `ifitwala_ed.patches.backfill_student_profile_images`

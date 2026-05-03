@@ -56,15 +56,15 @@ frappe.ui.form.on('Student Patient Visit', {
 						if (!res.message) return;
 
 						const student = res.message;
-						const age = student.student_date_of_birth
+						const age = student.student_age || (student.student_date_of_birth
 							? calculate_age(student.student_date_of_birth)
-							: '';
+							: '');
 
 						frm.set_value({
 							student: student_id,
 							student_name: student.student_full_name,
 							gender: student.student_gender,
-							date_of_birth: student.student_date_of_birth,
+							date_of_birth: student.student_date_of_birth || null,
 							student_age: age
 						});
 					}

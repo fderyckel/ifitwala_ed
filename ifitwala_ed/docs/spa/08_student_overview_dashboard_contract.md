@@ -121,6 +121,7 @@ Rules:
 15. `history.academic_trend` is derived from task rows grouped by academic year.
 16. `history.attendance_trend` is derived from distinct `Student Attendance.academic_year` values.
 17. `history.reflection_flags` is currently returned as an empty list.
+18. `identity` may include `age` and `student_age`, but it must not return raw `date_of_birth` / `student_date_of_birth` values to the SPA.
 
 ## 5. Query and Frappe v16 Contract Notes
 

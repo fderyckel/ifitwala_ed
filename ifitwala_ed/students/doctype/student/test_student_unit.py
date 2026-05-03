@@ -1,6 +1,7 @@
 from __future__ import annotations
 import __future__
 
+import json
 import sys
 from contextlib import contextmanager
 from pathlib import Path
@@ -30,6 +31,12 @@ def _student_module():
     drive_authority = ModuleType("ifitwala_ed.integrations.drive.authority")
     drive_authority.is_governed_file = lambda *args, **kwargs: False
 
+    employee_utils = ModuleType("ifitwala_ed.utilities.employee_utils")
+    employee_utils.get_user_visible_schools = lambda user=None: []
+
+    student_utils = ModuleType("ifitwala_ed.utilities.student_utils")
+    student_utils.format_student_age = lambda date_of_birth: "12 years" if date_of_birth else ""
+
     with stubbed_frappe(
         extra_modules={
             "frappe.desk": frappe_desk,
@@ -38,6 +45,8 @@ def _student_module():
             "ifitwala_ed.accounting.account_holder_utils": account_holder_utils,
             "ifitwala_ed.governance.policy_utils": policy_utils,
             "ifitwala_ed.integrations.drive.authority": drive_authority,
+            "ifitwala_ed.utilities.employee_utils": employee_utils,
+            "ifitwala_ed.utilities.student_utils": student_utils,
         }
     ) as frappe:
         frappe_utils = sys.modules["frappe.utils"]
@@ -52,6 +61,8 @@ def _student_module():
         frappe.log_error = lambda *args, **kwargs: None
         frappe.db.exists = lambda *args, **kwargs: False
         frappe.db.get_value = lambda *args, **kwargs: None
+        frappe.db.escape = lambda value, percent=True: f"'{value}'"
+        frappe.db.sql = lambda *args, **kwargs: []
         frappe.get_doc = lambda *args, **kwargs: None
 
         module = ModuleType("ifitwala_ed.students.doctype.student.student")
@@ -72,6 +83,91 @@ def _student_module():
 
 
 class TestStudentUnit(TestCase):
+    def test_student_metadata_restricts_dob_and_exposes_derived_age(self):
+        payload = json.loads(Path(__file__).with_name("student.json").read_text(encoding="utf-8"))
+        fields = {field["fieldname"]: field for field in payload["fields"] if field.get("fieldname")}
+
+        self.assertEqual(fields["student_date_of_birth"].get("permlevel"), 2)
+        self.assertNotIn("in_filter", fields["student_date_of_birth"])
+        self.assertNotIn("in_preview", fields["student_date_of_birth"])
+        self.assertEqual(fields["student_age"].get("fieldtype"), "Data")
+        self.assertEqual(fields["student_age"].get("is_virtual"), 1)
+        self.assertEqual(fields["student_age"].get("read_only"), 1)
+
+        dob_read_roles = {
+            row.get("role")
+            for row in payload["permissions"]
+            if row.get("permlevel") == 2 and row.get("read")
+        }
+        self.assertEqual(dob_read_roles, {"Academic Admin", "System Manager"})
+
+    def test_student_sibling_metadata_uses_age_not_dob(self):
+        payload = json.loads(
+            Path(__file__).parents[1].joinpath("student_sibling", "student_sibling.json").read_text(encoding="utf-8")
+        )
+        fields = {field["fieldname"]: field for field in payload["fields"] if field.get("fieldname")}
+
+        self.assertIn("sibling_age", fields)
+        self.assertNotIn("sibling_date_of_birth", fields)
+        self.assertIn("sibling_age", payload["field_order"])
+        self.assertNotIn("sibling_date_of_birth", payload["field_order"])
+        self.assertEqual(fields["sibling_age"].get("read_only"), 1)
+
+    def test_permission_query_conditions_scope_academic_assistant_to_visible_schools(self):
+        with _student_module() as (student_module, frappe):
+            with (
+                patch.object(frappe, "get_roles", return_value=["Academic Assistant"]),
+                patch.object(student_module, "get_user_visible_schools", return_value=["SCH-ROOT", "SCH-CHILD"]),
+            ):
+                condition = student_module.get_permission_query_conditions("assistant@example.com")
+
+        self.assertEqual(condition, "`tabStudent`.`anchor_school` IN ('SCH-ROOT', 'SCH-CHILD')")
+
+    def test_permission_query_conditions_scope_instructor_to_active_student_groups(self):
+        with _student_module() as (student_module, frappe):
+            with patch.object(frappe, "get_roles", return_value=["Instructor", "Academic Staff"]):
+                condition = student_module.get_permission_query_conditions("teacher@example.com")
+
+        self.assertIn("FROM `tabStudent Group Student` sgs", condition)
+        self.assertIn("sgs.student = `tabStudent`.`name`", condition)
+        self.assertIn("IFNULL(`tabStudent`.`enabled`, 1) = 1", condition)
+        self.assertIn("COALESCE(sgs.active, 1) = 1", condition)
+        self.assertIn("IFNULL(sg.status, 'Active') = 'Active'", condition)
+        self.assertNotIn("anchor_school", condition)
+
+    def test_has_permission_rejects_instructor_student_outside_group_scope(self):
+        with _student_module() as (student_module, frappe):
+            student = SimpleNamespace(name="STU-0001", anchor_school="SCH-ROOT")
+            with patch.object(frappe, "get_roles", return_value=["Instructor", "Academic Staff"]):
+                allowed = student_module.has_permission(student, ptype="read", user="teacher@example.com")
+
+        self.assertFalse(allowed)
+
+    def test_has_permission_allows_school_scoped_admin_inside_visible_school(self):
+        with _student_module() as (student_module, frappe):
+            allowed_doc = SimpleNamespace(name="STU-0001", anchor_school="SCH-CHILD")
+            blocked_doc = SimpleNamespace(name="STU-0002", anchor_school="SCH-SIBLING")
+            with (
+                patch.object(frappe, "get_roles", return_value=["Academic Admin"]),
+                patch.object(student_module, "get_user_visible_schools", return_value=["SCH-ROOT", "SCH-CHILD"]),
+            ):
+                allowed = student_module.has_permission(allowed_doc, ptype="read", user="admin@example.com")
+                blocked = student_module.has_permission(blocked_doc, ptype="read", user="admin@example.com")
+
+        self.assertTrue(allowed)
+        self.assertFalse(blocked)
+
+    def test_has_permission_does_not_upgrade_academic_staff_to_write(self):
+        with _student_module() as (student_module, frappe):
+            student = SimpleNamespace(name="STU-0001", anchor_school="SCH-CHILD")
+            with (
+                patch.object(frappe, "get_roles", return_value=["Academic Staff"]),
+                patch.object(student_module, "get_user_visible_schools", return_value=["SCH-CHILD"]),
+            ):
+                allowed = student_module.has_permission(student, ptype="write", user="staff@example.com")
+
+        self.assertFalse(allowed)
+
     def test_after_insert_for_applicant_promotion_still_materializes_contact_binding(self):
         with _student_module() as (student_module, frappe):
             frappe.flags.from_applicant_promotion = True
@@ -89,7 +185,8 @@ class TestStudentUnit(TestCase):
         ensure_contact_and_link.assert_called_once_with()
 
     def test_on_update_no_longer_repairs_missing_contact_binding(self):
-        with _student_module() as (student_module, _):
+        with _student_module() as module_context:
+            student_module = module_context[0]
             student = student_module.Student.__new__(student_module.Student)
 
             with (

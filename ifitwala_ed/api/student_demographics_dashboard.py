@@ -13,7 +13,8 @@ from frappe import _
 from frappe.utils import getdate, nowdate
 
 from ifitwala_ed.admission.admission_utils import ADMISSIONS_ROLES
-from ifitwala_ed.utilities.employee_utils import get_user_base_school
+from ifitwala_ed.students.doctype.student.student import get_instructor_student_scope_condition
+from ifitwala_ed.utilities.employee_utils import get_user_base_school, get_user_visible_schools
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
 ALLOWED_ANALYTICS_ROLES = {
@@ -29,6 +30,12 @@ ALLOWED_ANALYTICS_ROLES = {
     "Administrator",
 } | ADMISSIONS_ROLES
 
+SYSTEM_WIDE_ANALYTICS_ROLES = {"System Manager", "Administrator"}
+
+
+def _is_system_wide_analytics_user(user: str, roles: set[str]) -> bool:
+    return user == "Administrator" or bool(roles & SYSTEM_WIDE_ANALYTICS_ROLES)
+
 
 def _ensure_demographics_access(user: str | None = None) -> str:
     """Gate analytics to authorized staff roles."""
@@ -42,23 +49,20 @@ def _get_demographics_access_context(user: str | None = None) -> dict:
         frappe.throw(_("You need to sign in to access Student Demographic Analytics."), frappe.PermissionError)
 
     roles = set(frappe.get_roles(user))
-    if roles & ALLOWED_ANALYTICS_ROLES:
-        return {"user": user, "mode": "full"}
+    if _is_system_wide_analytics_user(user, roles) or roles & ALLOWED_ANALYTICS_ROLES:
+        school_scope = None if _is_system_wide_analytics_user(user, roles) else get_user_visible_schools(user)
+        return {"user": user, "mode": "full", "school_scope": school_scope}
 
     teaching_roles = {"Instructor"}
     if roles & teaching_roles:
         has_students = frappe.db.sql(
+            f"""
+            SELECT 1
+            FROM `tabStudent` st
+            WHERE st.enabled = 1
+                AND {get_instructor_student_scope_condition(user, table_alias="st")}
+            LIMIT 1
             """
-			SELECT 1
-			FROM `tabStudent Group Instructor` sgi
-			JOIN `tabStudent Group Student` sgs ON sgi.parent = sgs.parent
-			JOIN `tabStudent Group` sg ON sg.name = sgs.parent
-			WHERE sgi.user_id = %(user)s
-				AND COALESCE(sgs.active, 0) = 1
-				AND IFNULL(sg.status, 'Active') = 'Active'
-			LIMIT 1
-			""",
-            {"user": user},
         )
         if has_students:
             return {"user": user, "mode": "instructor"}
@@ -104,6 +108,23 @@ def _get_filters(filters) -> dict:
     return filters
 
 
+def _context_school_scope(ctx: dict) -> list[str] | None:
+    if "school_scope" in ctx:
+        return ctx.get("school_scope")
+
+    user = ctx.get("user")
+    roles = set(frappe.get_roles(user)) if user else set()
+    if _is_system_wide_analytics_user(user, roles):
+        return None
+    return get_user_visible_schools(user) if user else []
+
+
+def _requested_school_scope(school: str | None) -> list[str]:
+    if not school:
+        return []
+    return get_descendant_schools(school) or [school]
+
+
 def _get_active_students(filters: dict, ctx: dict | None = None):
     ctx = ctx or _get_demographics_access_context()
     mode = ctx["mode"]
@@ -114,21 +135,26 @@ def _get_active_students(filters: dict, ctx: dict | None = None):
     joins = ""
 
     if mode == "instructor":
-        joins = """
-			JOIN `tabStudent Group Student` sgs ON sgs.student = st.name
-			JOIN `tabStudent Group Instructor` sgi ON sgi.parent = sgs.parent
-			JOIN `tabStudent Group` sg ON sg.name = sgs.parent
-		"""
-        conditions.append("sgi.user_id = %(user)s")
-        conditions.append("COALESCE(sgs.active, 0) = 1")
-        conditions.append("IFNULL(sg.status, 'Active') = 'Active'")
-        params["user"] = user
+        conditions.append(get_instructor_student_scope_condition(user, table_alias="st"))
 
-    if filters.get("school"):
-        root = filters["school"]
-        descendants = get_descendant_schools(root) or [root]
+    school_scope = _context_school_scope(ctx) if mode == "full" else None
+    requested_schools = _requested_school_scope(filters.get("school"))
+
+    if mode == "full" and school_scope is not None:
+        if requested_schools:
+            allowed_schools = [school for school in requested_schools if school in set(school_scope)]
+        else:
+            allowed_schools = list(school_scope or [])
+
+        if not allowed_schools:
+            return []
+
         conditions.append("st.anchor_school in %(schools)s")
-        params["schools"] = tuple(descendants)
+        params["schools"] = tuple(allowed_schools)
+
+    elif requested_schools:
+        conditions.append("st.anchor_school in %(schools)s")
+        params["schools"] = tuple(requested_schools)
 
     if filters.get("cohort"):
         conditions.append("st.cohort = %(cohort)s")
@@ -427,19 +453,38 @@ def get_filter_meta():
     user = ctx["user"]
 
     base_school = None
-    try:
-        base_school = get_user_base_school(user)
-    except Exception:
-        pass
-
     school_names = []
-    if base_school:
-        descendants = get_descendant_schools(base_school) or []
-        if base_school not in descendants:
-            descendants.insert(0, base_school)
-        school_names = descendants
+
+    if ctx.get("mode") == "instructor":
+        instructor_condition = get_instructor_student_scope_condition(user, table_alias="st")
+        school_rows = frappe.db.sql(
+            f"""
+            SELECT DISTINCT st.anchor_school AS name
+            FROM `tabStudent` st
+            WHERE st.enabled = 1
+                AND st.anchor_school IS NOT NULL
+                AND st.anchor_school != ''
+                AND {instructor_condition}
+            ORDER BY st.anchor_school ASC
+            """,
+            as_dict=True,
+        )
+        school_names = [row.get("name") for row in school_rows if row.get("name")]
+        base_school = school_names[0] if school_names else None
     else:
-        school_names = [s.name for s in frappe.get_all("School")]
+        school_scope = _context_school_scope(ctx)
+        if school_scope is None:
+            school_names = [s.name for s in frappe.get_all("School")]
+        else:
+            school_names = list(school_scope or [])
+        try:
+            candidate_school = get_user_base_school(user)
+            if candidate_school in school_names:
+                base_school = candidate_school
+            elif school_names:
+                base_school = school_names[0]
+        except Exception:
+            base_school = school_names[0] if school_names else None
 
     schools = []
     if school_names:
@@ -450,15 +495,41 @@ def get_filter_meta():
             order_by="name asc",
         )
 
-    cohorts = (
-        frappe.get_all(
+    cohort_names = []
+    if frappe.db.table_exists("Student Cohort"):
+        if ctx.get("mode") == "instructor":
+            instructor_condition = get_instructor_student_scope_condition(user, table_alias="st")
+            cohort_rows = frappe.db.sql(
+                f"""
+                SELECT DISTINCT st.cohort AS name
+                FROM `tabStudent` st
+                WHERE st.enabled = 1
+                    AND st.cohort IS NOT NULL
+                    AND st.cohort != ''
+                    AND {instructor_condition}
+                ORDER BY st.cohort ASC
+                """,
+                as_dict=True,
+            )
+            cohort_names = [row.get("name") for row in cohort_rows if row.get("name")]
+        elif school_names:
+            cohort_rows = frappe.get_all(
+                "Student",
+                fields=["cohort"],
+                filters={"enabled": 1, "anchor_school": ["in", school_names], "cohort": ["is", "set"]},
+                distinct=True,
+                limit=0,
+            )
+            cohort_names = [row.get("cohort") for row in cohort_rows if row.get("cohort")]
+
+    cohorts = []
+    if cohort_names:
+        cohorts = frappe.get_all(
             "Student Cohort",
             fields=["name as name", "cohort_name as label"],
+            filters={"name": ["in", list(dict.fromkeys(cohort_names))]},
             order_by="name asc",
         )
-        if frappe.db.table_exists("Student Cohort")
-        else []
-    )
 
     return {
         "default_school": base_school,
@@ -552,7 +623,7 @@ def get_dashboard(filters=None):
     nat_items = []
     if nat_counter:
         top_items = nat_counter.most_common(10)
-        other_count = sum(count for _, count in nat_counter.items()) - sum(x[1] for x in top_items)
+        other_count = sum(nat_counter.values()) - sum(x[1] for x in top_items)
         for nat, count in top_items:
             slice_key = f"student:nationality:{nat}"
             register_slice(slice_key, "student", f"Students with nationality {nat}")

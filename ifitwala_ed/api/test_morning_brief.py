@@ -126,13 +126,22 @@ class TestMorningBrief(IfitwalaFrappeTestCase):
                 employee="EMP-0001",
                 name="Dana Staff",
                 image="/private/files/employee-original.png",
-                date_of_birth="1990-03-23",
+                _date_of_birth="1990-03-23",
             )
         ]
 
         with (
             patch.object(morning_brief, "today", return_value="2026-03-23"),
             patch.object(morning_brief.frappe.db, "sql", return_value=rows),
+            patch.object(
+                morning_brief,
+                "get_birthday_context",
+                return_value={
+                    "birthday_in_window": True,
+                    "birthday_today": True,
+                    "birthday_label": "Today",
+                },
+            ),
             patch.object(
                 morning_brief,
                 "apply_preferred_employee_images",
@@ -150,6 +159,9 @@ class TestMorningBrief(IfitwalaFrappeTestCase):
             request_missing_derivatives=True,
         )
         self.assertIs(payload, rows)
+        self.assertNotIn("_date_of_birth", rows[0])
+        self.assertNotIn("date_of_birth", rows[0])
+        self.assertEqual(rows[0]["birthday_label"], "Today")
 
     def test_get_my_student_birthdays_uses_bound_group_scope(self):
         captured = {}

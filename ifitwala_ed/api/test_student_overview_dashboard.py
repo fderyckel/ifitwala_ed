@@ -105,6 +105,11 @@ class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
                 "ifitwala_ed.api.student_overview_dashboard.get_preferred_student_avatar_url",
                 return_value="/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1&context_doctype=Student&context_name=STU-001&derivative_role=thumb",
             ) as image_url_mock,
+            patch("ifitwala_ed.api.student_overview_dashboard.get_student_age_years", return_value=12),
+            patch(
+                "ifitwala_ed.api.student_overview_dashboard.format_student_age",
+                return_value="12 years, 2 months",
+            ),
         ):
             payload = _identity_block("STU-001", None, None)
 
@@ -113,6 +118,9 @@ class TestStudentOverviewDashboard(IfitwalaFrappeTestCase):
             payload["photo"],
             "/api/method/ifitwala_ed.api.file_access.download_academic_file?file=FILE-1&context_doctype=Student&context_name=STU-001&derivative_role=thumb",
         )
+        self.assertEqual(payload["age"], 12)
+        self.assertEqual(payload["student_age"], "12 years, 2 months")
+        self.assertNotIn("date_of_birth", payload)
 
     def test_identity_block_matches_program_enrollment_on_program_subtree(self):
         def fake_get_value(doctype, name_or_filters, fieldname, as_dict=False, order_by=None):

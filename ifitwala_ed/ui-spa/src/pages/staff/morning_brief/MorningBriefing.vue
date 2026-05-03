@@ -499,7 +499,7 @@
 									<span
 										class="shrink-0 rounded-full border border-[rgb(var(--clay-rgb)/0.16)] bg-[rgb(var(--sand-rgb)/0.9)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-clay"
 									>
-										{{ formatBirthdayCompact(emp.date_of_birth) }}
+											{{ emp.birthday_label }}
 									</span>
 								</li>
 							</ul>
@@ -552,7 +552,7 @@
 									<span
 										class="shrink-0 rounded-full border border-[rgb(var(--jacaranda-rgb)/0.18)] bg-[rgb(var(--sky-rgb)/0.9)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-jacaranda"
 									>
-										{{ formatBirthdayCompact(stu.date_of_birth) }}
+											{{ stu.birthday_label }}
 									</span>
 								</li>
 							</ul>
@@ -1326,19 +1326,6 @@ function getPriorityClasses(priority: OrgPriority): string {
 		default:
 			return 'bg-surface-soft text-ink';
 	}
-}
-
-function formatBirthdayCompact(dateStr: string | null | undefined): string {
-	if (!dateStr) return '';
-
-	// Parsed in local time; we only care about day + month, not year
-	const date = new Date(dateStr);
-	const day = date.getDate();
-
-	// Force Gregorian month names, ignore Thai/Buddhist locale
-	const month = date.toLocaleString('en-US', { month: 'short' });
-
-	return `${String(day).padStart(2, '0')} ${month}`;
 }
 
 onMounted(() => {

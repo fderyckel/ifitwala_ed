@@ -67,6 +67,11 @@ class TestStudentProfilePrintFormat(unittest.TestCase):
         self.assertIn("doc.additional_comment", self.html)
         self.assertIn("Additional Comment", self.html)
 
+    def test_print_renders_student_age_instead_of_dob(self):
+        self.assertIn("Student Age", self.html)
+        self.assertNotIn("Date of Birth", self.html)
+        self.assertNotIn("get_formatted('student_date_of_birth')", self.html)
+
     def test_school_branding_tokens_are_present(self):
         for token in (
             'frappe.db.get_value("School", doc.anchor_school, ["school_name", "school_logo", "school_tagline"], as_dict=True)',
@@ -133,11 +138,12 @@ class TestStudentProfilePrintFormat(unittest.TestCase):
         for token in (
             "row.sibling_name",
             "row.sibling_gender",
-            "row.sibling_date_of_birth",
+            "row.sibling_age",
         ):
             self.assertIn(token, self.html)
 
         for token in (
+            "row.sibling_date_of_birth",
             "row.relationship",
             "row.cohort",
             "row.enabled",

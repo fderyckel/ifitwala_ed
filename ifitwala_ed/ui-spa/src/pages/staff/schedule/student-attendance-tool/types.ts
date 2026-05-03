@@ -14,7 +14,10 @@ export interface StudentRosterEntry {
 	student_name: string
 	preferred_name?: string | null
 	student_image?: string | null
-	birth_date?: string | null
+	student_age?: string | null
+	birthday_in_window?: boolean
+	birthday_today?: boolean
+	birthday_label?: string | null
 	medical_info?: string | null
 
 	// UI-composed state

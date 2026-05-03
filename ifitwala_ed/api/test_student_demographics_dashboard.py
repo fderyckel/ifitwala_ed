@@ -7,10 +7,45 @@ from unittest.mock import patch
 
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.api import student_demographics_dashboard as demographics_dashboard
 from ifitwala_ed.api.student_demographics_dashboard import get_dashboard, get_slice_entities
 
 
 class TestStudentDemographicsDashboard(FrappeTestCase):
+    def test_active_students_intersects_requested_school_with_authorized_scope(self):
+        with (
+            patch(
+                "ifitwala_ed.api.student_demographics_dashboard.get_descendant_schools",
+                return_value=["SCH-ROOT", "SCH-CHILD", "SCH-SIBLING"],
+            ),
+            patch("ifitwala_ed.api.student_demographics_dashboard.frappe.db.sql", return_value=[]) as sql,
+        ):
+            demographics_dashboard._get_active_students(
+                {"school": "SCH-ROOT"},
+                {"user": "assistant@example.com", "mode": "full", "school_scope": ["SCH-CHILD"]},
+            )
+
+        query, params = sql.call_args.args[:2]
+        self.assertIn("st.anchor_school in %(schools)s", query)
+        self.assertEqual(params["schools"], ("SCH-CHILD",))
+
+    def test_active_students_uses_instructor_scope_condition_before_aggregation(self):
+        with (
+            patch(
+                "ifitwala_ed.api.student_demographics_dashboard.get_instructor_student_scope_condition",
+                return_value="EXISTS (SELECT 1 FROM instructor_scope)",
+            ) as instructor_scope,
+            patch("ifitwala_ed.api.student_demographics_dashboard.frappe.db.sql", return_value=[]) as sql,
+        ):
+            demographics_dashboard._get_active_students(
+                {},
+                {"user": "teacher@example.com", "mode": "instructor"},
+            )
+
+        query = sql.call_args.args[0]
+        instructor_scope.assert_called_once_with("teacher@example.com", table_alias="st")
+        self.assertIn("EXISTS (SELECT 1 FROM instructor_scope)", query)
+
     def test_dashboard_includes_student_house_by_cohort(self):
         students = [
             {

@@ -25,6 +25,24 @@ def _student_groups_stub_modules(resolve_employee=None):
 
 
 class TestStudentGroupsApi(TestCase):
+    def test_instructor_with_academic_staff_still_uses_group_scope(self):
+        with stubbed_frappe(extra_modules=_student_groups_stub_modules()) as frappe:
+            frappe.session.user = "teacher@example.com"
+            frappe.get_roles = lambda user: ["Instructor", "Academic Staff"]
+
+            module = import_fresh("ifitwala_ed.api.student_groups")
+
+            self.assertFalse(module._has_broad_group_access(set(frappe.get_roles("teacher@example.com"))))
+
+    def test_academic_assistant_instructor_override_keeps_broad_group_access(self):
+        with stubbed_frappe(extra_modules=_student_groups_stub_modules()) as frappe:
+            frappe.session.user = "assistant@example.com"
+            frappe.get_roles = lambda user: ["Instructor", "Academic Assistant"]
+
+            module = import_fresh("ifitwala_ed.api.student_groups")
+
+            self.assertTrue(module._has_broad_group_access(set(frappe.get_roles("assistant@example.com"))))
+
     def test_instructor_group_names_uses_internal_membership_resolution(self):
         observed_calls = []
 

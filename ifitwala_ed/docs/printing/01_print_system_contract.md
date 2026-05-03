@@ -304,10 +304,12 @@ Hero:
 
 Personal:
 
-- `student_date_of_birth`
+- `student_age`
 - `student_gender`
 - `student_email`
 - `student_mobile_number`
+
+Student Profile must render age, not raw DOB. The print format may derive `student_age` server-side from the Student document when necessary, but the printed output must not include `student_date_of_birth`.
 
 Identity and language:
 
@@ -350,7 +352,7 @@ Siblings:
 - `siblings` child table rendered from real child fields only:
   - `sibling_name`
   - `sibling_gender`
-  - `sibling_date_of_birth`
+  - `sibling_age`
 
 Exit:
 
@@ -366,6 +368,7 @@ Notes:
 
 Exclude from the standard Student Profile by default:
 
+- `student_date_of_birth`
 - `student_applicant`
 - `contact_html`
 - `address_html`

@@ -43,6 +43,13 @@ def _morning_brief_module():
     school_tree.get_descendant_schools = lambda school: [school]
     school_tree.get_user_default_school = lambda user: None
 
+    student_utils = ModuleType("ifitwala_ed.utilities.student_utils")
+    student_utils.get_birthday_context = lambda date_of_birth, window_days=4: {
+        "birthday_in_window": bool(date_of_birth),
+        "birthday_today": False,
+        "birthday_label": "March 23" if date_of_birth else "",
+    }
+
     frappe_utils = ModuleType("frappe.utils")
     frappe_utils.add_days = lambda date_value, days: f"{date_value}:{days}"
     frappe_utils.formatdate = lambda value, fmt=None: {"2026-03-23:-4": "03-19", "2026-03-23:4": "03-27"}.get(
@@ -64,6 +71,7 @@ def _morning_brief_module():
             "ifitwala_ed.students.doctype.student_log.student_log": student_log,
             "ifitwala_ed.utilities.image_utils": image_utils,
             "ifitwala_ed.utilities.school_tree": school_tree,
+            "ifitwala_ed.utilities.student_utils": student_utils,
         }
     ) as frappe:
         yield import_fresh("ifitwala_ed.api.morning_brief"), frappe, image_helper_state
@@ -122,7 +130,7 @@ class TestMorningBriefUnit(TestCase):
                         "first_name": "Amina",
                         "last_name": "Learner",
                         "image": "/private/files/student-source.png",
-                        "date_of_birth": "2014-03-23",
+                        "_date_of_birth": "2014-03-23",
                     }
                 ]
 
@@ -131,6 +139,9 @@ class TestMorningBriefUnit(TestCase):
             rows = morning_brief.get_my_student_birthdays(["SG-1"])
 
         self.assertEqual(len(rows), 1)
+        self.assertNotIn("date_of_birth", rows[0])
+        self.assertNotIn("_date_of_birth", rows[0])
+        self.assertEqual(rows[0]["birthday_label"], "March 23")
         self.assertTrue(captured["as_dict"])
         self.assertEqual(captured["values"]["group_names"], ("SG-1",))
         self.assertEqual(

@@ -23,6 +23,7 @@ If Morning Brief behavior changes, update this note with the code.
 9. Morning Brief bootstrap may include per-announcement `is_unread` state derived from the canonical Org Communication read-state model so the SPA can render read/unread without extra per-row calls.
 10. Announcement detail headers must keep operational metadata quiet and scannable: the `Announcement` label and title share the first header row, while type, Morning Brief appearance window, and Desk link render as aligned metadata below the title rather than stacked labels.
 11. Morning Brief announcement DTOs must include `brief_start_date` and `brief_end_date` so the modal can show the publish window without a second per-row lookup. The Desk link points to the same `Org Communication` record already authorized for the Morning Brief row.
+12. Birthday widgets may show birthday icons and month/day labels, but staff-facing Morning Brief DTOs must not include raw student or employee date-of-birth fields.
 
 ---
 

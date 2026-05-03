@@ -22,6 +22,7 @@
   "student_image",
   "student_applicant",
   "student_date_of_birth",
+  "student_age",
   "student_gender",
   "student_mobile_number",
   "student_joining_date",
@@ -133,9 +134,17 @@
   {
    "fieldname": "student_date_of_birth",
    "fieldtype": "Date",
-   "in_filter": 1,
+   "label": "Date of Birth",
+   "permlevel": 2
+  },
+  {
+   "fieldname": "student_age",
+   "fieldtype": "Data",
    "in_preview": 1,
-   "label": "Date of Birth"
+   "is_virtual": 1,
+   "label": "Student Age",
+   "no_copy": 1,
+   "read_only": 1
   },
   {
    "fieldname": "student_gender",
@@ -324,7 +333,7 @@
  "image_field": "student_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-12 22:34:32.907315",
+ "modified": "2026-05-03 10:51:33.000000",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student",
@@ -344,6 +353,12 @@
    "write": 1
   },
   {
+   "permlevel": 2,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -354,6 +369,12 @@
    "report": 1,
    "role": "Academic Admin",
    "share": 1,
+   "write": 1
+  },
+  {
+   "permlevel": 2,
+   "read": 1,
+   "role": "Academic Admin",
    "write": 1
   },
   {

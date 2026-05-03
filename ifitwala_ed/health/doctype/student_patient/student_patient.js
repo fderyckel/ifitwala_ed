@@ -42,13 +42,11 @@ function fetch_and_render_student_info(frm, student_fieldname = 'student') {
 
 			const s = r.message;
 
-			// Calculate age and set it
-			if (s.student_date_of_birth) {
-				const age_string = calculate_age(s.student_date_of_birth);
-				frm.set_value('student_age', age_string);
-			} else {
-				frm.set_value('student_age', '');
-			}
+			frm.set_value('student_age', s.student_age || '');
+
+			const dateOfBirthLine = s.student_date_of_birth
+				? `<b>${__('Date of Birth')}:</b> ${frappe.format(s.student_date_of_birth, { fieldtype: 'Date' })}<br>`
+				: '';
 
 			// Render info into HTML field
 			const html = `
@@ -56,25 +54,13 @@ function fetch_and_render_student_info(frm, student_fieldname = 'student') {
 					<b>${__('Name')}:</b> ${s.student_full_name || __('—')}<br>
 					<b>${__('Preferred Name')}:</b> ${s.student_preferred_name || __('—')}<br>
 					<b>${__('Gender')}:</b> ${s.student_gender || __('—')}<br>
-					<b>${__('Date of Birth')}:</b> ${frappe.format(s.student_date_of_birth, { fieldtype: 'Date' })}<br>
+					<b>${__('Age')}:</b> ${s.student_age || __('—')}<br>
+					${dateOfBirthLine}
 				</div>
 			`;
 			frm.fields_dict.student_info?.$wrapper.html(html);
 		}
 	});
-}
-
-
-// function to calculate age of the student as patient
-function calculate_age(date_string) {
-	const dob = moment(date_string);
-	const today = moment();
-	const years = today.diff(dob, 'years');
-	dob.add(years, 'years');
-	const months = today.diff(dob, 'months');
-	dob.add(months, 'months');
-	const days = today.diff(dob, 'days');
-	return `${years} ${__('Year(s)')} ${months} ${__('Month(s)')} ${days} ${__('Day(s)')}`;
 }
 
 

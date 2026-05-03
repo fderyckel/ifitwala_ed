@@ -20,6 +20,7 @@ from ifitwala_ed.utilities.image_utils import (
     apply_preferred_student_images,
 )
 from ifitwala_ed.utilities.school_tree import get_descendant_schools, get_user_default_school
+from ifitwala_ed.utilities.student_utils import get_birthday_context
 
 CLINIC_SUMMARY_RANGE_BUSINESS_DAYS = "3D"
 CLINIC_SUMMARY_RANGE_BUSINESS_WEEKS = "3W"
@@ -745,7 +746,7 @@ def get_staff_birthdays():
             name as employee,
             employee_full_name as name,
             employee_image as image,
-            employee_date_of_birth as date_of_birth
+            employee_date_of_birth as _date_of_birth
         FROM
             `tabEmployee`
         WHERE
@@ -756,6 +757,10 @@ def get_staff_birthdays():
             DATE_FORMAT(employee_date_of_birth, '%%%%m-%%%%d') ASC
     """
     rows = frappe.db.sql(sql, (start_md, end_md), as_dict=True)
+    for row in rows:
+        date_of_birth = row.pop("_date_of_birth", None)
+        row.update(get_birthday_context(date_of_birth, window_days=4))
+
     return apply_preferred_employee_images(
         rows,
         employee_field="employee",
@@ -790,7 +795,7 @@ def get_my_student_birthdays(group_names):
 			s.student_first_name AS first_name,
 			s.student_last_name AS last_name,
 			s.student_image AS image,
-			s.student_date_of_birth AS date_of_birth
+			s.student_date_of_birth AS _date_of_birth
 		FROM `tabStudent Group Student` sgs
 		INNER JOIN `tabStudent` s ON sgs.student = s.name
 		WHERE sgs.parent IN %(group_names)s
@@ -809,6 +814,10 @@ def get_my_student_birthdays(group_names):
         },
         as_dict=True,
     )
+    for row in rows:
+        date_of_birth = row.pop("_date_of_birth", None)
+        row.update(get_birthday_context(date_of_birth, window_days=4))
+
     return apply_preferred_student_images(
         rows,
         student_field="student",

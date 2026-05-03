@@ -6,6 +6,7 @@
 {% set preferred_name = (doc.student_preferred_name or "").strip() %}
 {% set is_active = 1 if doc.enabled else 0 %}
 {% set generated_on = frappe.utils.formatdate(frappe.utils.nowdate()) %}
+{% set format_student_age = frappe.get_attr("ifitwala_ed.utilities.student_utils.format_student_age") %}
 {% set using_managed_letterhead = 1 if (((letter_head or "") | string).strip()) and not no_letterhead else 0 %}
 {% set school_meta = frappe.db.get_value("School", doc.anchor_school, ["school_name", "school_logo", "school_tagline"], as_dict=True) if doc.anchor_school else None %}
 {% set brand_name = school_meta.school_name if school_meta and school_meta.school_name else (doc.get_formatted('anchor_school') if doc.anchor_school else "Ifitwala Ed") %}
@@ -146,10 +147,14 @@
 		<div class="section-card">
 			<div class="section-title">Personal</div>
 			<div class="info-table">
-				{% if doc.student_date_of_birth %}
+				{% set student_age = doc.student_age %}
+				{% if not student_age and doc.name %}
+					{% set student_age = format_student_age(frappe.db.get_value("Student", doc.name, "student_date_of_birth")) %}
+				{% endif %}
+				{% if student_age %}
 				<div class="info-row">
-					<div class="info-key">Date of Birth</div>
-					<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('student_date_of_birth')) }}</div>
+					<div class="info-key">Student Age</div>
+					<div class="info-value">{{ frappe.utils.escape_html(student_age) }}</div>
 				</div>
 				{% endif %}
 				{% if doc.student_gender %}
@@ -321,16 +326,16 @@
 				<tr>
 					<th>Sibling Name</th>
 					<th>Gender</th>
-					<th>Date of Birth</th>
+					<th>Age</th>
 				</tr>
 			</thead>
 			<tbody>
 				{% for row in doc.siblings %}
-				<tr>
-					<td>{{ frappe.utils.escape_html(row.sibling_name or row.student or '') }}</td>
-					<td>{{ frappe.utils.escape_html(row.sibling_gender or '') }}</td>
-					<td>{% if row.sibling_date_of_birth %}{{ frappe.utils.escape_html(frappe.utils.formatdate(row.sibling_date_of_birth)) }}{% endif %}</td>
-				</tr>
+					<tr>
+						<td>{{ frappe.utils.escape_html(row.sibling_name or row.student or '') }}</td>
+						<td>{{ frappe.utils.escape_html(row.sibling_gender or '') }}</td>
+						<td>{{ frappe.utils.escape_html(row.sibling_age or '') }}</td>
+					</tr>
 				{% endfor %}
 			</tbody>
 		</table>

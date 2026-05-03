@@ -41,6 +41,14 @@ def _attendance_utils_stub_modules(helper_state: dict):
 
     image_utils.apply_preferred_student_images = apply_preferred_student_images
 
+    student_utils = types.ModuleType("ifitwala_ed.utilities.student_utils")
+    student_utils.format_student_age = lambda date_of_birth: "16 years" if date_of_birth else ""
+    student_utils.get_birthday_context = lambda date_of_birth, window_days=5: {
+        "birthday_in_window": bool(date_of_birth),
+        "birthday_today": False,
+        "birthday_label": "Jan 1" if date_of_birth else "",
+    }
+
     return {
         "frappe.utils": frappe_utils,
         "frappe.utils.caching": frappe_utils_caching,
@@ -49,6 +57,7 @@ def _attendance_utils_stub_modules(helper_state: dict):
         "ifitwala_ed.schedule.student_group_scheduling": student_group_scheduling,
         "ifitwala_ed.school_settings.doctype.term.term": term_module,
         "ifitwala_ed.utilities.image_utils": image_utils,
+        "ifitwala_ed.utilities.student_utils": student_utils,
     }
 
 
@@ -63,7 +72,7 @@ class TestAttendanceUtilsUnit(TestCase):
                     "student_name": "Amina Dar",
                     "preferred_name": "Amina",
                     "student_image": "/private/files/student/original.png",
-                    "birth_date": "2010-01-01",
+                    "_student_date_of_birth": "2010-01-01",
                     "medical_info": "Peanut allergy",
                 }
             ]
@@ -72,6 +81,11 @@ class TestAttendanceUtilsUnit(TestCase):
             rows = module.get_student_group_students("SG-001", start=0, page_length=25, with_medical=True)
 
         self.assertEqual(rows[0]["student"], "STU-0001")
+        self.assertNotIn("birth_date", rows[0])
+        self.assertNotIn("_student_date_of_birth", rows[0])
+        self.assertEqual(rows[0]["student_age"], "16 years")
+        self.assertTrue(rows[0]["birthday_in_window"])
+        self.assertEqual(rows[0]["birthday_label"], "Jan 1")
         self.assertEqual(
             helper_state["calls"],
             [

@@ -327,6 +327,12 @@ For instructors:
 
 Aggregation MUST respect these constraints **before grouping**.
 
+Student Demographic Analytics has the same privacy boundary:
+
+* full-mode users must intersect any selected school filter with their authorized school branch before querying `Student`
+* instructor-mode users must aggregate only active students in active `Student Group` rows where the user is assigned through `Student Group Instructor`
+* demographic drill-downs must reuse the same scoped student set as the aggregate cards
+
 ---
 
 ### 4.4 Capability split: Admissions vs Demographics

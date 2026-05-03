@@ -49,6 +49,205 @@ from frappe.model.document import Document
 from frappe.utils import get_link_to_form, getdate, today, validate_email_address
 
 from ifitwala_ed.accounting.account_holder_utils import validate_account_holder_for_student
+from ifitwala_ed.utilities.employee_utils import get_user_visible_schools
+from ifitwala_ed.utilities.student_utils import format_student_age
+
+
+STUDENT_SCHOOL_SCOPED_ROLES = {
+    "Academic Admin",
+    "Academic Assistant",
+    "Academic Staff",
+    "Admission Manager",
+    "Admission Officer",
+    "Counselor",
+    "Curriculum Coordinator",
+    "Accreditation Visitor",
+}
+STUDENT_INSTRUCTOR_SCOPE_ROLES = {"Instructor"}
+STUDENT_INSTRUCTOR_SCOPE_OVERRIDE_ROLES = {
+    "Academic Admin",
+    "Academic Assistant",
+    "Admission Manager",
+    "Admission Officer",
+    "Counselor",
+    "Curriculum Coordinator",
+    "Accreditation Visitor",
+}
+STUDENT_SYSTEM_WIDE_ROLES = {"System Manager", "Administrator"}
+STUDENT_READ_PTYPES = {None, "read", "report", "print", "email", "select"}
+STUDENT_EXPORT_ROLES = {
+    "Academic Admin",
+    "Academic Assistant",
+    "Admission Officer",
+    "Curriculum Coordinator",
+}
+STUDENT_WRITE_ROLES = {
+    "Academic Admin",
+    "Academic Assistant",
+    "Admission Officer",
+    "Curriculum Coordinator",
+}
+STUDENT_CREATE_ROLES = {
+    "Academic Admin",
+    "Academic Assistant",
+    "Admission Officer",
+}
+
+
+def _quote_sql_alias(alias: str | None) -> str:
+    alias = (alias or "`tabStudent`").strip()
+    if alias.startswith("`") and alias.endswith("`"):
+        return alias
+    return f"`{alias.strip('`')}`"
+
+
+def _escaped_sql_values(values: list[str]) -> str:
+    return ", ".join(frappe.db.escape(value, percent=False) for value in values)
+
+
+def _student_school_scope_condition(schools: list[str], *, table_alias: str = "`tabStudent`") -> str:
+    school_names = [school for school in dict.fromkeys(schools or []) if school]
+    if not school_names:
+        return "1=0"
+
+    student_alias = _quote_sql_alias(table_alias)
+    return f"{student_alias}.`anchor_school` IN ({_escaped_sql_values(school_names)})"
+
+
+def get_instructor_student_scope_condition(user: str, *, table_alias: str = "`tabStudent`") -> str:
+    user_sql = frappe.db.escape(user, percent=False)
+    student_alias = _quote_sql_alias(table_alias)
+    return f"""
+        EXISTS (
+            SELECT 1
+            FROM `tabStudent Group Student` sgs
+            INNER JOIN `tabStudent Group` sg
+                ON sg.name = sgs.parent
+            INNER JOIN `tabStudent Group Instructor` sgi
+                ON sgi.parent = sgs.parent
+                AND sgi.parenttype = 'Student Group'
+            WHERE sgs.parenttype = 'Student Group'
+                AND sgs.student = {student_alias}.`name`
+                AND IFNULL({student_alias}.`enabled`, 1) = 1
+                AND COALESCE(sgs.active, 1) = 1
+                AND IFNULL(sg.status, 'Active') = 'Active'
+                AND (
+                    sgi.user_id = {user_sql}
+                    OR sgi.employee IN (
+                        SELECT emp.name
+                        FROM `tabEmployee` emp
+                        WHERE emp.user_id = {user_sql}
+                            AND emp.employment_status != 'Inactive'
+                    )
+                    OR sgi.instructor IN (
+                        SELECT ins.name
+                        FROM `tabInstructor` ins
+                        WHERE ins.linked_user_id = {user_sql}
+                            OR ins.employee IN (
+                                SELECT emp2.name
+                                FROM `tabEmployee` emp2
+                                WHERE emp2.user_id = {user_sql}
+                                    AND emp2.employment_status != 'Inactive'
+                            )
+                    )
+                )
+        )
+    """
+
+
+def _uses_instructor_student_scope(roles: set[str]) -> bool:
+    if not roles & STUDENT_INSTRUCTOR_SCOPE_ROLES:
+        return False
+    return not bool(roles & STUDENT_INSTRUCTOR_SCOPE_OVERRIDE_ROLES)
+
+
+def _is_system_wide_student_user(user: str, roles: set[str]) -> bool:
+    return user == "Administrator" or bool(roles & STUDENT_SYSTEM_WIDE_ROLES)
+
+
+def get_permission_query_conditions(user):
+    user = user or frappe.session.user
+    roles = set(frappe.get_roles(user))
+
+    if _is_system_wide_student_user(user, roles):
+        return None
+
+    if _uses_instructor_student_scope(roles):
+        return get_instructor_student_scope_condition(user)
+
+    if roles & STUDENT_SCHOOL_SCOPED_ROLES:
+        return _student_school_scope_condition(get_user_visible_schools(user))
+
+    return "1=0"
+
+
+def _doc_value(doc, fieldname: str):
+    if isinstance(doc, dict):
+        return doc.get(fieldname)
+    return getattr(doc, fieldname, None)
+
+
+def _resolve_student_permission_row(doc) -> dict:
+    if isinstance(doc, str):
+        row = frappe.db.get_value("Student", doc, ["name", "anchor_school"], as_dict=True)
+        return dict(row or {})
+    return {
+        "name": _doc_value(doc, "name"),
+        "anchor_school": _doc_value(doc, "anchor_school"),
+    }
+
+
+def _student_in_instructor_scope(student_name: str | None, user: str) -> bool:
+    if not student_name:
+        return False
+
+    return bool(
+        frappe.db.sql(
+            f"""
+            SELECT 1
+            FROM `tabStudent` st
+            WHERE st.name = %(student)s
+                AND {get_instructor_student_scope_condition(user, table_alias="st")}
+            LIMIT 1
+            """,
+            {"student": student_name},
+        )
+    )
+
+
+def has_permission(doc, ptype=None, user=None):
+    user = user or frappe.session.user
+    roles = set(frappe.get_roles(user))
+
+    if _is_system_wide_student_user(user, roles):
+        return True
+
+    if ptype == "create":
+        return bool(roles & STUDENT_CREATE_ROLES) and not _uses_instructor_student_scope(roles)
+
+    row = _resolve_student_permission_row(doc)
+    student_name = row.get("name")
+
+    if _uses_instructor_student_scope(roles):
+        return ptype in STUDENT_READ_PTYPES and _student_in_instructor_scope(
+            student_name,
+            user,
+        )
+
+    if roles & STUDENT_SCHOOL_SCOPED_ROLES:
+        schools = set(get_user_visible_schools(user) or [])
+        in_school_scope = bool(row.get("anchor_school") and row.get("anchor_school") in schools)
+        if ptype in STUDENT_READ_PTYPES:
+            return in_school_scope
+        if ptype == "export":
+            return in_school_scope and bool(roles & STUDENT_EXPORT_ROLES)
+        if ptype == "write":
+            return in_school_scope and bool(roles & STUDENT_WRITE_ROLES)
+        if ptype == "import":
+            return bool(roles & STUDENT_CREATE_ROLES)
+        return False
+
+    return False
 
 
 class Student(Document):
@@ -60,8 +259,10 @@ class Student(Document):
         self.student_full_name = " ".join(
             filter(None, [self.student_first_name, self.student_middle_name, self.student_last_name])
         )
+        self.student_age = format_student_age(self.student_date_of_birth)
         self.validate_email()
         self._validate_siblings_list()
+        self._hydrate_sibling_age_rows()
 
         if frappe.get_value("Student", self.name, "student_full_name") != self.student_full_name:
             self.update_student_name_in_linked_doctype()
@@ -88,6 +289,9 @@ class Student(Document):
                     student_full_name=self.student_full_name
                 )
             )
+
+    def onload(self):
+        self.student_age = format_student_age(self.student_date_of_birth)
 
     def _validate_creation_source(self):
         # Data Import rows must explicitly acknowledge direct creation.
@@ -262,6 +466,26 @@ class Student(Document):
         if len(pruned) != len(self.siblings or []):
             self.set("siblings", pruned)
 
+    def _hydrate_sibling_age_rows(self):
+        sibling_names = [
+            row.student
+            for row in (self.siblings or [])
+            if getattr(row, "student", None) and row.student != self.name
+        ]
+        if not sibling_names:
+            return
+
+        rows = frappe.get_all(
+            "Student",
+            filters={"name": ["in", list(dict.fromkeys(sibling_names))]},
+            fields=["name", "student_date_of_birth"],
+            limit=0,
+        )
+        dob_by_student = {row.get("name"): row.get("student_date_of_birth") for row in rows}
+        for row in self.siblings or []:
+            if getattr(row, "student", None):
+                row.sibling_age = format_student_age(dob_by_student.get(row.student))
+
     def sync_reciprocal_siblings(self):
         """
         Make sibling links bidirectional without re-saving the other Student doc.
@@ -325,7 +549,7 @@ class Student(Document):
                 # convenience fields; fetch_from keeps them fresh too
                 "sibling_name": self.student_full_name,
                 "sibling_gender": self.student_gender,
-                "sibling_date_of_birth": self.student_date_of_birth,
+                "sibling_age": format_student_age(self.student_date_of_birth),
             }
         )
         child.insert(ignore_permissions=True)

@@ -7,6 +7,8 @@ from frappe.model.document import Document
 
 from ifitwala_ed.utilities.student_utils import get_basic_student_info
 
+DOB_VISIBLE_ROLES = {"Academic Admin", "Nurse", "System Manager"}
+
 
 class StudentPatient(Document):
     def validate(self):
@@ -26,7 +28,10 @@ def get_student_basic_info(student):
     if not frappe.has_permission("Student Patient", "read"):
         frappe.throw(_("Not permitted"), frappe.PermissionError)
 
-    return get_basic_student_info(student)
+    user = frappe.session.user
+    roles = set(frappe.get_roles(user))
+    include_dob = user == "Administrator" or bool(roles & DOB_VISIBLE_ROLES)
+    return get_basic_student_info(student, include_dob=include_dob)
 
 
 @frappe.whitelist()

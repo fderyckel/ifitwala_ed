@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-from datetime import date
 from typing import Dict, List
 
 import frappe
@@ -25,6 +24,7 @@ from ifitwala_ed.students.doctype.student_referral.student_referral import (
 )
 from ifitwala_ed.utilities.image_utils import get_preferred_student_avatar_url
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
+from ifitwala_ed.utilities.student_utils import format_student_age, get_student_age_years
 
 
 def _current_user() -> str:
@@ -318,18 +318,6 @@ def _ensure_can_view_student(student: str, school: str | None, program: str | No
         frappe.throw(_("You are not allowed to access this student."), frappe.PermissionError)
 
 
-def _compute_age(dob: date | str | None) -> int | None:
-    if not dob:
-        return None
-    try:
-        d = getdate(dob)
-    except Exception:
-        return None
-    today = getdate(nowdate())
-    years = today.year - d.year - ((today.month, today.day) < (d.month, d.day))
-    return max(years, 0)
-
-
 def _attendance_rows(student: str):
     return frappe.get_all(
         "Student Attendance",
@@ -522,6 +510,8 @@ def _identity_block(student: str, program: str | None, school: str | None):
         as_dict=True,
     )
 
+    student_date_of_birth = student_doc.get("student_date_of_birth")
+
     return {
         "student": student,
         "full_name": student_doc.get("student_full_name"),
@@ -531,8 +521,8 @@ def _identity_block(student: str, program: str | None, school: str | None):
         ),
         "cohort": student_doc.get("cohort"),
         "gender": student_doc.get("student_gender"),
-        "age": _compute_age(student_doc.get("student_date_of_birth")),
-        "date_of_birth": student_doc.get("student_date_of_birth"),
+        "age": get_student_age_years(student_date_of_birth),
+        "student_age": format_student_age(student_date_of_birth),
         "school": {
             "name": student_doc.get("anchor_school") or (program_enrollment or {}).get("school") or school,
             "label": frappe.db.get_value(

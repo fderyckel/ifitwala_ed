@@ -9,7 +9,14 @@ from ifitwala_ed.schedule.attendance_utils import get_student_group_students
 TRIAGE_ROLES = {
     "Academic Admin",
     "Academic Staff",
-    "Instructor",
+    "Academic Assistant",
+    "Counselor",
+    "System Manager",
+    "Administrator",
+}
+
+INSTRUCTOR_SCOPE_OVERRIDE_ROLES = {
+    "Academic Admin",
     "Academic Assistant",
     "Counselor",
     "System Manager",
@@ -84,6 +91,12 @@ def _base_group_filters(program=None, course=None, cohort=None) -> dict:
     return filters
 
 
+def _has_broad_group_access(roles: set[str]) -> bool:
+    if "Instructor" in roles and not roles & INSTRUCTOR_SCOPE_OVERRIDE_ROLES:
+        return False
+    return bool(roles & TRIAGE_ROLES)
+
+
 @frappe.whitelist()
 def fetch_groups(program=None, course=None, cohort=None):
     """
@@ -98,7 +111,7 @@ def fetch_groups(program=None, course=None, cohort=None):
     filters = _base_group_filters(program, course, cohort)
     roles = _user_roles(user)
 
-    if roles & TRIAGE_ROLES:
+    if _has_broad_group_access(roles):
         return frappe.get_all("Student Group", filters=filters, fields=["name", "student_group_name"])
 
     # Restrict to instructor-linked groups
@@ -123,7 +136,7 @@ def fetch_group_students(student_group: str, start: int = 0, page_length: int = 
         frappe.throw(_("You need to sign in to view student groups."))
 
     roles = _user_roles(user)
-    if roles & TRIAGE_ROLES:
+    if _has_broad_group_access(roles):
         allowed = True
     else:
         group_names = _instructor_group_names(user)

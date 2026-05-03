@@ -36,6 +36,7 @@ from ifitwala_ed.utilities.image_utils import (
     PROFILE_IMAGE_DERIVATIVE_SLOTS,
     apply_preferred_student_images,
 )
+from ifitwala_ed.utilities.student_utils import format_student_age, get_birthday_context
 
 ATT_CODE_FIELD = "attendance_code"
 ATT_CODE_DOCTYPE = "Student Attendance Code"
@@ -85,7 +86,7 @@ def get_student_group_students(
     """
     Return a paginated list of students in <student_group>.
 
-    * Always includes  full name, preferred name, image, DOB.
+    * Always includes full name, preferred name, image, derived age, and birthday signal.
     * When with_medical=True it also fetches `medical_info`
       from Student Patient (collapsed with MAX() so duplicates disappear).
     """
@@ -99,7 +100,7 @@ def get_student_group_students(
             s.student_full_name                 AS student_name,      -- alias stays 'student_name' for JS
             s.student_preferred_name            AS preferred_name,
             s.student_image                     AS student_image,
-            s.student_date_of_birth             AS birth_date
+            s.student_date_of_birth             AS _student_date_of_birth
             {extra_select}
         FROM `tabStudent Group Student` g
         INNER JOIN `tabStudent` s ON s.name = g.student
@@ -112,6 +113,11 @@ def get_student_group_students(
         {"sg": student_group, "limit": page_length, "offset": start},
         as_dict=True,
     )
+    for row in rows:
+        student_date_of_birth = row.pop("_student_date_of_birth", None)
+        row["student_age"] = format_student_age(student_date_of_birth)
+        row.update(get_birthday_context(student_date_of_birth, window_days=5))
+
     return apply_preferred_student_images(
         rows,
         student_field="student",

@@ -60,8 +60,18 @@ const emit = defineEmits<{
 						</span>
 					</p>
 					<p class="text-xs text-slate-500">
-						<span v-if="props.snapshot.identity.age">Age {{ props.snapshot.identity.age }}</span>
-						<span v-if="props.snapshot.identity.age && props.snapshot.identity.gender"> · </span>
+							<span v-if="props.snapshot.identity.student_age">
+								Age {{ props.snapshot.identity.student_age }}
+							</span>
+							<span v-else-if="props.snapshot.identity.age">Age {{ props.snapshot.identity.age }}</span>
+							<span
+								v-if="
+									(props.snapshot.identity.student_age || props.snapshot.identity.age) &&
+									props.snapshot.identity.gender
+								"
+							>
+								·
+							</span>
 						<span v-if="props.snapshot.identity.gender">{{ props.snapshot.identity.gender }}</span>
 					</p>
 				</div>

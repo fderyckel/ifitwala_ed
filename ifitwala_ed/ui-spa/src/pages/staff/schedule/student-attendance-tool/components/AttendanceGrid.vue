@@ -62,7 +62,7 @@
 							</button>
 
 							<button
-								v-if="isBirthdaySoon(student.birth_date)"
+								v-if="student.birthday_in_window"
 								type="button"
 								class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 font-medium text-amber-700 transition hover:bg-amber-100"
 								@click="openPopover('birthday', student, $event)"
@@ -334,9 +334,12 @@ const popoverBody = computed(() => {
 			.trim();
 		return txt || __('No details provided.');
 	}
-	const dob = formatDOB(s.birth_date);
-	const age = s.birth_date ? ' · ' + formatAge(s.birth_date) : '';
-	return (dob || '') + age;
+	const label = s.birthday_today
+		? __('Birthday today')
+		: s.birthday_label
+			? __('Birthday on {0}', [s.birthday_label])
+			: __('Birthday');
+	return s.student_age ? `${label} - ${s.student_age}` : label;
 });
 
 const fallbackColor = '#2563eb';
@@ -365,31 +368,6 @@ function stripHtml(input: string) {
 	return String(input || '').replace(/<[^>]*>/g, ' ');
 }
 
-function formatDOB(birthDate?: string | null) {
-	if (!birthDate) return '';
-	try {
-		return new Intl.DateTimeFormat(undefined, { dateStyle: 'long' }).format(
-			new Date(birthDate + 'T00:00:00')
-		);
-	} catch {
-		return birthDate;
-	}
-}
-
-function formatAge(birthDate?: string | null) {
-	if (!birthDate) return '';
-	try {
-		const b = new Date(birthDate + 'T00:00:00');
-		const t = new Date();
-		let age = t.getFullYear() - b.getFullYear();
-		const m = t.getMonth() - b.getMonth();
-		if (m < 0 || (m === 0 && t.getDate() < b.getDate())) age--;
-		return `${age} ${age === 1 ? 'year' : 'years'} old`;
-	} catch {
-		return '';
-	}
-}
-
 function chipClass(isSelected: boolean) {
 	return isSelected
 		? 'text-white shadow-sm'
@@ -408,20 +386,6 @@ function onImageError(event: Event) {
 	const target = event.target as HTMLImageElement;
 	if (!target) return;
 	target.src = DEFAULT_AVATAR;
-}
-
-function isBirthdaySoon(birthDate?: string | null) {
-	if (!birthDate) return false;
-	try {
-		const today = new Date();
-		const date = new Date(birthDate);
-		const thisYear = new Date(today.getFullYear(), date.getMonth(), date.getDate());
-		const diff = Math.floor((thisYear.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-		return Math.abs(diff) <= 5;
-	} catch {
-		console.warn('Failed to parse birth date', birthDate);
-		return false;
-	}
 }
 
 function studentHasRemark(student: StudentRosterEntry) {

@@ -74,7 +74,10 @@ type StudentRow = {
 	preferred_name?: string;
 	student_image?: string;
 	medical_info?: string;
-	birth_date?: string | null;
+	student_age?: string | null;
+	birthday_in_window?: boolean;
+	birthday_today?: boolean;
+	birthday_label?: string | null;
 	has_ssg?: boolean;
 };
 
@@ -95,41 +98,13 @@ function onImgError(e: Event, fallback?: string) {
 	el.src = fallback || DEFAULT_IMG;
 }
 
-/** -------- Birthday proximity (±5 days in current year) -------- */
 const isBirthdaySoon = computed(() => {
-	const iso = props.student.birth_date;
-	if (!iso) return false;
-	try {
-		const b = new Date(iso);
-		if (Number.isNaN(b.getTime())) return false;
-
-		const today = new Date();
-		const thisYear = new Date(today.getFullYear(), b.getMonth(), b.getDate());
-		const diffDays = Math.floor((thisYear.getTime() - startOfDay(today).getTime()) / 86400000);
-		return Math.abs(diffDays) <= 5;
-	} catch {
-		return false;
-	}
+	return !!props.student.birthday_in_window;
 });
 
 const birthdayTitle = computed(() => {
-	const iso = props.student.birth_date;
-	if (!iso) return '';
-	try {
-		const b = new Date(iso);
-		const today = new Date();
-		const thisYear = new Date(today.getFullYear(), b.getMonth(), b.getDate());
-		return thisYear.toLocaleDateString(undefined, {
-			weekday: 'long',
-			month: 'long',
-			day: 'numeric',
-		});
-	} catch {
-		return '';
-	}
+	if (props.student.birthday_today) return 'Birthday today';
+	if (props.student.birthday_label) return `Birthday on ${props.student.birthday_label}`;
+	return 'Birthday';
 });
-
-function startOfDay(d: Date) {
-	return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
 </script>

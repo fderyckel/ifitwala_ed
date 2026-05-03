@@ -88,7 +88,8 @@ export interface Announcement {
 export interface StaffBirthday {
 	name: string
 	image: string | null
-	date_of_birth: string
+	birthday_label: string
+	birthday_today?: boolean
 }
 
 export interface ClinicVolumePoint {
@@ -118,7 +119,8 @@ export interface StudentBirthday {
 	first_name: string
 	last_name: string
 	image: string | null
-	date_of_birth: string
+	birthday_label: string
+	birthday_today?: boolean
 }
 
 export interface StudentLogItem {

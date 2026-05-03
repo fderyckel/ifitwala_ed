@@ -10,7 +10,7 @@
   "student",
   "sibling_name",
   "sibling_gender",
-  "sibling_date_of_birth"
+  "sibling_age"
  ],
  "fields": [
   {
@@ -45,15 +45,16 @@
    "read_only": 1
   },
   {
-   "fieldname": "sibling_date_of_birth",
-   "fieldtype": "Date",
-   "label": "Sibling Date of Birth"
+   "fieldname": "sibling_age",
+   "fieldtype": "Data",
+   "label": "Sibling Age",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-27 13:31:49.337005",
+ "modified": "2026-05-03 10:51:33.000000",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Sibling",

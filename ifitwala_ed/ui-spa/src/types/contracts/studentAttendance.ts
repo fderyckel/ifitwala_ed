@@ -160,12 +160,15 @@ export type FetchStudentsRequest = {
 export type FetchStudentsResponse = {
 	students: Array<{
 		student: string
-		student_name: string
-		preferred_name?: string | null
-		student_image?: string | null
-		birth_date?: string | null
-		medical_info?: string | null
-	}>
+			student_name: string
+			preferred_name?: string | null
+			student_image?: string | null
+			student_age?: string | null
+			birthday_in_window?: boolean
+			birthday_today?: boolean
+			birthday_label?: string | null
+			medical_info?: string | null
+		}>
 	start: number
 	total: number
 	group_info: {
