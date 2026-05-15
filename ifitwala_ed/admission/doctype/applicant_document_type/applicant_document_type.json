@@ -1,0 +1,188 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:code",
+ "creation": "2026-02-01 00:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "code",
+  "document_type_name",
+  "belongs_to",
+  "classification_slot",
+  "classification_data_class",
+  "classification_purpose",
+  "is_active",
+  "is_required",
+  "column_break_iwom",
+  "organization",
+  "school",
+  "classification_retention_policy",
+  "is_repeatable",
+  "min_items_required",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Code",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "document_type_name",
+   "fieldtype": "Data",
+   "label": "Document Type Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "belongs_to",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Belongs To",
+   "options": "student\nguardian\nfamily"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Organization",
+   "options": "Organization"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "description": "What kind of document applicants will upload for this requirement, such as a passport, birth certificate, or school report. This helps the system place the file in the right part of the applicant record and know when a newer upload should replace an older one.",
+   "fieldname": "classification_slot",
+   "fieldtype": "Data",
+   "label": "Classification Slot"
+  },
+  {
+   "description": "The broad type of information in this document, such as legal, academic, safeguarding, or administrative. This helps admissions and school staff handle the file with the right level of care and privacy.",
+   "fieldname": "classification_data_class",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Classification Data Class",
+   "options": "academic\nassessment\nsafeguarding\nadministrative\nidentity_image\nlegal\noperational"
+  },
+  {
+   "description": "Why the school is asking for this file, such as confirming identity, reviewing previous school results, or recording medical information. Choose the purpose that best matches how admissions staff will use the document.",
+   "fieldname": "classification_purpose",
+   "fieldtype": "Select",
+   "label": "Classification Purpose",
+   "options": "text\nidentification_document\ncontract\nassessment_submission\nassessment_feedback\nsafeguarding_evidence\nmedical_record\nvisa_document\npolicy_acknowledgement\nbackground_check\nlearning_resource\nacademic_report\nemployee_profile_display\nguardian_profile_display\nstudent_profile_display\napplicant_profile_display\norganization_public_media\nportfolio_evidence\njournal_attachment\nportfolio_export\njournal_export\nadministrative\nother"
+  },
+  {
+   "fieldname": "classification_retention_policy",
+   "fieldtype": "Select",
+   "label": "Classification Retention Policy",
+   "options": "until_program_end_plus_1y\nuntil_school_exit_plus_6m\nemployment_duration_plus_grace\nfixed_7y\nimmediate_on_request"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_required",
+   "fieldtype": "Check",
+   "label": "Is Required"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_repeatable",
+   "fieldtype": "Check",
+   "label": "Is Repeatable"
+  },
+  {
+   "default": "1",
+   "description": "if more than one document required, then is repeatable has to be checked. ",
+   "fieldname": "min_items_required",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Min Items Required"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active"
+  },
+  {
+   "description": "Message that will be displayed for applicant on the admission portal. ",
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "column_break_iwom",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-27 11:39:06.000000",
+ "modified_by": "Administrator",
+ "module": "Admission",
+ "name": "Applicant Document Type",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

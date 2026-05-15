@@ -1,0 +1,45 @@
+<!-- ifitwala_ed/website/blocks/story_feed.html -->
+<section class="block-story-feed">
+	<div class="mx-auto max-w-6xl px-6">
+		<div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+			<div class="max-w-3xl">
+				<h2 class="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">{{ data.title }}</h2>
+				{% if data.description %}
+					<p class="mt-4 text-base leading-7 text-slate-600 sm:text-lg">{{ data.description }}</p>
+				{% endif %}
+			</div>
+			<a href="{{ data.index_url }}" class="inline-flex rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-900">
+				View all stories
+			</a>
+		</div>
+
+		{% if data.has_stories %}
+			<div class="mt-8 grid gap-5 lg:grid-cols-3">
+				{% for story in data.stories %}
+					<article class="rounded-[1.6rem] border border-slate-200/80 bg-white p-6 shadow-[0_20px_60px_-42px_rgba(15,23,42,0.35)]">
+						{% if story.publish_date %}
+							<p class="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-slate-500">{{ story.publish_date }}</p>
+						{% endif %}
+						<h3 class="mt-3 text-xl font-semibold tracking-tight text-slate-950">
+							<a href="{{ story.url }}" class="transition hover:text-slate-700">{{ story.title }}</a>
+						</h3>
+						{% if data.show_excerpt and story.excerpt %}
+							<p class="mt-4 text-sm leading-6 text-slate-600">{{ story.excerpt }}</p>
+						{% endif %}
+						{% if story.tags %}
+							<div class="mt-5 flex flex-wrap gap-2">
+								{% for tag in story.tags %}
+									<span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">{{ tag }}</span>
+								{% endfor %}
+							</div>
+						{% endif %}
+					</article>
+				{% endfor %}
+			</div>
+		{% else %}
+			<div class="mt-8 rounded-[1.6rem] border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
+				<p class="text-sm text-slate-600">No stories have been published yet.</p>
+			</div>
+		{% endif %}
+	</div>
+</section>

@@ -1,0 +1,287 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2026-03-21 13:18:35",
+ "description": "Controls how the Academic Load dashboard converts weekly teaching, student counts, activities, meetings, and school events into one comparable load score. Total load score = teaching weight x weekly teaching hours + student weight x (students taught / student ratio divisor) + activity weight x weekly activity hours + meeting weight x weekly average meeting hours + school event weight x weekly average event hours. Thresholds then classify the score as Low, Normal, High, or Critical.",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "school",
+  "is_active",
+  "is_system_default",
+  "was_customized",
+  "score_weights_section",
+  "teaching_weight",
+  "student_weight",
+  "student_ratio_divisor",
+  "column_break_rruw",
+  "activity_weight",
+  "meeting_weight",
+  "school_event_weight",
+  "window_rules_section",
+  "meeting_window_days",
+  "future_horizon_days",
+  "column_break_couw",
+  "meeting_blend_mode",
+  "thresholds_section",
+  "underutilized_threshold",
+  "high_load_threshold",
+  "column_break_cgbz",
+  "overload_threshold",
+  "exclusions_section",
+  "exclude_cancelled_meetings",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "description": "The dashboard uses the active policy for the selected school. Only one active policy per school is allowed.",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Active"
+  },
+  {
+   "default": "1",
+   "description": "Marks the zero-config policy created automatically for a school. Turn this off only when this record is no longer your baseline default.",
+   "fieldname": "is_system_default",
+   "fieldtype": "Check",
+   "label": "Is System Default"
+  },
+  {
+   "default": "0",
+   "description": "Turns on automatically after any configurable value in this policy has been changed from its earlier saved state.",
+   "fieldname": "was_customized",
+   "fieldtype": "Check",
+   "label": "Was Customized"
+  },
+  {
+   "fieldname": "score_weights_section",
+   "fieldtype": "Section Break",
+   "label": "Score Weights"
+  },
+  {
+   "default": "1.0",
+   "description": "Multiplier applied to weekly teaching hours. Example: 18 teaching hours with weight 1.0 adds 18.0 load units.",
+   "fieldname": "teaching_weight",
+   "fieldtype": "Float",
+   "label": "Teaching Weight",
+   "reqd": 1
+  },
+  {
+   "default": "1.0",
+   "description": "Multiplier applied to the student adjustment after dividing students taught by the Student Ratio Divisor. Example: 30 students / 15 divisor x 1.0 weight = 2.0 load units.",
+   "fieldname": "student_weight",
+   "fieldtype": "Float",
+   "label": "Student Weight",
+   "reqd": 1
+  },
+  {
+   "default": "15",
+   "description": "Converts student count into load units before Student Weight is applied. Example: divisor 15 means every 15 students count as 1.0 base unit.",
+   "fieldname": "student_ratio_divisor",
+   "fieldtype": "Float",
+   "label": "Student Ratio Divisor",
+   "reqd": 1
+  },
+  {
+   "default": "1.0",
+   "description": "Multiplier applied to weekly activity hours from activity-based Student Groups.",
+   "fieldname": "activity_weight",
+   "fieldtype": "Float",
+   "label": "Activity Weight",
+   "reqd": 1
+  },
+  {
+   "default": "0.75",
+   "description": "Multiplier applied to weekly average meeting hours. The meeting hours come from the blend mode and the past/future day windows below.",
+   "fieldname": "meeting_weight",
+   "fieldtype": "Float",
+   "label": "Meeting Weight",
+   "reqd": 1
+  },
+  {
+   "default": "0.75",
+   "description": "Multiplier applied to weekly average school event hours scheduled inside the future horizon.",
+   "fieldname": "school_event_weight",
+   "fieldtype": "Float",
+   "label": "School Event Weight",
+   "reqd": 1
+  },
+  {
+   "fieldname": "window_rules_section",
+   "fieldtype": "Section Break",
+   "label": "Window Rules"
+  },
+  {
+   "default": "30",
+   "description": "Number of past days used to measure historical meeting time. In blended mode this also shapes the past side of the meeting average.",
+   "fieldname": "meeting_window_days",
+   "fieldtype": "Int",
+   "label": "Meeting Window Days",
+   "reqd": 1
+  },
+  {
+   "default": "14",
+   "description": "Number of upcoming days used to measure scheduled meetings and school events. In blended mode this shapes the future side of the meeting average.",
+   "fieldname": "future_horizon_days",
+   "fieldtype": "Int",
+   "label": "Future Horizon Days",
+   "reqd": 1
+  },
+  {
+   "default": "Blended Past + Future",
+   "description": "Past Average Only uses only past meeting hours inside the Meeting Window. Future Scheduled Only uses only upcoming meetings inside the Future Horizon. Blended Past + Future averages the past weekly value and the future weekly value.",
+   "fieldname": "meeting_blend_mode",
+   "fieldtype": "Select",
+   "label": "Meeting Blend Mode",
+   "options": "Past Average Only\nFuture Scheduled Only\nBlended Past + Future",
+   "reqd": 1
+  },
+  {
+   "fieldname": "thresholds_section",
+   "fieldtype": "Section Break",
+   "label": "Thresholds"
+  },
+  {
+   "default": "12",
+   "description": "Total load scores below this value are classified as Low.",
+   "fieldname": "underutilized_threshold",
+   "fieldtype": "Float",
+   "label": "Underutilized Threshold",
+   "reqd": 1
+  },
+  {
+   "default": "24",
+   "description": "Total load scores from the Underutilized Threshold up to below this value are classified as Normal. This must stay higher than the Underutilized Threshold.",
+   "fieldname": "high_load_threshold",
+   "fieldtype": "Float",
+   "label": "High Load Threshold",
+   "reqd": 1
+  },
+  {
+   "default": "30",
+   "description": "Total load scores from the High Load Threshold up to below this value are classified as High. Scores at or above this value are classified as Critical.",
+   "fieldname": "overload_threshold",
+   "fieldtype": "Float",
+   "label": "Overload Threshold",
+   "reqd": 1
+  },
+  {
+   "fieldname": "exclusions_section",
+   "fieldtype": "Section Break",
+   "label": "Exclusions"
+  },
+  {
+   "default": "1",
+   "description": "When checked, meetings with status Cancelled are ignored when calculating meeting hours.",
+   "fieldname": "exclude_cancelled_meetings",
+   "fieldtype": "Check",
+   "label": "Exclude Cancelled Meetings"
+  },
+  {
+   "description": "Optional note to explain why this school changed the default scoring or threshold values.",
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "column_break_rruw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_couw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_cgbz",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-15 01:03:23.284987",
+ "modified_by": "Administrator",
+ "module": "School Settings",
+ "name": "Academic Load Policy",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Administrator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "school",
+ "show_name_in_global_search": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "school"
+}

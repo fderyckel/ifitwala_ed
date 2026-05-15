@@ -1,0 +1,140 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "CAL-SUB-.YYYY.-.#####",
+ "creation": "2026-04-28 21:45:34.136555",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "subscription_section",
+  "user",
+  "employee",
+  "feed_type",
+  "subject_type",
+  "status",
+  "revoked_on",
+  "token_section",
+  "token_hint",
+  "token_hash",
+  "token_secret"
+ ],
+ "fields": [
+  {
+   "fieldname": "subscription_section",
+   "fieldtype": "Section Break",
+   "label": "Subscription"
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "User",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "read_only": 1
+  },
+  {
+   "default": "staff_calendar",
+   "fieldname": "feed_type",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Feed Type",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "default": "Staff",
+   "fieldname": "subject_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Subject Type",
+   "options": "Staff",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "default": "Active",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Active\nRevoked",
+   "reqd": 1
+  },
+  {
+   "fieldname": "revoked_on",
+   "fieldtype": "Datetime",
+   "label": "Revoked On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "token_section",
+   "fieldtype": "Section Break",
+   "label": "Token"
+  },
+  {
+   "fieldname": "token_hint",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Token Hint",
+   "read_only": 1
+  },
+  {
+   "fieldname": "token_hash",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Token Hash",
+   "no_copy": 1,
+   "read_only": 1,
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "token_secret",
+   "fieldtype": "Password",
+   "hidden": 1,
+   "label": "Token Secret",
+   "no_copy": 1,
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-04-28 21:45:34.136555",
+ "modified_by": "Administrator",
+ "module": "Setup",
+ "name": "Calendar Subscription Token",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

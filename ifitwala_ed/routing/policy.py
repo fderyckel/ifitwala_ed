@@ -1,0 +1,226 @@
+# ifitwala_ed/routing/policy.py
+
+from __future__ import annotations
+
+from urllib.parse import quote
+
+import frappe
+
+from ifitwala_ed.admission.access import ADMISSIONS_APPLICANT_ROLE as _ADMISSIONS_APPLICANT_ROLE
+from ifitwala_ed.admission.access import (
+    ADMISSIONS_PORTAL_ROLES,
+    has_open_admissions_portal_access,
+)
+
+# Backwards-compatible export for existing routing/auth imports.
+ADMISSIONS_APPLICANT_ROLE = _ADMISSIONS_APPLICANT_ROLE
+CANONICAL_PORTAL_PREFIX = "/hub"
+
+PORTAL_SECTION_PRIORITY = ("staff", "student", "guardian")
+PORTAL_SECTION_LABELS = {
+    "staff": "Staff",
+    "student": "Student",
+    "guardian": "Guardian",
+}
+PORTAL_SECTION_PATHS = {
+    "staff": f"{CANONICAL_PORTAL_PREFIX}/staff",
+    "student": f"{CANONICAL_PORTAL_PREFIX}/student",
+    "guardian": f"{CANONICAL_PORTAL_PREFIX}/guardian",
+}
+
+STAFF_PORTAL_ROLES = frozenset(
+    {
+        "Employee",
+        "Academic User",
+        "System Manager",
+        "Teacher",
+        "Administrator",
+        "Finance User",
+        "HR User",
+        "HR Manager",
+    }
+)
+
+WEBSITE_ROUTE_RULES = [
+    {"from_route": "/", "to_route": "index"},
+    {"from_route": "/logout", "to_route": "logout"},
+    {"from_route": "/admissions", "to_route": "admissions"},
+    {"from_route": "/admissions/recommendation", "to_route": "admissions/recommendation"},
+    {"from_route": "/admissions/recommendation/<path:token>", "to_route": "admissions/recommendation"},
+    {"from_route": "/admissions/<path:subpath>", "to_route": "admissions"},
+    # Canonical portal namespace ingress.
+    {"from_route": "/hub", "to_route": "hub"},
+    {"from_route": "/hub/<path:subpath>", "to_route": "hub"},
+    {"from_route": "/calendar/subscriptions/staff/<path:token>", "to_route": "calendar/subscriptions/staff"},
+    {"from_route": "/portfolio/share/<path:token>", "to_route": "portfolio/share"},
+    {"from_route": "/schools", "to_route": "index"},
+    {"from_route": "/schools/<path:route>", "to_route": "website"},
+    {"from_route": "/home", "to_route": "index"},
+    {"from_route": "/index.html", "to_route": "index"},
+]
+
+WEBSITE_REDIRECTS = [
+    {"source": "/inquiry", "target": "/apply/inquiry", "redirect_http_status": 301},
+]
+
+
+def canonical_path_for_section(section: str) -> str:
+    return PORTAL_SECTION_PATHS.get(section, f"{CANONICAL_PORTAL_PREFIX}/student")
+
+
+def normalize_path(path: str | None, *, default: str = "/") -> str:
+    text = (path or "").strip() or default
+    if not text.startswith("/"):
+        text = f"/{text}"
+    if len(text) > 1 and text.endswith("/"):
+        text = text[:-1]
+    return text
+
+
+def _split_path(path: str | None) -> list[str]:
+    normalized = normalize_path(path)
+    return [segment for segment in normalized.split("/") if segment]
+
+
+def resolve_section_from_path(path: str | None) -> str | None:
+    segments = _split_path(path)
+    if len(segments) < 2:
+        return None
+
+    prefix_segment = (CANONICAL_PORTAL_PREFIX or "/").strip("/").split("/", 1)[0]
+    if not prefix_segment or segments[0] != prefix_segment:
+        return None
+
+    section = segments[1]
+    if section in PORTAL_SECTION_PATHS:
+        return section
+    return None
+
+
+def _linked_employee_status(*, user: str) -> tuple[bool, str]:
+    if frappe.db.exists("Employee", {"user_id": user, "employment_status": "Active"}):
+        return True, "active"
+
+    row = frappe.db.get_value("Employee", {"user_id": user}, ["name", "employment_status"], as_dict=True)
+    if row:
+        status = str(row.get("employment_status") or "").strip().lower()
+        if status == "active":
+            return True, "active"
+        return True, status
+
+    return False, ""
+
+
+def has_active_employee_profile(*, user: str, roles: set[str]) -> bool:
+    has_employee, status = _linked_employee_status(user=user)
+    if not has_employee:
+        return False
+    return status == "active"
+
+
+def _has_staff_role_assignment(*, user: str, roles: set[str]) -> bool:
+    normalized_roles = {str(role or "").strip() for role in roles if str(role or "").strip()}
+    if normalized_roles & STAFF_PORTAL_ROLES:
+        return True
+
+    assigned_roles = frappe.get_all(
+        "Has Role",
+        filters={
+            "parent": user,
+            "parenttype": "User",
+            "role": ["in", list(STAFF_PORTAL_ROLES)],
+        },
+        pluck="role",
+        limit=20,
+    )
+    if assigned_roles:
+        return True
+
+    try:
+        user_doc = frappe.get_doc("User", user)
+    except Exception:
+        return False
+
+    return any(
+        (getattr(row, "role", None) or "").strip() in STAFF_PORTAL_ROLES for row in (user_doc.get("roles") or [])
+    )
+
+
+def has_staff_portal_access(*, user: str, roles: set[str]) -> bool:
+    # Never block the framework superuser from Desk/Staff portal entry.
+    if user == "Administrator":
+        return True
+
+    has_employee, status = _linked_employee_status(user=user)
+    # A linked non-active employee must not retain staff portal access through
+    # stale role rows; employee access sync is expected to strip them.
+    if has_employee and status != "active":
+        return False
+
+    if _has_staff_role_assignment(user=user, roles=roles):
+        return True
+
+    return has_employee and status == "active"
+
+
+def resolve_portal_sections(*, user: str, roles: set[str]) -> set[str]:
+    sections: set[str] = set()
+    if has_staff_portal_access(user=user, roles=roles):
+        sections.add("staff")
+    if "Student" in roles:
+        sections.add("student")
+    if "Guardian" in roles:
+        sections.add("guardian")
+    return sections
+
+
+def resolve_default_portal_section(*, allowed_sections: set[str], requested_section: str | None = None) -> str:
+    if requested_section and requested_section in allowed_sections:
+        return requested_section
+    for section in PORTAL_SECTION_PRIORITY:
+        if section in allowed_sections:
+            return section
+    return "staff"
+
+
+def resolve_login_redirect_path(*, user: str, roles: set[str]) -> str:
+    has_employee, status = _linked_employee_status(user=user)
+    if has_employee and status != "active":
+        return "/login"
+
+    if "Employee" in roles or frappe.db.exists("Has Role", {"parent": user, "parenttype": "User", "role": "Employee"}):
+        return canonical_path_for_section("staff")
+
+    # Staff access wins for active or role-only staff users.
+    if has_staff_portal_access(user=user, roles=roles):
+        return canonical_path_for_section("staff")
+
+    if roles & ADMISSIONS_PORTAL_ROLES and has_open_admissions_portal_access(user=user, roles=roles):
+        return "/admissions"
+
+    sections = resolve_portal_sections(user=user, roles=roles)
+    if not sections:
+        return "/login"
+    default_section = resolve_default_portal_section(allowed_sections=sections)
+    return canonical_path_for_section(default_section)
+
+
+def portal_roles_for_client(sections: set[str]) -> list[str]:
+    ordered = [section for section in PORTAL_SECTION_PRIORITY if section in sections]
+    return [PORTAL_SECTION_LABELS[section] for section in ordered]
+
+
+def is_portal_home_page(path: str | None) -> bool:
+    normalized = normalize_path(path, default="")
+    if normalized.startswith(f"{CANONICAL_PORTAL_PREFIX}/"):
+        return True
+    return normalized in PORTAL_SECTION_PATHS.values()
+
+
+def build_login_redirect(path: str) -> str:
+    return f"/login?redirect-to={path}"
+
+
+def build_logout_then_login_redirect(path: str) -> str:
+    login_path = build_login_redirect(path)
+    return f"/logout?redirect-to={quote(login_path, safe='')}"

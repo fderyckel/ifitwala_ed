@@ -1,0 +1,191 @@
+---
+title: "Applicant Interview: Interview Event Record"
+slug: applicant-interview
+category: Admission
+doc_order: 8
+version: "1.8.0"
+last_change_date: "2026-04-30"
+summary: "Record the scheduled interview event, participants, room, calendar projection, and operational context while keeping interviewer opinion only in Applicant Interview Feedback."
+seo_title: "Applicant Interview: Interview Event Record"
+seo_description: "Record the interview event, participants, calendar projection, and operational context while keeping interviewer opinion only in Applicant Interview Feedback."
+---
+
+## Before You Start (Prerequisites)
+
+- Create the `Student Applicant` record first.
+- Have interview date/time, participants, and room prepared before scheduling an in-person interview.
+- Ensure interviewer users exist in the system for clean participant linkage.
+- Interviewer selection is intentionally constrained to users with role `Employee`.
+
+`Applicant Interview` captures the interview event as part of admissions review. It formalizes interview context, scheduling, and operational preparation, and leaves an audit trail on the applicant record.
+
+## What It Captures
+
+- Interview date plus scheduled time window (`interview_start` / `interview_end`), mode (`In Person`, `Online`, `Phone`), and room (`location`) when relevant
+- Interview type (`Family`, `Student`, `Joint`)
+- Confidentiality level
+- Operational notes for staff preparation/context only
+- Linked scheduling artifact (`school_event`) when created through Schedule Interview
+- Linked interviewer workspace in StaffHome calendar (only when `School Event.reference_type = Applicant Interview`)
+- Per-interviewer feedback rows in `Applicant Interview Feedback`, which are the only canonical store for interviewer opinion
+
+## Child Table (Included in Parent)
+
+`interviewers` uses child table **Applicant Interviewer**:
+
+- `interviewer` -> `User`
+
+Controller logic remains on the parent doctype; child table controller is intentionally empty.
+
+## Where It Is Used Across the ERP
+
+- [**Student Applicant**](/docs/en/student-applicant/):
+  - interview count contributes to readiness snapshot
+  - create/update events add audit comments on applicant timeline with a direct link to the interview record
+  - Desk and cockpit summaries surface latest interview access plus feedback completion from `Applicant Interview Feedback`
+- Admission workspace: direct access card under Student Applicant operations.
+
+## Lifecycle and Linked Documents
+
+1. Create one interview record per scheduled interview event for the applicant.
+   - Canonical entry points:
+     - Desk `Student Applicant` form action: `Schedule Interview`
+     - Admissions Cockpit applicant card action: `Schedule Interview`
+   - Raw `Applicant Interview` creates are blocked in Desk because they do not check room and interviewer calendars.
+2. Capture date/time, mode, participants, confidentiality level, and any operational context needed to run the interview.
+3. Schedule Interview uses `schedule_applicant_interview(...)` to atomically create:
+   - `Applicant Interview` (admissions evidence)
+   - linked `School Event` (calendar projection with participant audience)
+   - `Employee Booking` rows through the linked school event
+   - `Location Booking` row through the linked school event when a room is selected
+   - structured conflict responses with suggested free times when an interviewer or room is unavailable
+4. Staff can open the same `AdmissionsWorkspaceOverlay` from two entry points:
+   - StaffHome calendar (`School Event.reference_type = Applicant Interview`) in interview mode
+   - Admissions Cockpit applicant card in applicant mode (file summary + interview list with compact feedback completion labels, plus latest interview summary/open action)
+   - guardian rows inside the applicant workspace open a stacked guardian-details overlay using the same overlay host
+5. Feedback is saved per interviewer via `Applicant Interview Feedback` (`Draft` / `Submitted`).
+   - the SPA presents this as one `Interview Notes` surface so users do not need to reason about the separate storage row
+   - the Desk `Applicant Interview` form exposes `Open My Feedback` for users listed in `interviewers`; it opens the existing personal feedback row or starts a prefilled draft
+   - the parent `Applicant Interview` record does not store panel opinion or a shared interview outcome
+6. Update interview records as evidence evolves; timeline comments keep a visible audit trail.
+7. Interview completion contributes to applicant readiness and admissions decision confidence.
+
+<Callout type="tip" title="Operational pattern">
+Use separate interview rows for separate interactions instead of continuously overwriting one row.
+</Callout>
+
+<Callout type="info" title="Architecture rule">
+Interviewers are child rows for structure only; workflow logic and validations are enforced in the parent doctype.
+</Callout>
+
+## Reporting
+
+- No dedicated Script/Query Report currently declares this doctype as `ref_doctype`.
+
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete | Notes |
+|---|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes | Global privileged access |
+| `Academic Admin` | Yes | Yes | Yes | Yes | Scoped to applicant organization/school visibility |
+| `Admission Manager` | Yes | Yes | Yes | Yes | Scoped to applicant organization/school visibility |
+| `Admission Officer` | Yes | Yes | Yes | Yes | Scoped to applicant organization/school visibility |
+| `Interviewer` (listed in `interviewers`) | Yes (row-level) | No | No | No | Can access only interviews where they are listed |
+
+Runtime controller rule:
+- Staff roles (`Admission` roles + `Academic Admin` + `System Manager`) are evaluated against applicant scope before create/update/read.
+- Scoped visibility is transfer-aware: access can follow linked student school context (for example, active enrollment/current anchor school) while preserving applicant-history linkage.
+- Non-admissions employees listed in `interviewers` can read only their assigned interview rows.
+- Delegated overall-application reviewers with an open `Applicant Review Assignment` for the applicant can open interview workspace payloads and governed interview-context file links read-only from the admissions workspace.
+- That delegated reviewer access does not widen Desk `Applicant Interview` doctype permission.
+- Parent interview editing stays staff-managed; interviewer writes happen only through `Applicant Interview Feedback`.
+- Structured per-interviewer notes must be captured in `Applicant Interview Feedback` from the SPA workspace.
+- Records are blocked when linked applicant is in terminal states (`Rejected`, `Promoted`).
+
+## Related Docs
+
+<RelatedDocs
+  slugs="student-applicant,applicant-health-profile,applicant-document"
+  title="Related Docs"
+/>
+- `Applicant Interview Feedback` - per-interviewer structured notes and recommendations
+
+## Technical Notes (IT)
+
+### Schema and Controller Snapshot
+
+- **DocType schema file**: `ifitwala_ed/admission/doctype/applicant_interview/applicant_interview.json`
+- **Controller file**: `ifitwala_ed/admission/doctype/applicant_interview/applicant_interview.py`
+- **Required fields (`reqd=1`)**:
+  - `student_applicant` (`Link` -> `Student Applicant`)
+  - `interview_date` (`Date`)
+- **Event-context fields**:
+  - `notes` remains on the parent doctype as operational context only; it is not an interviewer feedback field
+- **Scheduling fields**:
+  - `interview_start` (`Datetime`, optional but paired with `interview_end`)
+  - `interview_end` (`Datetime`, optional but paired with `interview_start`)
+  - `location` (`Link` -> `Location`, labeled `Room`)
+  - `school_event` (`Link` -> `School Event`, read-only)
+- **Datetime invariant**:
+  - when either `interview_start` or `interview_end` is set, both are required
+  - `interview_end` must be strictly after `interview_start`
+  - `interview_date` is synchronized from `interview_start` when start is present
+- **Lifecycle hooks in controller**: `validate`, `after_insert`, `on_update`
+- **Operational/public methods**:
+  - `get_interview_schedule_options(...)`
+  - `schedule_applicant_interview(...)`
+  - `suggest_interview_slots(...)`
+  - `get_interview_workspace(...)`
+  - `get_applicant_workspace(...)`
+  - `save_my_interview_feedback(...)`
+  - `get_permission_query_conditions(...)`
+  - `has_permission(...)`
+
+- **DocType**: `Applicant Interview` (`ifitwala_ed/admission/doctype/applicant_interview/`)
+- **Autoname**: expression `INTERVIEW-.YY.-.MM.-.###`
+- **Desk surface**:
+  - parent doctype form in `ifitwala_ed/admission/doctype/applicant_interview/`
+  - child table `Applicant Interviewer` embedded in parent
+  - form script applies interviewer query filter `role = Employee` on `interviewers.interviewer`
+  - form script defaults new docs to current date and appends current session user to interviewer rows when missing
+  - form script shows `Open My Feedback` to the current session user only when that user is listed in `interviewers`
+  - `Open My Feedback` routes to the existing `Applicant Interview Feedback` row for `(applicant_interview, interviewer_user)` or opens a new prefilled draft with `applicant_interview`, `student_applicant`, `interviewer_user`, and `feedback_status = Draft`
+- **Student Applicant integration**:
+  - readiness snapshot uses `has_required_interviews()`
+  - create/update posts audit comments onto applicant timeline with clickable interview links
+  - `Schedule Interview` is the only user-facing action for interview creation from Desk
+  - interview summaries report feedback completion, not a shared parent-level outcome
+  - admissions cockpit cards expose `Schedule Interview`, latest interview context, and open action without reading parent evaluative fields
+  - admissions workspace interview rows show compact feedback completion per interview from `Applicant Interview Feedback`
+- **Scheduling projection**:
+  - Desk and Admissions Cockpit scheduling surfaces call `get_interview_schedule_options(...)` once to load applicant defaults and school-scoped schedulable rooms
+  - in-person interviews require `location`; online/phone interviews may omit it
+  - `schedule_applicant_interview(...)` checks interviewer conflicts through `Employee Booking` and room conflicts through `Location Booking` before insert
+  - conflict payloads use `EMPLOYEE_CONFLICT`, `ROOM_CONFLICT`, or `SCHEDULING_CONFLICT` and include suggested free times when available
+  - interview scheduling API creates linked `School Event` rows with:
+    - `reference_type = "Applicant Interview"`
+    - `reference_name = <interview name>`
+    - `location = <room>` when selected
+    - audience row `Custom Users`
+    - participants = selected interviewer users (employee-facing calendar surfacing)
+  - staff calendar click routing opens interview workspace only for school events with `reference_type = "Applicant Interview"` and a valid `reference_name`
+  - applicants without `applicant_user` are still schedulable; applicant user participation is not required for calendar projection
+- **Per-interviewer feedback model**:
+  - separate doctype `Applicant Interview Feedback` stores one row per `(applicant_interview, interviewer_user)`
+  - unique index enforced in doctype controller (`on_doctype_update`)
+  - interviewer feedback fields: strengths, concerns, shared values, other notes, recommendation, status (`Draft` / `Submitted`)
+  - SPA workspace writes through server API `save_my_interview_feedback(...)` (upsert semantics)
+  - SPA labels collapse the storage split into a single `Interview Notes` experience for staff
+  - no combined interview judgment is stored on the parent interview record
+- **Guardian drill-in**:
+  - applicant/interview workspace payloads include the stored `Student Applicant Guardian` intake fields used by the stacked guardian-details overlay
+- **Governed file actions**:
+  - evidence and recommendation attachments in the workspace use governed admissions file URLs and are opened from the SPA without relying on guessed file paths
+- **Key hooks**:
+  - `validate`: permission + applicant-state guard
+  - `after_insert`: audit comment "Interview recorded"
+  - `on_update`: audit comment "Interview updated" (only on saves after insert)
+- **Readiness nuance**:
+  - `StudentApplicant.has_required_interviews()` tracks count and snapshot section
+  - current `ready` boolean blocks on policies/documents/health, not interview count
+  - interview summaries show participant and feedback completion state; they do not derive a combined interview opinion from the parent doctype

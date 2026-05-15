@@ -1,0 +1,1341 @@
+<!-- ifitwala_ed/ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue -->
+<template>
+	<div class="staff-shell min-w-0 space-y-8">
+		<!-- HEADER -->
+		<header class="page-header">
+			<div class="page-header__intro">
+				<h1 class="type-h1 text-canopy">Morning Briefing</h1>
+				<p class="type-meta text-slate-token/80">Daily Operational &amp; Academic Pulse</p>
+			</div>
+
+			<div class="page-header__actions">
+				<div class="text-right">
+					<span class="section-header block mb-0.5">Today</span>
+					<span class="type-h3 text-ink">
+						{{ formattedDate }}
+					</span>
+				</div>
+				<button @click="widgets.reload()" class="remark-btn ml-2 flex items-center justify-center">
+					<FeatherIcon
+						name="refresh-cw"
+						class="h-4 w-4"
+						:class="{ 'animate-spin': widgets.loading }"
+					/>
+				</button>
+			</div>
+		</header>
+
+		<!-- SKELETON STATE -->
+		<div v-if="widgets.loading" class="space-y-6 animate-pulse">
+			<div class="h-32 w-full rounded-2xl bg-surface-soft"></div>
+			<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+				<div class="h-64 rounded-2xl bg-surface-soft"></div>
+				<div class="h-64 rounded-2xl bg-surface-soft"></div>
+			</div>
+		</div>
+
+		<!-- CONTENT -->
+		<div v-else class="space-y-8">
+			<!-- ANNOUNCEMENTS -->
+			<section v-if="hasArrayData('announcements')" class="space-y-4">
+				<div class="paper-card-frosted overflow-hidden">
+					<div class="space-y-5 px-5 py-5 lg:px-6 lg:py-6">
+						<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+							<div class="space-y-2">
+								<div class="flex flex-wrap items-center gap-2">
+									<h2 class="section-header text-canopy/70">Morning Messages</h2>
+									<span
+										class="inline-flex items-center rounded-full border border-[rgb(var(--surface-strong-rgb)/0.72)] bg-[rgb(var(--surface-strong-rgb)/0.76)] px-3 py-1 text-[11px] font-semibold text-slate-token/74"
+									>
+										{{ announcementCountLabel }}
+									</span>
+									<span
+										v-if="unreadAnnouncementCount"
+										data-testid="morning-announcements-unread-count"
+										class="inline-flex items-center rounded-full border border-[rgb(var(--flame-rgb)/0.18)] bg-[rgb(var(--flame-rgb)/0.08)] px-3 py-1 text-[11px] font-semibold text-flame"
+									>
+										{{ unreadAnnouncementCount }} unread
+									</span>
+								</div>
+								<p class="max-w-2xl text-sm leading-relaxed text-slate-token/82">
+									Newest updates stay at the top. Open any message for the full body, attachments,
+									and staff responses.
+								</p>
+							</div>
+
+							<button
+								type="button"
+								class="rounded-full border px-3 py-1.5 text-xs font-semibold transition-all"
+								:class="
+									showUnreadOnly
+										? 'border-jacaranda/30 bg-jacaranda/10 text-jacaranda shadow-sm'
+										: 'border-border/60 bg-[rgb(var(--surface-strong-rgb)/0.7)] text-slate-token/80 hover:bg-surface-soft'
+								"
+								@click="showUnreadOnly = !showUnreadOnly"
+							>
+								{{ showUnreadOnly ? 'Show all' : 'Unread only' }}
+							</button>
+						</div>
+
+						<div
+							v-if="filteredAnnouncements.length"
+							data-testid="morning-announcements-grid"
+							class="grid grid-cols-1 gap-4 lg:grid-cols-2"
+						>
+							<article
+								v-for="item in filteredAnnouncements"
+								:key="item.name"
+								:data-name="item.name"
+								data-testid="morning-announcement-card"
+								class="flex h-full flex-col rounded-[1.75rem] border border-[rgb(var(--surface-strong-rgb)/0.72)] bg-[linear-gradient(180deg,rgb(var(--surface-strong-rgb)/0.88),rgb(var(--sand-rgb)/0.76))] p-4 shadow-[0_14px_32px_rgb(var(--ink-rgb)/0.04)] sm:p-5"
+							>
+								<div class="flex h-full flex-col gap-4">
+									<div class="min-w-0 flex-1">
+										<div class="flex flex-wrap items-center gap-2">
+											<span
+												class="inline-flex items-center rounded-full border border-[rgb(var(--clay-rgb)/0.12)] bg-[rgb(var(--surface-strong-rgb)/0.8)] px-3 py-1 text-[11px] font-semibold text-slate-token/74"
+											>
+												{{ formatAnnouncementDate(item.brief_start_date) }}
+											</span>
+											<span
+												class="inline-flex items-center rounded-full border border-[rgb(var(--clay-rgb)/0.14)] bg-[rgb(var(--sand-rgb)/0.88)] px-3 py-1 text-[11px] font-semibold text-clay"
+											>
+												{{ item.type }}
+											</span>
+											<span
+												class="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold"
+												:class="getPriorityClasses(item.priority)"
+											>
+												{{ item.priority || 'Info' }}
+											</span>
+											<span
+												data-testid="morning-announcement-status"
+												class="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold"
+												:class="
+													item.is_unread
+														? 'bg-[rgb(var(--flame-rgb)/0.12)] text-flame'
+														: 'bg-[rgb(var(--canopy-rgb)/0.08)] text-canopy'
+												"
+											>
+												{{ item.is_unread ? 'Unread' : 'Read' }}
+											</span>
+										</div>
+
+										<h3
+											data-testid="morning-announcement-title"
+											class="mt-3 text-[1.15rem] font-semibold tracking-tight text-ink sm:text-[1.25rem]"
+										>
+											{{ item.title }}
+										</h3>
+
+										<div
+											class="prose prose-sm mt-3 max-w-none text-slate-token/86 line-clamp-3"
+											v-html="item.content"
+										></div>
+
+										<div
+											v-if="getInteractionFor(item).self || hasVisibleAnnouncementActions(item)"
+											class="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-token/70"
+										>
+											<div
+												v-if="hasVisibleAnnouncementActions(item)"
+												class="inline-flex items-center gap-2 rounded-full border border-[rgb(var(--surface-strong-rgb)/0.8)] bg-[rgb(var(--surface-strong-rgb)/0.8)] px-3 py-1.5"
+											>
+												<span>Reactions {{ getInteractionStatsFor(item).reactions_total }}</span>
+												<span class="h-3 w-px bg-border/70"></span>
+												<span>Comments {{ getInteractionStatsFor(item).comments_total }}</span>
+											</div>
+											<span
+												v-if="getInteractionFor(item).self"
+												class="inline-flex items-center rounded-full bg-jacaranda/10 px-3 py-1.5 font-medium text-jacaranda"
+											>
+												You responded
+											</span>
+										</div>
+									</div>
+
+									<div class="mt-auto flex shrink-0 flex-wrap items-center gap-2">
+										<button
+											v-if="canReactToAnnouncement(item)"
+											type="button"
+											class="if-action"
+											@click.stop="acknowledgeAnnouncement(item)"
+										>
+											Acknowledge
+										</button>
+										<button type="button" class="if-action" @click="openAnnouncement(item)">
+											Open update
+										</button>
+									</div>
+								</div>
+							</article>
+						</div>
+
+						<div
+							v-else
+							class="rounded-[1.5rem] border border-dashed border-border/70 bg-[rgb(var(--surface-strong-rgb)/0.62)] px-4 py-6 text-sm text-slate-token/76"
+						>
+							<p>
+								{{
+									showUnreadOnly
+										? 'You have no unread morning messages.'
+										: 'No morning messages are available right now.'
+								}}
+							</p>
+							<button
+								v-if="showUnreadOnly"
+								type="button"
+								class="mt-3 inline-flex items-center rounded-full border border-border/60 bg-[rgb(var(--surface-strong-rgb)/0.75)] px-3 py-1 text-xs font-semibold text-slate-token/78 transition-colors hover:bg-surface-soft"
+								@click="showUnreadOnly = false"
+							>
+								Show all updates
+							</button>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
+				<!-- LEFT COLUMN -->
+				<div class="space-y-6">
+					<div
+						v-if="hasClinicVolumeCard || widgets.data?.critical_incidents !== undefined"
+						class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6"
+					>
+						<!-- Attendance Trend (Admin) -->
+						<div v-if="hasArrayData('attendance_trend')" class="sm:col-span-2">
+							<AttendanceTrend :data="widgets.data.attendance_trend" />
+						</div>
+
+						<!-- Critical Incidents card -->
+						<div
+							v-if="widgets.data?.critical_incidents !== undefined"
+							class="paper-card cursor-pointer border-l-4 border-l-flame p-5 transition-shadow hover:shadow-md"
+							@click="openCriticalIncidentsOverlay"
+						>
+							<h3 class="section-header mb-1 text-flame/80">Critical Incidents</h3>
+							<div class="text-3xl font-bold text-ink">
+								{{ widgets.data.critical_incidents }}
+							</div>
+							<p class="mt-1 flex items-center gap-1 text-xs font-medium text-flame">
+								<FeatherIcon name="alert-circle" class="h-3 w-3" />
+								Open Follow-ups
+							</p>
+						</div>
+
+						<!-- Clinic Volume -->
+						<div
+							v-if="hasClinicVolumeCard"
+							class="paper-card p-5 transition-shadow"
+							:class="clinicVolumeIsInteractive ? 'cursor-pointer hover:shadow-md' : ''"
+							@click="openClinicHistory"
+						>
+							<div class="mb-3 flex items-start justify-between gap-3">
+								<div class="flex items-center gap-2">
+									<div
+										class="flex h-8 w-8 items-center justify-center rounded-full bg-sky/15 text-sky"
+									>
+										<FeatherIcon name="thermometer" class="h-4 w-4" />
+									</div>
+									<div>
+										<h3 class="text-sm font-semibold text-canopy">Clinic Volume</h3>
+										<p class="mt-0.5 text-[11px] text-slate-token/70">
+											{{ clinicVolume?.school || 'School context' }}
+										</p>
+									</div>
+								</div>
+								<DateRangePills
+									v-if="!clinicVolume?.error"
+									v-model="clinicVolumeView"
+									:items="clinicVolumeViewOptions"
+									size="sm"
+									wrap-class="bg-[rgb(var(--surface-strong-rgb)/0.7)]"
+									@click.stop
+								/>
+							</div>
+							<p
+								v-if="clinicVolume?.error"
+								class="rounded-xl border border-dashed border-border/70 bg-surface-soft px-3 py-2 text-xs text-slate-token/82"
+							>
+								{{ clinicVolume.error }}
+							</p>
+							<div v-else-if="clinicVolumePoints.length" class="space-y-2">
+								<div
+									v-for="point in clinicVolumePoints"
+									:key="point.label"
+									class="flex items-center justify-between text-sm"
+								>
+									<span class="text-slate-token/80">
+										{{ point.label }}
+									</span>
+									<span
+										class="font-mono font-medium"
+										:class="point.count > 10 ? 'text-flame' : 'text-ink'"
+									>
+										{{ point.count }}
+									</span>
+								</div>
+							</div>
+							<p v-else class="text-xs text-slate-token/75">
+								No clinic visits in this business window.
+							</p>
+						</div>
+					</div>
+
+					<!-- Admissions pulse -->
+					<div v-if="widgets.data?.admissions_pulse" class="paper-card p-5">
+						<div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+							<div class="flex items-center gap-2">
+								<div
+									class="flex h-8 w-8 items-center justify-center rounded-full bg-jacaranda/10 text-jacaranda"
+								>
+									<FeatherIcon name="users" class="h-4 w-4" />
+								</div>
+								<h3 class="text-sm font-semibold text-canopy">Admissions (Last 7 Days)</h3>
+							</div>
+							<span class="text-2xl font-bold text-ink">
+								{{ widgets.data.admissions_pulse.total_new_weekly }}
+							</span>
+						</div>
+						<div class="flex flex-wrap gap-2">
+							<div
+								v-for="stat in widgets.data.admissions_pulse.breakdown"
+								:key="stat.application_status"
+								class="inline-chip border border-border/40 bg-surface-soft text-slate-token/90"
+							>
+								{{ stat.application_status }}: {{ stat.count }}
+							</div>
+						</div>
+					</div>
+
+					<!-- Absent Student List (Instructor) -->
+					<div v-if="hasArrayData('my_absent_students')">
+						<AbsentStudentList :students="widgets.data.my_absent_students" />
+					</div>
+				</div>
+
+				<!-- RIGHT COLUMN: RECENT LOGS -->
+				<div v-if="hasArrayData('student_logs')">
+					<div class="mb-4 flex items-center justify-between">
+						<h2 class="section-header flex items-center gap-2 text-flame">
+							<FeatherIcon name="clipboard" class="h-3 w-3" />
+							Recent Logs (48h)
+						</h2>
+					</div>
+
+					<div
+						class="paper-card relative flex min-h-[24rem] max-h-[65vh] flex-col md:h-[600px] md:max-h-none"
+					>
+						<div class="custom-scrollbar flex-1 overflow-y-auto p-0">
+							<div
+								v-for="(log, i) in widgets.data.student_logs"
+								:key="log.name"
+								class="group border-b border-border/50 p-4 last:border-0 transition-colors hover:bg-surface-soft sm:p-5"
+							>
+								<div class="flex gap-4">
+									<div class="relative flex-shrink-0">
+										<div class="h-12 w-12 overflow-hidden rounded-xl bg-surface-soft">
+											<img
+												v-if="log.student_image"
+												:src="log.student_image"
+												class="h-full w-full object-cover"
+											/>
+											<div
+												v-else
+												class="flex h-full w-full items-center justify-center text-xs font-bold text-slate-token/75"
+											>
+												{{ log.student_name.substring(0, 2) }}
+											</div>
+										</div>
+										<div
+											v-if="log.status_color === 'red'"
+											class="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-flame ring-2 ring-[rgb(var(--surface-strong-rgb)/1)]"
+										></div>
+									</div>
+
+									<div class="min-w-0 flex-1">
+										<div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+											<h4 class="text-sm font-bold text-ink">
+												{{ log.student_name }}
+											</h4>
+											<span class="text-[10px] text-slate-token/65">
+												{{ log.date_display }}
+											</span>
+										</div>
+
+										<div class="mt-1 mb-2 flex items-center gap-2">
+											<span
+												class="rounded bg-surface-soft px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-token/80"
+											>
+												{{ log.log_type }}
+											</span>
+										</div>
+
+										<p class="mb-2 text-xs leading-relaxed text-slate-token/90">
+											{{ log.snippet }}
+										</p>
+
+										<button
+											@click="openLog(log)"
+											class="mt-1 flex items-center gap-1 text-[11px] font-medium text-jacaranda transition-colors hover:text-jacaranda/80"
+										>
+											Read Full Log
+											<FeatherIcon name="maximize-2" class="h-3 w-3" />
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- COMMUNITY PULSE: BIRTHDAYS -->
+			<section
+				v-if="hasArrayData('staff_birthdays') || hasArrayData('my_student_birthdays')"
+				class="paper-card-frosted overflow-hidden"
+			>
+				<div
+					class="grid gap-5 px-5 py-5 lg:grid-cols-[minmax(0,1.2fr),minmax(18rem,0.8fr)] lg:px-6 lg:py-6"
+				>
+					<div class="space-y-4">
+						<div
+							class="inline-flex w-fit items-center gap-2 rounded-full border border-[rgb(var(--surface-strong-rgb)/0.72)] bg-[rgb(var(--surface-strong-rgb)/0.72)] px-3 py-1 shadow-[0_8px_24px_rgb(var(--ink-rgb)/0.04)] backdrop-blur-sm"
+						>
+							<div
+								class="flex h-6 w-6 items-center justify-center rounded-full bg-[rgb(var(--canopy-rgb)/0.08)] text-canopy"
+							>
+								<FeatherIcon name="gift" class="h-3.5 w-3.5" />
+							</div>
+							<span class="section-header text-canopy/70">Community Pulse</span>
+						</div>
+
+						<div class="space-y-3">
+							<h2
+								class="max-w-2xl text-[1.9rem] text-ink sm:text-[2.2rem]"
+								style="font-family: var(--font-serif); line-height: 0.98"
+							>
+								This week&apos;s birthdays
+							</h2>
+							<p class="max-w-2xl type-meta text-slate-token/82">
+								A quieter note in the brief, bringing forward the staff and student moments worth
+								noticing before the day gets busy.
+							</p>
+						</div>
+					</div>
+
+					<div class="grid gap-2.5 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+						<div
+							class="rounded-[1.35rem] border border-[rgb(var(--surface-strong-rgb)/0.72)] bg-[rgb(var(--surface-strong-rgb)/0.74)] p-3 shadow-[0_10px_28px_rgb(var(--ink-rgb)/0.04)] backdrop-blur-sm"
+						>
+							<p class="type-overline text-slate-token/58">In View</p>
+							<p class="mt-2 text-2xl font-semibold tracking-tight text-canopy">
+								{{ communityBirthdayTotal }}
+							</p>
+							<p class="mt-1 text-[11px] text-slate-token/70">birthdays this week</p>
+						</div>
+
+						<div
+							class="rounded-[1.35rem] border border-[rgb(var(--clay-rgb)/0.12)] bg-[rgb(var(--sand-rgb)/0.78)] p-3 shadow-[0_10px_28px_rgb(var(--ink-rgb)/0.04)]"
+						>
+							<p class="type-overline text-slate-token/58">Staff</p>
+							<p class="mt-2 text-2xl font-semibold tracking-tight text-clay">
+								{{ staffBirthdayCount }}
+							</p>
+							<p class="mt-1 text-[11px] text-slate-token/70">across the school</p>
+						</div>
+
+						<div
+							class="rounded-[1.35rem] border border-[rgb(var(--jacaranda-rgb)/0.14)] bg-[rgb(var(--sky-rgb)/0.82)] p-3 shadow-[0_10px_28px_rgb(var(--ink-rgb)/0.04)]"
+						>
+							<p class="type-overline text-slate-token/58">My Groups</p>
+							<p class="mt-2 text-2xl font-semibold tracking-tight text-jacaranda">
+								{{ studentBirthdayCount }}
+							</p>
+							<p class="mt-1 text-[11px] text-slate-token/70">students in view</p>
+						</div>
+					</div>
+				</div>
+
+				<div class="px-5 pb-5 lg:px-6 lg:pb-6">
+					<div class="grid gap-4 md:grid-cols-2">
+						<div
+							class="rounded-[1.75rem] border border-[rgb(var(--clay-rgb)/0.1)] bg-[linear-gradient(180deg,rgb(var(--surface-strong-rgb)/0.84),rgb(var(--sand-rgb)/0.72))] p-4 shadow-[0_14px_36px_rgb(var(--ink-rgb)/0.05)] sm:p-5"
+						>
+							<div class="mb-4 flex items-start justify-between gap-3">
+								<div class="space-y-1.5">
+									<p class="type-overline text-slate-token/58">Staff Birthdays</p>
+									<p class="text-base font-semibold text-ink">Across the school this week.</p>
+								</div>
+								<span
+									class="inline-flex h-8 min-w-[2rem] items-center justify-center rounded-full border border-[rgb(var(--clay-rgb)/0.14)] bg-[rgb(var(--surface-strong-rgb)/0.72)] px-2.5 text-[11px] font-semibold text-clay"
+								>
+									{{ staffBirthdayCount }}
+								</span>
+							</div>
+
+							<ul v-if="staffBirthdayCount" class="space-y-2.5">
+								<li
+									v-for="emp in widgets.data.staff_birthdays"
+									:key="emp.name"
+									class="flex items-center gap-3 rounded-2xl border border-[rgb(var(--surface-strong-rgb)/0.76)] bg-[rgb(var(--surface-strong-rgb)/0.82)] px-3 py-3 shadow-[0_8px_18px_rgb(var(--ink-rgb)/0.04)]"
+								>
+									<div
+										class="h-10 w-10 overflow-hidden rounded-full bg-[rgb(var(--surface-strong-rgb)/1)] shadow-[var(--shadow-soft)] ring-1 ring-[rgb(var(--clay-rgb)/0.12)]"
+									>
+										<img v-if="emp.image" :src="emp.image" class="h-full w-full object-cover" />
+										<div
+											v-else
+											class="flex h-full w-full items-center justify-center text-xs font-semibold text-slate-token/70"
+										>
+											{{ emp.name.substring(0, 1) }}
+										</div>
+									</div>
+									<div class="min-w-0 flex-1">
+										<p class="truncate text-sm font-semibold text-ink">
+											{{ emp.name }}
+										</p>
+									</div>
+									<span
+										class="shrink-0 rounded-full border border-[rgb(var(--clay-rgb)/0.16)] bg-[rgb(var(--sand-rgb)/0.9)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-clay"
+									>
+											{{ emp.birthday_label }}
+									</span>
+								</li>
+							</ul>
+
+							<div
+								v-else
+								class="rounded-2xl border border-dashed border-[rgb(var(--clay-rgb)/0.18)] bg-[rgb(var(--surface-strong-rgb)/0.55)] px-4 py-6 text-sm text-slate-token/72"
+							>
+								No staff birthdays in this window.
+							</div>
+						</div>
+
+						<div
+							class="rounded-[1.75rem] border border-[rgb(var(--jacaranda-rgb)/0.12)] bg-[linear-gradient(180deg,rgb(var(--surface-strong-rgb)/0.84),rgb(var(--sky-rgb)/0.72))] p-4 shadow-[0_14px_36px_rgb(var(--ink-rgb)/0.05)] sm:p-5"
+						>
+							<div class="mb-4 flex items-start justify-between gap-3">
+								<div class="space-y-1.5">
+									<p class="type-overline text-slate-token/58">Student Birthdays</p>
+									<p class="text-base font-semibold text-ink">Inside your teaching groups.</p>
+								</div>
+								<span
+									class="inline-flex h-8 min-w-[2rem] items-center justify-center rounded-full border border-[rgb(var(--jacaranda-rgb)/0.18)] bg-[rgb(var(--surface-strong-rgb)/0.72)] px-2.5 text-[11px] font-semibold text-jacaranda"
+								>
+									{{ studentBirthdayCount }}
+								</span>
+							</div>
+
+							<ul v-if="studentBirthdayCount" class="space-y-2.5">
+								<li
+									v-for="stu in widgets.data.my_student_birthdays"
+									:key="stu.first_name + stu.last_name"
+									class="flex items-center gap-3 rounded-2xl border border-[rgb(var(--surface-strong-rgb)/0.76)] bg-[rgb(var(--surface-strong-rgb)/0.82)] px-3 py-3 shadow-[0_8px_18px_rgb(var(--ink-rgb)/0.04)]"
+								>
+									<div
+										class="h-10 w-10 overflow-hidden rounded-full bg-[rgb(var(--surface-strong-rgb)/1)] shadow-[var(--shadow-soft)] ring-1 ring-[rgb(var(--jacaranda-rgb)/0.12)]"
+									>
+										<img v-if="stu.image" :src="stu.image" class="h-full w-full object-cover" />
+										<div
+											v-else
+											class="flex h-full w-full items-center justify-center text-xs font-semibold text-slate-token/70"
+										>
+											{{ stu.first_name.substring(0, 1) }}
+										</div>
+									</div>
+									<div class="min-w-0 flex-1">
+										<p class="truncate text-sm font-semibold text-ink">
+											{{ stu.first_name }} {{ stu.last_name }}
+										</p>
+									</div>
+									<span
+										class="shrink-0 rounded-full border border-[rgb(var(--jacaranda-rgb)/0.18)] bg-[rgb(var(--sky-rgb)/0.9)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-jacaranda"
+									>
+											{{ stu.birthday_label }}
+									</span>
+								</li>
+							</ul>
+
+							<div
+								v-else
+								class="rounded-2xl border border-dashed border-[rgb(var(--jacaranda-rgb)/0.2)] bg-[rgb(var(--surface-strong-rgb)/0.55)] px-4 py-6 text-sm text-slate-token/72"
+							>
+								No student birthdays in your groups for this window.
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+		</div>
+
+		<!-- CONTENT DIALOG -->
+		<ContentDialog
+			v-model="isContentDialogOpen"
+			:title="dialogContentTitle"
+			:subtitle="dialogContentSubtitle"
+			:content="dialogContentBody"
+			:image="dialogContent.image"
+			:image-fallback="dialogContent.imageFallback"
+			:badge="dialogContent.badge"
+			:is-announcement="Boolean(activeCommunication)"
+			:desk-href="activeAnnouncementDeskHref"
+			:publish-window="activeAnnouncementPublishWindow"
+			:attachments="dialogContentAttachments"
+			:attachments-loading="dialogContentAttachmentsLoading"
+			:attachments-error="dialogContentAttachmentsError"
+			:show-interactions="showInteractionsForActive"
+			:show-comments="showCommentsForActive"
+			:interaction="
+				activeCommunication ? getInteractionFor(activeCommunication) : { counts: {}, self: null }
+			"
+			@acknowledge="activeCommunication && acknowledgeAnnouncement(activeCommunication)"
+			@open-comments="activeCommunication && openInteractionThread(activeCommunication)"
+			@react="activeCommunication && reactToAnnouncement(activeCommunication, $event)"
+			@policy-inform="openPolicyInformOverlay"
+		/>
+
+		<!-- CLINIC HISTORY DIALOG -->
+		<HistoryDialog
+			v-model="showClinicHistory"
+			title="Clinic Volume"
+			subtitle="Student patient visits over time"
+			method="ifitwala_ed.api.morning_brief.get_clinic_visits_trend"
+			:initial-school="clinicVolume?.school || ''"
+			:show-comments="false"
+			:range-options="clinicHistoryRangeOptions"
+			:default-range="clinicVolumeView"
+		/>
+
+		<CommentThreadDrawer
+			:open="showInteractionDrawer"
+			title="Announcement Comments"
+			:rows="interactionThreadRows"
+			:loading="interactionThreadLoading"
+			v-model:comment="newComment"
+			submit-label="Send"
+			placeholder="Add a short comment (max 300 characters)"
+			:format-timestamp="formatThreadTimestamp"
+			@close="showInteractionDrawer = false"
+			@submit="submitComment"
+		/>
+	</div>
+</template>
+
+<script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { createResource, FeatherIcon, toast } from 'frappe-ui';
+
+import { useOverlayStack } from '@/composables/useOverlayStack';
+import { formatLocalizedDateTime } from '@/lib/datetime';
+import { createCommunicationInteractionService } from '@/lib/services/communicationInteraction/communicationInteractionService';
+import { createOrgCommunicationArchiveService } from '@/lib/services/orgCommunicationArchive/orgCommunicationArchiveService';
+import { SIGNAL_ORG_COMMUNICATION_INVALIDATE, uiSignals } from '@/lib/uiSignals';
+import ContentDialog from '@/components/ContentDialog.vue';
+import HistoryDialog from '@/components/analytics/HistoryDialog.vue';
+import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue';
+import DateRangePills from '@/components/filters/DateRangePills.vue';
+import AttendanceTrend from './components/AttendanceTrend.vue';
+import AbsentStudentList from './components/AbsentStudentList.vue';
+import {
+	ORG_SURFACES,
+	type Announcement,
+	type ClinicVolumeSummary,
+	type InteractionSummaryMap,
+	type InteractionThreadRow,
+	type WidgetsPayload,
+	type StudentLogItem,
+	type OrgPriority,
+	type StudentLogDetail,
+} from '@/types/morning_brief';
+import type { InteractionSummary, ReactionCode } from '@/types/morning_brief';
+import type { Response as OrgCommunicationItemResponse } from '@/types/contracts/org_communication_archive/get_org_communication_item';
+import {
+	getAudienceInteractionCapabilities,
+	ORG_COMMUNICATION_VIEWERS,
+} from '@/utils/orgCommunication';
+import type { PolicyInformLinkPayload } from '@/utils/policyInformLink';
+import { getInteractionStats } from '@/utils/interactionStats';
+
+interface DialogContent {
+	title: string;
+	subtitle: string;
+	content: string;
+	image: string;
+	imageFallback: string;
+	badge: string;
+}
+
+interface CriticalIncidentsOverlayState {
+	items: StudentLogDetail[];
+	loading: boolean;
+}
+
+type ArrayWidgetKey =
+	| 'announcements'
+	| 'staff_birthdays'
+	| 'my_student_birthdays'
+	| 'student_logs'
+	| 'attendance_trend'
+	| 'my_absent_students';
+
+const isContentDialogOpen = ref<boolean>(false);
+const overlay = useOverlayStack();
+const dialogContent = ref<DialogContent>({
+	title: '',
+	subtitle: '',
+	content: '',
+	image: '',
+	imageFallback: '',
+	badge: '',
+});
+
+const showClinicHistory = ref<boolean>(false);
+const showInteractionDrawer = ref<boolean>(false);
+const activeCommunication = ref<Announcement | null>(null);
+const readMarking = ref<Record<string, boolean>>({});
+const showUnreadOnly = ref(false);
+const showInteractionsForActive = computed(
+	() => getAnnouncementInteractionCapabilities(activeCommunication.value).hasVisibleActions
+);
+const showCommentsForActive = computed(
+	() => getAnnouncementInteractionCapabilities(activeCommunication.value).canComment
+);
+const newComment = ref<string>('');
+const interactionService = createCommunicationInteractionService();
+const archiveService = createOrgCommunicationArchiveService();
+const interactionSummaryData = ref<InteractionSummaryMap>({});
+const interactionThreadRows = ref<InteractionThreadRow[]>([]);
+const interactionThreadLoading = ref(false);
+const announcementDetailData = ref<Record<string, OrgCommunicationItemResponse | null>>({});
+const announcementDetailLoading = ref<Record<string, boolean>>({});
+const announcementDetailError = ref<Record<string, string>>({});
+let disposeOrgCommunicationInvalidate: (() => void) | null = null;
+
+const criticalIncidentsList = createResource<StudentLogDetail[]>({
+	url: 'ifitwala_ed.api.morning_brief.get_critical_incidents_details',
+	auto: false,
+});
+const criticalIncidentsOverlayState = reactive<CriticalIncidentsOverlayState>({
+	items: [],
+	loading: false,
+});
+
+const widgets = createResource<WidgetsPayload>({
+	url: 'ifitwala_ed.api.morning_brief.get_briefing_widgets',
+	auto: true,
+});
+const clinicVolumeViewOptions = [
+	{ label: '3 days', value: '3D' },
+	{ label: '3 weeks', value: '3W' },
+] as const;
+const clinicHistoryRangeOptions = [
+	...clinicVolumeViewOptions,
+	{ label: '1M', value: '1M' },
+	{ label: '3M', value: '3M' },
+	{ label: '6M', value: '6M' },
+	{ label: 'YTD', value: 'YTD' },
+] as const;
+type ClinicVolumeView = (typeof clinicVolumeViewOptions)[number]['value'];
+const clinicVolumeView = ref<ClinicVolumeView>('3D');
+const activeAnnouncementName = computed<string>(() => activeCommunication.value?.name || '');
+const activeAnnouncementDetail = computed<OrgCommunicationItemResponse | null>(() => {
+	if (!activeAnnouncementName.value) return null;
+	return announcementDetailData.value[activeAnnouncementName.value] || null;
+});
+const dialogContentTitle = computed<string>(() => {
+	const detailTitle = activeAnnouncementDetail.value?.title;
+	if (typeof detailTitle === 'string' && detailTitle.trim()) {
+		return detailTitle.trim();
+	}
+	return dialogContent.value.title;
+});
+const dialogContentSubtitle = computed<string>(() =>
+	activeCommunication.value ? '' : dialogContent.value.subtitle
+);
+const dialogContentBody = computed<string>(() => {
+	const detailBody = activeAnnouncementDetail.value?.message_html;
+	if (typeof detailBody === 'string' && detailBody.trim()) {
+		return detailBody.trim();
+	}
+	return dialogContent.value.content;
+});
+const dialogContentAttachments = computed(() => activeAnnouncementDetail.value?.attachments || []);
+const dialogContentAttachmentsLoading = computed<boolean>(() =>
+	Boolean(
+		activeAnnouncementName.value && announcementDetailLoading.value[activeAnnouncementName.value]
+	)
+);
+const dialogContentAttachmentsError = computed<string>(() =>
+	activeAnnouncementName.value
+		? announcementDetailError.value[activeAnnouncementName.value] || ''
+		: ''
+);
+const activeAnnouncementDeskHref = computed<string>(() => {
+	const name = activeCommunication.value?.name;
+	if (!name) return '';
+	return `/desk/org-communication/${encodeURIComponent(name)}`;
+});
+const activeAnnouncementPublishWindow = computed<string>(() => {
+	const item = activeCommunication.value;
+	if (!item) return '';
+	return formatAnnouncementWindow(item.brief_start_date, item.brief_end_date);
+});
+const unreadAnnouncementCount = computed(
+	() => (widgets.data?.announcements || []).filter(item => item.is_unread).length
+);
+const announcementCountLabel = computed(() => {
+	const total = widgets.data?.announcements?.length ?? 0;
+	return `${total} ${total === 1 ? 'update' : 'updates'}`;
+});
+
+function syncCriticalIncidentsOverlayState(): void {
+	criticalIncidentsOverlayState.items = Array.isArray(criticalIncidentsList.data)
+		? criticalIncidentsList.data
+		: [];
+	criticalIncidentsOverlayState.loading = Boolean(criticalIncidentsList.loading);
+}
+
+watch(
+	() => [criticalIncidentsList.data, criticalIncidentsList.loading],
+	() => {
+		syncCriticalIncidentsOverlayState();
+	},
+	{ immediate: true }
+);
+const clinicVolume = computed<ClinicVolumeSummary | null>(
+	() => widgets.data?.clinic_volume || null
+);
+const clinicVolumePoints = computed(() => {
+	const volume = clinicVolume.value;
+	if (!volume) return [];
+	return volume.views?.[clinicVolumeView.value] || [];
+});
+const hasClinicVolumeCard = computed(() => clinicVolume.value !== null);
+const clinicVolumeIsInteractive = computed(
+	() => !!clinicVolume.value && !clinicVolume.value.error && clinicVolumePoints.value.length > 0
+);
+const staffBirthdayCount = computed(() => widgets.data?.staff_birthdays?.length ?? 0);
+const studentBirthdayCount = computed(() => widgets.data?.my_student_birthdays?.length ?? 0);
+const communityBirthdayTotal = computed(
+	() => staffBirthdayCount.value + studentBirthdayCount.value
+);
+
+watch(
+	clinicVolume,
+	volume => {
+		const defaultView = volume?.default_view;
+		if (defaultView === '3D' || defaultView === '3W') {
+			clinicVolumeView.value = defaultView;
+		}
+	},
+	{ immediate: true }
+);
+
+const filteredAnnouncements = computed<Announcement[]>(() => {
+	const all = widgets.data?.announcements || [];
+	return showUnreadOnly.value ? all.filter(item => item.is_unread) : all;
+});
+
+function getAnnouncementInteractionCapabilities(item: Announcement | null | undefined) {
+	return getAudienceInteractionCapabilities(item, {
+		viewer: ORG_COMMUNICATION_VIEWERS.STAFF,
+	});
+}
+
+function canReactToAnnouncement(item: Announcement | null | undefined): boolean {
+	return getAnnouncementInteractionCapabilities(item).canReact;
+}
+
+function canCommentOnAnnouncement(item: Announcement | null | undefined): boolean {
+	return getAnnouncementInteractionCapabilities(item).canComment;
+}
+
+function hasVisibleAnnouncementActions(item: Announcement | null | undefined): boolean {
+	return getAnnouncementInteractionCapabilities(item).hasVisibleActions;
+}
+
+watch(
+	() => widgets.data?.announcements,
+	(list: Announcement[] | undefined) => {
+		if (!list || !list.length) {
+			interactionSummaryData.value = {};
+			return;
+		}
+
+		const commNames = list.map(a => a.name).filter(Boolean);
+		if (!commNames.length) {
+			interactionSummaryData.value = {};
+			return;
+		}
+
+		void refreshInteractionSummary(commNames);
+	},
+	{ immediate: true }
+);
+
+async function refreshInteractionSummary(commNames: string[]) {
+	const names = commNames.filter(name => typeof name === 'string' && !!name.trim());
+	if (!names.length) {
+		interactionSummaryData.value = {};
+		return;
+	}
+
+	try {
+		const nextSummary = await interactionService.getOrgCommInteractionSummary({
+			comm_names: names,
+		});
+		interactionSummaryData.value = {
+			...interactionSummaryData.value,
+			...nextSummary,
+		};
+	} catch {
+		if (!interactionSummaryData.value || !Object.keys(interactionSummaryData.value).length) {
+			interactionSummaryData.value = {};
+		}
+	}
+}
+
+async function refreshInteractionThread(orgCommunication: string, opts?: { silent?: boolean }) {
+	interactionThreadLoading.value = true;
+	try {
+		interactionThreadRows.value = await interactionService.getCommunicationThread({
+			org_communication: orgCommunication,
+			limit_start: 0,
+			limit: 30,
+		});
+	} catch (err) {
+		interactionThreadRows.value = [];
+		if (!opts?.silent) {
+			const message = err instanceof Error ? err.message : 'Unable to load announcement comments.';
+			toast({
+				title: 'Unable to load comments',
+				text: message,
+				icon: 'alert-circle',
+				appearance: 'danger',
+			});
+		}
+	} finally {
+		interactionThreadLoading.value = false;
+	}
+}
+
+function getAnnouncementNames(): string[] {
+	return (widgets.data?.announcements || []).map(item => item.name).filter(Boolean);
+}
+
+function onOrgCommunicationInvalidated(payload?: { names?: string[] }) {
+	const currentNames = getAnnouncementNames();
+	if (!currentNames.length) {
+		interactionSummaryData.value = {};
+		return;
+	}
+
+	const invalidatedNames = (payload?.names || [])
+		.filter(name => typeof name === 'string' && !!name.trim())
+		.filter(name => currentNames.includes(name));
+	const namesToRefresh = invalidatedNames.length ? invalidatedNames : currentNames;
+
+	void refreshInteractionSummary(namesToRefresh);
+
+	const activeName = activeCommunication.value?.name || null;
+	if (showInteractionDrawer.value && activeName && namesToRefresh.includes(activeName)) {
+		void refreshInteractionThread(activeName, { silent: true });
+	}
+}
+
+function hasArrayData(key: ArrayWidgetKey): boolean {
+	const list = widgets.data?.[key];
+	return Array.isArray(list) && list.length > 0;
+}
+
+function openClinicHistory(): void {
+	if (!clinicVolumeIsInteractive.value) {
+		return;
+	}
+	showClinicHistory.value = true;
+}
+
+function openLog(log: StudentLogItem): void {
+	activeCommunication.value = null;
+	dialogContent.value = {
+		title: log.student_name,
+		subtitle: log.date_display,
+		content: log.full_content,
+		image: log.student_image || '',
+		imageFallback: log.student_name.substring(0, 2),
+		badge: log.log_type,
+	};
+	isContentDialogOpen.value = true;
+}
+
+function openAnnouncement(news: Announcement): void {
+	activeCommunication.value = news;
+	dialogContent.value = {
+		title: news.title,
+		subtitle: formatAnnouncementDate(news.brief_start_date),
+		content: news.content,
+		image: '',
+		imageFallback: '',
+		badge: news.type,
+	};
+	isContentDialogOpen.value = true;
+	void loadAnnouncementDetail(news.name);
+	void markAnnouncementRead(news);
+}
+
+async function loadAnnouncementDetail(name: string): Promise<void> {
+	const resolvedName = String(name || '').trim();
+	if (!resolvedName || announcementDetailLoading.value[resolvedName]) {
+		return;
+	}
+	if (announcementDetailData.value[resolvedName]) {
+		return;
+	}
+
+	announcementDetailError.value[resolvedName] = '';
+	announcementDetailLoading.value[resolvedName] = true;
+
+	try {
+		announcementDetailData.value[resolvedName] = await archiveService.getOrgCommunicationItem({
+			name: resolvedName,
+		});
+	} catch (err) {
+		const message =
+			err instanceof Error
+				? err.message
+				: 'Could not load attachments for this announcement. Close and reopen it to retry.';
+		announcementDetailError.value[resolvedName] = message;
+		toast({
+			title: 'Unable to load announcement detail',
+			text: message,
+			icon: 'alert-circle',
+			appearance: 'danger',
+		});
+	} finally {
+		announcementDetailLoading.value[resolvedName] = false;
+	}
+}
+
+function getInteractionFor(item: Announcement): InteractionSummary {
+	const summary = interactionSummaryData.value?.[item.name];
+	if (!summary) {
+		return {
+			counts: {},
+			reaction_counts: {},
+			reactions_total: 0,
+			comments_total: 0,
+			self: null,
+		};
+	}
+	return summary;
+}
+
+function getInteractionStatsFor(item: Announcement) {
+	return getInteractionStats(getInteractionFor(item));
+}
+
+function openInteractionThread(item: Announcement): void {
+	if (!canCommentOnAnnouncement(item)) {
+		toast({
+			title: 'Comments unavailable',
+			text: 'Comments are not available for this announcement in this interaction mode.',
+			icon: 'info',
+		});
+		return;
+	}
+
+	activeCommunication.value = item;
+	newComment.value = '';
+
+	const openDrawer = () => {
+		showInteractionDrawer.value = true;
+		void refreshInteractionThread(item.name);
+	};
+
+	if (isContentDialogOpen.value) {
+		isContentDialogOpen.value = false;
+		void nextTick().then(openDrawer);
+		return;
+	}
+
+	openDrawer();
+}
+
+function formatThreadTimestamp(value?: string | null): string {
+	if (!value) return '';
+	return formatLocalizedDateTime(value, {
+		day: '2-digit',
+		month: 'short',
+		fallback: value,
+	});
+}
+
+async function markAnnouncementRead(item: Announcement): Promise<void> {
+	const commName = String(item?.name || '').trim();
+	if (!commName || !item.is_unread || readMarking.value[commName]) {
+		return;
+	}
+
+	readMarking.value[commName] = true;
+	try {
+		await interactionService.markOrgCommunicationRead({ org_communication: commName });
+		item.is_unread = false;
+	} catch (err) {
+		const message = err instanceof Error ? err.message : 'Unable to mark this message as read.';
+		toast({
+			title: 'Unable to update read state',
+			text: message,
+			icon: 'alert-circle',
+			appearance: 'danger',
+		});
+	} finally {
+		readMarking.value[commName] = false;
+	}
+}
+
+async function acknowledgeAnnouncement(item: Announcement): Promise<void> {
+	if (!item?.name) {
+		toast({
+			title: 'Unable to save acknowledgement',
+			text: 'Please try again.',
+			icon: 'alert-circle',
+			appearance: 'danger',
+		});
+		return;
+	}
+	if (!canReactToAnnouncement(item)) {
+		toast({
+			title: 'Reactions unavailable',
+			text: 'Reactions are disabled for this announcement.',
+			icon: 'info',
+		});
+		return;
+	}
+
+	try {
+		await interactionService.reactToOrgCommunication({
+			org_communication: item.name,
+			reaction_code: 'like',
+			surface: ORG_SURFACES.MORNING_BRIEF,
+		});
+	} catch (err) {
+		const message = err instanceof Error ? err.message : 'Unable to save acknowledgement.';
+		toast({
+			title: 'Unable to save acknowledgement',
+			text: message,
+			icon: 'alert-circle',
+			appearance: 'danger',
+		});
+	}
+}
+
+async function submitComment(): Promise<void> {
+	if (!activeCommunication.value?.name) {
+		toast({
+			title: 'Select an announcement',
+			text: 'Choose an announcement before posting a comment.',
+			icon: 'info',
+		});
+		return;
+	}
+	if (!canCommentOnAnnouncement(activeCommunication.value)) {
+		toast({
+			title: 'Comments unavailable',
+			text: 'Comments are not available for this announcement in this interaction mode.',
+			icon: 'info',
+		});
+		return;
+	}
+
+	const note = newComment.value.trim();
+	if (!note) {
+		toast({
+			title: 'Comment required',
+			text: 'Write a comment before posting.',
+			icon: 'info',
+		});
+		return;
+	}
+
+	try {
+		await interactionService.postOrgCommunicationComment({
+			org_communication: activeCommunication.value.name,
+			note,
+			surface: ORG_SURFACES.MORNING_BRIEF,
+		});
+		newComment.value = '';
+	} catch (err) {
+		const message = err instanceof Error ? err.message : 'Unable to post comment.';
+		toast({
+			title: 'Unable to post comment',
+			text: message,
+			icon: 'alert-circle',
+			appearance: 'danger',
+		});
+	}
+}
+
+async function reactToAnnouncement(item: Announcement, reaction: ReactionCode): Promise<void> {
+	if (!item?.name) {
+		toast({
+			title: 'Unable to save reaction',
+			text: 'Please try again.',
+			icon: 'alert-circle',
+			appearance: 'danger',
+		});
+		return;
+	}
+	if (!canReactToAnnouncement(item)) {
+		toast({
+			title: 'Reactions unavailable',
+			text: 'Reactions are disabled for this announcement.',
+			icon: 'info',
+		});
+		return;
+	}
+
+	if (reaction === 'question' && canCommentOnAnnouncement(item)) {
+		openInteractionThread(item);
+		return;
+	}
+
+	try {
+		await interactionService.reactToOrgCommunication({
+			org_communication: item.name,
+			reaction_code: reaction,
+			surface: ORG_SURFACES.MORNING_BRIEF,
+		});
+	} catch (err) {
+		const message = err instanceof Error ? err.message : 'Unable to save reaction.';
+		toast({
+			title: 'Unable to save reaction',
+			text: message,
+			icon: 'alert-circle',
+			appearance: 'danger',
+		});
+	}
+}
+
+function openPolicyInformOverlay(payload: PolicyInformLinkPayload): void {
+	const policyVersion = String(payload?.policyVersion || '').trim();
+	if (!policyVersion) return;
+	const communicationName =
+		String(payload?.orgCommunication || '').trim() ||
+		String(activeCommunication.value?.name || '').trim() ||
+		null;
+	isContentDialogOpen.value = false;
+	overlay.open('staff-policy-inform', {
+		policyVersion,
+		orgCommunication: communicationName,
+	});
+}
+
+function openCriticalIncidentsOverlay(): void {
+	const shouldFetch = !criticalIncidentsList.data && !criticalIncidentsList.loading;
+	if (shouldFetch) {
+		criticalIncidentsOverlayState.loading = true;
+		void criticalIncidentsList.fetch();
+	} else {
+		syncCriticalIncidentsOverlayState();
+	}
+
+	overlay.open('critical-incidents-list', criticalIncidentsOverlayState);
+}
+
+const formattedDate = computed<string>(() => widgets.data?.today_label ?? '');
+
+function formatAnnouncementDate(value?: string | null): string {
+	const raw = String(value || '').trim();
+	if (!raw) return 'Current briefing';
+
+	const normalized = raw.length <= 10 ? `${raw}T12:00:00` : raw;
+	const parsed = new Date(normalized);
+	if (Number.isNaN(parsed.getTime())) {
+		return raw;
+	}
+
+	return new Intl.DateTimeFormat('en-US', {
+		day: '2-digit',
+		month: 'short',
+		year: 'numeric',
+	}).format(parsed);
+}
+
+function parseBriefDate(value?: string | null): Date | null {
+	const raw = String(value || '').trim();
+	const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+	if (!match) return null;
+
+	const year = Number.parseInt(match[1] || '', 10);
+	const month = Number.parseInt(match[2] || '', 10);
+	const day = Number.parseInt(match[3] || '', 10);
+	if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+	if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+	return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+}
+
+function formatOrdinalDay(day: number): string {
+	if (day % 100 >= 11 && day % 100 <= 13) return `${day}th`;
+	switch (day % 10) {
+		case 1:
+			return `${day}st`;
+		case 2:
+			return `${day}nd`;
+		case 3:
+			return `${day}rd`;
+		default:
+			return `${day}th`;
+	}
+}
+
+function formatBriefWindowDate(value?: string | null): string {
+	const parsed = parseBriefDate(value);
+	if (!parsed) return String(value || '').trim();
+
+	const weekdayLabels = ['Sun.', 'Mon.', 'Tues.', 'Wed.', 'Thurs.', 'Fri.', 'Sat.'];
+	const monthLabel = new Intl.DateTimeFormat('en-US', {
+		month: 'long',
+		timeZone: 'UTC',
+	}).format(parsed);
+
+	return `${weekdayLabels[parsed.getUTCDay()]} ${formatOrdinalDay(parsed.getUTCDate())} ${monthLabel}`;
+}
+
+function formatAnnouncementWindow(startValue?: string | null, endValue?: string | null): string {
+	const startLabel = formatBriefWindowDate(startValue);
+	const endLabel = formatBriefWindowDate(endValue);
+
+	if (startLabel && endLabel && startLabel !== endLabel) {
+		return `Appears ${startLabel} until ${endLabel}`;
+	}
+	if (startLabel) return `Appears ${startLabel}`;
+	if (endLabel) return `Appears until ${endLabel}`;
+	return '';
+}
+
+function getPriorityClasses(priority: OrgPriority): string {
+	switch (priority) {
+		case 'Critical':
+			return 'bg-flame text-[rgb(var(--surface-strong-rgb)/1)] ring-2 ring-flame/30';
+		case 'High':
+			return 'bg-jacaranda/5 ring-1 ring-jacaranda/30';
+		case 'Low':
+			return 'bg-surface-soft text-slate-token/80';
+		default:
+			return 'bg-surface-soft text-ink';
+	}
+}
+
+onMounted(() => {
+	disposeOrgCommunicationInvalidate = uiSignals.subscribe(
+		SIGNAL_ORG_COMMUNICATION_INVALIDATE,
+		onOrgCommunicationInvalidated
+	);
+});
+
+onBeforeUnmount(() => {
+	if (disposeOrgCommunicationInvalidate) disposeOrgCommunicationInvalidate();
+});
+</script>

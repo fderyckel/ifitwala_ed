@@ -1,0 +1,575 @@
+# Copyright (c) 2026, François de Ryckel and Contributors
+# See license.txt
+# ifitwala_ed/governance/doctype/policy_version/test_policy_version.py
+
+from unittest.mock import patch
+
+import frappe
+from frappe.tests.utils import FrappeTestCase
+from frappe.utils import nowdate
+
+from ifitwala_ed.governance.doctype.policy_version.policy_version import approved_by_user_query
+from ifitwala_ed.governance.policy_utils import ensure_policy_audience_records
+from ifitwala_ed.tests.factories.users import make_user
+
+
+class TestPolicyVersionApprovedBy(FrappeTestCase):
+    def setUp(self):
+        frappe.set_user("Administrator")
+        ensure_policy_audience_records()
+        self.created: list[tuple[str, str]] = []
+
+        self.organization = self._make_organization("PV Org")
+        self.root_school = self._make_school(self.organization, "PV Root School", is_group=1)
+        self.child_school = self._make_school(self.organization, "PV Child School", parent_school=self.root_school)
+        self.sibling_school = self._make_school(self.organization, "PV Sibling School", parent_school=self.root_school)
+        self.policy = self._make_policy(
+            organization=self.organization,
+            school=self.child_school,
+        )
+
+        self.child_writer = self._make_user_with_employee(
+            role="Organization Admin",
+            school=self.child_school,
+            prefix="child-writer",
+        )
+        self.parent_writer = self._make_user_with_employee(
+            role="Organization Admin",
+            school=self.root_school,
+            prefix="parent-writer",
+        )
+        self.sibling_writer = self._make_user_with_employee(
+            role="Organization Admin",
+            school=self.sibling_school,
+            prefix="sibling-writer",
+        )
+        self.org_scope_admin = self._make_user_with_employee_for_org(
+            role="Academic Admin",
+            organization=self.organization,
+            school=None,
+            prefix="org-scope-admin",
+        )
+        self.no_write_user = self._make_user_with_employee(
+            role="Employee",
+            school=self.child_school,
+            prefix="no-write",
+        )
+
+    def tearDown(self):
+        frappe.set_user("Administrator")
+        for doctype, name in reversed(self.created):
+            self._delete_created_doc(doctype, name)
+        super().tearDown()
+
+    def _delete_created_doc(self, doctype: str, name: str):
+        if not frappe.db.exists(doctype, name):
+            return
+        if doctype == "Policy Acknowledgement":
+            frappe.db.delete("Policy Acknowledgement", {"name": name})
+            return
+        frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
+
+    def test_approved_by_allows_same_school_and_parent_school_writer(self):
+        version = self._make_policy_version(approved_by=self.child_writer)
+        self.assertEqual(version.approved_by, self.child_writer)
+
+        version.approved_by = self.parent_writer
+        version.save(ignore_permissions=True)
+        self.assertEqual(version.approved_by, self.parent_writer)
+
+    def test_approved_by_allows_org_scope_admin_without_school(self):
+        version = self._make_policy_version(approved_by=self.child_writer)
+        version.approved_by = self.org_scope_admin
+
+        version.save(ignore_permissions=True)
+        self.assertEqual(version.approved_by, self.org_scope_admin)
+
+    def test_approved_by_rejects_user_without_write_access(self):
+        with self.assertRaises(frappe.PermissionError):
+            self._make_policy_version(approved_by=self.no_write_user)
+
+    def test_approved_by_user_query_limits_to_scope_and_write_access(self):
+        rows = approved_by_user_query(
+            doctype="User",
+            txt="",
+            searchfield="name",
+            start=0,
+            page_len=50,
+            filters={"institutional_policy": self.policy.name},
+        )
+        names = {row[0] for row in rows}
+
+        self.assertIn(self.child_writer, names)
+        self.assertIn(self.parent_writer, names)
+        self.assertIn(self.sibling_writer, names)
+        self.assertIn(self.org_scope_admin, names)
+        self.assertNotIn(self.no_write_user, names)
+
+    def test_parent_org_hr_manager_can_create_policy_version_for_descendant_policy(self):
+        parent_org = self._make_organization("PV Parent", is_group=1)
+        child_org = self._make_organization("PV Child", parent=parent_org)
+        child_school = self._make_school(child_org, "PV Child Org School", is_group=1)
+        child_policy = self._make_policy(organization=child_org, school=child_school)
+        parent_hr_user = self._make_user_with_employee_for_org(
+            role="HR Manager",
+            organization=parent_org,
+            school=None,
+            prefix="parent-hr-writer",
+        )
+
+        frappe.set_user(parent_hr_user)
+        version = frappe.get_doc(
+            {
+                "doctype": "Policy Version",
+                "institutional_policy": child_policy.name,
+                "version_label": f"v-{frappe.generate_hash(length=6)}",
+                "policy_text": "<p>Descendant org policy text.</p>",
+                "is_active": 0,
+            }
+        ).insert()
+        self.created.append(("Policy Version", version.name))
+
+        self.assertEqual(version.institutional_policy, child_policy.name)
+
+    def _make_organization(self, prefix: str, parent: str | None = None, is_group: int = 0) -> str:
+        doc = frappe.get_doc(
+            {
+                "doctype": "Organization",
+                "organization_name": f"{prefix}-{frappe.generate_hash(length=8)}",
+                "abbr": f"O{frappe.generate_hash(length=5)}",
+                "parent_organization": parent,
+                "is_group": int(is_group),
+            }
+        )
+        doc.insert(ignore_permissions=True)
+        self.created.append(("Organization", doc.name))
+        return doc.name
+
+    def _make_school(
+        self,
+        organization: str,
+        name_prefix: str,
+        parent_school: str | None = None,
+        is_group: int = 0,
+    ) -> str:
+        doc = frappe.get_doc(
+            {
+                "doctype": "School",
+                "school_name": f"{name_prefix}-{frappe.generate_hash(length=8)}",
+                "abbr": f"S{frappe.generate_hash(length=4)}",
+                "organization": organization,
+                "parent_school": parent_school,
+                "is_group": int(is_group),
+            }
+        )
+        doc.insert(ignore_permissions=True)
+        self.created.append(("School", doc.name))
+        return doc.name
+
+    def _make_policy(self, organization: str, school: str):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Institutional Policy",
+                "policy_key": f"approved_by_scope_{frappe.generate_hash(length=8)}",
+                "policy_title": f"Approved By Scope Policy {frappe.generate_hash(length=8)}",
+                "policy_category": "Operations",
+                "applies_to": [{"policy_audience": "Staff"}],
+                "organization": organization,
+                "school": school,
+                "is_active": 1,
+            }
+        )
+        doc.insert(ignore_permissions=True)
+        self.created.append(("Institutional Policy", doc.name))
+        return doc
+
+    def _make_user_with_employee(self, *, role: str, school: str, prefix: str) -> str:
+        return self._make_user_with_employee_for_org(
+            role=role,
+            organization=self.organization,
+            school=school,
+            prefix=prefix,
+        )
+
+    def _make_user_with_employee_for_org(self, *, role: str, organization: str, school: str | None, prefix: str) -> str:
+        user = make_user(
+            email=f"{prefix}-{frappe.generate_hash(length=8)}@ifitwala.test",
+            roles=[role],
+        )
+        self.created.append(("User", user.name))
+
+        employee_doc = frappe.get_doc(
+            {
+                "doctype": "Employee",
+                "employee_first_name": "Policy",
+                "employee_last_name": f"{prefix}-{frappe.generate_hash(length=5)}",
+                "employee_gender": "Prefer not to say",
+                "employee_professional_email": user.name,
+                "date_of_joining": nowdate(),
+                "employment_status": "Active",
+                "organization": organization,
+                "user_id": user.name,
+            }
+        )
+        if school:
+            employee_doc.school = school
+        employee = employee_doc.insert(ignore_permissions=True)
+        self.created.append(("Employee", employee.name))
+        return user.name
+
+    def _make_policy_version(self, *, approved_by: str):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Policy Version",
+                "institutional_policy": self.policy.name,
+                "version_label": f"v-{frappe.generate_hash(length=6)}",
+                "policy_text": "<p>Approved By scope test policy text.</p>",
+                "approved_by": approved_by,
+                "is_active": 0,
+            }
+        )
+        doc.insert(ignore_permissions=True)
+        self.created.append(("Policy Version", doc.name))
+        return doc
+
+
+class TestPolicyVersionAmendments(FrappeTestCase):
+    def setUp(self):
+        frappe.set_user("Administrator")
+        ensure_policy_audience_records()
+        self.created: list[tuple[str, str]] = []
+
+        self.organization = self._make_organization("PV Amend Org")
+        self.school = self._make_school(self.organization, "PV Amend School")
+        self.policy = self._make_policy(
+            organization=self.organization,
+            school=self.school,
+            policy_key_prefix="amend_policy",
+        )
+        self.staff_user = make_user(
+            email=f"pv-amend-{frappe.generate_hash(length=8)}@ifitwala.test",
+            roles=["Academic Staff"],
+        )
+        self.created.append(("User", self.staff_user.name))
+        self.employee = self._make_employee(self.staff_user.name)
+
+    def tearDown(self):
+        frappe.set_user("Administrator")
+        for doctype, name in reversed(self.created):
+            self._delete_created_doc(doctype, name)
+        super().tearDown()
+
+    def _delete_created_doc(self, doctype: str, name: str):
+        if not frappe.db.exists(doctype, name):
+            return
+        if doctype == "Policy Acknowledgement":
+            frappe.db.delete("Policy Acknowledgement", {"name": name})
+            return
+        frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
+
+    def test_first_policy_version_allows_blank_amended_from(self):
+        version = self._make_policy_version(
+            policy=self.policy.name,
+            version_label="v1",
+            policy_text="<p>Initial staff policy text.</p>",
+            is_active=0,
+        )
+        self.assertFalse(version.based_on_version)
+        self.assertFalse(version.diff_html)
+        self.assertFalse(version.change_stats)
+
+    def test_new_policy_version_requires_amended_from_after_first(self):
+        self._make_policy_version(
+            policy=self.policy.name,
+            version_label="v1",
+            policy_text="<p>Initial policy text.</p>",
+            is_active=0,
+        )
+
+        with self.assertRaises(frappe.ValidationError):
+            self._make_policy_version(
+                policy=self.policy.name,
+                version_label="v2",
+                policy_text="<p>Amended policy text.</p>",
+                is_active=0,
+            )
+
+    def test_change_summary_required_for_amendment(self):
+        base = self._make_policy_version(
+            policy=self.policy.name,
+            version_label="v1",
+            policy_text="<p>Initial policy text.</p>",
+            is_active=0,
+        )
+
+        amended = self._make_policy_version(
+            policy=self.policy.name,
+            version_label="v2",
+            policy_text="<p>Initial policy text.</p><p>Added detail.</p>",
+            is_active=0,
+            based_on_version=base.name,
+        )
+
+        amended.is_active = 1
+        with self.assertRaises(frappe.ValidationError):
+            amended.save(ignore_permissions=True)
+
+    def test_amended_version_generates_diff_and_stats(self):
+        base = self._make_policy_version(
+            policy=self.policy.name,
+            version_label="v1",
+            policy_text="<p>Initial policy text.</p>",
+            is_active=0,
+        )
+
+        amended = self._make_policy_version(
+            policy=self.policy.name,
+            version_label="v2",
+            policy_text="<p>Initial policy text updated.</p><p>Added new section.</p>",
+            is_active=0,
+            based_on_version=base.name,
+            change_summary="Updated opening paragraph and added a new section.",
+        )
+
+        self.assertIn("policy-diff", amended.diff_html or "")
+        stats = frappe.parse_json(amended.change_stats or "{}") or {}
+        self.assertIsInstance(stats, dict)
+        self.assertGreaterEqual(int(stats.get("added") or 0) + int(stats.get("modified") or 0), 1)
+
+    def test_amended_from_must_match_same_policy(self):
+        policy_two = self._make_policy(
+            organization=self.organization,
+            school=self.school,
+            policy_key_prefix="other_policy",
+        )
+        base_one = self._make_policy_version(
+            policy=self.policy.name,
+            version_label="v1",
+            policy_text="<p>Policy one text.</p>",
+            is_active=0,
+        )
+        self._make_policy_version(
+            policy=policy_two.name,
+            version_label="v1",
+            policy_text="<p>Policy two text.</p>",
+            is_active=0,
+        )
+
+        with self.assertRaises(frappe.ValidationError):
+            self._make_policy_version(
+                policy=policy_two.name,
+                version_label="v2",
+                policy_text="<p>Policy two amended text.</p>",
+                is_active=0,
+                based_on_version=base_one.name,
+                change_summary="Cross-policy link should fail.",
+            )
+
+    def test_policy_text_can_change_while_draft_without_ack(self):
+        version = self._make_policy_version(
+            policy=self.policy.name,
+            version_label="v1",
+            policy_text="<p>Draft text one.</p>",
+            is_active=0,
+        )
+
+        version.policy_text = "<p>Draft text two.</p>"
+        version.save(ignore_permissions=True)
+        self.assertEqual(version.policy_text, "<p>Draft text two.</p>")
+        self.assertEqual(int(version.text_locked or 0), 0)
+
+    def test_policy_text_is_sanitized_before_save(self):
+        version = self._make_policy_version(
+            policy=self.policy.name,
+            version_label="v1",
+            policy_text='<h1>Policy</h1><p>Allowed</p><script>alert(1)</script><img src="x" onerror="alert(2)">',
+            is_active=0,
+        )
+
+        self.assertIn("<h2>Policy</h2>", version.policy_text)
+        self.assertIn("<p>Allowed</p>", version.policy_text)
+        self.assertNotIn("<script", version.policy_text)
+        self.assertNotIn("onerror", version.policy_text)
+
+    def test_policy_text_locks_after_activation(self):
+        version = self._make_policy_version(
+            policy=self.policy.name,
+            version_label="v1",
+            policy_text="<p>Draft text.</p>",
+            is_active=0,
+        )
+
+        version.is_active = 1
+        version.save(ignore_permissions=True)
+        self.assertEqual(int(version.text_locked or 0), 1)
+
+        version.policy_text = "<p>Edited after activation.</p>"
+        with self.assertRaises(frappe.ValidationError):
+            version.save(ignore_permissions=True)
+
+    def test_guardian_acknowledgement_mode_can_change_after_activation_before_guardian_ack(self):
+        version = self._make_policy_version(
+            policy=self.policy.name,
+            version_label="v1",
+            policy_text="<p>Active text.</p>",
+            is_active=1,
+        )
+
+        version.guardian_acknowledgement_mode = "Child Acknowledgement"
+        version.save(ignore_permissions=True)
+
+        self.assertEqual(version.guardian_acknowledgement_mode, "Child Acknowledgement")
+
+    def test_guardian_acknowledgement_mode_locks_after_guardian_ack(self):
+        version = self._make_policy_version(
+            policy=self.policy.name,
+            version_label="v1",
+            policy_text="<p>Active text.</p>",
+            is_active=1,
+        )
+
+        with patch.object(type(version), "_has_guardian_acknowledgements", return_value=True):
+            version.guardian_acknowledgement_mode = "Child Acknowledgement"
+            with self.assertRaises(frappe.ValidationError):
+                version.save(ignore_permissions=True)
+
+    def test_acknowledgement_clauses_lock_after_activation(self):
+        version = self._make_policy_version(
+            policy=self.policy.name,
+            version_label="v1",
+            policy_text="<p>Draft text.</p>",
+            acknowledgement_clauses=[{"clause_text": "I accept the handbook terms.", "is_required": 1}],
+            is_active=0,
+        )
+
+        version.acknowledgement_clauses[0].clause_text = "I accept the updated handbook terms."
+        version.save(ignore_permissions=True)
+
+        version.is_active = 1
+        version.save(ignore_permissions=True)
+
+        version.acknowledgement_clauses[0].clause_text = "Edited after activation."
+        with self.assertRaises(frappe.ValidationError):
+            version.save(ignore_permissions=True)
+
+    def test_policy_text_locks_after_acknowledgement(self):
+        version = self._make_policy_version(
+            policy=self.policy.name,
+            version_label="v1",
+            policy_text="<p>Active text.</p>",
+            is_active=1,
+        )
+
+        ack = frappe.get_doc(
+            {
+                "doctype": "Policy Acknowledgement",
+                "policy_version": version.name,
+                "acknowledged_by": self.staff_user.name,
+                "acknowledged_for": "Staff",
+                "context_doctype": "Employee",
+                "context_name": self.employee.name,
+            }
+        )
+        frappe.set_user(self.staff_user.name)
+        ack.insert(ignore_permissions=True)
+        frappe.set_user("Administrator")
+        self.created.append(("Policy Acknowledgement", ack.name))
+
+        version.is_active = 0
+        version.save(ignore_permissions=True)
+        self.assertEqual(int(version.text_locked or 0), 1)
+
+        version.policy_text = "<p>Edited after acknowledgement.</p>"
+        with self.assertRaises(frappe.ValidationError):
+            version.save(ignore_permissions=True)
+
+    def _make_organization(self, prefix: str) -> str:
+        doc = frappe.get_doc(
+            {
+                "doctype": "Organization",
+                "organization_name": f"{prefix}-{frappe.generate_hash(length=8)}",
+                "abbr": f"O{frappe.generate_hash(length=5)}",
+            }
+        )
+        doc.insert(ignore_permissions=True)
+        self.created.append(("Organization", doc.name))
+        return doc.name
+
+    def _make_school(
+        self,
+        organization: str,
+        name_prefix: str,
+    ) -> str:
+        doc = frappe.get_doc(
+            {
+                "doctype": "School",
+                "school_name": f"{name_prefix}-{frappe.generate_hash(length=8)}",
+                "abbr": f"S{frappe.generate_hash(length=4)}",
+                "organization": organization,
+            }
+        )
+        doc.insert(ignore_permissions=True)
+        self.created.append(("School", doc.name))
+        return doc.name
+
+    def _make_policy(self, *, organization: str, school: str, policy_key_prefix: str):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Institutional Policy",
+                "policy_key": f"{policy_key_prefix}_{frappe.generate_hash(length=8)}",
+                "policy_title": f"Staff Policy {frappe.generate_hash(length=4)}",
+                "policy_category": "Operations",
+                "applies_to": [{"policy_audience": "Staff"}],
+                "organization": organization,
+                "school": school,
+                "is_active": 1,
+            }
+        )
+        doc.insert(ignore_permissions=True)
+        self.created.append(("Institutional Policy", doc.name))
+        return doc
+
+    def _make_employee(self, user: str):
+        employee = frappe.get_doc(
+            {
+                "doctype": "Employee",
+                "employee_first_name": "Policy",
+                "employee_last_name": f"Policy-{frappe.generate_hash(length=5)}",
+                "employee_gender": "Prefer not to say",
+                "employee_professional_email": user,
+                "date_of_joining": nowdate(),
+                "employment_status": "Active",
+                "organization": self.organization,
+                "school": self.school,
+                "user_id": user,
+            }
+        ).insert(ignore_permissions=True)
+        self.created.append(("Employee", employee.name))
+        return employee
+
+    def _make_policy_version(
+        self,
+        *,
+        policy: str,
+        version_label: str,
+        policy_text: str,
+        is_active: int,
+        based_on_version: str | None = None,
+        change_summary: str | None = None,
+        acknowledgement_clauses: list[dict] | None = None,
+    ):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Policy Version",
+                "institutional_policy": policy,
+                "version_label": version_label,
+                "policy_text": policy_text,
+                "acknowledgement_clauses": acknowledgement_clauses or [],
+                "is_active": is_active,
+                "based_on_version": based_on_version,
+                "change_summary": change_summary,
+            }
+        )
+        doc.insert(ignore_permissions=True)
+        self.created.append(("Policy Version", doc.name))
+        return doc

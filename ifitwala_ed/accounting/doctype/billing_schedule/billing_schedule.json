@@ -1,0 +1,152 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "BSCH-.#####",
+ "creation": "2026-04-11 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "organization",
+  "program_enrollment",
+  "program_offering",
+  "academic_year",
+  "billing_plan",
+  "student",
+  "account_holder",
+  "status",
+  "rows",
+  "total_rows",
+  "pending_rows",
+  "invoiced_rows"
+ ],
+ "fields": [
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Organization",
+   "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "fieldname": "program_enrollment",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Program Enrollment",
+   "options": "Program Enrollment",
+   "reqd": 1
+  },
+  {
+   "fieldname": "program_offering",
+   "fieldtype": "Link",
+   "label": "Program Offering",
+   "options": "Program Offering",
+   "reqd": 1
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year",
+   "reqd": 1
+  },
+  {
+   "fieldname": "billing_plan",
+   "fieldtype": "Link",
+   "label": "Program Billing Plan",
+   "options": "Program Billing Plan",
+   "reqd": 1
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student",
+   "reqd": 1
+  },
+  {
+   "fieldname": "account_holder",
+   "fieldtype": "Link",
+   "label": "Account Holder",
+   "options": "Account Holder",
+   "reqd": 1
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Pending\nInvoiced\nAdjusted\nCancelled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rows",
+   "fieldtype": "Table",
+   "label": "Rows",
+   "options": "Billing Schedule Row"
+  },
+  {
+   "fieldname": "total_rows",
+   "fieldtype": "Int",
+   "label": "Total Rows",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pending_rows",
+   "fieldtype": "Int",
+   "label": "Pending Rows",
+   "read_only": 1
+  },
+  {
+   "fieldname": "invoiced_rows",
+   "fieldtype": "Int",
+   "label": "Invoiced Rows",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-11 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Accounting",
+ "name": "Billing Schedule",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

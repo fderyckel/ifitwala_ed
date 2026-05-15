@@ -1,0 +1,461 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "INQ-.YY.-.MM.-.DD.-.###",
+ "creation": "2025-06-23 20:28:16.109115",
+ "description": "Capture, assign, and track inquiry follow-up with SLA visibility, assignment ownership, and conversion into Student Applicant.",
+ "doctype": "DocType",
+ "documentation": "https://ifitwala.com/docs/en/inquiry/",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_9dhi",
+  "first_name",
+  "email",
+  "contact",
+  "column_break_dcq4",
+  "last_name",
+  "phone_number",
+  "section_break_dnwn",
+  "type_of_inquiry",
+  "source",
+  "organization",
+  "school",
+  "column_break_hdcf",
+  "preferred_contact_channel",
+  "preferred_contact_time",
+  "preferred_language",
+  "consent_to_contact",
+  "admission_interest_section",
+  "student_first_name",
+  "student_last_name",
+  "column_break_admission_interest",
+  "intended_academic_year",
+  "grade_level_interest",
+  "program_interest",
+  "current_family_section",
+  "student_name_or_id",
+  "relationship_to_student",
+  "partnership_section",
+  "organization_name",
+  "partnership_context",
+  "inquiry_message_section",
+  "message",
+  "section_break_olba",
+  "workflow_state",
+  "next_action_note",
+  "archive_reason",
+  "sla_status",
+  "assigned_to",
+  "assignment_lane",
+  "student_applicant",
+  "column_break_w8a0",
+  "submitted_at",
+  "first_contact_due_on",
+  "followup_due_on",
+  "first_contacted_at",
+  "assigned_at",
+  "intake_assigned_at",
+  "resolver_assigned_at",
+  "response_hours_first_contact",
+  "response_hours_from_assign",
+  "intake_response_hours",
+  "resolver_response_hours"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_9dhi",
+   "fieldtype": "Section Break",
+   "label": "Personal Information"
+  },
+  {
+   "fieldname": "first_name",
+   "fieldtype": "Data",
+   "label": "First Name"
+  },
+  {
+   "fieldname": "last_name",
+   "fieldtype": "Data",
+   "label": "Last Name"
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email",
+   "options": "Email",
+   "search_index": 1
+  },
+  {
+   "fieldname": "type_of_inquiry",
+   "fieldtype": "Select",
+   "label": "Type of Inquiry",
+   "options": "Admission\nCurrent Family\nGeneral Inquiry\nPartnership / Agent\nOther"
+  },
+  {
+   "fieldname": "source",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Source",
+   "options": "\nWebsite\nEmail\nPhone\nWhatsApp\nLine\nFacebook\nInstagram\nOpen Day\nWalk-in\nCommunity Fair\nReferral\nAgent\nOther",
+   "search_index": 1
+  },
+  {
+   "fieldname": "message",
+   "fieldtype": "Text",
+   "label": "Message"
+  },
+  {
+   "description": "Internal working note for the next planned follow-up action. This is separate from the original inquiry message.",
+   "fieldname": "next_action_note",
+   "fieldtype": "Small Text",
+   "label": "Next Action Note"
+  },
+  {
+   "default": "Now",
+   "fieldname": "submitted_at",
+   "fieldtype": "Datetime",
+   "label": "submitted_at",
+   "read_only": 1
+  },
+  {
+   "default": "New",
+   "fieldname": "workflow_state",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Workflow State",
+   "options": "New\nAssigned\nContacted\nQualified\nArchived",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "depends_on": "eval:doc.workflow_state=='Archived'",
+   "description": "Required when archiving an Inquiry so closed leads do not disappear without context.",
+   "fieldname": "archive_reason",
+   "fieldtype": "Small Text",
+   "label": "Archive Reason"
+  },
+  {
+   "fieldname": "sla_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "SLA Status",
+   "options": "\ud83d\udd34 Overdue\n\ud83d\udfe1 Due Today\n\u26aa Upcoming\n\u2705 On Track",
+   "read_only": 1
+  },
+  {
+   "description": "Latest workflow assignee. Change ownership through Assign/Reassign actions so scoped validation, ToDo creation, SLA timestamps, and lane analytics stay consistent.",
+   "fieldname": "assigned_to",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Assigned To",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "assignment_lane",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Assignment Lane",
+   "options": "Admission\nStaff",
+   "read_only": 1
+  },
+  {
+   "fieldname": "phone_number",
+   "fieldtype": "Data",
+   "label": "Phone Number",
+   "options": "Phone",
+   "search_index": 1
+  },
+  {
+   "fieldname": "contact",
+   "fieldtype": "Link",
+   "label": "Contact",
+   "options": "Contact",
+   "read_only": 1
+  },
+  {
+   "fieldname": "student_applicant",
+   "fieldtype": "Link",
+   "label": "Student Applicant",
+   "options": "Student Applicant",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_dcq4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_olba",
+   "fieldtype": "Section Break",
+   "label": "Workflows Indicators"
+  },
+  {
+   "fieldname": "column_break_w8a0",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_dnwn",
+   "fieldtype": "Section Break",
+   "label": "Inquiry Info"
+  },
+  {
+   "fieldname": "first_contact_due_on",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "First Contact Deadline",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "followup_due_on",
+   "fieldtype": "Date",
+   "label": "Follow-up Deadline",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "first_contacted_at",
+   "fieldtype": "Datetime",
+   "label": "First Contacted At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "assigned_at",
+   "fieldtype": "Datetime",
+   "label": "Assigned At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "intake_assigned_at",
+   "fieldtype": "Datetime",
+   "label": "Intake Assigned At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "resolver_assigned_at",
+   "fieldtype": "Datetime",
+   "label": "Resolver Assigned At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "response_hours_first_contact",
+   "fieldtype": "Float",
+   "label": "Time after first contact",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "response_hours_from_assign",
+   "fieldtype": "Float",
+   "label": "time after assigned",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "intake_response_hours",
+   "fieldtype": "Float",
+   "label": "Intake Response Hours",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "resolver_response_hours",
+   "fieldtype": "Float",
+   "label": "Resolver Response Hours",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "description": "For which organization is the inquiry about",
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "label": "Organization",
+   "options": "Organization"
+  },
+  {
+   "description": "Is this inquiry in regards to a particular school ?",
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "preferred_contact_channel",
+   "fieldtype": "Select",
+   "label": "Preferred Contact Channel",
+   "options": "\nEmail\nPhone\nWhatsApp\nLine\nOther"
+  },
+  {
+   "fieldname": "preferred_contact_time",
+   "fieldtype": "Data",
+   "label": "Preferred Contact Time"
+  },
+  {
+   "fieldname": "preferred_language",
+   "fieldtype": "Data",
+   "label": "Preferred Language"
+  },
+  {
+   "default": "0",
+   "fieldname": "consent_to_contact",
+   "fieldtype": "Check",
+   "label": "Consent to Contact"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Admission'",
+   "fieldname": "admission_interest_section",
+   "fieldtype": "Section Break",
+   "label": "Admission Interest"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Admission'",
+   "fieldname": "student_first_name",
+   "fieldtype": "Data",
+   "label": "Student First Name"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Admission'",
+   "fieldname": "student_last_name",
+   "fieldtype": "Data",
+   "label": "Student Last Name"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Admission'",
+   "fieldname": "column_break_admission_interest",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Admission'",
+   "fieldname": "intended_academic_year",
+   "fieldtype": "Link",
+   "label": "Intended Academic Year",
+   "options": "Academic Year"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Admission'",
+   "fieldname": "grade_level_interest",
+   "fieldtype": "Data",
+   "label": "Grade Level Interest"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Admission'",
+   "fieldname": "program_interest",
+   "fieldtype": "Link",
+   "label": "Program Interest",
+   "options": "Program"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Current Family'",
+   "fieldname": "current_family_section",
+   "fieldtype": "Section Break",
+   "label": "Current Family Context"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Current Family'",
+   "fieldname": "student_name_or_id",
+   "fieldtype": "Data",
+   "label": "Student Name or ID"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Current Family'",
+   "fieldname": "relationship_to_student",
+   "fieldtype": "Select",
+   "label": "Relationship to Student",
+   "options": "\nParent\nGuardian\nStudent\nRelative\nStaff\nOther"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Partnership / Agent'",
+   "fieldname": "partnership_section",
+   "fieldtype": "Section Break",
+   "label": "Partnership Context"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Partnership / Agent'",
+   "fieldname": "organization_name",
+   "fieldtype": "Data",
+   "label": "Organization Name"
+  },
+  {
+   "depends_on": "eval:doc.type_of_inquiry=='Partnership / Agent'",
+   "fieldname": "partnership_context",
+   "fieldtype": "Small Text",
+   "label": "Partnership Context"
+  },
+  {
+   "fieldname": "column_break_hdcf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "inquiry_message_section",
+   "fieldtype": "Section Break",
+   "label": "Inquiry Message"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_calendar_and_gantt": 1,
+ "links": [],
+ "modified": "2026-04-29 15:38:03.000000",
+ "modified_by": "Administrator",
+ "module": "Admission",
+ "name": "Inquiry",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,61 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-12-03 13:51:38.018412",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_igix",
+  "term",
+  "number_of_instructional_days",
+  "start",
+  "end"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_igix",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "term",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Term",
+   "options": "Term"
+  },
+  {
+   "fieldname": "start",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Start",
+   "read_only": 1
+  },
+  {
+   "fieldname": "end",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "End",
+   "read_only": 1
+  },
+  {
+   "fieldname": "number_of_instructional_days",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Number of Instructional Days"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-05-16 09:54:54.248523",
+ "modified_by": "Administrator",
+ "module": "School Settings",
+ "name": "School Calendar Term",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

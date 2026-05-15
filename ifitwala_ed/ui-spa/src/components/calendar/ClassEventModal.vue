@@ -1,0 +1,489 @@
+<!-- ifitwala_ed/ui-spa/src/components/calendar/ClassEventModal.vue -->
+<!--
+  ClassEventModal.vue
+  A dialog displaying details for a specific class event (e.g. course session, academic block).
+  Allows navigation to attendance and gradebook, and creation of follow-up tasks/announcements.
+
+  Used by:
+  - ScheduleCalendar.vue
+-->
+<template>
+	<TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
+		<Dialog
+			as="div"
+			class="if-overlay if-overlay--class"
+			:style="overlayStyle"
+			:initialFocus="initialFocus"
+			@close="onDialogClose"
+		>
+			<TransitionChild
+				as="template"
+				enter="if-overlay__fade-enter"
+				enter-from="if-overlay__fade-from"
+				enter-to="if-overlay__fade-to"
+				leave="if-overlay__fade-leave"
+				leave-from="if-overlay__fade-to"
+				leave-to="if-overlay__fade-from"
+			>
+				<div class="if-overlay__backdrop" @click="emitClose('backdrop')" />
+			</TransitionChild>
+
+			<div class="if-overlay__wrap" @click.self="emitClose('backdrop')">
+				<TransitionChild
+					as="template"
+					enter="if-overlay__panel-enter"
+					enter-from="if-overlay__panel-from"
+					enter-to="if-overlay__panel-to"
+					leave="if-overlay__panel-leave"
+					leave-from="if-overlay__panel-to"
+					leave-to="if-overlay__panel-from"
+				>
+					<DialogPanel class="if-overlay__panel if-overlay__panel--compact">
+						<button
+							ref="initialFocus"
+							type="button"
+							class="sr-only"
+							aria-hidden="true"
+							tabindex="0"
+							@click="emitClose('programmatic')"
+						>
+							Close
+						</button>
+						<div class="meeting-modal__header">
+							<div class="meeting-modal__headline">
+								<p class="meeting-modal__eyebrow type-overline">Class</p>
+								<DialogTitle as="h3" class="type-h3">
+									{{ data?.title || 'Class' }}
+								</DialogTitle>
+								<p v-if="data?.course_name" class="meeting-modal__time type-meta">
+									{{ data.course_name }}
+								</p>
+							</div>
+							<button
+								class="if-overlay__icon-button"
+								aria-label="Close class modal"
+								@click="emitClose('programmatic')"
+							>
+								<FeatherIcon name="x" class="h-5 w-5" />
+							</button>
+						</div>
+
+						<div class="if-overlay__body meeting-modal__body">
+							<div v-if="loading" class="meeting-modal__loading">
+								<div class="meeting-modal__skeleton h-6 w-3/5"></div>
+								<div class="meeting-modal__skeleton h-4 w-4/5"></div>
+								<div class="meeting-modal__skeleton h-4 w-2/3"></div>
+								<div class="meeting-modal__skeleton h-24 w-full"></div>
+							</div>
+
+							<div v-else-if="error" class="meeting-modal__error">
+								<p class="type-body">{{ error }}</p>
+								<button class="meeting-modal__cta" @click="emitClose('programmatic')">
+									Close
+								</button>
+							</div>
+
+							<div v-else-if="data">
+								<section class="meeting-modal__meta-grid">
+									<div>
+										<p class="meeting-modal__label type-label">Type</p>
+										<p class="meeting-modal__value type-body">{{ data.class_type || 'Course' }}</p>
+									</div>
+									<div>
+										<p class="meeting-modal__label type-label">Program</p>
+										<p class="meeting-modal__value type-body">{{ data.program || '—' }}</p>
+									</div>
+									<div>
+										<p class="meeting-modal__label type-label">Course</p>
+										<p class="meeting-modal__value type-body">{{ courseLabel }}</p>
+									</div>
+									<div>
+										<p class="meeting-modal__label type-label">Cohort</p>
+										<p class="meeting-modal__value type-body">{{ data.cohort || '—' }}</p>
+									</div>
+								</section>
+
+								<section class="meeting-modal__meta-grid">
+									<div>
+										<p class="meeting-modal__label type-label">Rotation Day</p>
+										<p class="meeting-modal__value type-body">
+											{{
+												data.rotation_day !== null && data.rotation_day !== undefined
+													? `Day ${data.rotation_day}`
+													: '—'
+											}}
+										</p>
+									</div>
+									<div>
+										<p class="meeting-modal__label type-label">Block</p>
+										<p class="meeting-modal__value type-body">{{ data.block_label || '—' }}</p>
+									</div>
+									<div>
+										<p class="meeting-modal__label type-label">Location</p>
+										<p class="meeting-modal__value type-body">
+											{{ data.location || 'To be announced' }}
+										</p>
+									</div>
+									<div>
+										<p class="meeting-modal__label type-label">School</p>
+										<p class="meeting-modal__value type-body">{{ data.school || '—' }}</p>
+									</div>
+								</section>
+
+								<section class="meeting-modal__agenda">
+									<header class="meeting-modal__section-heading">
+										<div>
+											<p class="meeting-modal__label type-label">Schedule</p>
+											<p class="meeting-modal__value type-body" v-if="sessionDateLabel">
+												{{ sessionDateLabel }}
+											</p>
+										</div>
+									</header>
+									<p class="meeting-modal__value type-body">
+										{{ timeLabel }}
+										<span v-if="data?.timezone" class="meeting-modal__timezone"
+											>({{ data.timezone }})</span
+										>
+									</p>
+								</section>
+
+								<div class="meeting-modal__actions">
+									<RouterLink
+										v-if="isStudentPortal"
+										class="meeting-modal__action-button meeting-modal__action-button--secondary"
+										:to="studentCourseLink"
+										@click="emitClose('programmatic')"
+									>
+										<FeatherIcon name="book-open" class="h-4 w-4" />
+										Open Course
+									</RouterLink>
+
+									<template v-else>
+										<button
+											type="button"
+											class="meeting-modal__action-button"
+											:class="{
+												'cursor-not-allowed opacity-60': Boolean(planSessionBlockedReason),
+											}"
+											:disabled="Boolean(planSessionBlockedReason)"
+											@click="emitPlanSession"
+										>
+											<FeatherIcon name="edit-3" class="h-4 w-4" />
+											Plan This Session
+										</button>
+
+										<RouterLink
+											class="meeting-modal__action-button meeting-modal__action-button--secondary"
+											:to="attendanceLink"
+											target="_blank"
+											rel="noreferrer"
+										>
+											<FeatherIcon name="check-square" class="h-4 w-4" />
+											Take Attendance
+										</RouterLink>
+
+										<RouterLink
+											class="meeting-modal__action-button meeting-modal__action-button--secondary"
+											:to="gradebookLink"
+											target="_blank"
+											rel="noreferrer"
+										>
+											<FeatherIcon name="book-open" class="h-4 w-4" />
+											Open Gradebook
+										</RouterLink>
+
+										<button
+											type="button"
+											class="meeting-modal__action-button meeting-modal__action-button--secondary"
+											@click="emitCreateAnnouncement"
+										>
+											<FeatherIcon name="message-square" class="h-4 w-4" />
+											Create Announcement
+										</button>
+
+										<button
+											type="button"
+											class="meeting-modal__action-button meeting-modal__action-button--secondary"
+											:class="{
+												'cursor-not-allowed opacity-60': Boolean(createTaskBlockedReason),
+											}"
+											:disabled="Boolean(createTaskBlockedReason)"
+											@click="emitCreateTask"
+										>
+											<FeatherIcon name="clipboard" class="h-4 w-4" />
+											Create Task
+										</button>
+									</template>
+								</div>
+								<p
+									v-for="warning in actionWarnings"
+									:key="warning"
+									class="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 type-caption text-amber-900"
+								>
+									{{ warning }}
+								</p>
+							</div>
+						</div>
+					</DialogPanel>
+				</TransitionChild>
+			</div>
+		</Dialog>
+	</TransitionRoot>
+</template>
+
+<script setup lang="ts">
+import {
+	Dialog,
+	DialogPanel,
+	DialogTitle,
+	TransitionChild,
+	TransitionRoot,
+} from '@headlessui/vue';
+import { FeatherIcon, toast } from 'frappe-ui';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { RouterLink, useRoute } from 'vue-router';
+import { useOverlayStack } from '@/composables/useOverlayStack';
+import { api } from '@/lib/client';
+import { getPlanSessionBlockedReason } from '@/lib/planning/planningActionGuards';
+import type { ClassEventDetails } from './classEventTypes';
+
+const props = defineProps<{
+	open: boolean;
+	zIndex?: number;
+	eventId?: string | null;
+	portalRole?: 'staff' | 'student' | 'guardian';
+}>();
+
+const MISSING_ACTIVE_TASK_PLAN_MESSAGE =
+	'This class needs an active Class Teaching Plan before assigned work can be created. Open Class Planning for this class, create or activate the plan, then try again.';
+const MULTIPLE_ACTIVE_TASK_PLANS_MESSAGE =
+	'This class has more than one active Class Teaching Plan. Open Class Planning for this class, choose the correct plan there, then create the task from that surface.';
+
+const overlay = useOverlayStack();
+const route = useRoute();
+
+type CloseReason = 'backdrop' | 'esc' | 'programmatic';
+
+const emit = defineEmits<{
+	(e: 'close', reason: CloseReason): void;
+	(e: 'create-announcement', event: ClassEventDetails): void;
+	(e: 'create-task', payload: { studentGroup: string; dueDate: string | null }): void;
+	(e: 'after-leave'): void;
+}>();
+
+const overlayStyle = computed(() => {
+	return props.zIndex ? ({ zIndex: props.zIndex } as Record<string, any>) : undefined;
+});
+
+const loading = ref(false);
+const error = ref<string | null>(null);
+const data = ref<ClassEventDetails | null>(null);
+
+let requestSeq = 0;
+
+watch(
+	() => [props.open, props.eventId] as const,
+	async ([isOpen, eventId]) => {
+		if (!isOpen) return;
+		if (!eventId) {
+			loading.value = false;
+			error.value = 'Could not determine which class was clicked. Please refresh and try again.';
+			data.value = null;
+			return;
+		}
+
+		loading.value = true;
+		error.value = null;
+		data.value = null;
+
+		const seq = ++requestSeq;
+		try {
+			const payload = (await api('ifitwala_ed.api.calendar.get_student_group_event_details', {
+				event_id: eventId,
+			})) as ClassEventDetails;
+
+			if (seq === requestSeq) {
+				data.value = payload;
+			}
+		} catch (err) {
+			if (seq === requestSeq) {
+				error.value =
+					err instanceof Error ? err.message : 'Unable to load class details right now.';
+			}
+		} finally {
+			if (seq === requestSeq) {
+				loading.value = false;
+			}
+		}
+	},
+	{ immediate: true }
+);
+
+const courseLabel = computed(() => data.value?.course_name || data.value?.course || '—');
+const planSessionBlockedReason = computed(() => getPlanSessionBlockedReason(data.value?.course));
+const createTaskBlockedReason = computed(() => {
+	if (planSessionBlockedReason.value) return planSessionBlockedReason.value;
+
+	const taskCreationStatus = data.value?.task_creation?.status;
+	if (taskCreationStatus === 'missing_active_plan') return MISSING_ACTIVE_TASK_PLAN_MESSAGE;
+	if (taskCreationStatus === 'multiple_active_plans') return MULTIPLE_ACTIVE_TASK_PLANS_MESSAGE;
+	if (
+		taskCreationStatus === 'ready' &&
+		!String(data.value?.task_creation?.class_teaching_plan || '').trim()
+	) {
+		return MISSING_ACTIVE_TASK_PLAN_MESSAGE;
+	}
+	return '';
+});
+const actionWarnings = computed(() => {
+	const warnings: string[] = [];
+	for (const message of [planSessionBlockedReason.value, createTaskBlockedReason.value]) {
+		if (message && !warnings.includes(message)) warnings.push(message);
+	}
+	return warnings;
+});
+
+const sessionDateLabel = computed(() => {
+	if (!data.value?.session_date) return '';
+	try {
+		const raw = data.value.session_date;
+		const date = new Date(raw.includes('T') ? raw : `${raw}T12:00:00`);
+		return new Intl.DateTimeFormat(undefined, {
+			weekday: 'long',
+			month: 'long',
+			day: 'numeric',
+			year: 'numeric',
+		}).format(date);
+	} catch {
+		return data.value.session_date ?? '';
+	}
+});
+
+function safeDate(value?: string | null) {
+	if (!value) return null;
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return null;
+	return date;
+}
+
+const timeLabel = computed(() => {
+	const start = safeDate(data.value?.start);
+	if (!start) return 'Time to be confirmed';
+	const end = safeDate(data.value?.end);
+	const timezone = data.value?.timezone || undefined;
+	const formatter = new Intl.DateTimeFormat(undefined, {
+		hour: 'numeric',
+		minute: '2-digit',
+		timeZone: timezone,
+	});
+	if (!end) return formatter.format(start);
+	return `${formatter.format(start)} – ${formatter.format(end)}`;
+});
+
+const attendanceLink = computed(() => {
+	if (!data.value?.student_group) return { name: 'staff-attendance' };
+	return { name: 'staff-attendance', query: { student_group: data.value.student_group } };
+});
+
+const gradebookLink = computed(() => {
+	if (!data.value?.student_group) return { name: 'staff-gradebook' };
+	return { name: 'staff-gradebook', query: { student_group: data.value.student_group } };
+});
+
+const isStudentPortal = computed(() => {
+	if (props.portalRole) return props.portalRole === 'student';
+	return typeof route.name === 'string' && route.name.startsWith('student-');
+});
+
+const studentCourseLink = computed(() => {
+	if (!data.value?.course) return { name: 'student-courses' as const };
+	return { name: 'student-course-detail' as const, params: { course_id: data.value.course } };
+});
+
+function emitClose(reason: CloseReason = 'programmatic') {
+	emit('close', reason);
+}
+
+function emitCreateAnnouncement() {
+	if (!data.value) return;
+
+	overlay.replaceTop('org-communication-quick-create', {
+		entryMode: 'class-event',
+		studentGroup: data.value.student_group || null,
+		school: data.value.school || null,
+		title: data.value.title || '',
+		sessionDate: data.value.session_date || null,
+		sessionTimeLabel: timeLabel.value || null,
+		courseLabel: data.value.course_name || data.value.course || null,
+		sourceLabel: 'Class Event',
+	});
+}
+
+function emitCreateTask() {
+	if (!data.value?.student_group) return;
+	if (createTaskBlockedReason.value) {
+		toast.error(createTaskBlockedReason.value);
+		return;
+	}
+
+	// Clean handoff: class modal disappears, create-task appears as top
+	overlay.replaceTop('create-task', {
+		prefillStudentGroup: data.value.student_group,
+		prefillCourse: data.value.course || null,
+		prefillClassTeachingPlan: data.value.task_creation?.class_teaching_plan || null,
+		prefillDueDate: data.value.end || data.value.start || null,
+	});
+}
+
+function emitPlanSession() {
+	if (!data.value?.student_group) return;
+	if (planSessionBlockedReason.value) {
+		toast.error(planSessionBlockedReason.value);
+		return;
+	}
+
+	overlay.replaceTop('quick-class-session', {
+		studentGroup: data.value.student_group,
+		classTitle: data.value.title || null,
+		course: data.value.course || null,
+		courseName: data.value.course_name || null,
+		sessionDate: data.value.session_date || null,
+		blockLabel: data.value.block_label || null,
+		start: data.value.start || null,
+		end: data.value.end || null,
+		timezone: data.value.timezone || null,
+	});
+}
+
+function emitAfterLeave() {
+	emit('after-leave');
+}
+
+const initialFocus = ref<HTMLElement | null>(null);
+
+/**
+ * HeadlessUI Dialog @close payload is ambiguous (boolean/undefined).
+ * Under A+, ignore it and close only via explicit backdrop/esc/button paths.
+ */
+function onDialogClose(_payload: unknown) {
+	// no-op by design
+}
+
+function onKeydown(e: KeyboardEvent) {
+	if (!props.open) return;
+	if (e.key === 'Escape') emitClose('esc');
+}
+
+watch(
+	() => props.open,
+	v => {
+		if (v) document.addEventListener('keydown', onKeydown, true);
+		else document.removeEventListener('keydown', onKeydown, true);
+	},
+	{ immediate: true }
+);
+
+onBeforeUnmount(() => {
+	document.removeEventListener('keydown', onKeydown, true);
+});
+</script>

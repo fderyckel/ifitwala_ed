@@ -1,0 +1,481 @@
+# Copyright (c) 2026, François de Ryckel and contributors
+# For license information, please see license.txt
+
+from datetime import date, datetime
+from unittest.mock import patch
+
+import frappe
+
+from ifitwala_ed.api import morning_brief
+from ifitwala_ed.tests.base import IfitwalaFrappeTestCase
+
+
+class TestMorningBrief(IfitwalaFrappeTestCase):
+    def test_get_daily_bulletin_orders_newest_first_and_exposes_unread_state(self):
+        captured = {}
+
+        def fake_sql(query, values=None, as_dict=False, **kwargs):
+            captured["query"] = query
+            captured["values"] = values
+            captured["as_dict"] = as_dict
+            return [
+                frappe._dict(
+                    name="COMM-NEW",
+                    title="Newest",
+                    message="<p>New</p>",
+                    communication_type="Information",
+                    priority="Normal",
+                    brief_end_date="2026-04-21",
+                    brief_start_date="2026-04-19",
+                    interaction_mode="Staff Comments",
+                    allow_private_notes=0,
+                    allow_public_thread=0,
+                ),
+                frappe._dict(
+                    name="COMM-OLD",
+                    title="Older",
+                    message="<p>Old</p>",
+                    communication_type="Reminder",
+                    priority="High",
+                    brief_end_date=None,
+                    brief_start_date="2026-04-17",
+                    interaction_mode="Staff Comments",
+                    allow_private_notes=0,
+                    allow_public_thread=0,
+                ),
+            ]
+
+        with (
+            patch.object(morning_brief, "today", return_value="2026-04-19"),
+            patch.object(morning_brief.frappe.db, "sql", side_effect=fake_sql),
+            patch.object(
+                morning_brief.frappe.db,
+                "get_value",
+                return_value=frappe._dict(name="EMP-0001", school="SCH-1", organization="ORG-1"),
+            ),
+            patch.object(morning_brief, "check_audience_match", return_value=True),
+            patch.object(
+                morning_brief,
+                "get_seen_org_communication_names",
+                return_value={"COMM-OLD"},
+            ),
+        ):
+            rows = morning_brief.get_daily_bulletin("staff@example.com", ["Academic Staff"])
+
+        self.assertTrue(captured["as_dict"])
+        self.assertEqual(captured["values"], (date(2026, 4, 19), date(2026, 4, 19)))
+        self.assertIn("ORDER BY brief_start_date DESC, creation DESC", captured["query"])
+        self.assertEqual([row["name"] for row in rows], ["COMM-NEW", "COMM-OLD"])
+        self.assertEqual(rows[0]["brief_start_date"], "2026-04-19")
+        self.assertEqual(rows[0]["brief_end_date"], "2026-04-21")
+        self.assertTrue(rows[0]["is_unread"])
+        self.assertFalse(rows[1]["is_unread"])
+
+    def test_get_pending_grading_tasks_uses_task_delivery_schema(self):
+        captured = {}
+
+        def fake_sql(query, values=None, as_dict=False, **kwargs):
+            captured["query"] = query
+            captured["values"] = values
+            captured["as_dict"] = as_dict
+            return [(7,)]
+
+        with (
+            patch.object(morning_brief, "today", return_value="2026-04-08"),
+            patch.object(morning_brief.frappe.db, "sql", side_effect=fake_sql),
+        ):
+            count = morning_brief.get_pending_grading_tasks(["SG-1", "SG-2"])
+
+        self.assertEqual(count, 7)
+        self.assertFalse(captured["as_dict"])
+        self.assertIn("FROM `tabTask Delivery` td", captured["query"])
+        self.assertIn("LEFT JOIN `tabTask Outcome` tou", captured["query"])
+        self.assertIn("COUNT(DISTINCT td.name)", captured["query"])
+        self.assertIn("td.student_group IN %(group_names)s", captured["query"])
+        self.assertIn("td.require_grading = 1", captured["query"])
+        self.assertIn("td.docstatus = 1", captured["query"])
+        self.assertIn("td.due_date < %(site_cutoff)s", captured["query"])
+        self.assertIn("COALESCE(t.is_archived, 0) = 0", captured["query"])
+        self.assertNotIn("FROM `tabTask`\n\t\tWHERE student_group", captured["query"])
+        self.assertEqual(captured["values"]["group_names"], ("SG-1", "SG-2"))
+        self.assertEqual(captured["values"]["site_cutoff"], "2026-04-08 00:00:00")
+
+    def test_get_staff_birthdays_filters_active_employees_with_birthdays_only(self):
+        captured = {}
+
+        def fake_sql(query, values=None, as_dict=False, **kwargs):
+            captured["query"] = query
+            captured["values"] = values
+            captured["as_dict"] = as_dict
+            return []
+
+        with (
+            patch.object(morning_brief, "today", return_value="2026-03-23"),
+            patch.object(morning_brief.frappe.db, "sql", side_effect=fake_sql),
+        ):
+            rows = morning_brief.get_staff_birthdays()
+
+        self.assertEqual(rows, [])
+        self.assertTrue(captured["as_dict"])
+        self.assertEqual(captured["values"], ("03-19", "03-27"))
+        self.assertIn("employment_status = 'Active'", captured["query"])
+
+    def test_get_staff_birthdays_uses_derivative_only_employee_images(self):
+        rows = [
+            frappe._dict(
+                employee="EMP-0001",
+                name="Dana Staff",
+                image="/private/files/employee-original.png",
+                _date_of_birth="1990-03-23",
+            )
+        ]
+
+        with (
+            patch.object(morning_brief, "today", return_value="2026-03-23"),
+            patch.object(morning_brief.frappe.db, "sql", return_value=rows),
+            patch.object(
+                morning_brief,
+                "get_birthday_context",
+                return_value={
+                    "birthday_in_window": True,
+                    "birthday_today": True,
+                    "birthday_label": "Today",
+                },
+            ),
+            patch.object(
+                morning_brief,
+                "apply_preferred_employee_images",
+                return_value=rows,
+            ) as apply_preferred,
+        ):
+            payload = morning_brief.get_staff_birthdays()
+
+        apply_preferred.assert_called_once_with(
+            rows,
+            employee_field="employee",
+            image_field="image",
+            slots=morning_brief.PROFILE_IMAGE_DERIVATIVE_SLOTS,
+            fallback_to_original=False,
+            request_missing_derivatives=True,
+        )
+        self.assertIs(payload, rows)
+        self.assertNotIn("_date_of_birth", rows[0])
+        self.assertNotIn("date_of_birth", rows[0])
+        self.assertEqual(rows[0]["birthday_label"], "Today")
+
+    def test_get_my_student_birthdays_uses_bound_group_scope(self):
+        captured = {}
+
+        def fake_sql(query, values=None, as_dict=False, **kwargs):
+            captured["query"] = query
+            captured["values"] = values
+            captured["as_dict"] = as_dict
+            return []
+
+        with (
+            patch.object(morning_brief, "today", return_value="2026-03-23"),
+            patch.object(morning_brief.frappe.db, "sql", side_effect=fake_sql),
+            patch.object(morning_brief, "apply_preferred_student_images", side_effect=lambda rows, **kwargs: rows),
+        ):
+            rows = morning_brief.get_my_student_birthdays(["SG-1", "SG-2"])
+
+        self.assertEqual(rows, [])
+        self.assertTrue(captured["as_dict"])
+        self.assertEqual(captured["values"]["group_names"], ("SG-1", "SG-2"))
+        self.assertEqual(captured["values"]["start_md"], "03-19")
+        self.assertEqual(captured["values"]["end_md"], "03-27")
+        self.assertIn("sgs.parent IN %(group_names)s", captured["query"])
+        self.assertNotIn("IN ('SG-1'", captured["query"])
+
+    def test_get_my_absent_students_uses_bound_group_scope(self):
+        captured = {}
+
+        def fake_sql(query, values=None, as_dict=False, **kwargs):
+            captured["query"] = query
+            captured["values"] = values
+            captured["as_dict"] = as_dict
+            return []
+
+        with (
+            patch.object(morning_brief, "today", return_value="2026-04-20"),
+            patch.object(morning_brief.frappe.db, "sql", side_effect=fake_sql),
+        ):
+            rows = morning_brief.get_my_absent_students(["SG-1"])
+
+        self.assertEqual(rows, [])
+        self.assertTrue(captured["as_dict"])
+        self.assertEqual(captured["values"], {"site_today": "2026-04-20", "group_names": ("SG-1",)})
+        self.assertIn("WHERE sa.attendance_date = %(site_today)s", captured["query"])
+        self.assertIn("sa.student_group IN %(group_names)s", captured["query"])
+
+    def test_query_clinic_visit_counts_falls_back_to_student_anchor_school(self):
+        captured = {}
+
+        def fake_sql(query, values=None, as_dict=False, **kwargs):
+            captured["query"] = query
+            captured["values"] = values
+            captured["as_dict"] = as_dict
+            return []
+
+        with patch.object(morning_brief.frappe.db, "sql", side_effect=fake_sql):
+            rows = morning_brief._query_clinic_visit_counts(
+                ["SCH-PARENT", "SCH-CHILD"],
+                date(2025, 11, 1),
+                date(2025, 11, 30),
+            )
+
+        self.assertEqual(rows, [])
+        self.assertTrue(captured["as_dict"])
+        self.assertIn("COALESCE(NULLIF(spv.school, ''), st.anchor_school) AS school", captured["query"])
+        self.assertIn("LEFT JOIN `tabStudent Patient` sp", captured["query"])
+        self.assertIn("LEFT JOIN `tabStudent` st", captured["query"])
+        self.assertIn("COALESCE(NULLIF(spv.school, ''), st.anchor_school) IN %(schools)s", captured["query"])
+        self.assertEqual(captured["values"]["schools"], ("SCH-PARENT", "SCH-CHILD"))
+
+    def test_resolve_clinic_scope_falls_back_to_employee_default_school(self):
+        def fake_get_value(doctype, filters=None, fieldname=None, as_dict=False, **kwargs):
+            if doctype == "Employee":
+                return frappe._dict(default_school="SCH-PARENT", school="SCH-CHILD")
+            if doctype == "School" and filters == "SCH-PARENT" and fieldname == "school_name":
+                return "Parent School"
+            return None
+
+        with (
+            patch.object(morning_brief, "get_user_default_school", return_value=None),
+            patch.object(morning_brief.frappe, "session", frappe._dict(user="nurse@example.com")),
+            patch.object(morning_brief.frappe.db, "has_column", return_value=True),
+            patch.object(morning_brief.frappe.db, "get_value", side_effect=fake_get_value),
+            patch.object(
+                morning_brief,
+                "get_descendant_schools",
+                return_value=["SCH-PARENT", "SCH-CHILD-A", "SCH-CHILD-B"],
+            ),
+        ):
+            scope = morning_brief._resolve_clinic_scope()
+
+        self.assertEqual(scope["base_school"], "SCH-PARENT")
+        self.assertEqual(scope["school_scope"], ["SCH-PARENT", "SCH-CHILD-A", "SCH-CHILD-B"])
+        self.assertEqual(scope["scope_label"], "Parent School + 2 schools")
+        self.assertIsNone(scope["error"])
+
+    def test_get_briefing_widgets_includes_clinic_volume_for_nurse(self):
+        clinic_payload = {
+            "default_view": "3D",
+            "school": "Upper School",
+            "views": {"3D": [], "3W": []},
+            "error": None,
+        }
+
+        with (
+            patch.object(morning_brief.frappe, "session", frappe._dict(user="nurse@example.com")),
+            patch.object(morning_brief.frappe, "get_roles", return_value=["Nurse"]),
+            patch.object(morning_brief, "now_datetime", return_value=datetime(2026, 3, 23, 8, 30, 0)),
+            patch.object(morning_brief, "get_daily_bulletin", return_value=[]),
+            patch.object(morning_brief, "_can_view_clinic_metrics", return_value=True),
+            patch.object(morning_brief, "get_clinic_activity", return_value=clinic_payload),
+        ):
+            payload = morning_brief.get_briefing_widgets()
+
+        self.assertEqual(payload.get("clinic_volume"), clinic_payload)
+        self.assertNotIn("admissions_pulse", payload)
+        self.assertNotIn("critical_incidents", payload)
+
+    def test_get_briefing_widgets_includes_instructor_widgets_for_group_context(self):
+        with (
+            patch.object(morning_brief.frappe, "session", frappe._dict(user="teacher@example.com")),
+            patch.object(morning_brief.frappe, "get_roles", return_value=["Instructor"]),
+            patch.object(morning_brief, "now_datetime", return_value=datetime(2026, 4, 8, 8, 15, 0)),
+            patch.object(morning_brief, "get_daily_bulletin", return_value=[]),
+            patch.object(morning_brief, "_can_view_clinic_metrics", return_value=False),
+            patch.object(morning_brief, "get_my_student_groups", return_value=["SG-1"]),
+            patch.object(morning_brief, "get_pending_grading_tasks", return_value=4),
+            patch.object(morning_brief, "get_my_student_birthdays", return_value=[]),
+            patch.object(
+                morning_brief,
+                "get_my_absent_students",
+                return_value=[{"student_name": "Jane Doe"}],
+            ),
+        ):
+            payload = morning_brief.get_briefing_widgets()
+
+        self.assertEqual(payload.get("grading_velocity"), 4)
+        self.assertEqual(payload.get("my_absent_students"), [{"student_name": "Jane Doe"}])
+        self.assertIn("my_student_birthdays", payload)
+
+    def test_get_clinic_activity_skips_weekends_and_holidays_for_business_days(self):
+        context = {
+            "SCH-1": [
+                {
+                    "start_date": date(2026, 1, 1),
+                    "end_date": date(2026, 12, 31),
+                    "weekend_days": {6, 0},
+                    "holidays": {date(2026, 3, 18)},
+                }
+            ]
+        }
+
+        with (
+            patch.object(
+                morning_brief,
+                "_resolve_clinic_scope",
+                return_value={
+                    "base_school": "SCH-1",
+                    "school_scope": ["SCH-1"],
+                    "scope_label": "Upper School",
+                    "error": None,
+                },
+            ),
+            patch.object(morning_brief, "today", return_value="2026-03-23"),
+            patch.object(morning_brief, "_load_clinic_calendar_context", return_value=context),
+            patch.object(
+                morning_brief,
+                "_query_clinic_visit_counts",
+                return_value=[
+                    {"school": "SCH-1", "date": "2026-03-23", "count": 2},
+                    {"school": "SCH-1", "date": "2026-03-20", "count": 5},
+                    {"school": "SCH-1", "date": "2026-03-19", "count": 3},
+                    {"school": "SCH-1", "date": "2026-03-18", "count": 9},
+                ],
+            ),
+        ):
+            payload = morning_brief.get_clinic_activity()
+
+        self.assertEqual(
+            payload["views"]["3D"],
+            [
+                {"label": "23-Mar", "count": 2},
+                {"label": "20-Mar", "count": 5},
+                {"label": "19-Mar", "count": 3},
+            ],
+        )
+        self.assertIsNone(payload["error"])
+
+    def test_get_clinic_visits_trend_filters_non_business_days(self):
+        context = {
+            "SCH-1": [
+                {
+                    "start_date": date(2026, 1, 1),
+                    "end_date": date(2026, 12, 31),
+                    "weekend_days": {6, 0},
+                    "holidays": {date(2026, 3, 18)},
+                }
+            ]
+        }
+
+        with (
+            patch.object(morning_brief.frappe, "session", frappe._dict(user="nurse@example.com")),
+            patch.object(morning_brief, "_can_view_clinic_metrics", return_value=True),
+            patch.object(
+                morning_brief,
+                "_resolve_clinic_scope",
+                return_value={
+                    "base_school": "SCH-1",
+                    "school_scope": ["SCH-1"],
+                    "scope_label": "Upper School",
+                    "error": None,
+                },
+            ),
+            patch.object(morning_brief, "today", return_value="2026-03-23"),
+            patch.object(morning_brief, "_resolve_clinic_trend_start_date", return_value=date(2026, 3, 17)),
+            patch.object(morning_brief, "_load_clinic_calendar_context", return_value=context),
+            patch.object(
+                morning_brief,
+                "_query_clinic_visit_counts",
+                return_value=[
+                    {"school": "SCH-1", "date": "2026-03-17", "count": 1},
+                    {"school": "SCH-1", "date": "2026-03-18", "count": 4},
+                    {"school": "SCH-1", "date": "2026-03-20", "count": 2},
+                    {"school": "SCH-1", "date": "2026-03-23", "count": 3},
+                ],
+            ),
+        ):
+            payload = morning_brief.get_clinic_visits_trend(time_range="1M")
+
+        self.assertEqual(
+            payload["data"],
+            [
+                {"date": "2026-03-17", "count": 1},
+                {"date": "2026-03-19", "count": 0},
+                {"date": "2026-03-20", "count": 2},
+                {"date": "2026-03-23", "count": 3},
+            ],
+        )
+        self.assertEqual(payload["school"], "Upper School")
+
+    def test_get_clinic_visits_trend_falls_back_to_real_visit_dates_when_business_day_resolution_is_empty(self):
+        with (
+            patch.object(morning_brief.frappe, "session", frappe._dict(user="nurse@example.com")),
+            patch.object(morning_brief, "_can_view_clinic_metrics", return_value=True),
+            patch.object(
+                morning_brief,
+                "_resolve_clinic_scope",
+                return_value={
+                    "base_school": "SCH-1",
+                    "school_scope": ["SCH-1"],
+                    "scope_label": "Upper School",
+                    "error": None,
+                },
+            ),
+            patch.object(morning_brief, "today", return_value="2026-04-02"),
+            patch.object(morning_brief, "_resolve_clinic_trend_start_date", return_value=date(2026, 3, 3)),
+            patch.object(morning_brief, "_load_clinic_calendar_context", return_value={}),
+            patch.object(
+                morning_brief,
+                "_is_scope_business_day",
+                return_value=False,
+            ),
+            patch.object(
+                morning_brief,
+                "_query_clinic_visit_counts",
+                return_value=[
+                    {"school": "SCH-1", "date": "2026-03-31", "count": 1},
+                    {"school": "SCH-1", "date": "2026-04-01", "count": 2},
+                    {"school": "SCH-1", "date": "2026-04-02", "count": 1},
+                ],
+            ),
+        ):
+            payload = morning_brief.get_clinic_visits_trend(time_range="1M")
+
+        self.assertEqual(
+            payload["data"],
+            [
+                {"date": "2026-03-31", "count": 1},
+                {"date": "2026-04-01", "count": 2},
+                {"date": "2026-04-02", "count": 1},
+            ],
+        )
+        self.assertEqual(payload["school"], "Upper School")
+
+    def test_resolve_clinic_trend_start_date_uses_calendar_year_for_ytd(self):
+        self.assertEqual(
+            morning_brief._resolve_clinic_trend_start_date("YTD", date(2026, 3, 22)),
+            date(2026, 1, 1),
+        )
+
+    def test_resolve_clinic_trend_start_date_ytd_uses_scoped_academic_year_window(self):
+        rows = [
+            {"year_start_date": "2025-08-15", "year_end_date": "2026-06-15"},
+            {"year_start_date": "2025-08-01", "year_end_date": "2026-06-30"},
+            {"year_start_date": "2024-08-01", "year_end_date": "2025-06-30"},
+        ]
+
+        with patch.object(morning_brief.frappe, "get_all", return_value=rows) as get_all:
+            start_date = morning_brief._resolve_clinic_trend_start_date(
+                "YTD",
+                date(2026, 3, 23),
+                ["SCH-PARENT", "SCH-CHILD"],
+            )
+
+        self.assertEqual(start_date, date(2025, 8, 1))
+        get_all.assert_called_once_with(
+            "Academic Year",
+            filters={
+                "school": ["in", ["SCH-PARENT", "SCH-CHILD"]],
+                "archived": 0,
+                "year_start_date": ["<=", date(2026, 3, 23)],
+                "year_end_date": [">=", date(2026, 3, 23)],
+            },
+            fields=["year_start_date", "year_end_date"],
+            order_by="year_start_date asc",
+            limit=50,
+        )

@@ -1,0 +1,243 @@
+{
+ "actions": [],
+ "autoname": "FCR-.YYYY.-.MM.-.####",
+ "creation": "2026-04-22 10:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "request_title",
+  "request_key",
+  "template_key",
+  "request_type",
+  "policy_version",
+  "organization",
+  "school",
+  "request_text",
+  "source_file",
+  "subject_scope",
+  "audience_mode",
+  "signer_rule",
+  "decision_mode",
+  "completion_channel_mode",
+  "requires_typed_signature",
+  "requires_attestation",
+  "effective_from",
+  "effective_to",
+  "due_on",
+  "status",
+  "targets",
+  "fields"
+ ],
+ "fields": [
+  {
+   "fieldname": "request_title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Request Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "request_key",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Request Key",
+   "no_copy": 1,
+   "read_only": 1,
+   "search_index": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "template_key",
+   "fieldtype": "Data",
+   "label": "Template Key"
+  },
+  {
+   "fieldname": "request_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Request Type",
+   "options": "One-off Permission Request\nMutable Consent",
+   "reqd": 1
+  },
+  {
+   "fieldname": "policy_version",
+   "fieldtype": "Link",
+   "label": "Policy Version",
+   "options": "Policy Version"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Organization",
+   "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "request_text",
+   "fieldtype": "Text Editor",
+   "label": "Request Text",
+   "reqd": 1
+  },
+  {
+   "fieldname": "source_file",
+   "fieldtype": "Link",
+   "label": "Source File",
+   "options": "File"
+  },
+  {
+   "default": "Per Student",
+   "fieldname": "subject_scope",
+   "fieldtype": "Select",
+   "label": "Subject Scope",
+   "options": "Per Student\nPer Family",
+   "reqd": 1
+  },
+  {
+   "fieldname": "audience_mode",
+   "fieldtype": "Select",
+   "label": "Audience Mode",
+   "options": "Guardian\nStudent\nGuardian + Student",
+   "reqd": 1
+  },
+  {
+   "fieldname": "signer_rule",
+   "fieldtype": "Select",
+   "label": "Signer Rule",
+   "options": "Any Authorized Guardian\nAll Authorized Guardians\nStudent Self\nGuardian And Student",
+   "reqd": 1
+  },
+  {
+   "fieldname": "decision_mode",
+   "fieldtype": "Select",
+   "label": "Decision Mode",
+   "options": "Approve / Decline\nGrant / Deny\nAcknowledge",
+   "reqd": 1
+  },
+  {
+   "default": "Portal Only",
+   "fieldname": "completion_channel_mode",
+   "fieldtype": "Select",
+   "label": "Completion Channel Mode",
+   "options": "Portal Only\nPortal Or Paper\nPaper Only",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "requires_typed_signature",
+   "fieldtype": "Check",
+   "label": "Requires Typed Signature"
+  },
+  {
+   "default": "1",
+   "fieldname": "requires_attestation",
+   "fieldtype": "Check",
+   "label": "Requires Attestation"
+  },
+  {
+   "fieldname": "effective_from",
+   "fieldtype": "Date",
+   "label": "Effective From"
+  },
+  {
+   "fieldname": "effective_to",
+   "fieldtype": "Date",
+   "label": "Effective To"
+  },
+  {
+   "fieldname": "due_on",
+   "fieldtype": "Date",
+   "label": "Due On"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Draft\nPublished\nClosed\nArchived",
+   "reqd": 1
+  },
+  {
+   "fieldname": "targets",
+   "fieldtype": "Table",
+   "label": "Targets",
+   "options": "Family Consent Target"
+  },
+  {
+   "fieldname": "fields",
+   "fieldtype": "Table",
+   "label": "Fields",
+   "options": "Family Consent Field"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-22 10:00:00",
+ "modified_by": "Administrator",
+ "module": "Governance",
+ "name": "Family Consent Request",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Organization Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "request_title,request_key,template_key",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "request_title"
+}

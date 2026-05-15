@@ -1,0 +1,1111 @@
+# ifitwala_ed/api/test_calendar.py
+
+from datetime import datetime, time, timedelta
+from unittest import TestCase
+from unittest.mock import patch
+
+import frappe
+import pytz
+
+from ifitwala_ed.api import calendar_details, calendar_quick_create
+from ifitwala_ed.api.calendar import (
+    create_meeting_quick,
+    create_school_event_quick,
+    get_meeting_team_attendees,
+    search_meeting_attendees,
+    suggest_meeting_rooms,
+    suggest_meeting_slots,
+)
+from ifitwala_ed.api.calendar_core import (
+    CAL_MIN_DURATION,
+    _attach_duration,
+    _coerce_time,
+    _student_group_memberships,
+    _system_tzinfo,
+    _time_to_str,
+)
+from ifitwala_ed.api.calendar_details import _resolve_sg_schedule_context
+from ifitwala_ed.api.calendar_staff_feed import _collect_meeting_events
+
+
+class _DummyLock:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
+class _DummyCache:
+    def __init__(self):
+        self.store: dict[str, str] = {}
+
+    def get_value(self, key):
+        return self.store.get(key)
+
+    def set_value(self, key, value, expires_in_sec=None):
+        self.store[key] = value
+
+    def lock(self, key, timeout=15):
+        return _DummyLock()
+
+
+class _FakeDoc:
+    def __init__(self, payload: dict, name: str):
+        self.name = name
+        for key, value in payload.items():
+            setattr(self, key, value)
+
+        if payload.get("meeting_name"):
+            self.meeting_name = payload.get("meeting_name")
+            self.from_datetime = f"{payload.get('date')} {payload.get('start_time')}:00"
+            self.to_datetime = f"{payload.get('date')} {payload.get('end_time')}:00"
+
+        if payload.get("subject"):
+            self.subject = payload.get("subject")
+            self.starts_on = payload.get("starts_on")
+            self.ends_on = payload.get("ends_on")
+
+    def insert(self):
+        return self
+
+    def get(self, key, default=None):
+        return getattr(self, key, default)
+
+
+class TestCalendarApi(TestCase):
+    def test_coerce_time_supports_multiple_input_types(self):
+        self.assertEqual(_coerce_time(time(9, 15, 0)), time(9, 15, 0))
+        self.assertEqual(_coerce_time(datetime(2026, 2, 1, 11, 0, 0)), time(11, 0, 0))
+        self.assertEqual(_coerce_time(timedelta(hours=3, minutes=5)), time(3, 5, 0))
+        self.assertIsNone(_coerce_time("not-a-time"))
+
+    def test_time_to_str_normalizes_values(self):
+        self.assertEqual(_time_to_str(time(8, 0, 1)), "08:00:01")
+        self.assertEqual(_time_to_str(timedelta(hours=1, minutes=2, seconds=3)), "01:02:03")
+        self.assertEqual(_time_to_str(b"12:34:56"), "12:34:56")
+
+    def test_attach_duration_enforces_minimum_duration(self):
+        start_dt = datetime(2026, 2, 1, 10, 0, 0)
+        self.assertEqual(_attach_duration(start_dt, None), CAL_MIN_DURATION)
+        self.assertEqual(_attach_duration(start_dt, datetime(2026, 2, 1, 9, 0, 0)), CAL_MIN_DURATION)
+        self.assertEqual(_attach_duration(start_dt, datetime(2026, 2, 1, 11, 30, 0)), timedelta(hours=1, minutes=30))
+
+    def test_resolve_sg_schedule_context_supports_legacy_event_id(self):
+        tzinfo = _system_tzinfo()
+        context = _resolve_sg_schedule_context("sg::SG-TEST::2026-02-01T10:00:00", tzinfo)
+        self.assertEqual(context["student_group"], "SG-TEST")
+        self.assertIsNone(context["rotation_day"])
+        self.assertIsNone(context["block_number"])
+        self.assertEqual(context["session_date"], "2026-02-01")
+        self.assertEqual(context["end"] - context["start"], CAL_MIN_DURATION)
+
+    def test_create_meeting_quick_is_idempotent(self):
+        cache = _DummyCache()
+        captured_payloads = []
+        user_rows = {
+            "staff@example.com": frappe._dict({"name": "staff@example.com", "full_name": "Staff Example"}),
+            "student@example.com": frappe._dict({"name": "student@example.com", "full_name": "Student Example"}),
+        }
+
+        def _fake_get_doc(*args, **kwargs):
+            if len(args) == 1 and isinstance(args[0], dict):
+                payload = args[0]
+                captured_payloads.append(payload)
+                return _FakeDoc(payload, "MTG-TEST-0001")
+            if args == ("System Settings", "System Settings"):
+                return frappe._dict({"time_zone": "Asia/Bangkok"})
+            raise AssertionError(f"Unexpected get_doc call: args={args!r} kwargs={kwargs!r}")
+
+        def _fake_get_all(doctype, filters=None, fields=None, **kwargs):
+            if doctype == "Employee":
+                return []
+            if doctype == "Student":
+                requested = (filters or {}).get("student_email", [None, []])[1] or []
+                return [
+                    frappe._dict(
+                        {
+                            "name": "STU-1",
+                            "student_email": name,
+                            "student_full_name": user_rows[name]["full_name"],
+                            "student_preferred_name": None,
+                            "anchor_school": "SCHOOL-1",
+                        }
+                    )
+                    for name in requested
+                    if name == "student@example.com"
+                ]
+            if doctype == "Guardian":
+                return []
+            if doctype == "Student Group Student":
+                return []
+            if doctype == "User":
+                requested = (filters or {}).get("name", [None, []])[1] or []
+                return [user_rows[name] for name in requested if name in user_rows]
+            raise AssertionError(f"Unexpected get_all call: doctype={doctype!r}")
+
+        with (
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.has_permission", return_value=True),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.get_doc", side_effect=_fake_get_doc),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.get_all", side_effect=_fake_get_all),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_location", return_value=None),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._get_quick_create_scope",
+                return_value={
+                    "base_school": "SCHOOL-1",
+                    "school_scope": ["SCHOOL-1"],
+                    "student_scope": ["SCHOOL-1"],
+                    "is_admin_like": False,
+                },
+            ),
+        ):
+            first = create_meeting_quick(
+                client_request_id="req-1",
+                meeting_name="Weekly Check-in",
+                date="2026-02-01",
+                start_time="09:00",
+                end_time="10:00",
+                school="SCHOOL-1",
+                participants=[{"user": "student@example.com", "kind": "student", "label": "Student Example"}],
+            )
+            second = create_meeting_quick(
+                client_request_id="req-1",
+                meeting_name="Weekly Check-in",
+                date="2026-02-01",
+                start_time="09:00",
+                end_time="10:00",
+                school="SCHOOL-1",
+                participants=[{"user": "student@example.com", "kind": "student", "label": "Student Example"}],
+            )
+
+        self.assertEqual(first.get("status"), "created")
+        self.assertEqual(second.get("status"), "already_processed")
+        self.assertEqual(second.get("idempotent"), True)
+        self.assertEqual(len(captured_payloads), 1)
+        self.assertEqual(captured_payloads[0].get("school"), "SCHOOL-1")
+        self.assertEqual(captured_payloads[0].get("visibility_scope"), "Participants Only")
+        self.assertEqual(
+            captured_payloads[0].get("participants"),
+            [
+                {"participant": "student@example.com", "participant_name": "Student Example"},
+                {"participant": "staff@example.com", "participant_name": "Staff Example"},
+            ],
+        )
+
+    def test_assert_students_available_for_meeting_blocks_busy_students(self):
+        window_start = datetime(2026, 2, 1, 9, 0, 0)
+        window_end = datetime(2026, 2, 1, 10, 0, 0)
+
+        def _seed_busy(contexts, start, end, busy_by_user):
+            busy_by_user["student@example.com"].append((window_start, window_end))
+
+        with (
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._resolve_attendee_contexts",
+                return_value=[
+                    {
+                        "user": "student@example.com",
+                        "kind": "student",
+                        "label": "Student Example",
+                    }
+                ],
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._collect_student_busy_windows",
+                side_effect=_seed_busy,
+            ),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_meeting_busy_windows"),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_school_event_busy_windows"),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._collect_student_schedule_conflict_labels",
+                return_value={"student@example.com": {"Class: Biology (Sun 1 Feb 2026 09:00 - 10:00)"}},
+            ),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_student_meeting_conflict_labels", return_value={}),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._collect_student_school_event_conflict_labels", return_value={}
+            ),
+        ):
+            with self.assertRaises(frappe.ValidationError) as exc:
+                calendar_quick_create._assert_students_available_for_meeting(
+                    attendees=[{"user": "student@example.com", "kind": "student"}],
+                    organizer_user="staff@example.com",
+                    window_start=window_start,
+                    window_end=window_end,
+                )
+
+        self.assertIn("Student Example", str(exc.exception))
+        self.assertIn("Class: Biology", str(exc.exception))
+
+    def test_create_meeting_quick_checks_student_availability_before_insert(self):
+        cache = _DummyCache()
+
+        with (
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.has_permission", return_value=True),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.get_doc") as mocked_get_doc,
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_location", return_value=None),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._get_quick_create_scope",
+                return_value={
+                    "base_school": "SCHOOL-1",
+                    "school_scope": ["SCHOOL-1"],
+                    "student_scope": ["SCHOOL-1"],
+                    "is_admin_like": False,
+                },
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._assert_students_available_for_meeting",
+                side_effect=frappe.ValidationError("Student busy"),
+            ) as mocked_student_check,
+        ):
+            with self.assertRaises(frappe.ValidationError):
+                create_meeting_quick(
+                    client_request_id="req-busy-student",
+                    meeting_name="Weekly Check-in",
+                    date="2026-02-01",
+                    start_time="09:00",
+                    end_time="10:00",
+                    school="SCHOOL-1",
+                    participants=[{"user": "student@example.com", "kind": "student", "label": "Student Example"}],
+                )
+
+        mocked_student_check.assert_called_once()
+        mocked_get_doc.assert_not_called()
+
+    def test_collect_meeting_events_falls_back_to_school_default_color(self):
+        tzinfo = _system_tzinfo()
+        window_start = datetime(2026, 2, 1, 0, 0, 0)
+        window_end = datetime(2026, 2, 7, 0, 0, 0)
+        meeting_row = frappe._dict(
+            {
+                "name": "MTG-0001",
+                "meeting_name": "Weekly Check-in",
+                "date": "2026-02-02",
+                "start_time": "09:00:00",
+                "end_time": "10:00:00",
+                "from_datetime": "2026-02-02 09:00:00",
+                "to_datetime": "2026-02-02 10:00:00",
+                "location": None,
+                "school": "SCHOOL-1",
+                "team": None,
+                "virtual_meeting_link": None,
+            }
+        )
+
+        def _fake_get_all(doctype, filters=None, fields=None, ignore_permissions=False, **kwargs):
+            if doctype == "School":
+                return [frappe._dict({"name": "SCHOOL-1", "meeting_color": "#a4f3dd"})]
+            if doctype == "Team":
+                return []
+            raise AssertionError(f"Unexpected get_all call: doctype={doctype!r}")
+
+        with (
+            patch("ifitwala_ed.api.calendar_staff_feed._resolve_employee_for_user", return_value={"name": "EMP-0001"}),
+            patch("ifitwala_ed.api.calendar_staff_feed.frappe.db.sql", return_value=[meeting_row]),
+            patch("ifitwala_ed.api.calendar_staff_feed.frappe.get_all", side_effect=_fake_get_all),
+        ):
+            events = _collect_meeting_events("staff@example.com", window_start, window_end, tzinfo)
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0].color, "#a4f3dd")
+
+    def test_collect_meeting_events_keeps_explicit_team_color_over_school_default(self):
+        tzinfo = _system_tzinfo()
+        window_start = datetime(2026, 2, 1, 0, 0, 0)
+        window_end = datetime(2026, 2, 7, 0, 0, 0)
+        meeting_row = frappe._dict(
+            {
+                "name": "MTG-0002",
+                "meeting_name": "Leadership Sync",
+                "date": "2026-02-03",
+                "start_time": "11:00:00",
+                "end_time": "12:00:00",
+                "from_datetime": "2026-02-03 11:00:00",
+                "to_datetime": "2026-02-03 12:00:00",
+                "location": None,
+                "school": "SCHOOL-1",
+                "team": "TEAM-1",
+                "virtual_meeting_link": None,
+            }
+        )
+
+        def _fake_get_all(doctype, filters=None, fields=None, ignore_permissions=False, **kwargs):
+            if doctype == "Team":
+                return [frappe._dict({"name": "TEAM-1", "meeting_color": "#112233", "school": "SCHOOL-1"})]
+            if doctype == "School":
+                return [frappe._dict({"name": "SCHOOL-1", "meeting_color": "#a4f3dd"})]
+            raise AssertionError(f"Unexpected get_all call: doctype={doctype!r}")
+
+        with (
+            patch("ifitwala_ed.api.calendar_staff_feed._resolve_employee_for_user", return_value={"name": "EMP-0001"}),
+            patch("ifitwala_ed.api.calendar_staff_feed.frappe.db.sql", return_value=[meeting_row]),
+            patch("ifitwala_ed.api.calendar_staff_feed.frappe.get_all", side_effect=_fake_get_all),
+        ):
+            events = _collect_meeting_events("staff@example.com", window_start, window_end, tzinfo)
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0].color, "#112233")
+
+    def test_get_school_event_details_tolerates_missing_event_type_field(self):
+        doc = _FakeDoc(
+            {
+                "subject": "Assembly",
+                "school": "SCHOOL-1",
+                "location": "Hall",
+                "event_category": "Other",
+                "all_day": 0,
+                "color": None,
+                "description": "<p>Bring your planner.</p>",
+                "starts_on": "2026-04-10 08:00:00",
+                "ends_on": "2026-04-10 09:00:00",
+                "reference_type": None,
+                "reference_name": None,
+                "docstatus": 0,
+            },
+            "SE-0001",
+        )
+
+        with (
+            patch("ifitwala_ed.api.calendar_details.frappe.session", frappe._dict({"user": "teacher@example.com"})),
+            patch("ifitwala_ed.api.calendar_details.frappe.get_doc", return_value=doc),
+            patch("ifitwala_ed.api.calendar_details._school_event_access_allowed", return_value=True),
+            patch(
+                "ifitwala_ed.api.calendar_details._system_tzinfo",
+                return_value=pytz.timezone("Asia/Bangkok"),
+            ),
+        ):
+            payload = calendar_details.get_school_event_details("SE-0001")
+
+        self.assertEqual(payload["name"], "SE-0001")
+        self.assertEqual(payload["subject"], "Assembly")
+        self.assertEqual(payload["event_category"], "Other")
+        self.assertIsNone(payload["event_type"])
+        self.assertEqual(payload["timezone"], "Asia/Bangkok")
+
+    def test_school_event_access_blocks_staff_for_guardian_only_ancestor_event(self):
+        doc = _FakeDoc(
+            {
+                "subject": "Parent Workshop",
+                "school": "ISS",
+                "location": "Hall",
+                "event_category": "Parent Engagement",
+                "all_day": 0,
+                "color": None,
+                "description": "<p>Parents only.</p>",
+                "starts_on": "2026-04-10 08:00:00",
+                "ends_on": "2026-04-10 09:00:00",
+                "reference_type": None,
+                "reference_name": None,
+                "docstatus": 0,
+                "audience": [frappe._dict({"audience_type": "All Guardians", "team": None})],
+                "participants": [],
+            },
+            "SE-0002",
+        )
+
+        with (
+            patch("ifitwala_ed.api.calendar_details.frappe.get_roles", return_value=["Employee"]),
+            patch(
+                "ifitwala_ed.api.calendar_details._resolve_employee_for_user",
+                return_value={"school": "IHS"},
+            ),
+            patch("ifitwala_ed.api.calendar_details.get_ancestor_schools", return_value=["IHS", "ISS"]),
+            patch("ifitwala_ed.api.calendar_details.get_user_membership", return_value={"teams": set()}),
+        ):
+            allowed = calendar_details._school_event_access_allowed(doc, "teacher@example.com")
+
+        self.assertFalse(allowed)
+
+    def test_school_event_access_allows_guardian_for_parent_school_event(self):
+        doc = _FakeDoc(
+            {
+                "subject": "Parent Workshop",
+                "school": "ISS",
+                "location": "Hall",
+                "event_category": "Parent Engagement",
+                "all_day": 0,
+                "color": None,
+                "description": "<p>Parents only.</p>",
+                "starts_on": "2026-04-10 08:00:00",
+                "ends_on": "2026-04-10 09:00:00",
+                "reference_type": None,
+                "reference_name": None,
+                "docstatus": 0,
+                "audience": [
+                    frappe._dict(
+                        {
+                            "audience_type": "All Guardians",
+                            "student_group": None,
+                            "include_guardians": 0,
+                            "include_students": 0,
+                            "team": None,
+                        }
+                    )
+                ],
+                "participants": [],
+            },
+            "SE-0003",
+        )
+        context = {
+            "user": "guardian@example.com",
+            "children": [{"student": "STU-1", "full_name": "Amina Example", "school": "IHS"}],
+            "child_by_student": {"STU-1": {"student": "STU-1", "full_name": "Amina Example", "school": "IHS"}},
+            "student_names": ["STU-1"],
+            "student_school_names": {"STU-1": {"IHS"}},
+            "eligible_school_targets_by_student": {"STU-1": {"IHS", "ISS"}},
+            "membership_by_student": {"STU-1": set()},
+        }
+
+        with (
+            patch("ifitwala_ed.api.calendar_details.frappe.session", frappe._dict({"user": "guardian@example.com"})),
+            patch("ifitwala_ed.api.calendar_details.frappe.get_roles", return_value=["Guardian"]),
+            patch(
+                "ifitwala_ed.api.calendar_details._resolve_guardian_communication_context",
+                return_value=context,
+            ),
+        ):
+            allowed = calendar_details._school_event_access_allowed(doc, "guardian@example.com")
+
+        self.assertTrue(allowed)
+
+    def test_get_student_group_event_details_includes_task_creation_context(self):
+        tzinfo = pytz.timezone("Asia/Bangkok")
+        event_start = datetime(2026, 4, 22, 8, 0, 0)
+        event_end = datetime(2026, 4, 22, 9, 0, 0)
+
+        with (
+            patch("ifitwala_ed.api.calendar_details.frappe.session", frappe._dict({"user": "teacher@example.com"})),
+            patch("ifitwala_ed.api.calendar_details._system_tzinfo", return_value=tzinfo),
+            patch(
+                "ifitwala_ed.api.calendar_details._resolve_sg_schedule_context",
+                return_value={
+                    "student_group": "GROUP-1",
+                    "rotation_day": 2,
+                    "block_number": 3,
+                    "block_label": "Block 3",
+                    "session_date": "2026-04-22",
+                    "location": "Room 5",
+                    "location_missing_reason": None,
+                    "start": event_start,
+                    "end": event_end,
+                },
+            ),
+            patch("ifitwala_ed.api.calendar_details._user_has_student_group_access", return_value=True),
+            patch(
+                "ifitwala_ed.api.calendar_details.frappe.db.get_value",
+                return_value=frappe._dict(
+                    {
+                        "name": "GROUP-1",
+                        "student_group_name": "Biology A",
+                        "group_based_on": "Course",
+                        "program": "IB",
+                        "course": "COURSE-1",
+                        "cohort": "G6",
+                        "school": "SCHOOL-1",
+                    }
+                ),
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_details._course_meta_map",
+                return_value={"COURSE-1": {"course_name": "Biology"}},
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_details.planning.resolve_active_class_teaching_plan",
+                return_value={
+                    "status": "ready",
+                    "class_teaching_plan": "CLASS-PLAN-1",
+                    "active_plan_count": 1,
+                },
+            ),
+        ):
+            payload = calendar_details.get_student_group_event_details("sg::GROUP-1::2026-04-22T08:00:00")
+
+        self.assertEqual(payload["student_group"], "GROUP-1")
+        self.assertEqual(payload["course_name"], "Biology")
+        self.assertEqual(
+            payload["task_creation"],
+            {
+                "status": "ready",
+                "class_teaching_plan": "CLASS-PLAN-1",
+            },
+        )
+
+    def test_create_school_event_quick_defaults_custom_users_to_session_user(self):
+        cache = _DummyCache()
+        captured_payloads = []
+
+        def _fake_get_doc(*args, **kwargs):
+            if len(args) == 1 and isinstance(args[0], dict):
+                payload = args[0]
+                captured_payloads.append(payload)
+                return _FakeDoc(payload, "SEVENT-2026-000001")
+            if args == ("System Settings", "System Settings"):
+                return frappe._dict({"time_zone": "Asia/Bangkok"})
+            raise AssertionError(f"Unexpected get_doc call: args={args!r} kwargs={kwargs!r}")
+
+        with (
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.has_permission", return_value=True),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.get_doc", side_effect=_fake_get_doc),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_school", return_value="SCHOOL-1"),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_location", return_value=None),
+        ):
+            response = create_school_event_quick(
+                client_request_id="req-custom-1",
+                subject="Parent Coffee Morning",
+                school="SCHOOL-1",
+                starts_on="2026-02-01T09:00",
+                ends_on="2026-02-01T10:00",
+                audience_type="Custom Users",
+                event_category="Other",
+            )
+
+        self.assertEqual(response.get("status"), "created")
+        self.assertEqual(len(captured_payloads), 1)
+        self.assertEqual(captured_payloads[0].get("participants"), [{"participant": "staff@example.com"}])
+
+    def test_get_event_quick_create_options_includes_announcement_publish_capability(self):
+        cache = _DummyCache()
+
+        with (
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create.frappe.has_permission",
+                side_effect=lambda doctype, ptype=None, user=None: doctype == "School Event",
+            ),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._get_quick_create_scope",
+                return_value={
+                    "roles": ["Academic Assistant"],
+                    "base_school": "ISS",
+                    "school_scope": ["ISS", "IHS", "IMS"],
+                    "is_admin_like": False,
+                },
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._cached_select_options",
+                side_effect=lambda doctype, fieldname: {
+                    ("Meeting", "meeting_category"): ["General"],
+                    ("School Event", "event_category"): ["Other"],
+                    ("School Event Audience", "audience_type"): ["All Guardians", "Students in Student Group"],
+                }[(doctype, fieldname)],
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._school_options_for_scope",
+                return_value=[
+                    {"value": "ISS", "label": "Ifitwala Secondary School"},
+                    {"value": "IHS", "label": "Ifitwala High School"},
+                ],
+            ),
+            patch("ifitwala_ed.api.calendar_quick_create._location_options_map_for_schools", return_value={"ISS": []}),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._location_type_options_map_for_schools", return_value={"ISS": []}
+            ),
+            patch("ifitwala_ed.api.calendar_quick_create._team_options_for_scope", return_value=[]),
+            patch("ifitwala_ed.api.calendar_quick_create._student_group_options_for_scope", return_value=[]),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create.get_org_communication_quick_create_capability",
+                return_value={
+                    "enabled": False,
+                    "blocked_reason": "Set a default organization before publishing announcements.",
+                },
+            ),
+        ):
+            payload = calendar_quick_create.get_event_quick_create_options()
+
+        self.assertEqual(
+            payload["announcement_publish"],
+            {
+                "enabled": False,
+                "blocked_reason": "Set a default organization before publishing announcements.",
+            },
+        )
+
+    def test_team_options_include_school_and_organization_scoped_teams(self):
+        def fake_get_all(doctype, filters=None, fields=None, order_by=None, limit=None, **kwargs):
+            self.assertEqual(doctype, "Team")
+            if filters.get("school"):
+                return [
+                    frappe._dict(
+                        name="TEAM-SCHOOL",
+                        team_name="School Team",
+                        school="ISS",
+                        organization="ORG-1",
+                    )
+                ]
+            if filters.get("organization"):
+                return [
+                    frappe._dict(
+                        name="TEAM-ORG",
+                        team_name="Organization Team",
+                        school="",
+                        organization="ORG-1",
+                    ),
+                    frappe._dict(
+                        name="TEAM-SIBLING",
+                        team_name="Sibling Team",
+                        school="SIBLING",
+                        organization="ORG-1",
+                    ),
+                ]
+            raise AssertionError(f"Unexpected filters: {filters!r}")
+
+        with patch("ifitwala_ed.api.calendar_quick_create.frappe.get_all", side_effect=fake_get_all):
+            options = calendar_quick_create._team_options_for_scope(
+                "staff@example.com",
+                ["ISS"],
+                False,
+                ["ORG-1"],
+            )
+
+        self.assertEqual(
+            options,
+            [
+                {"value": "TEAM-ORG", "label": "Organization Team"},
+                {"value": "TEAM-SCHOOL", "label": "School Team"},
+            ],
+        )
+
+    def test_employee_attendee_search_uses_descendant_organization_scope(self):
+        observed_params = []
+
+        def fake_sql(sql, params=None, as_dict=False, **kwargs):
+            self.assertIn("e.organization IN %(organizations)s", sql)
+            observed_params.append(dict(params or {}))
+            return [
+                frappe._dict(
+                    {
+                        "user_id": "interviewer@example.com",
+                        "label": "Interview Reviewer",
+                        "school": "Child School",
+                    }
+                )
+            ]
+
+        with patch("ifitwala_ed.api.calendar_quick_create.frappe.db.sql", side_effect=fake_sql):
+            results = calendar_quick_create._search_employee_attendees(
+                user="admission@example.com",
+                organization_scope=["Parent Org", "Child Org"],
+                query="inter",
+                limit=8,
+            )
+
+        self.assertEqual(observed_params[0]["organizations"], ("Parent Org", "Child Org"))
+        self.assertEqual(
+            results,
+            [
+                {
+                    "value": "interviewer@example.com",
+                    "label": "Interview Reviewer",
+                    "meta": "Child School",
+                    "kind": "employee",
+                    "availability_mode": "authoritative",
+                }
+            ],
+        )
+
+    def test_search_meeting_attendees_passes_descendant_organization_scope_to_employee_search(self):
+        cache = _DummyCache()
+
+        with (
+            patch(
+                "ifitwala_ed.api.calendar_quick_create.frappe.session",
+                frappe._dict({"user": "admission@example.com"}),
+            ),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.has_permission", return_value=True),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._get_quick_create_scope",
+                return_value={
+                    "organization": "Parent Org",
+                    "organization_scope": ["Parent Org", "Child Org"],
+                    "student_scope": ["School A"],
+                },
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._search_employee_attendees",
+                return_value=[
+                    {
+                        "value": "interviewer@example.com",
+                        "label": "Interview Reviewer",
+                        "meta": "Child School",
+                        "kind": "employee",
+                        "availability_mode": "authoritative",
+                    }
+                ],
+            ) as mocked_search,
+        ):
+            payload = calendar_quick_create.search_meeting_attendees(
+                query="inter",
+                attendee_kinds=["employee"],
+                limit=8,
+            )
+
+        mocked_search.assert_called_once_with(
+            user="admission@example.com",
+            organization_scope=["Parent Org", "Child Org"],
+            query="inter",
+            limit=8,
+        )
+        self.assertEqual(payload["results"][0]["value"], "interviewer@example.com")
+
+    def test_team_options_membership_fallback_uses_employee_link_when_member_is_blank(self):
+        def fake_get_all(doctype, filters=None, fields=None, or_filters=None, pluck=None, **kwargs):
+            if doctype == "Team Member":
+                self.assertEqual(filters, {"parenttype": "Team"})
+                self.assertEqual(or_filters, {"member": "staff@example.com", "employee": "EMP-0001"})
+                self.assertEqual(pluck, "parent")
+                return ["TEAM-EMPLOYEE"]
+            if doctype == "Team":
+                self.assertEqual(filters, {"name": ["in", ["TEAM-EMPLOYEE"]]})
+                return [
+                    frappe._dict(
+                        name="TEAM-EMPLOYEE",
+                        team_name="Employee Team",
+                        school="",
+                        organization="ORG-1",
+                    )
+                ]
+            raise AssertionError(f"Unexpected doctype: {doctype}")
+
+        with (
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.get_all", side_effect=fake_get_all),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._resolve_employee_for_user",
+                return_value={"name": "EMP-0001"},
+            ),
+        ):
+            options = calendar_quick_create._team_options_for_scope(
+                "staff@example.com",
+                [],
+                False,
+                [],
+            )
+
+        self.assertEqual(options, [{"value": "TEAM-EMPLOYEE", "label": "Employee Team"}])
+
+    def test_create_school_event_quick_can_publish_matching_org_communication(self):
+        cache = _DummyCache()
+        captured_event_payloads = []
+
+        def _fake_get_doc(*args, **kwargs):
+            if len(args) == 1 and isinstance(args[0], dict):
+                payload = args[0]
+                captured_event_payloads.append(payload)
+                return _FakeDoc(payload, "SE-26-04-00001")
+            if args == ("System Settings", "System Settings"):
+                return frappe._dict({"time_zone": "Asia/Bangkok"})
+            raise AssertionError(f"Unexpected get_doc call: args={args!r} kwargs={kwargs!r}")
+
+        with (
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.has_permission", return_value=True),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.get_doc", side_effect=_fake_get_doc),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_school", return_value="ISS"),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_location", return_value=None),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create.get_org_communication_quick_create_capability",
+                return_value={"enabled": True, "blocked_reason": None},
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create.publish_companion_org_communication_for_event",
+                return_value={
+                    "status": "created",
+                    "name": "ORG-COMM-26-04-00001",
+                    "title": "Parent MYP Workshop",
+                },
+            ) as mocked_publish,
+        ):
+            response = create_school_event_quick(
+                client_request_id="req-publish-1",
+                subject="Parent MYP Workshop",
+                school="ISS",
+                starts_on="2026-04-22T08:00",
+                ends_on="2026-04-22T09:00",
+                audience_type="All Guardians",
+                event_category="Parent Engagement",
+                publish_announcement=1,
+                announcement_message="Workshop presentation",
+            )
+
+        self.assertEqual(response.get("status"), "created")
+        self.assertEqual(response.get("published_communication", {}).get("name"), "ORG-COMM-26-04-00001")
+        self.assertEqual(len(captured_event_payloads), 1)
+        self.assertEqual(captured_event_payloads[0].get("school"), "ISS")
+        mocked_publish.assert_called_once()
+        self.assertEqual(mocked_publish.call_args.kwargs["event_doc"].name, "SE-26-04-00001")
+        self.assertEqual(mocked_publish.call_args.kwargs["request_id"], "req-publish-1")
+        self.assertEqual(mocked_publish.call_args.kwargs["announcement_message"], "Workshop presentation")
+
+    def test_student_group_memberships_does_not_filter_child_rows_by_active(self):
+        observed_filters = []
+
+        def _fake_get_all(doctype, filters=None, fields=None, ignore_permissions=False, **kwargs):
+            self.assertEqual(doctype, "Student Group Instructor")
+            observed_filters.append(dict(filters or {}))
+
+            if filters.get("user_id") == "staff@example.com":
+                return [frappe._dict({"parent": "SG-USER", "user_id": "staff@example.com"})]
+            if filters.get("employee") == "EMP-0001":
+                return [frappe._dict({"parent": "SG-EMP", "user_id": "assistant@example.com"})]
+            if "instructor" in (filters or {}):
+                return [frappe._dict({"parent": "SG-INS", "user_id": None})]
+            return []
+
+        with patch("ifitwala_ed.api.calendar_core.frappe.get_all", side_effect=_fake_get_all):
+            group_names, instructor_ids = _student_group_memberships(
+                user="staff@example.com",
+                employee_id="EMP-0001",
+                instructor_ids={"INS-0001"},
+            )
+
+        self.assertEqual(group_names, {"SG-USER", "SG-EMP", "SG-INS"})
+        self.assertIn("INS-0001", instructor_ids)
+        self.assertIn("assistant@example.com", instructor_ids)
+
+        self.assertEqual(len(observed_filters), 3)
+        for filters in observed_filters:
+            self.assertEqual(filters.get("parenttype"), "Student Group")
+            self.assertNotIn("active", filters)
+
+    def test_search_meeting_attendees_facade_delegates_new_contract(self):
+        expected = {"results": [{"value": "student@example.com"}], "notes": ["note"]}
+
+        with patch("ifitwala_ed.api.calendar_quick_create.search_meeting_attendees", return_value=expected) as mocked:
+            payload = search_meeting_attendees(
+                query="stu",
+                attendee_kinds=["employee", "student"],
+                limit=6,
+            )
+
+        mocked.assert_called_once_with(
+            query="stu",
+            attendee_kinds=["employee", "student"],
+            limit=6,
+        )
+        self.assertEqual(payload, expected)
+
+    def test_get_meeting_team_attendees_facade_delegates_new_contract(self):
+        expected = {"team": "TEAM-1", "results": [{"value": "staff@example.com"}]}
+
+        with patch("ifitwala_ed.api.calendar_quick_create.get_meeting_team_attendees", return_value=expected) as mocked:
+            payload = get_meeting_team_attendees(team="TEAM-1")
+
+        mocked.assert_called_once_with(team="TEAM-1")
+        self.assertEqual(payload, expected)
+
+    def test_suggest_meeting_slots_facade_delegates_new_contract(self):
+        expected = {
+            "slots": [
+                {
+                    "start": "2026-02-01T09:00:00",
+                    "available_room_count": 2,
+                    "suggested_room": {"value": "ROOM-1", "label": "Room 1"},
+                }
+            ],
+            "fallback_slots": [],
+            "notes": [],
+            "duration_minutes": 45,
+            "attendees": [],
+        }
+
+        with patch("ifitwala_ed.api.calendar_quick_create.suggest_meeting_slots", return_value=expected) as mocked:
+            payload = suggest_meeting_slots(
+                attendees=[{"user": "student@example.com", "kind": "student"}],
+                duration_minutes=45,
+                date_from="2026-02-01",
+                date_to="2026-02-05",
+                day_start_time="08:00",
+                day_end_time="17:00",
+                school="SCHOOL-1",
+                location_type="Hall",
+                require_room=True,
+            )
+
+        mocked.assert_called_once_with(
+            attendees=[{"user": "student@example.com", "kind": "student"}],
+            duration_minutes=45,
+            date_from="2026-02-01",
+            date_to="2026-02-05",
+            day_start_time="08:00",
+            day_end_time="17:00",
+            school="SCHOOL-1",
+            location_type="Hall",
+            require_room=True,
+        )
+        self.assertEqual(payload, expected)
+
+    def test_suggest_meeting_rooms_facade_delegates_new_contract(self):
+        expected = {"rooms": [{"value": "ROOM-1"}], "notes": []}
+
+        with patch("ifitwala_ed.api.calendar_quick_create.suggest_meeting_rooms", return_value=expected) as mocked:
+            payload = suggest_meeting_rooms(
+                school="SCHOOL-1",
+                date="2026-02-01",
+                start_time="09:00",
+                end_time="10:00",
+                location_type="Hall",
+                capacity_needed=4,
+                limit=5,
+            )
+
+        mocked.assert_called_once_with(
+            school="SCHOOL-1",
+            date="2026-02-01",
+            start_time="09:00",
+            end_time="10:00",
+            location_type="Hall",
+            capacity_needed=4,
+            limit=5,
+        )
+        self.assertEqual(payload, expected)
+
+    def test_quick_create_slot_suggestions_include_best_room_when_required(self):
+        cache = _DummyCache()
+        room_rows = [
+            frappe._dict(
+                {
+                    "name": "ROOM-1",
+                    "location_name": "Room 1",
+                    "parent_location": "Block A",
+                    "maximum_capacity": 2,
+                }
+            ),
+            frappe._dict(
+                {
+                    "name": "ROOM-2",
+                    "location_name": "Room 2",
+                    "parent_location": "Block B",
+                    "maximum_capacity": 8,
+                }
+            ),
+        ]
+
+        with (
+            patch("ifitwala_ed.api.calendar_quick_create._", side_effect=lambda message: message),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.has_permission", return_value=True),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._resolve_attendee_contexts",
+                return_value=[
+                    {
+                        "user": "student@example.com",
+                        "label": "Student Example",
+                        "kind": "student",
+                        "availability_mode": "school_schedule",
+                    }
+                ],
+            ),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_employee_busy_windows"),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_student_busy_windows"),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_meeting_busy_windows"),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_school_event_busy_windows"),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_school", return_value="SCHOOL-1"),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_location_type", return_value="Hall"),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._room_rows_for_school_scope",
+                return_value=room_rows,
+            ) as mocked_room_scope,
+            patch("ifitwala_ed.api.calendar_quick_create._collect_room_busy_windows", return_value={}),
+        ):
+            payload = calendar_quick_create.suggest_meeting_slots(
+                attendees=[{"user": "student@example.com", "kind": "student"}],
+                duration_minutes=60,
+                date_from="2026-02-01",
+                date_to="2026-02-01",
+                day_start_time="08:00",
+                day_end_time="09:00",
+                school="SCHOOL-1",
+                location_type="Hall",
+                require_room=True,
+            )
+
+        mocked_room_scope.assert_called_once_with(
+            "SCHOOL-1",
+            2,
+            location_type="Hall",
+        )
+        self.assertEqual(len(payload["slots"]), 1)
+        self.assertEqual(payload["slots"][0]["suggested_room"]["value"], "ROOM-1")
+        self.assertEqual(payload["slots"][0]["available_room_count"], 2)
+        self.assertIn(
+            "Exact matches already include at least one free room in the selected school scope.",
+            payload["notes"],
+        )
+        self.assertIn("Room ranking is limited to location type Hall.", payload["notes"])
+
+    def test_quick_create_slot_suggestions_drop_exact_match_without_free_room(self):
+        cache = _DummyCache()
+        room_rows = [
+            frappe._dict(
+                {
+                    "name": "ROOM-1",
+                    "location_name": "Room 1",
+                    "parent_location": "Block A",
+                    "maximum_capacity": 2,
+                }
+            )
+        ]
+        blocked_window = (
+            datetime(2026, 2, 1, 8, 0, 0),
+            datetime(2026, 2, 1, 9, 0, 0),
+        )
+
+        with (
+            patch("ifitwala_ed.api.calendar_quick_create._", side_effect=lambda message: message),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.has_permission", return_value=True),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._resolve_attendee_contexts",
+                return_value=[
+                    {
+                        "user": "student@example.com",
+                        "label": "Student Example",
+                        "kind": "student",
+                        "availability_mode": "school_schedule",
+                    }
+                ],
+            ),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_employee_busy_windows"),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_student_busy_windows"),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_meeting_busy_windows"),
+            patch("ifitwala_ed.api.calendar_quick_create._collect_school_event_busy_windows"),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_school", return_value="SCHOOL-1"),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_location_type", return_value="Hall"),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._room_rows_for_school_scope",
+                return_value=room_rows,
+            ) as mocked_room_scope,
+            patch(
+                "ifitwala_ed.api.calendar_quick_create._collect_room_busy_windows",
+                return_value={"ROOM-1": [blocked_window]},
+            ),
+        ):
+            payload = calendar_quick_create.suggest_meeting_slots(
+                attendees=[{"user": "student@example.com", "kind": "student"}],
+                duration_minutes=60,
+                date_from="2026-02-01",
+                date_to="2026-02-01",
+                day_start_time="08:00",
+                day_end_time="09:00",
+                school="SCHOOL-1",
+                location_type="Hall",
+                require_room=True,
+            )
+
+        mocked_room_scope.assert_called_once_with(
+            "SCHOOL-1",
+            2,
+            location_type="Hall",
+        )
+        self.assertEqual(payload["slots"], [])
+        self.assertEqual(payload["fallback_slots"], [])
+        self.assertIn("excluded because no room was free", payload["notes"][-1])

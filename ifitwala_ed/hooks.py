@@ -1,0 +1,550 @@
+# ifitwala_ed/hooks.py
+from ifitwala_ed.routing.policy import WEBSITE_REDIRECTS, WEBSITE_ROUTE_RULES
+
+app_name = "ifitwala_ed"
+app_title = "Ifitwala"
+app_publisher = "François de Ryckel"
+app_description = "School management System"
+app_email = "f.deryckel@gmail.com"
+app_license = "MIT"
+
+# Apps
+# ------------------
+
+required_apps = ["ifitwala_drive"]
+
+# Each item in the list will be shown as an app in the apps page
+# add_to_apps_screen = [
+# 	{
+# 		"name": "ifitwala",
+# 		"logo": "/assets/ifitwala/logo.png",
+# 		"title": "Ifitwala",
+# 		"route": "/ifitwala",
+# 		"has_permission": "ifitwala.api.permission.has_app_permission"
+# 	}
+# ]
+
+# Includes in <head>
+# ------------------
+
+# include js, css files in header of desk.html
+
+app_include_js = [
+    "/assets/ifitwala_ed/js/ifitwala_ed.bundle.js",
+    "/assets/ifitwala_ed/js/initial_setup.js",
+    "/assets/ifitwala_ed/js/governed_drive_links.js",
+]
+
+# app_include_css = "/assets/ifitwala_ed/css/desk_overrides.bundle.css"
+
+# include js, css files in header of web template
+# web_include_css = "/assets/ifitwala/css/ifitwala.css"
+# web_include_js = "/assets/ifitwala/js/ifitwala.js"
+update_website_context = ["ifitwala_ed.website.context.update_website_context"]
+
+# include custom scss in every website theme (without file extension ".scss")
+# website_theme_scss = "ifitwala/public/scss/website"
+
+# include js, css files in header of web form
+# webform_include_js = {"doctype": "public/js/doctype.js"}
+# webform_include_css = {"doctype": "public/css/doctype.css"}
+webform_include_css = {
+    "Inquiry": "public/css/admissions_webform_shell.css",
+}
+webform_include_js = {
+    "Inquiry": "public/js/admissions_webform_shell.js",
+}
+
+# include js in page
+
+# include js in doctype views
+doctype_js = {
+    "Contact": "public/js/contact.js",
+    "School Website Page Block": "school_site/doctype/school_website_page_block/school_website_page_block.js",
+}
+
+standard_queries = {
+    "Academic Year": "ifitwala_ed.utilities.link_queries.academic_year_global_desc_query",
+}
+# doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
+# doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
+# doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
+
+# ifitwala_ed/hooks.py
+
+website_route_rules = WEBSITE_ROUTE_RULES
+website_redirects = WEBSITE_REDIRECTS
+
+
+# Svg Icons
+# ------------------
+# include app icons in desk
+# app_include_icons = "ifitwala/public/icons.svg"
+
+# Home Pages
+# ----------
+# Neutralize sticky login redirect-to=/desk (and legacy /app) before login page/scripts execute.
+before_request = [
+    "ifitwala_ed.api.users.ensure_guest_public_home_page_cache",
+    "ifitwala_ed.api.users.sanitize_login_redirect_param",
+    "ifitwala_ed.api.users.redirect_non_staff_away_from_desk",
+]
+# Force role-based entry path immediately after successful login.
+on_login = "ifitwala_ed.api.users.redirect_user_to_entry_portal_on_login"
+# Re-apply redirect target after session creation so Desk default path cannot override it.
+on_session_creation = "ifitwala_ed.api.users.redirect_user_to_entry_portal_on_session_creation"
+# Resolve website home directly from the same canonical role policy.
+get_website_user_home_page = "ifitwala_ed.api.users.get_website_user_home_page"
+# application home page (Frappe expects the page route name, not "/")
+home_page = "index"
+
+# website user home page (by Role)
+role_home_page = {
+    "Desk User": "/hub/staff",
+    "Employee": "/hub/staff",
+    "Student": "/hub/student",
+    "Guardian": "/hub/guardian",
+}
+
+# Generators
+# ----------
+
+# automatically create page for each record of this doctype
+
+# Jinja
+# ----------
+
+# add methods and filters to jinja environment
+# jinja = {
+# 	"methods": "ifitwala.utils.jinja_methods",
+# 	"filters": "ifitwala.utils.jinja_filters"
+# }
+
+# Installation
+# ------------
+
+# before_install = "ifitwala.install.before_install"
+after_install = "ifitwala_ed.setup.setup.setup_education"
+
+# Uninstallation
+# ------------
+
+# before_uninstall = "ifitwala.uninstall.before_uninstall"
+# after_uninstall = "ifitwala.uninstall.after_uninstall"
+
+# Integration Setup
+# ------------------
+# To set up dependencies/integrations with other apps
+# Name of the app being installed is passed as an argument
+
+# before_app_install = "ifitwala.utils.before_app_install"
+# after_app_install = "ifitwala.utils.after_app_install"
+
+# Integration Cleanup
+# -------------------
+# To clean up dependencies/integrations with other apps
+# Name of the app being uninstalled is passed as an argument
+
+# before_app_uninstall = "ifitwala.utils.before_app_uninstall"
+# after_app_uninstall = "ifitwala.utils.after_app_uninstall"
+
+calendars = ["School Event", "School Calendar", "Leave Application"]
+
+# Desk Notifications
+# ------------------
+# See frappe.core.notifications.get_notification_config
+
+# notification_config = "ifitwala.notifications.get_notification_config"
+
+# Permissions
+# -----------
+# Permissions evaluated in scripted ways
+
+permission_query_conditions = {
+    "Organization": "ifitwala_ed.setup.doctype.organization.organization.get_permission_query_conditions",
+    "Contact": "ifitwala_ed.utilities.contact_utils.contact_permission_query_conditions",
+    "Program Enrollment": "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_permission_query_conditions",
+    "Instructor": "ifitwala_ed.schedule.doctype.instructor.instructor.get_permission_query_conditions",
+    "Term": "ifitwala_ed.school_settings.doctype.term.term.get_permission_query_conditions",
+    "Academic Year": "ifitwala_ed.school_settings.doctype.academic_year.academic_year.get_permission_query_conditions",
+    "Student": "ifitwala_ed.students.doctype.student.student.get_permission_query_conditions",
+    "Student Referral": "ifitwala_ed.students.doctype.student_referral.student_referral.get_permission_query_conditions",
+    "Employee": "ifitwala_ed.hr.doctype.employee.employee.get_permission_query_conditions",
+    "Designation": "ifitwala_ed.hr.doctype.designation.designation.get_permission_query_conditions",
+    "Program Offering": "ifitwala_ed.schedule.doctype.program_offering.program_offering.get_permission_query_conditions",
+    "Academic Load Policy": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.get_permission_query_conditions",
+    "Activity Booking": "ifitwala_ed.eca.doctype.activity_booking.activity_booking.get_permission_query_conditions",
+    "Org Communication": "ifitwala_ed.setup.doctype.org_communication.org_communication.get_permission_query_conditions",
+    "Institutional Policy": "ifitwala_ed.governance.doctype.institutional_policy.institutional_policy.get_permission_query_conditions",
+    "Policy Version": "ifitwala_ed.governance.doctype.policy_version.policy_version.get_permission_query_conditions",
+    "Policy Acknowledgement": "ifitwala_ed.governance.doctype.policy_acknowledgement.policy_acknowledgement.get_permission_query_conditions",
+    "Inquiry": "ifitwala_ed.admission.doctype.inquiry.inquiry.get_permission_query_conditions",
+    "Student Applicant": "ifitwala_ed.admission.doctype.student_applicant.student_applicant.get_permission_query_conditions",
+    "Applicant Document": "ifitwala_ed.admission.doctype.applicant_document.applicant_document.get_permission_query_conditions",
+    "Applicant Document Item": "ifitwala_ed.admission.doctype.applicant_document_item.applicant_document_item.get_permission_query_conditions",
+    "Applicant Review Rule": "ifitwala_ed.admission.doctype.applicant_review_rule.applicant_review_rule.get_permission_query_conditions",
+    "Applicant Review Assignment": "ifitwala_ed.admission.doctype.applicant_review_assignment.applicant_review_assignment.get_permission_query_conditions",
+    "Applicant Health Profile": "ifitwala_ed.admission.doctype.applicant_health_profile.applicant_health_profile.get_permission_query_conditions",
+    "Applicant Interview": "ifitwala_ed.admission.doctype.applicant_interview.applicant_interview.get_permission_query_conditions",
+    "Applicant Interview Feedback": "ifitwala_ed.admission.doctype.applicant_interview_feedback.applicant_interview_feedback.get_permission_query_conditions",
+    "Recommendation Request": "ifitwala_ed.admission.doctype.recommendation_request.recommendation_request.get_permission_query_conditions",
+    "Recommendation Submission": "ifitwala_ed.admission.doctype.recommendation_submission.recommendation_submission.get_permission_query_conditions",
+    "Admission Channel Account": "ifitwala_ed.admission.doctype.admission_channel_account.admission_channel_account.get_permission_query_conditions",
+    "Admission External Identity": "ifitwala_ed.admission.doctype.admission_external_identity.admission_external_identity.get_permission_query_conditions",
+    "Admission Conversation": "ifitwala_ed.admission.doctype.admission_conversation.admission_conversation.get_permission_query_conditions",
+    "Admission Message": "ifitwala_ed.admission.doctype.admission_message.admission_message.get_permission_query_conditions",
+    "Admission CRM Activity": "ifitwala_ed.admission.doctype.admission_crm_activity.admission_crm_activity.get_permission_query_conditions",
+    "Supporting Material": "ifitwala_ed.curriculum.doctype.supporting_material.supporting_material.get_permission_query_conditions",
+    "Material Placement": "ifitwala_ed.curriculum.doctype.material_placement.material_placement.get_permission_query_conditions",
+    "Leave Application": "ifitwala_ed.hr.leave_permissions.leave_application_pqc",
+    "Leave Allocation": "ifitwala_ed.hr.leave_permissions.leave_allocation_pqc",
+    "Leave Policy": "ifitwala_ed.hr.leave_permissions.leave_policy_pqc",
+    "Leave Policy Assignment": "ifitwala_ed.hr.leave_permissions.leave_policy_assignment_pqc",
+    "Leave Ledger Entry": "ifitwala_ed.hr.leave_permissions.leave_ledger_entry_pqc",
+    "Leave Period": "ifitwala_ed.hr.leave_permissions.leave_period_pqc",
+    "Leave Block List": "ifitwala_ed.hr.leave_permissions.leave_block_list_pqc",
+    "Compensatory Leave Request": "ifitwala_ed.hr.leave_permissions.compensatory_leave_request_pqc",
+    "Leave Adjustment": "ifitwala_ed.hr.leave_permissions.leave_adjustment_pqc",
+    "Leave Encashment": "ifitwala_ed.hr.leave_permissions.leave_encashment_pqc",
+    "Professional Development Theme": "ifitwala_ed.hr.professional_development_permissions.professional_development_theme_pqc",
+    "Professional Development Budget": "ifitwala_ed.hr.professional_development_permissions.professional_development_budget_pqc",
+    "Professional Development Request": "ifitwala_ed.hr.professional_development_permissions.professional_development_request_pqc",
+    "Professional Development Record": "ifitwala_ed.hr.professional_development_permissions.professional_development_record_pqc",
+    "Professional Development Outcome": "ifitwala_ed.hr.professional_development_permissions.professional_development_outcome_pqc",
+    "Professional Development Encumbrance": "ifitwala_ed.hr.professional_development_permissions.professional_development_encumbrance_pqc",
+    "School Website Page": "ifitwala_ed.website.permissions.get_school_website_page_permission_query_conditions",
+    "Website Story": "ifitwala_ed.website.permissions.get_website_story_permission_query_conditions",
+    "Program Website Profile": "ifitwala_ed.website.permissions.get_program_website_profile_permission_query_conditions",
+    "Course Website Profile": "ifitwala_ed.website.permissions.get_course_website_profile_permission_query_conditions",
+    "Website Notice": "ifitwala_ed.website.permissions.get_website_notice_permission_query_conditions",
+}
+
+has_permission = {
+    "Organization": "ifitwala_ed.setup.doctype.organization.organization.has_permission",
+    "Contact": "ifitwala_ed.utilities.contact_utils.contact_has_permission",
+    "Program Enrollment": "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.has_permission",
+    "Instructor": "ifitwala_ed.schedule.doctype.instructor.instructor.has_permission",
+    "Term": "ifitwala_ed.school_settings.doctype.term.term.has_permission",
+    "Academic Year": "ifitwala_ed.school_settings.doctype.academic_year.academic_year.has_permission",
+    "Student": "ifitwala_ed.students.doctype.student.student.has_permission",
+    "Student Referral": "ifitwala_ed.students.doctype.student_referral.student_referral.has_permission",
+    "Employee": "ifitwala_ed.hr.doctype.employee.employee.employee_has_permission",
+    "Program Offering": "ifitwala_ed.schedule.doctype.program_offering.program_offering.has_permission",
+    "Academic Load Policy": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.has_permission",
+    "Activity Booking": "ifitwala_ed.eca.doctype.activity_booking.activity_booking.has_permission",
+    "Org Communication": "ifitwala_ed.setup.doctype.org_communication.org_communication.has_permission",
+    "Institutional Policy": "ifitwala_ed.governance.doctype.institutional_policy.institutional_policy.has_permission",
+    "Policy Version": "ifitwala_ed.governance.doctype.policy_version.policy_version.has_permission",
+    "Policy Acknowledgement": "ifitwala_ed.governance.doctype.policy_acknowledgement.policy_acknowledgement.has_permission",
+    "Inquiry": "ifitwala_ed.admission.doctype.inquiry.inquiry.has_permission",
+    "Student Applicant": "ifitwala_ed.admission.doctype.student_applicant.student_applicant.has_permission",
+    "Applicant Document": "ifitwala_ed.admission.doctype.applicant_document.applicant_document.has_permission",
+    "Applicant Document Item": "ifitwala_ed.admission.doctype.applicant_document_item.applicant_document_item.has_permission",
+    "Applicant Review Rule": "ifitwala_ed.admission.doctype.applicant_review_rule.applicant_review_rule.has_permission",
+    "Applicant Review Assignment": "ifitwala_ed.admission.doctype.applicant_review_assignment.applicant_review_assignment.has_permission",
+    "Applicant Health Profile": "ifitwala_ed.admission.doctype.applicant_health_profile.applicant_health_profile.has_permission",
+    "Applicant Interview": "ifitwala_ed.admission.doctype.applicant_interview.applicant_interview.has_permission",
+    "Applicant Interview Feedback": "ifitwala_ed.admission.doctype.applicant_interview_feedback.applicant_interview_feedback.has_permission",
+    "Recommendation Request": "ifitwala_ed.admission.doctype.recommendation_request.recommendation_request.has_permission",
+    "Recommendation Submission": "ifitwala_ed.admission.doctype.recommendation_submission.recommendation_submission.has_permission",
+    "Admission Channel Account": "ifitwala_ed.admission.doctype.admission_channel_account.admission_channel_account.has_permission",
+    "Admission External Identity": "ifitwala_ed.admission.doctype.admission_external_identity.admission_external_identity.has_permission",
+    "Admission Conversation": "ifitwala_ed.admission.doctype.admission_conversation.admission_conversation.has_permission",
+    "Admission Message": "ifitwala_ed.admission.doctype.admission_message.admission_message.has_permission",
+    "Admission CRM Activity": "ifitwala_ed.admission.doctype.admission_crm_activity.admission_crm_activity.has_permission",
+    "Supporting Material": "ifitwala_ed.curriculum.doctype.supporting_material.supporting_material.has_permission",
+    "Material Placement": "ifitwala_ed.curriculum.doctype.material_placement.material_placement.has_permission",
+    "Leave Application": "ifitwala_ed.hr.leave_permissions.leave_application_has_permission",
+    "Leave Allocation": "ifitwala_ed.hr.leave_permissions.leave_allocation_has_permission",
+    "Leave Policy": "ifitwala_ed.hr.leave_permissions.leave_policy_has_permission",
+    "Leave Policy Assignment": "ifitwala_ed.hr.leave_permissions.leave_policy_assignment_has_permission",
+    "Leave Ledger Entry": "ifitwala_ed.hr.leave_permissions.leave_ledger_entry_has_permission",
+    "Leave Period": "ifitwala_ed.hr.leave_permissions.leave_period_has_permission",
+    "Leave Block List": "ifitwala_ed.hr.leave_permissions.leave_block_list_has_permission",
+    "Compensatory Leave Request": "ifitwala_ed.hr.leave_permissions.compensatory_leave_request_has_permission",
+    "Leave Adjustment": "ifitwala_ed.hr.leave_permissions.leave_adjustment_has_permission",
+    "Leave Encashment": "ifitwala_ed.hr.leave_permissions.leave_encashment_has_permission",
+    "Leave Control Panel": "ifitwala_ed.hr.leave_permissions.leave_control_panel_has_permission",
+    "Professional Development Theme": "ifitwala_ed.hr.professional_development_permissions.professional_development_theme_has_permission",
+    "Professional Development Budget": "ifitwala_ed.hr.professional_development_permissions.professional_development_budget_has_permission",
+    "Professional Development Request": "ifitwala_ed.hr.professional_development_permissions.professional_development_request_has_permission",
+    "Professional Development Record": "ifitwala_ed.hr.professional_development_permissions.professional_development_record_has_permission",
+    "Professional Development Outcome": "ifitwala_ed.hr.professional_development_permissions.professional_development_outcome_has_permission",
+    "Professional Development Encumbrance": "ifitwala_ed.hr.professional_development_permissions.professional_development_encumbrance_has_permission",
+    "School Website Page": "ifitwala_ed.website.permissions.school_website_page_has_permission",
+    "Website Story": "ifitwala_ed.website.permissions.website_story_has_permission",
+    "Program Website Profile": "ifitwala_ed.website.permissions.program_website_profile_has_permission",
+    "Course Website Profile": "ifitwala_ed.website.permissions.course_website_profile_has_permission",
+    "Website Notice": "ifitwala_ed.website.permissions.website_notice_has_permission",
+}
+
+default_roles = [
+    {"role": "Student", "doctype": "Student", "email_field": "student_email"},
+]
+
+# DocType Class
+# ---------------
+# Override standard doctype classes
+
+# override_doctype_class = {
+# 	"ToDo": "custom_app.overrides.CustomToDo"
+# }
+
+# Document Events
+# ---------------
+# Hook on document methods and events
+
+# doc_events = {
+# 	"*": {
+# 		"on_update": "method",
+# 		"on_cancel": "method",
+# 		"on_trash": "method"
+# 	}
+# }
+
+doc_events = {
+    "Contact": {"on_update": "ifitwala_ed.utilities.contact_utils.update_profile_from_contact"},
+    "ToDo": {"on_update": "ifitwala_ed.admission.admission_utils.on_todo_update_close_marks_contacted"},
+    "User": {
+        "after_insert": "frappe.contacts.doctype.contact.contact.update_contact",
+        "validate": [
+            "ifitwala_ed.hr.doctype.employee.employee.validate_employee_role",
+            "ifitwala_ed.hr.workspace_utils.set_default_workspace_based_on_roles",
+        ],
+        "on_update": "ifitwala_ed.hr.doctype.employee.employee.update_user_permissions",
+    },
+    "Employee": {
+        "after_save": [
+            "ifitwala_ed.hr.employee_access.sync_user_access_from_employee",
+            "ifitwala_ed.website.public_people.invalidate_public_people_cache",
+        ],
+        "on_trash": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
+    },
+    "Designation": {
+        "after_save": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
+        "on_trash": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
+    },
+    "School": {
+        "after_save": [
+            "ifitwala_ed.website.public_people.invalidate_public_people_cache",
+            "ifitwala_ed.utilities.school_tree.invalidate_school_tree_cache",
+            "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+        ],
+        "on_trash": [
+            "ifitwala_ed.website.public_people.invalidate_public_people_cache",
+            "ifitwala_ed.utilities.school_tree.invalidate_school_tree_cache",
+            "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+        ],
+    },
+    "Website Notice": {
+        "after_save": "ifitwala_ed.website.site_notices.invalidate_site_notice_cache",
+        "on_trash": "ifitwala_ed.website.site_notices.invalidate_site_notice_cache",
+    },
+    "Website Story": {
+        "after_save": "ifitwala_ed.website.providers.story_feed.invalidate_story_feed_cache",
+        "on_trash": "ifitwala_ed.website.providers.story_feed.invalidate_story_feed_cache",
+    },
+    "School Calendar": {
+        "after_save": [
+            "ifitwala_ed.website.providers.academic_calendar.invalidate_academic_calendar_cache",
+            "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+        ],
+        "on_trash": [
+            "ifitwala_ed.website.providers.academic_calendar.invalidate_academic_calendar_cache",
+            "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+        ],
+    },
+    "School Schedule": {
+        "after_save": "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+        "on_trash": "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+    },
+    "Academic Year": {
+        "after_save": "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+        "on_trash": "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+    },
+    "Term": {
+        "after_save": "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+        "on_trash": "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+    },
+    "File": {
+        "validate": "ifitwala_ed.utilities.file_management.validate_admissions_attachment",
+        "after_insert": "ifitwala_ed.utilities.image_utils.handle_file_after_insert",
+        "on_update": "ifitwala_ed.utilities.image_utils.handle_file_on_update",
+    },
+    "Student Group": {
+        "on_update": [
+            "ifitwala_ed.schedule.schedule_utils.invalidate_for_student_group",
+            "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        ]
+    },
+    "Student Group Student": {
+        "after_insert": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_trash": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+    },
+    "Student Group Instructor": {
+        "after_insert": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_trash": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+    },
+    "School Calendar Holidays": {
+        "after_insert": [
+            "ifitwala_ed.schedule.schedule_utils.invalidate_all_for_calendar",
+            "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+        ],
+        "on_update": [
+            "ifitwala_ed.schedule.schedule_utils.invalidate_all_for_calendar",
+            "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+        ],
+        "on_trash": [
+            "ifitwala_ed.schedule.schedule_utils.invalidate_all_for_calendar",
+            "ifitwala_ed.api.course_schedule.invalidate_course_schedule_cache",
+        ],
+    },
+    "Program Offering": {
+        "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache"
+    },
+    "Program Offering Activity Section": {
+        "after_insert": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_trash": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+    },
+    "Meeting": {
+        "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_trash": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+    },
+    "Meeting Participant": {
+        "after_insert": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_trash": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+    },
+    "School Event": {
+        "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_trash": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+    },
+    "School Event Participant": {
+        "after_insert": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_trash": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+    },
+    "Employee Booking": {
+        "after_insert": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_trash": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+    },
+    "Academic Load Policy": {
+        "after_insert": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_update": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+        "on_trash": "ifitwala_ed.school_settings.doctype.academic_load_policy.academic_load_policy.invalidate_academic_load_cache",
+    },
+}
+
+# Scheduled Tasks
+# ---------------
+
+# scheduler_events = {
+# 	"all": [
+# 		"ifitwala.tasks.all"
+# 	],
+# 	"daily": [
+# 		"ifitwala.tasks.daily"
+# 	],
+# 	"hourly": [
+# 		"ifitwala.tasks.hourly"
+# 	],
+# 	"weekly": [
+# 		"ifitwala.tasks.weekly"
+# 	],
+# 	"monthly": [
+# 		"ifitwala.tasks.monthly"
+# 	],
+# }
+
+scheduler_events = {
+    "hourly": [
+        "ifitwala_ed.admission.scheduled_jobs.run_hourly_sla_sweep",
+        "ifitwala_ed.schedule.attendance_jobs.prewarm_meeting_dates_hourly_guard",
+        "ifitwala_ed.website.publication.run_hourly_website_publication_sync",
+    ],
+    "daily": [
+        "ifitwala_ed.curriculum.scheduled_jobs.run_daily_course_plan_activation",
+        "ifitwala_ed.students.doctype.student_log.student_log.dispatch_auto_close_completed_logs",
+        "ifitwala_ed.hr.doctype.leave_ledger_entry.leave_ledger_entry.dispatch_process_expired_allocation",
+        "ifitwala_ed.hr.utils.dispatch_allocate_earned_leaves",
+        "ifitwala_ed.hr.utils.dispatch_generate_leave_encashment",
+    ],
+}
+
+
+# fixtures = [{"doctype": "Web Page"}]
+
+# Testing
+# -------
+
+# before_tests = "ifitwala.install.before_tests"
+
+# Overriding Methods
+# ------------------------------
+#
+# override_whitelisted_methods = {
+# 	"frappe.desk.doctype.event.event.get_events": "ifitwala.event.get_events"
+# }
+#
+# each overriding function accepts a `data` argument;
+# generated from the base implementation of the doctype dashboard,
+# along with any modifications made in other Frappe apps
+# override_doctype_dashboards = {
+# 	"Task": "ifitwala.task.get_dashboard_data"
+# }
+
+# exempt linked doctypes from being automatically cancelled
+#
+# auto_cancel_exempted_doctypes = ["Auto Repeat"]
+
+# Ignore links to specified DocTypes when deleting documents
+# -----------------------------------------------------------
+
+# ignore_links_on_delete = ["Communication", "ToDo"]
+
+# Request Events
+# ----------------
+after_request = ["ifitwala_ed.request_hooks.apply_default_security_headers"]
+
+# Job Events
+# ----------
+# before_job = ["ifitwala.utils.before_job"]
+# after_job = ["ifitwala.utils.after_job"]
+
+# User Data Protection
+# --------------------
+
+# user_data_fields = [
+# 	{
+# 		"doctype": "{doctype_1}",
+# 		"filter_by": "{filter_by}",
+# 		"redact_fields": ["{field_1}", "{field_2}"],
+# 		"partial": 1,
+# 	},
+# 	{
+# 		"doctype": "{doctype_2}",
+# 		"filter_by": "{filter_by}",
+# 		"partial": 1,
+# 	},
+# 	{
+# 		"doctype": "{doctype_3}",
+# 		"strict": False,
+# 	},
+# 	{
+# 		"doctype": "{doctype_4}"
+# 	}
+# ]
+
+# Authentication and authorization
+# --------------------------------
+
+# Automatically update python controller files with type annotations for this app.
+# export_python_type_annotations = True
+
+# default_log_clearing_doctypes = {
+# 	"Logging DocType Name": 30  # days to retain logs
+# }

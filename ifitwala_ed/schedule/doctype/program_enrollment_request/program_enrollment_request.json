@@ -1,0 +1,353 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "PER-.YY.-.#####",
+ "creation": "2026-01-01 00:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_identity",
+  "student",
+  "school",
+  "academic_year",
+  "column_break_rmhb",
+  "program",
+  "program_offering",
+  "activity_booking",
+  "column_break_oxbm",
+  "request_kind",
+  "status",
+  "section_break_audit",
+  "selection_window",
+  "column_break_wcvt",
+  "submitted_on",
+  "submitted_by",
+  "column_break_xtpq",
+  "source_applicant_enrollment_plan",
+  "source_student_applicant",
+  "section_break_courses",
+  "courses",
+  "section_break_override",
+  "requires_override",
+  "override_approved",
+  "override_by",
+  "override_on",
+  "column_break_ayrl",
+  "override_reason",
+  "section_break_validation",
+  "validation_status",
+  "column_break_ndsn",
+  "validated_on",
+  "column_break_xdjj",
+  "validated_by",
+  "section_break_fezs",
+  "validation_payload"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_identity",
+   "fieldtype": "Section Break",
+   "label": "Identity"
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Student",
+   "options": "Student",
+   "reqd": 1
+  },
+  {
+   "fieldname": "program_offering",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Program Offering",
+   "options": "Program Offering",
+   "reqd": 1
+  },
+  {
+   "default": "Academic",
+   "fieldname": "request_kind",
+   "fieldtype": "Select",
+   "label": "Request Kind",
+   "options": "Academic\nActivity"
+  },
+  {
+   "fieldname": "activity_booking",
+   "fieldtype": "Link",
+   "label": "Activity Booking",
+   "options": "Activity Booking"
+  },
+  {
+   "fetch_from": "program_offering.program",
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Program",
+   "options": "Program",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "program_offering.school",
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School",
+   "read_only": 1
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Academic Year",
+   "options": "Academic Year"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Draft\nSubmitted\nUnder Review\nApproved\nRejected\nCancelled"
+  },
+  {
+   "fieldname": "section_break_courses",
+   "fieldtype": "Section Break",
+   "label": "Request Basket"
+  },
+  {
+   "fieldname": "courses",
+   "fieldtype": "Table",
+   "label": "Courses",
+   "options": "Program Enrollment Request Course",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_validation",
+   "fieldtype": "Section Break",
+   "label": "Validation Snapshot"
+  },
+  {
+   "default": "Not Validated",
+   "fieldname": "validation_status",
+   "fieldtype": "Select",
+   "label": "Validation Status",
+   "options": "Not Validated\nValid\nInvalid",
+   "read_only": 1
+  },
+  {
+   "fieldname": "validation_payload",
+   "fieldtype": "Long Text",
+   "label": "Validation Payload",
+   "read_only": 1
+  },
+  {
+   "fieldname": "validated_on",
+   "fieldtype": "Datetime",
+   "label": "Validated On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "validated_by",
+   "fieldtype": "Link",
+   "label": "Validated By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_override",
+   "fieldtype": "Section Break",
+   "label": "Override"
+  },
+  {
+   "default": "0",
+   "fieldname": "requires_override",
+   "fieldtype": "Check",
+   "label": "Requires Override"
+  },
+  {
+   "default": "0",
+   "fieldname": "override_approved",
+   "fieldtype": "Check",
+   "label": "Override Approved"
+  },
+  {
+   "fieldname": "override_reason",
+   "fieldtype": "Small Text",
+   "label": "Override Reason"
+  },
+  {
+   "fieldname": "override_by",
+   "fieldtype": "Link",
+   "label": "Override By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "override_on",
+   "fieldtype": "Datetime",
+   "label": "Override On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_audit",
+   "fieldtype": "Section Break",
+   "label": "Audit"
+  },
+  {
+   "fieldname": "selection_window",
+   "fieldtype": "Link",
+   "label": "Selection Window",
+   "options": "Program Offering Selection Window",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_student_applicant",
+   "fieldtype": "Link",
+   "label": "Source Student Applicant",
+   "options": "Student Applicant",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_applicant_enrollment_plan",
+   "fieldtype": "Link",
+   "label": "Source Applicant Enrollment Plan",
+   "options": "Applicant Enrollment Plan",
+   "read_only": 1
+  },
+  {
+   "fieldname": "submitted_on",
+   "fieldtype": "Datetime",
+   "label": "Submitted On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "submitted_by",
+   "fieldtype": "Link",
+   "label": "Submitted By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_rmhb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_oxbm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_wcvt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_ayrl",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_xtpq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_ndsn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_xdjj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_fezs",
+   "fieldtype": "Section Break"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-24 07:40:27.116239",
+ "modified_by": "Administrator",
+ "module": "Schedule",
+ "name": "Program Enrollment Request",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Counselor",
+   "share": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor"
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

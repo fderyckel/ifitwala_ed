@@ -1,0 +1,568 @@
+<!-- ifitwala_ed/docs/website/03_website_pages_provider.md -->
+# Website Page Providers — Canonical Contracts (v1)
+
+**Canonical implementation sources:** `ifitwala_ed/website/block_registry.py`, `ifitwala_ed/website/renderer.py`, and `ifitwala_ed/website/providers/*.py`
+
+**Ifitwala_Ed — Proposal B**
+
+> **Status:** Core provider contract implemented as of February 12, 2026 (A1/A2 complete)
+> **Authority:** Subordinate to
+> • `ifitwala_ed/docs/website/01_architecture_notes.md`
+> • `ifitwala_ed/docs/website/06_block_props_guide.md`
+> **Scope:** Public website only (unauthenticated)
+
+---
+
+## 0.1 Runtime Contract (implemented)
+
+The current renderer enforces this provider contract in runtime code:
+
+* Source of truth: `ifitwala_ed/website/block_registry.py`
+* Resolver path: `ifitwala_ed/website/renderer.py`
+* Provider signature:
+
+```python
+def get_context(*, school, page, block_props):
+    ...
+```
+
+* Required return shape:
+
+```python
+{
+    "data": {...}
+}
+```
+
+If `data` is missing, rendering fails with validation error.
+
+---
+
+## 0. Purpose of this document
+
+This document defines the **only allowed data-access layer** for the website system.
+
+A **Page Provider** is:
+
+* trusted, app-owned Python code
+* responsible for **fetching and shaping domain data**
+* the *sole* source of dynamic data for blocks
+* a strict replacement for:
+
+  * Web Page `context_script`
+  * Builder Data Scripts
+  * Server Scripts
+
+> Blocks never query data.
+> Providers never render HTML.
+
+---
+
+## 1. Core Provider Principles (A+ Lock)
+
+1. Providers live in **app code**, never in DB
+2. Providers return **plain JSON-serializable dicts**
+3. Providers are **read-only by default**
+4. Providers define **stable contracts**
+5. Blocks depend on providers — never the reverse
+6. Providers may be cached aggressively
+7. Providers may not execute tenant logic
+
+---
+
+## 2. Provider Taxonomy
+
+Providers fall into three categories:
+
+| Type                      | Description                          |
+| ------------------------- | ------------------------------------ |
+| **Page Providers**        | Build the full context for a route   |
+| **Shared Data Providers** | Reusable domain fetchers             |
+| **Derived Providers**     | Small helpers used by Page Providers |
+
+Blocks consume **outputs**, not providers directly.
+
+---
+
+## 3. Page-Level Providers (Top-Level)
+
+These correspond to actual routes.
+
+---
+
+### 3.1 `get_home_page_context`
+
+**Used by**
+
+* historical note only; current root behavior is handled by the trusted public-home renderer at `/`
+* school discovery now lives at `/schools`
+
+**Consumes**
+
+* none (implicit default school or global context)
+
+**Returns**
+
+```json
+{
+  "hero_images": ImageSet[],
+  "tagline": string,
+  "school_stats": StatItem[],
+  "featured_programs": ProgramCard[],
+  "primary_cta": CtaObject
+}
+```
+
+**Blocks fed**
+
+* `hero_carousel`
+* `tagline`
+* `quick_stats`
+* `program_grid`
+* `primary_cta`
+
+**Notes**
+
+* This document section is legacy context only.
+* Current implemented root behavior is doc-owned in `01_architecture_notes.md` and `05_school_slug_vs_page_route.md`.
+
+---
+
+### 3.2 `get_school_page_context`
+
+**Used by**
+
+* `/schools/<school_slug>`
+
+**Consumes**
+
+```text
+school_slug (required)
+```
+
+**Returns**
+
+```json
+{
+  "school": SchoolSummary,
+  "hero_images": ImageSet[],
+  "philosophy_cards": CardItem[],
+  "programs": ProgramCard[],
+  "leadership": StaffProfile[],
+  "staff": StaffProfile[],
+  "primary_cta": CtaObject
+}
+```
+
+**Blocks fed**
+
+* `hero_carousel`
+* `rich_cards_grid`
+* `program_grid`
+* `leadership_grid`
+* `staff_carousel`
+* `primary_cta`
+
+**Critical rule**
+
+> All filtering (department, featured, limits) happens here — never in blocks.
+
+---
+
+### 3.3 `get_program_page_context` (DEFERRED but defined)
+
+**Used by**
+
+* `/schools/{school_slug}/programs/<program_slug>`
+
+**Consumes**
+
+```text
+program_slug (required)
+```
+
+**Returns**
+
+```json
+{
+  "program": ProgramDetail,
+  "school": SchoolSummary,
+  "overview": RichText,
+  "curriculum": RichText,
+  "outcomes": RichText,
+  "cta": CtaObject
+}
+```
+
+**Blocks fed**
+
+* future `program_*` blocks
+
+---
+
+## 4. Shared Data Providers (Reusable)
+
+These are **never routed directly**.
+
+---
+
+### 4.1 `get_school_stats`
+
+**Returns**
+
+```json
+StatItem[] = {
+  "label": string,
+  "value": string
+}
+```
+
+**Rules**
+
+* Values are strings (formatted)
+* No JS counters
+
+---
+
+### 4.2 `get_school_programs`
+
+**Consumes**
+
+```text
+school
+```
+
+**Returns**
+
+```json
+ProgramCard[] = {
+  "title": string,
+  "url": string | null,
+  "intro": string | null,
+  "image": ImageRef,
+  "is_teaser": boolean
+}
+```
+
+**Rules**
+
+* Program must satisfy `is_published = 1` and `archive = 0`
+* Program must be offered by the school (Program Offering)
+* Ordered by `is_featured desc`, then `lft asc`
+* Only `Program Website Profile.status = "Published"` rows render full linked detail cards
+* Program profile publication also depends on school website readiness plus optional `publish_at` / `expire_at`
+* Draft or missing `Program Website Profile` rows still render teaser cards for published Programs
+* Teaser cards render image/title-only browse surfaces and do not link to a program detail page
+* Intro is truncated server-side and shown only for full linked detail cards
+* Discoverability is school-scoped: navigation should expose a single `Programs` page (`School Website Page.route = "programs"`), and that page renders `program_list` cards that link to each program detail route.
+
+---
+
+### 4.3 `get_school_leadership`
+
+**Consumes**
+
+```text
+school
+```
+
+**Returns**
+
+```json
+StaffProfile[] = {
+  "name": string,
+  "title": string,
+  "photo": ImageRef,
+  "bio": string
+}
+```
+
+**Rules**
+
+* Only employees with `Employee.show_on_website = 1`
+* Default grouping resolves from `Designation.default_role_profile = "Academic Admin"` for the current school scope
+* School-scoped designations match the current school by default; organization-scoped designations (blank `Designation.school`) are also allowed for the same organization
+* A manual designation filter may override the default role-profile grouping
+* Descendant-school inclusion is opt-in per designation or per role profile through block props; each rule may include all descendants or stop at a specific child depth
+* The secondary staff carousel remains exact-school unless a future contract explicitly widens it
+* Bio is plain text or sanitized HTML
+
+---
+
+### 4.4 `get_school_courses`
+
+**Consumes**
+
+```text
+school
+```
+
+**Returns**
+
+```json
+CourseCard[] = {
+  "title": string,
+  "url": string,
+  "intro": string,
+  "image": ImageRef,
+  "course_group": string | null,
+  "program_labels": string[]
+}
+```
+
+**Rules**
+
+* Only courses with `Course Website Profile.status = "Published"`
+* Course profile publication also depends on school website readiness plus optional `publish_at` / `expire_at`
+* Course must satisfy `is_published = 1` and belong to the current school
+* Related program labels are limited to published, non-archived programs offered by the same school
+* Intro text is truncated server-side
+* Discoverability is school-scoped: navigation exposes a `Courses` page (`School Website Page.route = "courses"`), and that page renders `course_catalog` cards that link to each course detail route
+
+---
+
+### 4.5 `get_school_staff`
+
+Same shape as leadership, different filter.
+
+**Rules**
+
+* Only employees with `Employee.show_on_website = 1`
+* Excludes employees already included in the leadership grouping for the same block render
+* Ordered for stable presentation, not by recent modification time
+
+---
+
+### 4.6 `get_school_staff_directory`
+
+**Consumes**
+
+```text
+school
+```
+
+**Returns**
+
+```json
+StaffDirectoryProfile[] = {
+  "name": string,
+  "title": string,
+  "photo": ImageRef,
+  "bio": string,
+  "designation": string,
+  "role_profile": string | null
+}
+```
+
+**Rules**
+
+* Only employees with `Employee.show_on_website = 1`
+* Exact-school only in the current implementation
+* Reads through the canonical public-people service, not a directory-specific query path
+* Optional include lists may restrict the result to selected designations and/or role profiles
+* Search and UI filtering happen client-side on the rendered directory cards; scope and visibility stay server-owned
+* Discoverability is page-based: schools create a dedicated `School Website Page` and place the `staff_directory` block on it
+
+---
+
+### 4.7 `get_story_feed`
+
+**Consumes**
+
+```text
+school
+```
+
+**Returns**
+
+```json
+StoryCard[] = {
+  "title": string,
+  "url": string,
+  "publish_date": string | null,
+  "tags": string[],
+  "excerpt": string | null
+}
+```
+
+**Rules**
+
+* Only `Website Story.status = "Published"` rows are visible
+* Story publication is school-scoped and also respects optional `publish_at` / `expire_at`
+* Excerpts are derived server-side from enabled story blocks, not from a second summary field
+* Feed results are cached with explicit invalidation on `Website Story` changes
+* The block links to the canonical school stories index under `/schools/{school_slug}/stories`
+
+---
+
+### 4.8 `get_academic_calendar`
+
+**Consumes**
+
+```text
+school
+```
+
+**Returns**
+
+```json
+CalendarItem[] = {
+  "kind": "term" | "holiday",
+  "title": string,
+  "date_text": string
+}
+```
+
+**Rules**
+
+* Public academic calendar content is read from `School Calendar`
+* Provider selects the active calendar first, then the next upcoming calendar, then the latest past calendar
+* Output is intentionally limited to term rows and holiday rows that are appropriate for the public website
+* Results are cached with explicit invalidation on `School Calendar` changes
+
+---
+
+### 4.9 `get_active_site_notice`
+
+**Consumes**
+
+```text
+school
+```
+
+**Returns**
+
+```json
+ActiveSiteNotice = {
+  "title": string | null,
+  "style": "info" | "success" | "warning" | "critical",
+  "message_html": string,
+  "button_label": string | null,
+  "button_link": string | null
+} | null
+```
+
+**Rules**
+
+* `Website Notice` is a shell-level public surface, not a page block
+* Only one highest-priority published notice is returned per school
+* Notice publication is school-scoped and respects optional `publish_at` / `expire_at`
+* Notice HTML is sanitized server-side before rendering
+* Results are cached with explicit invalidation on `Website Notice` changes
+
+---
+
+### 4.10 `get_school_hero_images`
+
+**Returns**
+
+```json
+ImageSet[] = {
+  "src_small": string,
+  "src_medium": string,
+  "src_large": string,
+  "alt": string
+}
+```
+
+**Rules**
+
+* Uses existing `image_fallback.js` conventions
+* No logic in templates
+
+---
+
+## 5. Derived / Helper Providers
+
+Used internally only.
+
+Examples:
+
+* `truncate_text(text, length)`
+* `resolve_school_from_slug(slug)`
+* `build_image_set(file)`
+
+These **never** return directly to blocks.
+
+---
+
+## 6. Provider ↔ Block Dependency Matrix
+
+| Block           | Provider Output |
+| --------------- | --------------- |
+| hero_carousel   | `hero_images`   |
+| tagline         | `tagline`       |
+| quick_stats     | `school_stats`  |
+| program_grid    | `programs`      |
+| leadership_grid | `leadership`    |
+| staff_carousel  | `staff`         |
+| staff_directory | `staff_directory` |
+| story_feed | `story_feed` |
+| academic_calendar | `academic_calendar` |
+| primary_cta     | `primary_cta`   |
+
+This matrix is **authoritative**.
+
+---
+
+## 7. Caching Strategy (Design-Level)
+
+| Provider                | Cache      |
+| ----------------------- | ---------- |
+| get_home_page_context   | short TTL  |
+| get_school_page_context | medium TTL |
+| shared providers        | long TTL with explicit invalidation owners |
+
+Caching is **transparent** to blocks.
+
+---
+
+## 8. Explicit Non-Capabilities
+
+Providers must **never**:
+
+* read request cookies
+* inspect user session
+* branch on roles
+* execute dynamic imports
+* run tenant logic
+* mutate data
+
+If a feature requires this, it does not belong on the public website.
+
+---
+
+## 9. Relationship to Builder
+
+This document **replaces** Builder’s “Data Script” concept.
+
+| Builder       | Ifitwala           |
+| ------------- | ------------------ |
+| Data Script   | Page Provider      |
+| Script output | Provider contract  |
+| Script editor | Code review        |
+| Runtime trust | Compile-time trust |
+
+---
+
+## 10. Design Lock Statement
+
+Once this document is approved:
+
+* Server Scripts are obsolete for websites
+* Web Page Python is banned
+* Builder (if used) must bind only to these providers
+* Any new block must declare its provider dependencies here
+
+---
+
+## 11. Next Logical Steps (After Approval)
+
+1. Finalize provider contracts (this doc)
+2. Define `School Website Page` DocType
+3. Map current Web Pages → providers + blocks
+4. Remove `context_script` entirely
+5. Implement minimal renderer
+6. Evaluate Builder UI integration safely
+
+---

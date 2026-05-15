@@ -1,0 +1,215 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "ADM-CH-ACC-.YY.-.MM.-.###",
+ "creation": "2026-04-28 08:56:27.000000",
+ "description": "School-owned external admissions communication endpoint. Stores account metadata and secret references only.",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "organization",
+  "school",
+  "channel_section",
+  "channel_type",
+  "provider",
+  "display_name",
+  "external_account_id",
+  "phone_number",
+  "page_id",
+  "line_official_account_id",
+  "routing_section",
+  "enabled",
+  "default_assignment_lane",
+  "default_owner",
+  "auto_create_inquiry",
+  "secrets_section",
+  "webhook_secret_ref",
+  "access_token_secret_ref"
+ ],
+ "fields": [
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Organization",
+   "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "channel_section",
+   "fieldtype": "Section Break",
+   "label": "Channel"
+  },
+  {
+   "fieldname": "channel_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Channel Type",
+   "options": "WhatsApp\nLine\nFacebook Messenger\nInstagram DM\nEmail\nPortal\nManual",
+   "reqd": 1
+  },
+  {
+   "default": "Manual",
+   "fieldname": "provider",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Provider",
+   "options": "Manual\nMeta Cloud API\nLINE Messaging API\nGmail\nOther",
+   "reqd": 1
+  },
+  {
+   "fieldname": "display_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Display Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "external_account_id",
+   "fieldtype": "Data",
+   "label": "External Account ID",
+   "search_index": 1
+  },
+  {
+   "fieldname": "phone_number",
+   "fieldtype": "Phone",
+   "label": "Phone Number",
+   "search_index": 1
+  },
+  {
+   "fieldname": "page_id",
+   "fieldtype": "Data",
+   "label": "Page ID",
+   "search_index": 1
+  },
+  {
+   "fieldname": "line_official_account_id",
+   "fieldtype": "Data",
+   "label": "LINE Official Account ID",
+   "search_index": 1
+  },
+  {
+   "fieldname": "routing_section",
+   "fieldtype": "Section Break",
+   "label": "Routing"
+  },
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Enabled"
+  },
+  {
+   "default": "Admission",
+   "fieldname": "default_assignment_lane",
+   "fieldtype": "Select",
+   "label": "Default Assignment Lane",
+   "options": "Admission\nStaff"
+  },
+  {
+   "fieldname": "default_owner",
+   "fieldtype": "Link",
+   "label": "Default Owner",
+   "options": "User"
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_create_inquiry",
+   "fieldtype": "Check",
+   "label": "Auto Create Inquiry"
+  },
+  {
+   "fieldname": "secrets_section",
+   "fieldtype": "Section Break",
+   "label": "Secret References"
+  },
+  {
+   "fieldname": "webhook_secret_ref",
+   "fieldtype": "Data",
+   "label": "Webhook Secret Reference",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "access_token_secret_ref",
+   "fieldtype": "Data",
+   "label": "Access Token Secret Reference",
+   "permlevel": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-28 08:56:27.000000",
+ "modified_by": "Administrator",
+ "module": "Admission",
+ "name": "Admission Channel Account",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "permlevel": 0,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "permlevel": 0,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "permlevel": 0,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "permlevel": 1,
+   "read": 1,
+   "role": "Admission Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "permlevel": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

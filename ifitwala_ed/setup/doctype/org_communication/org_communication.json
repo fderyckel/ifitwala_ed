@@ -1,0 +1,322 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "ORG-COMM-.YY.-.MM.-.#####",
+ "creation": "2025-11-29 11:33:32.269337",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_eqvs",
+  "title",
+  "communication_type",
+  "status",
+  "priority",
+  "column_break_w2wh",
+  "brief_start_date",
+  "brief_end_date",
+  "brief_order",
+  "column_break_qwio",
+  "publish_from",
+  "publish_to",
+  "organization",
+  "school",
+  "activity_context_section",
+  "activity_program_offering",
+  "activity_booking",
+  "column_break_activity_context",
+  "activity_student_group",
+  "admission_context_section",
+  "admission_context_doctype",
+  "admission_context_name",
+  "audience_section",
+  "audiences",
+  "section_break_dcte",
+  "message",
+  "attachments",
+  "section_break_vuxv",
+  "portal_surface",
+  "internal_note",
+  "column_break_3elr",
+  "interaction_mode",
+  "allow_private_notes",
+  "allow_public_thread"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_eqvs",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "communication_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Communication Type",
+   "options": "Logistics\nReminder\nInformation\nPolicy Procedure\nCelebration\nCall to Action\nEvent Announcement\nClass Announcement\nUrgent\nAlert",
+   "reqd": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nScheduled\nPublished\nArchived",
+   "reqd": 1
+  },
+  {
+   "default": "Normal",
+   "fieldname": "priority",
+   "fieldtype": "Select",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Priority",
+   "options": "Low\nNormal\nHigh\nCritical"
+  },
+  {
+   "fieldname": "column_break_w2wh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "Issuing School",
+   "options": "School"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "label": "Organization",
+   "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.communication_type==='Class Announcement' || doc.activity_program_offering || doc.activity_booking || doc.activity_student_group",
+   "fieldname": "activity_context_section",
+   "fieldtype": "Section Break",
+   "label": "Activity Context"
+  },
+  {
+   "description": "Optional explicit link to activity Program Offering for feed filtering and traceability.",
+   "fieldname": "activity_program_offering",
+   "fieldtype": "Link",
+   "label": "Activity Program Offering",
+   "options": "Program Offering"
+  },
+  {
+   "fieldname": "activity_booking",
+   "fieldtype": "Link",
+   "label": "Activity Booking",
+   "options": "Activity Booking"
+  },
+  {
+   "fieldname": "column_break_activity_context",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "activity_student_group",
+   "fieldtype": "Link",
+   "label": "Activity Student Group",
+   "options": "Student Group"
+  },
+  {
+   "depends_on": "eval:doc.admission_context_doctype || doc.admission_context_name",
+   "fieldname": "admission_context_section",
+   "fieldtype": "Section Break",
+   "label": "Admission Context"
+  },
+  {
+   "description": "Optional admissions case context. Used to bind communication threads to Student Applicant or Inquiry records.",
+   "fieldname": "admission_context_doctype",
+   "fieldtype": "Select",
+   "label": "Admission Context DocType",
+   "options": "\nStudent Applicant\nInquiry"
+  },
+  {
+   "depends_on": "eval:doc.admission_context_doctype",
+   "fieldname": "admission_context_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Admission Context Name",
+   "options": "admission_context_doctype"
+  },
+  {
+   "description": "Communication is visible from this time onwards.",
+   "fieldname": "publish_from",
+   "fieldtype": "Datetime",
+   "label": "Publish From"
+  },
+  {
+   "description": "Communication stops being visible after this time (optional).",
+   "fieldname": "publish_to",
+   "fieldtype": "Datetime",
+   "label": "Publish Until"
+  },
+  {
+   "fieldname": "audience_section",
+   "fieldtype": "Section Break",
+   "label": "Audience"
+  },
+  {
+   "fieldname": "section_break_vuxv",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "Everywhere",
+   "description": "Controls how this communication appears on the portal surfaces. 'None' = internal only (still visible on Desk).",
+   "fieldname": "portal_surface",
+   "fieldtype": "Select",
+   "label": "Portal Surface",
+   "options": "Desk\nMorning Brief\nPortal Feed\nEverywhere"
+  },
+  {
+   "fieldname": "column_break_3elr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Context for staff managing this communication.",
+   "fieldname": "internal_note",
+   "fieldtype": "Small Text",
+   "label": "Internal Note"
+  },
+  {
+   "fieldname": "column_break_qwio",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "First date this communication should appear in the Morning Brief (if applicable).",
+   "fieldname": "brief_start_date",
+   "fieldtype": "Date",
+   "label": "Brief Start Date"
+  },
+  {
+   "description": "Last date this communication should appear in the Morning Brief. Leave blank to use only the start date.",
+   "fieldname": "brief_end_date",
+   "fieldtype": "Date",
+   "label": "Brief End Date"
+  },
+  {
+   "fieldname": "audiences",
+   "fieldtype": "Table",
+   "label": "Audiences",
+   "options": "Org Communication Audience"
+  },
+  {
+   "description": "Lower numbers appear higher in the Morning Brief for that date.",
+   "fieldname": "brief_order",
+   "fieldtype": "Int",
+   "label": "Brief Order"
+  },
+  {
+   "fieldname": "section_break_dcte",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "message",
+   "fieldtype": "Text Editor",
+   "label": "Message"
+  },
+  {
+   "fieldname": "attachments",
+   "fieldtype": "Table",
+   "label": "Attachments",
+   "options": "Attached Document"
+  },
+  {
+   "default": "None",
+   "description": "Controls whether this communication uses staff discussion, recipient Q&A, or structured feedback on supported surfaces.",
+   "fieldname": "interaction_mode",
+   "fieldtype": "Select",
+   "label": "Interaction Mode",
+   "options": "None\nStaff Comments\nStructured Feedback\nStudent Q&A"
+  },
+  {
+   "default": "1",
+   "description": "If enabled, recipients can send private questions or notes visible only to school staff when the selected interaction mode supports it.",
+   "fieldname": "allow_private_notes",
+   "fieldtype": "Check",
+   "label": "Allow Private Notes to School Staff"
+  },
+  {
+   "default": "0",
+   "description": "If enabled, recipient-visible entries can be shared with others in the same resolved audience. This does not control staff-only discussion.",
+   "fieldname": "allow_public_thread",
+   "fieldtype": "Check",
+   "label": "Allow Shared Audience Thread"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-15 01:35:04.000000",
+ "modified_by": "Administrator",
+ "module": "Setup",
+ "name": "Org Communication",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

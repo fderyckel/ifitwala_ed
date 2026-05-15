@@ -1,0 +1,203 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "ADM-CONV-.YY.-.MM.-.###",
+ "creation": "2026-04-28 08:56:27.000000",
+ "description": "Admissions CRM conversation for pre-applicant and external-channel work. Applicant portal case messaging remains in Org Communication.",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "organization",
+  "school",
+  "assigned_to",
+  "status",
+  "context_section",
+  "inquiry",
+  "student_applicant",
+  "external_identity",
+  "channel_account",
+  "state_section",
+  "latest_message_at",
+  "latest_inbound_message_at",
+  "latest_outbound_message_at",
+  "needs_reply",
+  "last_message_preview",
+  "next_action_on",
+  "last_activity_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Organization",
+   "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "assigned_to",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Assigned To",
+   "options": "User"
+  },
+  {
+   "default": "Open",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Open\nClosed\nArchived\nSpam"
+  },
+  {
+   "fieldname": "context_section",
+   "fieldtype": "Section Break",
+   "label": "Context"
+  },
+  {
+   "fieldname": "inquiry",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Inquiry",
+   "options": "Inquiry"
+  },
+  {
+   "fieldname": "student_applicant",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Student Applicant",
+   "options": "Student Applicant"
+  },
+  {
+   "fieldname": "external_identity",
+   "fieldtype": "Link",
+   "label": "External Identity",
+   "options": "Admission External Identity"
+  },
+  {
+   "fieldname": "channel_account",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Channel Account",
+   "options": "Admission Channel Account"
+  },
+  {
+   "fieldname": "state_section",
+   "fieldtype": "Section Break",
+   "label": "State"
+  },
+  {
+   "fieldname": "latest_message_at",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Latest Message At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "latest_inbound_message_at",
+   "fieldtype": "Datetime",
+   "label": "Latest Inbound Message At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "latest_outbound_message_at",
+   "fieldtype": "Datetime",
+   "label": "Latest Outbound Message At",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "needs_reply",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Needs Reply",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_message_preview",
+   "fieldtype": "Small Text",
+   "label": "Last Message Preview",
+   "read_only": 1
+  },
+  {
+   "fieldname": "next_action_on",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Next Action On"
+  },
+  {
+   "fieldname": "last_activity_at",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Last Activity At",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-28 08:56:27.000000",
+ "modified_by": "Administrator",
+ "module": "Admission",
+ "name": "Admission Conversation",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

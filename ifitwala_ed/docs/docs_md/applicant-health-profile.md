@@ -1,0 +1,146 @@
+---
+title: "Applicant Health Profile: Health Disclosure and Clearance"
+slug: applicant-health-profile
+category: Admission
+doc_order: 7
+version: "2.4.3"
+last_change_date: "2026-04-25"
+summary: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
+seo_title: "Applicant Health Profile: Health Disclosure and Clearance"
+seo_description: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
+---
+
+## Before You Start (Prerequisites)
+
+- Create the `Student Applicant` record first.
+- Decide your internal review process (`Pending`, `Needs Follow-Up`, `Cleared`) before staff start updating rows.
+- If family-side editing is used, ensure applicant portal access/linkage is already set up.
+
+`Applicant Health Profile` stores health and safeguarding information needed during admissions review.
+
+## What It Captures
+
+- Blood group
+- Allergy check and details (`food_allergies`, `insect_bites`, `medication_allergies`)
+- Condition detail fields (from `asthma` through `vision_problem`)
+- Diet and history fields (`diet_requirements`, `medical_surgeries__hospitalizations`, `other_medical_information`)
+- Vaccinations child rows (`vaccine_name`, `date`, `vaccination_proof`, `additional_notes`)
+- Applicant declaration fields (`applicant_health_declared_complete`, `applicant_health_declared_by`, `applicant_health_declared_on`)
+- Staff review status and notes
+
+## Where It Is Used Across the ERP
+
+- [**Student Applicant**](/docs/en/student-applicant/): readiness checks require a cleared health review only when the applicant school has `require_health_profile_for_approval = 1`.
+- Admissions portal APIs:
+  - `get_applicant_health`
+  - `update_applicant_health`
+  - vaccination-proof upload runtime path: `ifitwala_ed.admission.admissions_portal.upload_applicant_health_vaccination_proof` -> `ifitwala_drive.api.admissions.upload_applicant_health_vaccination_proof`
+  - declaration-complete transition (`applicant_health_declared_complete: 0 -> 1`) materializes reviewer assignments
+- Staff review UI: reviewer metadata stamped when moving to review outcomes.
+- Assigned reviewers can inspect the full applicant folder read-only from Admissions Workspace or Desk while the review assignment remains open.
+- Admission workspace card: direct operational access.
+
+## Review States
+
+- `Pending`
+- `Needs Follow-Up`
+- `Cleared`
+
+<Callout type="tip" title="Practical workflow">
+Families can provide health details in portal phases where edits are allowed, then staff can move review status to `Cleared` or `Needs Follow-Up`.
+</Callout>
+
+## Operational Guardrails
+
+<DoDont doTitle="Do" dontTitle="Don't">
+  <Do>Keep reviewer outcomes explicit (`Pending`, `Needs Follow-Up`, `Cleared`) and let reviewer metadata stamp automatically.</Do>
+  <Do>Use governed vaccination-proof uploads and canonical file URLs.</Do>
+  <Dont>Approve applicant decisions while health review is unresolved when health is configured as required for that school.</Dont>
+  <Dont>Allow family-side edits after terminal applicant states (`Rejected`, `Promoted`).</Dont>
+</DoDont>
+
+## Lifecycle and Linked Documents
+
+<Steps title="Applicant Health Lifecycle">
+  <Step title="Create Profile">
+    Create health profile context as soon as an applicant enters active review.
+  </Step>
+  <Step title="Capture Details">
+    Capture family-provided health details and keep entries current through the review window.
+  </Step>
+  <Step title="Review">
+    Staff reviewers move the profile through review outcomes (`Pending`, `Needs Follow-Up`, `Cleared`).
+  </Step>
+  <Step title="Reviewer Assignment">
+    When family declaration is marked complete, matching `Applicant Review Rule` reviewers receive Focus assignments through `Applicant Review Assignment`.
+  </Step>
+  <Step title="Gate Decisions">
+    Applicant approval readiness depends on the health review state being complete only when school policy enables health gating.
+  </Step>
+  <Step title="Promote">
+    On applicant promotion, health fields and vaccination rows are copied into `Student Patient` / `Student Patient Vaccination`.
+  </Step>
+  <Step title="Governed Proof Files">
+    Vaccination proof images are uploaded from the applicant workflow in `ifitwala_ed`, then delegated to `ifitwala_drive.api.admissions.upload_applicant_health_vaccination_proof` for upload-session/finalize handling and linked back via canonical file URLs.
+  </Step>
+</Steps>
+
+<Callout type="warning" title="Admissions decision impact">
+When school policy requires health clearance, do not move applicants to final approval while health review remains unresolved; readiness checks are designed to prevent this.
+</Callout>
+
+## Reporting
+
+- No dedicated Script/Query Report currently declares this doctype as `ref_doctype`.
+
+## Permission Matrix
+
+| Role | Read | Write | Create | Delete | Notes |
+|---|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes | Full Desk access |
+| `Academic Admin` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
+| `Admission Manager` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
+| `Admission Officer` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
+| `Nurse` | Yes | Yes | Yes | Yes | Staff review role |
+| `Guardian` | Yes | Yes | Yes | No | Linked-guardian rows only |
+| `Admissions Applicant` | Yes | Yes | Yes | No | Own applicant rows only |
+
+Runtime controller rules:
+- Family/applicant editing is allowed only when user linkage to the applicant is valid and status is non-terminal (`Draft` through `Withdrawn`, excluding `Rejected`).
+- Admissions/academic staff are scoped by applicant organization/school visibility; `System Manager` remains global.
+- An assigned reviewer with an open `Applicant Review Assignment` for the applicant gets read-only access to this profile and the applicant folder, but does not get direct write permission outside the review workflow.
+- Review fields are staff-only (`Admission Officer`, `Admission Manager`, `Academic Admin`, `System Manager`, `Nurse`).
+- Terminal applicant states (`Rejected`, `Promoted`) are read-only.
+
+## Related Docs
+
+<RelatedDocs
+  slugs="student-applicant,applicant-interview,applicant-document"
+  title="Related Applicant Review Docs"
+/>
+
+## Technical Notes (IT)
+
+### Latest Technical Snapshot (2026-03-05)
+
+- **DocType schema file**: `ifitwala_ed/admission/doctype/applicant_health_profile/applicant_health_profile.json`
+- **Controller file**: `ifitwala_ed/admission/doctype/applicant_health_profile/applicant_health_profile.py`
+- **Required fields (`reqd=1`)**:
+  - `student_applicant` (`Link` -> `Student Applicant`)
+- **Lifecycle hooks in controller**: `validate`
+- **Operational/public methods**: none beyond standard document behavior.
+
+- **DocType**: `Applicant Health Profile` (`ifitwala_ed/admission/doctype/applicant_health_profile/`)
+- **Autoname**: `hash`
+- **Primary link**: `student_applicant` -> `Student Applicant` (immutable once set)
+- **Portal/API surfaces**:
+  - endpoints in `ifitwala_ed/api/admissions_portal.py`:
+    - `get_applicant_health`
+    - `update_applicant_health`
+    - `upload_applicant_health_vaccination_proof`
+  - SPA page consuming these APIs: `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantHealth.vue`
+  - Drive wrapper used for governed vaccination-proof upload: `ifitwala_drive.api.admissions.upload_applicant_health_vaccination_proof`
+- **Controller methods**:
+  - permission gating by role and applicant status
+  - reviewer metadata stamping (`reviewed_by`, `reviewed_on`)
+  - promotion handoff consumed by `Student Applicant.promote_to_student`

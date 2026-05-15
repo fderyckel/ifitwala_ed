@@ -1,0 +1,76 @@
+{
+ "actions": [],
+ "creation": "2026-03-11 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "account_holder",
+  "contact_email",
+  "statement_balance",
+  "overdue_amount",
+  "invoice_count",
+  "latest_invoice_date",
+  "latest_due_date"
+ ],
+ "fields": [
+  {
+   "fieldname": "account_holder",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Account Holder",
+   "options": "Account Holder",
+   "reqd": 1
+  },
+  {
+   "fieldname": "contact_email",
+   "fieldtype": "Data",
+   "label": "Contact Email",
+   "options": "Email",
+   "read_only": 1
+  },
+  {
+   "fieldname": "statement_balance",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Statement Balance",
+   "read_only": 1
+  },
+  {
+   "fieldname": "overdue_amount",
+   "fieldtype": "Currency",
+   "label": "Overdue Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "invoice_count",
+   "fieldtype": "Int",
+   "label": "Invoice Count",
+   "read_only": 1
+  },
+  {
+   "fieldname": "latest_invoice_date",
+   "fieldtype": "Date",
+   "label": "Latest Invoice Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "latest_due_date",
+   "fieldtype": "Date",
+   "label": "Latest Due Date",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-03-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Accounting",
+ "name": "Statement Of Accounts Run Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

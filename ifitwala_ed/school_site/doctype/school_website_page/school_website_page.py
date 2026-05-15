@@ -1,0 +1,329 @@
+# ifitwala_ed/school_site/doctype/school_website_page/school_website_page.py
+
+import json
+
+import frappe
+from frappe import _
+from frappe.model.document import Document
+
+from ifitwala_ed.website.publication import (
+    WORKFLOW_DEFAULT_STATE,
+    WORKFLOW_TRANSITIONS,
+    compute_publication_flags,
+    normalize_workflow_state,
+    validate_publication_window,
+)
+from ifitwala_ed.website.utils import apply_missing_block_enabled_defaults, is_block_enabled, normalize_route
+from ifitwala_ed.website.validators import validate_page_blocks
+
+
+def build_school_website_page_name(*, school: str | None, route: str | None) -> str:
+    school_label = frappe.db.get_value("School", school, "school_name") or (school or _("School"))
+    raw_route = (route or "").strip()
+    if raw_route == "/":
+        route_label = _("Home")
+        route_key = "home"
+    else:
+        segments = [segment.strip() for segment in raw_route.split("/") if segment and segment.strip()]
+        route_label = " > ".join(segment.replace("-", " ").replace("_", " ").title() for segment in segments) or _(
+            "Page"
+        )
+        route_key = "__".join(segments) or "page"
+    return _("{school} - {route} [{key}]").format(
+        school=school_label,
+        route=route_label,
+        key=route_key,
+    )
+
+
+def compute_school_page_publication_flags(
+    *,
+    school_is_public: bool,
+    workflow_state: str,
+    publish_at=None,
+    expire_at=None,
+) -> tuple[str, int]:
+    return compute_publication_flags(
+        base_is_public=school_is_public,
+        workflow_state=workflow_state,
+        publish_at=publish_at,
+        expire_at=expire_at,
+    )
+
+
+class SchoolWebsitePage(Document):
+    def autoname(self):
+        self.name = build_school_website_page_name(
+            school=self.school,
+            route=self.route,
+        )
+
+    def before_insert(self):
+        self._ensure_workflow_state()
+        self._sync_status_flags()
+        self._seed_admissions_blocks()
+
+    def validate(self):
+        self._ensure_workflow_state()
+        validate_publication_window(publish_at=self.publish_at, expire_at=self.expire_at)
+        self._sync_status_flags()
+        apply_missing_block_enabled_defaults(self.blocks)
+        school_slug = frappe.db.get_value("School", self.school, "website_slug")
+        if not school_slug:
+            frappe.throw(
+                _("School website slug is required to build routes."),
+                frappe.ValidationError,
+            )
+
+        raw_value = self.route or ""
+        raw_route = raw_value.strip()
+        if raw_value != raw_route:
+            frappe.throw(
+                _("Route cannot start or end with whitespace."),
+                frappe.ValidationError,
+            )
+        if not raw_route:
+            frappe.throw(
+                _("Route is required. Use '/' for the school home page."),
+                frappe.ValidationError,
+            )
+
+        if raw_route == "/":
+            self.full_route = normalize_route(f"/schools/{school_slug}")
+        else:
+            if raw_route.startswith("/"):
+                frappe.throw(
+                    _("Route must not start with '/'. Use '/' only for the home page."),
+                    frappe.ValidationError,
+                )
+            if raw_route.endswith("/"):
+                frappe.throw(
+                    _("Route must not end with '/'. Remove the trailing slash."),
+                    frappe.ValidationError,
+                )
+            if "//" in raw_route:
+                frappe.throw(
+                    _("Route must not contain empty segments ('//')."),
+                    frappe.ValidationError,
+                )
+
+            relative = raw_route
+            segments = [seg for seg in relative.split("/") if seg]
+            if not segments:
+                frappe.throw(
+                    _("Route is required. Use '/' for the school home page."),
+                    frappe.ValidationError,
+                )
+            if segments[0] == school_slug:
+                frappe.throw(
+                    _("Do not include the school slug in the route."),
+                    frappe.ValidationError,
+                )
+
+            self.full_route = normalize_route(f"/schools/{school_slug}/{relative}")
+
+        exists = frappe.db.exists(
+            "School Website Page",
+            {
+                "school": self.school,
+                "full_route": self.full_route,
+                "name": ["!=", self.name],
+            },
+        )
+        if exists:
+            frappe.throw(
+                _("A page already exists for this school and route."),
+                frappe.ValidationError,
+            )
+
+        self._validate_blocks_props_json()
+        if self._has_enabled_blocks():
+            validate_page_blocks(self)
+            return
+
+        if self.workflow_state != WORKFLOW_DEFAULT_STATE:
+            frappe.throw(
+                _("Add at least one enabled content block before moving this page out of Draft."),
+                frappe.ValidationError,
+            )
+
+    def _sync_status_flags(self):
+        school_is_public = self._get_school_publication_readiness()
+        status, is_published = compute_school_page_publication_flags(
+            school_is_public=school_is_public,
+            workflow_state=self.workflow_state,
+            publish_at=self.publish_at,
+            expire_at=self.expire_at,
+        )
+        self.status = status
+        self.is_published = is_published
+
+    def _ensure_workflow_state(self):
+        self.workflow_state = normalize_workflow_state(self.workflow_state)
+
+    def _get_school_publication_readiness(self) -> bool:
+        if not self.school:
+            return False
+        row = frappe.db.get_value(
+            "School",
+            self.school,
+            ["website_slug", "is_published"],
+            as_dict=True,
+        )
+        return bool(row and row.website_slug and int(row.is_published or 0) == 1)
+
+    def _assert_transition_allowed(self, action: str) -> str:
+        action_key = (action or "").strip()
+        transition = WORKFLOW_TRANSITIONS.get(action_key)
+        if not transition:
+            frappe.throw(
+                _("Unknown workflow action: {action}").format(action=action_key or _("(empty)")),
+                frappe.ValidationError,
+            )
+
+        current_state = normalize_workflow_state(self.workflow_state)
+        if current_state not in transition["from_states"]:
+            frappe.throw(
+                _("Cannot run '{action}' from workflow state '{state}'.").format(
+                    action=action_key,
+                    state=current_state,
+                ),
+                frappe.ValidationError,
+            )
+
+        user_roles = set(frappe.get_roles())
+        allowed_roles = set(transition["roles"])
+        if not user_roles.intersection(allowed_roles):
+            frappe.throw(
+                _("You do not have permission to run workflow action: {action}.").format(action=action_key),
+                frappe.PermissionError,
+            )
+        return action_key
+
+    def apply_workflow_action(self, action: str):
+        action_key = self._assert_transition_allowed(action)
+        target_state = WORKFLOW_TRANSITIONS[action_key]["to_state"]
+        if target_state == "Published" and not self._get_school_publication_readiness():
+            frappe.throw(
+                _("Cannot publish until the school has a website slug and Is Published enabled."),
+                frappe.ValidationError,
+            )
+
+        self.workflow_state = target_state
+        self._sync_status_flags()
+
+    def _seed_admissions_blocks(self):
+        if not self.is_new() or self.page_type != "Admissions" or self.blocks:
+            return
+
+        steps_props = {
+            "steps": [
+                {
+                    "key": "inquire",
+                    "title": "Inquire",
+                    "description": "Start the conversation.",
+                    "icon": "mail",
+                },
+                {
+                    "key": "visit",
+                    "title": "Visit",
+                    "description": "Experience our campus.",
+                    "icon": "map",
+                },
+                {
+                    "key": "apply",
+                    "title": "Apply",
+                    "description": "Begin the application.",
+                    "icon": "file-text",
+                },
+            ],
+            "layout": "horizontal",
+        }
+
+        self.append(
+            "blocks",
+            {
+                "block_type": "admissions_overview",
+                "order": 1,
+                "props": json.dumps(
+                    {
+                        "heading": "Admissions",
+                        "content_html": "<p>We welcome families who value curiosity, care, and growth.</p>",
+                        "max_width": "normal",
+                    }
+                ),
+                "is_enabled": 1,
+            },
+        )
+        self.append(
+            "blocks",
+            {
+                "block_type": "admissions_steps",
+                "order": 2,
+                "props": json.dumps(steps_props),
+                "is_enabled": 1,
+            },
+        )
+        self.append(
+            "blocks",
+            {
+                "block_type": "admission_cta",
+                "order": 3,
+                "props": json.dumps({"intent": "inquire", "style": "primary"}),
+                "is_enabled": 1,
+            },
+        )
+        self.append(
+            "blocks",
+            {
+                "block_type": "admission_cta",
+                "order": 4,
+                "props": json.dumps({"intent": "visit", "style": "secondary"}),
+                "is_enabled": 1,
+            },
+        )
+        self.append(
+            "blocks",
+            {
+                "block_type": "admission_cta",
+                "order": 5,
+                "props": json.dumps({"intent": "apply", "style": "outline"}),
+                "is_enabled": 1,
+            },
+        )
+
+    def _validate_blocks_props_json(self):
+        for row in self.blocks or []:
+            raw_props = (row.props or "").strip()
+            if not raw_props:
+                continue
+            try:
+                json.loads(raw_props)
+            except Exception as exc:
+                frappe.throw(
+                    _("Invalid block props JSON in row {row_index} ({block_type}): {error}").format(
+                        row_index=row.idx or "?",
+                        block_type=row.block_type or _("Unknown block"),
+                        error=str(exc),
+                    ),
+                    frappe.ValidationError,
+                )
+
+    def _has_enabled_blocks(self) -> bool:
+        return any(is_block_enabled(row) for row in self.blocks or [])
+
+
+@frappe.whitelist()
+def transition_workflow_state(name: str, action: str) -> dict:
+    doc = frappe.get_doc("School Website Page", name)
+    if not frappe.has_permission(doc=doc, ptype="write"):
+        frappe.throw(_("Not permitted."), frappe.PermissionError)
+
+    doc.apply_workflow_action(action)
+    doc.save()
+    return {
+        "name": doc.name,
+        "workflow_state": doc.workflow_state,
+        "status": doc.status,
+        "is_published": doc.is_published,
+    }

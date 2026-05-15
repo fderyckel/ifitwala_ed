@@ -1,0 +1,778 @@
+# Copyright (c) 2025, François de Ryckel and contributors
+# For license information, please see license.txt
+
+# ifitwala_ed.api.org_communication_archive
+
+import frappe
+from frappe import _
+from frappe.utils import add_days, getdate, strip_html, today
+
+from ifitwala_ed.api.org_comm_utils import (
+    build_audience_summary,
+    check_audience_match,
+    expand_employee_visibility_context,
+)
+from ifitwala_ed.api.org_communication_attachments import serialize_org_communication_attachment_row
+from ifitwala_ed.utilities.employee_utils import (
+    get_ancestor_organizations,
+    get_descendant_organizations,
+    get_schools_for_organization_scope,
+    get_user_base_org,
+    get_user_base_school,
+)
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
+
+
+def _parse_filters(raw):
+    """Return a dict from a JSON string or mapping."""
+    if isinstance(raw, str):
+        try:
+            raw = frappe.parse_json(raw) or {}
+        except Exception:
+            raw = {}
+    return raw or {}
+
+
+def _normalize_filters(raw_filters: dict | None) -> dict:
+    """Coerce incoming filters into a consistent contract."""
+    raw = _parse_filters(raw_filters)
+
+    def clean_value(val):
+        if val is None:
+            return None
+        if isinstance(val, str):
+            trimmed = val.strip()
+            if trimmed in {"", "All"}:
+                return None
+            return trimmed
+        return val
+
+    def _clean_link(val):
+        if val is None:
+            return None
+        if isinstance(val, str):
+            val = val.strip()
+            if not val or val.lower() == "all":
+                return None
+            return val
+        return val
+
+    status_in_payload = "status" in raw
+
+    date_range_raw = raw.get("date_range")
+    date_range_clean = clean_value(date_range_raw)
+    if isinstance(date_range_raw, str) and date_range_raw.strip().lower() == "all":
+        date_range_clean = "all"
+    date_range_in_payload = "date_range" in raw
+
+    status_clean = clean_value(raw.get("status"))
+    if status_clean is None and not status_in_payload:
+        status_clean = "PublishedOrArchived"
+
+    if date_range_clean is None and not date_range_in_payload:
+        date_range_clean = "90d"
+
+    status_clean = status_clean or None
+    out = {
+        "search_text": clean_value(raw.get("search_text")),
+        "status": status_clean,
+        "priority": clean_value(raw.get("priority")),
+        "portal_surface": clean_value(raw.get("portal_surface")),
+        "communication_type": clean_value(raw.get("communication_type")),
+        "date_range": date_range_clean,
+        "team": _clean_link(raw.get("team")),
+        "student_group": _clean_link(raw.get("student_group")),
+        "school": _clean_link(raw.get("school")),
+        "organization": _clean_link(raw.get("organization")),
+        "activity_program_offering": _clean_link(raw.get("activity_program_offering")),
+        "activity_student_group": _clean_link(raw.get("activity_student_group")),
+        "activity_booking": _clean_link(raw.get("activity_booking")),
+        "only_with_interactions": 1 if raw.get("only_with_interactions") else 0,
+    }
+
+    return out
+
+
+def _get_scope(user: str, employee: dict | None):
+    """Resolve the base org/school and their descendant scopes."""
+    base_org = (employee or {}).get("organization") or get_user_base_org(user)
+    base_school = (employee or {}).get("school") or get_user_base_school(user)
+
+    org_scope = []
+    if base_org:
+        org_scope = get_descendant_organizations(base_org) or [base_org]
+
+    school_scope = []
+    if base_school:
+        school_scope = get_descendant_schools(base_school) or [base_school]
+    elif org_scope:
+        school_scope = get_schools_for_organization_scope(org_scope)
+
+    return base_org, base_school, org_scope, school_scope
+
+
+def _get_linked_employee(user: str) -> dict:
+    return (
+        frappe.db.get_value(
+            "Employee",
+            {"user_id": user},
+            ["name", "school", "organization"],
+            as_dict=True,
+        )
+        or {}
+    )
+
+
+def _get_archive_employee_context(user: str, roles: list[str]):
+    """Return archive visibility context plus base org/school scopes.
+
+    Academic Admin archive scope is school-first:
+    - with Employee.school: school cone only
+    - without Employee.school: organization descendant fallback
+    """
+    employee = _get_linked_employee(user)
+
+    base_org, base_school, org_scope, school_scope = _get_scope(user, employee)
+
+    archive_employee = dict(employee or {})
+    if "Academic Admin" in (roles or []):
+        school_names = [school for school in (school_scope or []) if school]
+        organization_names = [org for org in (org_scope or []) if org]
+        if organization_names and not base_school:
+            archive_employee["organization_names"] = organization_names
+        if school_names:
+            archive_employee["school_names"] = school_names
+
+    return archive_employee, base_org, base_school, org_scope, school_scope
+
+
+def _get_item_employee_context(user: str, roles: list[str]) -> dict:
+    employee = _get_linked_employee(user)
+    if not employee:
+        return {}
+    return expand_employee_visibility_context(employee, roles)
+
+
+def _get_archive_organization_scope(*, base_org: str | None, org_scope: list[str] | None) -> list[str]:
+    """Return archive-visible org scope.
+
+    Archive candidates must include:
+    - the user's base organization
+    - its descendants
+    - its ancestors
+
+    This keeps parent organization communications eligible for
+    `Organization` audience matching while preserving sibling isolation.
+    """
+    scope = {org for org in (org_scope or []) if org}
+    if base_org:
+        scope.add(base_org)
+    if base_org and org_scope:
+        scope.update(org for org in (get_ancestor_organizations(base_org) or []) if org)
+    return sorted(scope)
+
+
+@frappe.whitelist()
+def get_archive_context():
+    """Returns context data for the archive page filters."""
+    user = frappe.session.user
+    roles = frappe.get_roles(user)
+    employee, base_org, base_school, org_scope, school_scope = _get_archive_employee_context(user, roles)
+
+    # -------------------------
+    # Teams (Team -> Team Member)
+    # -------------------------
+    # Team Member is a child table of Team:
+    # - parent = Team.name
+    # - employee (required)
+    # - member (Link to User, may be empty)
+    employee_name = employee.get("name") if employee else None
+    team_names: list[str] = []
+
+    if user and user != "Guest":
+        conds = []
+        params = {}
+
+        if employee_name:
+            params["employee"] = employee_name
+            conds.append("tm.employee = %(employee)s")
+
+        if user:
+            params["user"] = user
+            conds.append("tm.member = %(user)s")
+
+        if conds:
+            rows = frappe.db.sql(
+                f"""
+				SELECT DISTINCT tm.parent AS team
+				FROM `tabTeam Member` tm
+				WHERE {" OR ".join(conds)}
+				""",
+                params,
+                as_dict=True,
+            )
+            team_names = [r.get("team") for r in rows if r.get("team")]
+
+    team_names = sorted(set(team_names))
+
+    team_rows = []
+    if team_names:
+        team_rows = frappe.get_all(
+            "Team",
+            filters={"name": ["in", team_names], "enabled": 1},
+            fields=["name", "team_name"],
+            order_by="team_name asc, name asc",
+        )
+
+    # Dropdown friendly objects
+    my_teams = [
+        {"value": r.get("name"), "label": r.get("team_name") or r.get("name")}
+        for r in (team_rows or [])
+        if r.get("name")
+    ]
+
+    data = {
+        "my_teams": my_teams,
+        "my_groups": [],
+        "schools": [],
+        "organizations": [],
+        "defaults": {
+            "school": base_school if "Academic Admin" in roles else None,
+            "organization": base_org if "Academic Admin" in roles else None,
+            "team": None,
+        },
+        "base_org": base_org,
+        "base_school": base_school,
+    }
+
+    # -------------------------
+    # Student Groups visibility
+    # -------------------------
+    my_group_rows = []
+
+    if "Academic Admin" in roles:
+        # base_school + descendants (school_scope from _get_scope already does this)
+        if school_scope:
+            my_group_rows = frappe.get_all(
+                "Student Group",
+                # Student Group.school is a Data field, so we match strings (School names)
+                filters={"school": ["in", school_scope]},
+                fields=["name", "student_group_abbreviation", "student_group_name", "school"],
+                order_by="student_group_abbreviation asc, name asc",
+            )
+
+    elif employee and ("Instructor" in roles or "Academic Staff" in roles):
+        instructor_name = frappe.db.get_value("Instructor", {"employee": employee_name}, "name")
+        if instructor_name:
+            group_names = (
+                frappe.get_all(
+                    "Student Group Instructor",
+                    filters={"instructor": instructor_name},
+                    pluck="parent",
+                )
+                or []
+            )
+
+            if group_names:
+                my_group_rows = frappe.get_all(
+                    "Student Group",
+                    filters={"name": ["in", sorted(list(set(group_names)))]},
+                    fields=["name", "student_group_abbreviation", "student_group_name", "school"],
+                    order_by="student_group_abbreviation asc, name asc",
+                )
+
+    data["my_groups"] = [
+        {
+            "value": g.get("name"),
+            "label": g.get("student_group_abbreviation") or g.get("student_group_name") or g.get("name"),
+            "school": g.get("school"),
+        }
+        for g in (my_group_rows or [])
+    ]
+
+    archive_org_scope = _get_archive_organization_scope(base_org=base_org, org_scope=org_scope)
+
+    # -------------------------
+    # Organizations: base org + descendants + ancestors; fallback to all
+    # -------------------------
+    org_filters = {}
+    if archive_org_scope:
+        org_filters["name"] = ["in", archive_org_scope]
+
+    data["organizations"] = frappe.get_all(
+        "Organization",
+        filters=org_filters or None,
+        fields=["name", "organization_name", "abbr"],
+        order_by="lft asc",
+    )
+
+    # -------------------------
+    # Schools scoped to base school cone or allowed organizations
+    # -------------------------
+    school_filters = {}
+    if school_scope:
+        school_filters["name"] = ["in", school_scope]
+    elif org_scope:
+        school_filters["organization"] = ["in", org_scope]
+
+    data["schools"] = frappe.get_all(
+        "School",
+        filters=school_filters or None,
+        fields=["name", "school_name", "abbr", "organization"],
+        order_by="school_name asc",
+    )
+
+    return data
+
+
+@frappe.whitelist()
+def get_org_communication_item(name=None):
+    """
+    Returns the full communication details if the user is in the audience.
+    Safe against missing args (returns {}).
+    IMPORTANT: Do NOT use Employee.department as Team.
+    Team membership must be resolved via Team -> Team Member.
+    """
+    if not name:
+        return {}
+
+    name = str(name).strip()
+    if not name:
+        return {}
+
+    user = frappe.session.user
+    roles = frappe.get_roles(user)
+
+    # Keep detail visibility aligned with the feed endpoint or users can see a
+    # row in the archive list but lose the full body in the detail pane.
+    employee = _get_item_employee_context(user, roles)
+
+    # NOTE: check_audience_match MUST be updated to use Team Member doctype
+    # and not Employee.department. (This is the real underlying bug.)
+    if not check_audience_match(name, user, roles, employee, allow_owner=True):
+        frappe.throw(_("You do not have permission to view this communication."), frappe.PermissionError)
+
+    doc = frappe.get_doc("Org Communication", name)
+
+    return {
+        "name": doc.name,
+        "title": doc.title,
+        "message_html": doc.message,  # HTML content
+        "communication_type": doc.communication_type,
+        "priority": doc.priority,
+        "publish_from": doc.publish_from,
+        "activity_program_offering": doc.activity_program_offering,
+        "activity_booking": doc.activity_booking,
+        "activity_student_group": doc.activity_student_group,
+        "audience_label": get_audience_label(doc.name),
+        "audience_summary": build_audience_summary(doc.name),
+        "attachments": [
+            serialize_org_communication_attachment_row(doc.name, row)
+            for row in (doc.get("attachments") or [])
+            if str(getattr(row, "file", "") or "").strip() or str(getattr(row, "external_url", "") or "").strip()
+        ],
+    }
+
+
+@frappe.whitelist()
+def get_org_communication_feed(
+    filters: dict | None = None,
+    start: int | None = None,
+    page_length: int | None = None,
+) -> dict:
+    user = frappe.session.user
+    roles = frappe.get_roles(user)
+    employee, base_org, base_school, org_scope, school_scope = _get_archive_employee_context(user, roles)
+
+    raw_filters = _parse_filters(filters)
+
+    filters_dict = _normalize_filters(raw_filters)
+
+    filter_sg_val = filters_dict.get("student_group")
+    if isinstance(filter_sg_val, str):
+        filter_sg_val = filter_sg_val.strip() or None
+
+    filter_team_val = filters_dict.get("team")
+    if isinstance(filter_team_val, str):
+        filter_team_val = filter_team_val.strip() or None
+
+    filter_school_val = filters_dict.get("school")
+    if isinstance(filter_school_val, str):
+        filter_school_val = filter_school_val.strip() or None
+
+    # Defensive mutual exclusivity (student_group > team > school)
+    if filter_sg_val:
+        filter_team_val = None
+        filter_school_val = None
+    elif filter_team_val:
+        filter_school_val = None
+        filter_sg_val = None
+    elif filter_school_val:
+        filter_team_val = None
+        filter_sg_val = None
+
+    filters_dict["student_group"] = filter_sg_val
+    filters_dict["team"] = filter_team_val
+    filters_dict["school"] = filter_school_val
+
+    offset = int(start or 0)
+    page_len = int(page_length or 30)
+
+    # Org guard
+    org_guard: set[str] = set()
+    if "System Manager" not in roles:
+        org_guard = set(_get_archive_organization_scope(base_org=base_org, org_scope=org_scope))
+
+    if not org_guard and school_scope and "System Manager" not in roles:
+        orgs_from_schools = frappe.get_all(
+            "School",
+            filters={"name": ["in", school_scope]},
+            pluck="organization",
+        )
+        org_guard = {o for o in orgs_from_schools if o}
+
+    org_filter = filters_dict.get("organization")
+    if org_filter:
+        if org_guard and org_filter not in org_guard:
+            frappe.throw(_("You do not have access to this organization."), frappe.PermissionError)
+        org_guard = {org_filter}
+
+    # Optional school guard for user scope (UI filter must be within allowed scope)
+    if filter_school_val and school_scope and "System Manager" not in roles and filter_school_val not in school_scope:
+        frappe.throw(_("You do not have access to this school."), frappe.PermissionError)
+
+    # Base Filters (SQL-level; final school/team/student_group eligibility in check_audience_match)
+    conditions: list[str] = []
+    values: dict[str, object] = {}
+
+    status_from_payload = "status" in raw_filters
+    status_val = filters_dict.get("status")
+    if status_val is None and not status_from_payload:
+        status_val = "PublishedOrArchived"
+
+    if status_val == "PublishedOrArchived":
+        conditions.append("status IN ('Published', 'Archived')")
+    elif status_val == "Published":
+        conditions.append("status = 'Published'")
+    elif status_val and status_val != "All":
+        conditions.append("status = %(status)s")
+        values["status"] = status_val
+
+    priority_val = filters_dict.get("priority")
+    if priority_val and priority_val != "All":
+        conditions.append("priority = %(priority)s")
+        values["priority"] = priority_val
+
+    portal_surface_val = filters_dict.get("portal_surface")
+    if portal_surface_val and portal_surface_val != "All":
+        conditions.append("portal_surface = %(portal_surface)s")
+        values["portal_surface"] = portal_surface_val
+
+    communication_type_val = filters_dict.get("communication_type")
+    if communication_type_val and communication_type_val != "All":
+        conditions.append("communication_type = %(communication_type)s")
+        values["communication_type"] = communication_type_val
+
+    date_range_from_payload = "date_range" in raw_filters
+    date_range_val = filters_dict.get("date_range")
+    if date_range_val is None and not date_range_from_payload:
+        date_range_val = "90d"
+
+    if date_range_val != "all":
+        end_date = getdate(today())
+        start_date = None
+
+        if date_range_val == "7d":
+            start_date = add_days(end_date, -7)
+        elif date_range_val == "30d":
+            start_date = add_days(end_date, -30)
+        elif date_range_val == "90d":
+            start_date = add_days(end_date, -90)
+        elif date_range_val == "year":
+            start_date = f"{end_date.year}-01-01"
+
+        if start_date:
+            conditions.append("publish_from >= %(start_date)s")
+            values["start_date"] = start_date
+
+    search_val = filters_dict.get("search_text")
+    if search_val:
+        conditions.append("(title LIKE %(search)s OR message LIKE %(search)s)")
+        values["search"] = f"%{search_val}%"
+
+    if org_guard:
+        conditions.append("organization IN %(org_guard)s")
+        values["org_guard"] = tuple(org_guard)
+
+    activity_offering_val = filters_dict.get("activity_program_offering")
+    if activity_offering_val:
+        conditions.append("activity_program_offering = %(activity_program_offering)s")
+        values["activity_program_offering"] = activity_offering_val
+
+    activity_group_val = filters_dict.get("activity_student_group")
+    if activity_group_val:
+        conditions.append("activity_student_group = %(activity_student_group)s")
+        values["activity_student_group"] = activity_group_val
+
+    activity_booking_val = filters_dict.get("activity_booking")
+    if activity_booking_val:
+        conditions.append("activity_booking = %(activity_booking)s")
+        values["activity_booking"] = activity_booking_val
+
+    if filters_dict.get("only_with_interactions"):
+        # Semantics: "only_with_interactions" means "has at least one COMMENT"
+        # (reactions alone must NOT qualify an item)
+        conditions.append(
+            "EXISTS ("
+            "SELECT ci.name FROM `tabCommunication Interaction Entry` ci "
+            "WHERE ci.org_communication = `tabOrg Communication`.name "
+            "AND ci.intent_type = 'Comment'"
+            "AND COALESCE(TRIM(ci.note), '') != '' "
+            "AND ci.visibility != 'Hidden' "
+            ")"
+        )
+
+    # ──────────────────────────────────────────────
+    # STRICT PREFILTERS FOR MUTUALLY-EXCLUSIVE SCOPES
+    # (speed + eliminates “matched via other audience row” confusion)
+    # ──────────────────────────────────────────────
+
+    if isinstance(filter_sg_val, str):
+        filter_sg_val = filter_sg_val.strip()
+
+    if filter_sg_val:
+        conditions.append(
+            "("
+            "`tabOrg Communication`.activity_student_group = %(filter_student_group)s "
+            "OR EXISTS ("
+            "SELECT a.name FROM `tabOrg Communication Audience` a "
+            "WHERE a.parent = `tabOrg Communication`.name "
+            "AND a.parenttype = 'Org Communication' "
+            "AND a.parentfield = 'audiences' "
+            "AND a.target_mode = 'Student Group' "
+            "AND a.student_group = %(filter_student_group)s"
+            ")"
+            ")"
+        )
+        values["filter_student_group"] = filter_sg_val
+
+    elif filter_team_val:
+        conditions.append(
+            "EXISTS ("
+            "SELECT a.name FROM `tabOrg Communication Audience` a "
+            "WHERE a.parent = `tabOrg Communication`.name "
+            "AND a.parenttype = 'Org Communication' "
+            "AND a.parentfield = 'audiences' "
+            "AND a.target_mode = 'Team' "
+            "AND a.team = %(filter_team)s"
+            ")"
+        )
+        values["filter_team"] = filter_team_val
+    elif filter_school_val:
+        conditions.append(
+            "EXISTS ("
+            "SELECT a.name FROM `tabOrg Communication Audience` a "
+            "WHERE a.parent = `tabOrg Communication`.name "
+            "AND a.parenttype = 'Org Communication' "
+            "AND a.parentfield = 'audiences' "
+            "AND a.target_mode = 'School Scope'"
+            ")"
+        )
+
+    where_clause = " AND ".join(conditions)
+    if where_clause:
+        where_clause = "WHERE " + where_clause
+
+    sql = f"""
+		SELECT
+			name,
+			title,
+			message,
+			communication_type,
+			status,
+			priority,
+			portal_surface,
+			school,
+			organization,
+			publish_from,
+			publish_to,
+			brief_start_date,
+			brief_end_date,
+			interaction_mode,
+			allow_private_notes,
+			allow_public_thread,
+			activity_program_offering,
+			activity_booking,
+			activity_student_group
+		FROM `tabOrg Communication`
+		{where_clause}
+		ORDER BY publish_from DESC, creation DESC
+	"""
+
+    candidates = frappe.db.sql(sql, values, as_dict=True)
+
+    visible_items: list[dict] = []
+
+    for c in candidates:
+        if check_audience_match(
+            c.name,
+            user,
+            roles,
+            employee,
+            filter_team=filter_team_val,
+            filter_student_group=filter_sg_val,
+            filter_school=filter_school_val,
+            allow_owner=True,
+        ):
+            raw_text = strip_html(c.message or "") if c.message else ""
+            if raw_text and len(raw_text) > 260:
+                snippet = raw_text[:260] + "..."
+            else:
+                snippet = raw_text
+
+            visible_items.append(
+                {
+                    "name": c.name,
+                    "title": c.title,
+                    "communication_type": c.communication_type,
+                    "status": c.status,
+                    "priority": c.priority,
+                    "portal_surface": c.portal_surface,
+                    "school": c.school,
+                    "organization": c.organization,
+                    "publish_from": c.publish_from,
+                    "publish_to": c.publish_to,
+                    "brief_start_date": c.brief_start_date,
+                    "brief_end_date": c.brief_end_date,
+                    "interaction_mode": c.interaction_mode,
+                    "allow_private_notes": c.allow_private_notes,
+                    "allow_public_thread": c.allow_public_thread,
+                    "activity_program_offering": c.activity_program_offering,
+                    "activity_booking": c.activity_booking,
+                    "activity_student_group": c.activity_student_group,
+                    "snippet": snippet,
+                    "has_active_thread": c.interaction_mode in {"Staff Comments", "Student Q&A"},
+                    "audience_label": get_audience_label(c.name),
+                    "audience_summary": build_audience_summary(c.name),
+                }
+            )
+
+    # Apply pagination on the filtered list
+    total_count = len(visible_items)
+    paged_items = visible_items[offset : offset + page_len]
+
+    return {
+        "items": paged_items,
+        "total_count": total_count,
+        "start": offset,
+        "page_length": page_len,
+        "has_more": (offset + page_len) < total_count,
+    }
+
+
+def get_audience_label(comm_name: str) -> str:
+    """
+    Human-friendly audience label for list + detail UI.
+    Uses abbreviations where possible:
+    - School.abbr
+    - Organization.abbr
+    - Student Group.student_group_abbreviation
+    - Team.team_code (fallback team_name)
+    """
+
+    audiences = frappe.get_all(
+        "Org Communication Audience",
+        filters={"parent": comm_name},
+        fields=[
+            "target_mode",
+            "school",
+            "team",
+            "student_group",
+            "to_staff",
+            "to_students",
+            "to_guardians",
+        ],
+    )
+
+    if not audiences:
+        doc = (
+            frappe.db.get_value(
+                "Org Communication",
+                comm_name,
+                ["school", "organization"],
+                as_dict=True,
+            )
+            or {}
+        )
+        if doc.get("school"):
+            abbr = frappe.get_cached_value("School", doc["school"], "abbr") or doc["school"]
+            return abbr
+        if doc.get("organization"):
+            abbr = frappe.get_cached_value("Organization", doc["organization"], "abbr") or doc["organization"]
+            return abbr
+        return "Whole Organisation"
+
+    def _as_bool(v):
+        return v in (1, "1", True)
+
+    # Recipient groups (union across all audience rows)
+    recipients = []
+    if any(_as_bool(a.get("to_staff")) for a in audiences):
+        recipients.append("Staff")
+    if any(_as_bool(a.get("to_students")) for a in audiences):
+        recipients.append("Students")
+    if any(_as_bool(a.get("to_guardians")) for a in audiences):
+        recipients.append("Guardians")
+    recipients_label = " · ".join(recipients) if recipients else "Audience"
+
+    school_abbrs = []
+    team_labels = []
+    group_labels = []
+
+    for a in audiences:
+        mode = (a.get("target_mode") or "").strip()
+
+        if mode == "Student Group" and a.get("student_group"):
+            sg = a["student_group"]
+            sg_abbr = frappe.get_cached_value("Student Group", sg, "student_group_abbreviation") or sg
+            group_labels.append(sg_abbr)
+
+        elif mode == "Team" and a.get("team"):
+            t = a["team"]
+            code = frappe.get_cached_value("Team", t, "team_code")
+            name = frappe.get_cached_value("Team", t, "team_name") or t
+            team_labels.append(code or name)
+
+        elif mode == "School Scope" and a.get("school"):
+            s = a["school"]
+            abbr = frappe.get_cached_value("School", s, "abbr") or s
+            school_abbrs.append(abbr)
+
+    def _dedupe_sorted(vals):
+        return sorted(set([v for v in vals if v]))
+
+    group_labels = _dedupe_sorted(group_labels)
+    team_labels = _dedupe_sorted(team_labels)
+    school_abbrs = _dedupe_sorted(school_abbrs)
+
+    scope_parts = []
+    if group_labels:
+        scope_parts.append(" / ".join(group_labels))
+    if team_labels:
+        scope_parts.append(" / ".join(team_labels))
+    if not scope_parts and school_abbrs:
+        if len(school_abbrs) <= 2:
+            scope_parts.append(" · ".join(school_abbrs))
+        else:
+            scope_parts.append(f"{school_abbrs[0]} · {school_abbrs[1]} +{len(school_abbrs) - 2}")
+
+    if not scope_parts:
+        org = frappe.db.get_value("Org Communication", comm_name, "organization")
+        if org:
+            org_abbr = frappe.get_cached_value("Organization", org, "abbr") or org
+            scope_parts.append(org_abbr)
+        else:
+            scope_parts.append("Whole Organisation")
+
+    scope_label = " , ".join(scope_parts)
+    return f"{recipients_label} · {scope_label}"

@@ -1,0 +1,39 @@
+{
+ "app": "ifitwala_ed",
+ "bg_color": "gray",
+ "creation": "2026-02-24 15:17:38.833430",
+ "docstatus": 0,
+ "doctype": "Desktop Icon",
+ "hidden": 0,
+ "icon": "setting-gear",
+ "icon_type": "Link",
+ "idx": 10,
+ "label": "Admin",
+ "link_to": "Admin",
+ "link_type": "Workspace Sidebar",
+ "logo_url": "/assets/ifitwala_ed/icons/icon_desktop_admin.png",
+ "modified": "2026-03-26 20:12:57.978617",
+ "modified_by": "Administrator",
+ "name": "Admin",
+ "owner": "Administrator",
+ "restrict_removal": 1,
+ "roles": [
+  {
+   "role": "Academic Admin"
+  },
+  {
+   "role": "Academic Assistant"
+  },
+  {
+   "role": "Accreditation Visitor"
+  },
+  {
+   "role": "Administrator"
+  },
+  {
+   "role": "Curriculum Coordinator"
+  }
+ ],
+ "sidebar": "Admin",
+ "standard": 1
+}

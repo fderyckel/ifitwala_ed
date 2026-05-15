@@ -1,0 +1,116 @@
+<!-- ifitwala_ed/docs/testing/01_test_strategy.md -->
+# Ifitwala_Ed Test Strategy (Canonical)
+
+## 1. Purpose
+
+This document defines the canonical testing strategy for `ifitwala_ed`.
+
+Goals:
+1. Protect locked architectural invariants.
+2. Catch regressions early in pull requests.
+3. Keep test feedback fast for contributors.
+4. Run heavy regression suites nightly on dedicated non-production infrastructure.
+
+## 2. Test Pyramid for Ifitwala_Ed
+
+1. Domain unit/invariant tests (highest volume)
+- Pure helper functions and deterministic controller/service invariants.
+- Fast, low setup, high signal.
+
+2. Frappe DocType integration tests (moderate volume)
+- Validate transactional and permission behavior at the Document boundary.
+- Use `IfitwalaEdTestSuite` when DB interactions are part of the invariant.
+- `IntegrationTestCase` remains opt-in only when the test intentionally needs Frappe's framework-owned test-record dependency behavior.
+
+3. API contract tests (targeted)
+- Ensure endpoint-level payload and visibility contracts.
+- Focus on high-risk endpoints (attendance, calendar, activity booking, enrollment, assessment).
+
+4. SPA unit/contract tests (growing)
+- Verify client transport contracts and composable logic.
+- Validate locked UI contract invariants (payload shape, overlay behavior, TDZ safety checks where feasible).
+
+5. Browser E2E journeys (small, deterministic)
+- Use Cypress only for a narrow set of cross-layer browser journeys that can fail even when backend and SPA unit tests pass.
+- Current browser surfaces in scope are `/hub` and `/admissions`.
+- Data setup must be deterministic and prepared through test-only Python helpers under `ifitwala_ed/tests/e2e/`, not through public app APIs.
+- Browser E2E must run against a dedicated test site, never ambient shared developer state.
+
+6. Nightly heavy suites
+- Full app backend run and extended domain/API suites.
+
+## 3. Prioritized Invariants
+
+1. Enrollment remains transactional and snapshot-based.
+2. Assessment truth stays criterion-authoritative.
+3. Permissions are always server-side and hierarchy-safe.
+4. Time logic always follows site timezone and canonical coercion.
+5. File governance remains workflow-spec and Drive-boundary enforced.
+6. SPA contract shape remains canonical (`api(method, payload)`).
+
+## 4. Test Authoring Rules
+
+1. Prefer deterministic tests over brittle UI-path tests.
+2. Keep each test focused on one invariant.
+3. Use mocks/patches for external systems where possible.
+4. Avoid schema invention; use existing DocType fields only.
+5. Add or update tests in the same PR as behavior changes.
+6. Keep browser E2E focused on shell bootstrap, role/scope rendering, admissions session switching, form save persistence, and submit gating/submission state.
+7. Use `IfitwalaEdTestSuite` for new DB-backed app tests.
+8. Keep persistent bootstrap data in `IfitwalaBootstrapTestData`; create scenario data inside tests or explicit domain factories.
+
+## 5. Success Metrics (tracked by `scripts/test_metrics.sh`)
+
+1. `placeholder_test_files`
+2. `doctype_controllers_with_real_tests`
+3. `api_modules_with_real_tests`
+
+The metrics script is informational by default and can be enforced with environment thresholds in CI.
+
+## 6. Regression Guardrails (2026-03 Lessons)
+
+1. Fixture setup must respect DocType invariants.
+- For guarded identity fields on `Student Applicant`, use lifecycle methods or controlled setup writes (`db_set(..., update_modified=False)`) instead of mutable `.save()` flows that trigger permission/immutability guards.
+
+2. Permission logic must define mixed-role precedence.
+- When a principal has both admissions/staff and applicant/family roles, staff precedence must be explicit in permission evaluators and covered by tests.
+
+3. Binary fixtures must be type-valid.
+- Do not use fake bytes behind `.pdf`/`.png` extensions; parser-level validation in Frappe/Pillow will fail and create false-negative test noise.
+
+4. Mapping/default tests must assert invariant outcomes, not fragile literals.
+- For code-mapped classification, assert slot resolution and completeness, and avoid assumptions that conflict with site-level defaults or environment-specific options.
+
+5. Translation alias `_` is reserved.
+- In Python modules importing `from frappe import _`, never shadow `_` with local temporary variables.
+
+6. Governed file/image reads need permission-matrix tests.
+- When a route resolves private media for a surface, test who can open it and who gets `403`; do not stop at helper-level URL-selection tests.
+
+7. Private media contracts must stay server-owned.
+- SPA and website consumers should receive server-resolved display URLs, never raw private paths, and regressions here should be fixed at the API/display-contract layer.
+- When a governed route responds with a redirect, tests should also assert the redirect target is not a raw `/private/...` path unless the surface contract explicitly allows public-media delivery.
+
+8. Multi-step overlays must test first-mutation lock behavior.
+- If a workflow auto-saves drafts, uploads governed files, or otherwise locks server invariants after an intermediate step, add SPA regression coverage for:
+  - the first mutation that activates the lock
+  - any pre-first-mutation blocker that forces the user to choose scope before the lock can be activated
+  - the affected controls becoming non-editable or otherwise guarded
+  - final submit being blocked client-side with actionable remediation when stale state would violate the lock
+
+9. Diagnose fixture and harness failures before changing feature logic.
+- If a test fails before the target workflow logic runs, treat shared factory drift, missing reference data, and harness bootstrap drift as the default suspects before editing production code.
+
+10. Shared factories must be light by default.
+- Test factories should create the smallest contract-valid fixture for the target invariant. Heavy setup such as accounting bootstrap, file derivation, scheduler fan-out, or cross-app provisioning must be explicit opt-ins.
+
+11. Master data must be explicit, not ambient.
+- Tests that depend on records such as `Gender`, `Role`, audience rows, or similar setup data must create or ensure those rows through shared helpers instead of assuming site state.
+
+12. Repeated harness shims belong in shared helpers.
+- If multiple suites need the same installed-app patch, import shim, or bootstrap guard, move it into a shared helper or base fixture with symmetric setup/teardown rather than duplicating local monkeypatches.
+
+13. Deterministic DB tests use the app-owned suite.
+- New DB-backed tests should inherit `IfitwalaEdTestSuite`, not raw `FrappeTestCase`.
+- Tests must not depend on hidden `test_records.json` loading or ambient developer-site master data.
+- Bootstrap data is persistent and committed; scenario data is transactional and must roll back.

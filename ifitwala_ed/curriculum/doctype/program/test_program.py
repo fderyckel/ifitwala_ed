@@ -1,0 +1,377 @@
+# Copyright (c) 2024, fdR and Contributors
+# See license.txt
+
+from unittest.mock import patch
+
+import frappe
+from frappe.tests.utils import FrappeTestCase
+
+from ifitwala_ed.curriculum.doctype.program import program as program_module
+from ifitwala_ed.tests.factories.organization import make_organization, make_school
+
+
+class TestProgram(FrappeTestCase):
+    def setUp(self):
+        frappe.set_user("Administrator")
+
+    def test_all_programs_root_cannot_have_parent(self):
+        root = _get_or_create_program_root()
+        other_parent = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Other Parent {frappe.generate_hash(length=6)}",
+                "is_group": 1,
+            }
+        ).insert(ignore_permissions=True)
+
+        root.reload()
+        root.parent_program = other_parent.name
+
+        with self.assertRaisesRegex(frappe.ValidationError, "cannot have a Parent Program"):
+            root.save(ignore_permissions=True)
+
+    def test_all_programs_root_cannot_be_archived(self):
+        root = _get_or_create_program_root()
+        root.reload()
+        root.archive = 1
+
+        with self.assertRaisesRegex(frappe.ValidationError, "cannot be archived"):
+            root.save(ignore_permissions=True)
+
+    def test_all_programs_root_must_remain_group(self):
+        root = _get_or_create_program_root()
+        root.reload()
+        root.is_group = 0
+
+        with self.assertRaisesRegex(frappe.ValidationError, "must remain marked as Group"):
+            root.save(ignore_permissions=True)
+
+    def test_parent_program_must_be_group(self):
+        parent = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Parent Program {frappe.generate_hash(length=6)}",
+                "is_group": 0,
+            }
+        ).insert(ignore_permissions=True)
+
+        child = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Child Program {frappe.generate_hash(length=6)}",
+                "parent_program": parent.name,
+            }
+        )
+
+        with self.assertRaisesRegex(frappe.ValidationError, "Parent Program .* must be marked as Group"):
+            child.insert(ignore_permissions=True)
+
+    def test_make_program_group_promotes_parent(self):
+        parent = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Parent Program {frappe.generate_hash(length=6)}",
+                "is_group": 0,
+            }
+        ).insert(ignore_permissions=True)
+
+        result = program_module.make_program_group(parent.name)
+
+        self.assertTrue(result["changed"])
+        self.assertEqual(frappe.db.get_value("Program", parent.name, "is_group"), 1)
+
+    def test_program_with_children_must_remain_group(self):
+        parent = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Parent Program {frappe.generate_hash(length=6)}",
+                "is_group": 1,
+            }
+        ).insert(ignore_permissions=True)
+
+        frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Child Program {frappe.generate_hash(length=6)}",
+                "parent_program": parent.name,
+            }
+        ).insert(ignore_permissions=True)
+
+        parent.reload()
+        parent.is_group = 0
+
+        with self.assertRaisesRegex(frappe.ValidationError, "must remain marked as Group"):
+            parent.save(ignore_permissions=True)
+
+    def test_program_parent_query_excludes_current_subtree(self):
+        parent = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Query Parent {frappe.generate_hash(length=6)}",
+                "is_group": 1,
+            }
+        ).insert(ignore_permissions=True)
+        child = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Query Child {frappe.generate_hash(length=6)}",
+                "parent_program": parent.name,
+            }
+        ).insert(ignore_permissions=True)
+        unrelated = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Query Unrelated {frappe.generate_hash(length=6)}",
+                "is_group": 1,
+            }
+        ).insert(ignore_permissions=True)
+
+        rows = program_module.program_parent_query("Program", "", "name", 0, 50, {"current_program": parent.name})
+        names = {row[0] for row in rows}
+
+        self.assertNotIn(parent.name, names)
+        self.assertNotIn(child.name, names)
+        self.assertIn(unrelated.name, names)
+
+    def test_prereq_resolves_min_numeric_score(self):
+        grade_scale = _make_grade_scale()
+        required_course = _make_course("Required")
+        target_course = _make_course("Target")
+
+        program = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Program {frappe.generate_hash(length=6)}",
+                "grade_scale": grade_scale.name,
+                "prerequisites": [
+                    {
+                        "apply_to_course": target_course.name,
+                        "required_course": required_course.name,
+                        "min_grade": "B-",
+                    }
+                ],
+            }
+        ).insert(ignore_permissions=True)
+
+        program.reload()
+        row = program.prerequisites[0]
+        self.assertFalse(bool(row.grade_scale_used))
+        self.assertFalse(bool(row.min_numeric_score))
+
+    def test_prereq_missing_grade_scale_accepted(self):
+        required_course = _make_course("NoScale")
+        target_course = _make_course("TargetMissingScale")
+
+        program = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Program {frappe.generate_hash(length=6)}",
+                "prerequisites": [
+                    {
+                        "apply_to_course": target_course.name,
+                        "required_course": required_course.name,
+                        "min_grade": "B-",
+                    }
+                ],
+            }
+        )
+
+        program.insert(ignore_permissions=True)
+        self.assertEqual(program.prerequisites[0].min_grade, "B-")
+
+    def test_prereq_grade_not_found_accepted(self):
+        grade_scale = _make_grade_scale()
+        required_course = _make_course("MissingGrade")
+        target_course = _make_course("TargetMissingGrade")
+
+        program = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Program {frappe.generate_hash(length=6)}",
+                "grade_scale": grade_scale.name,
+                "prerequisites": [
+                    {
+                        "apply_to_course": target_course.name,
+                        "required_course": required_course.name,
+                        "min_grade": "Z",
+                    }
+                ],
+            }
+        )
+
+        program.insert(ignore_permissions=True)
+        self.assertEqual(program.prerequisites[0].min_grade, "Z")
+
+    def test_effective_assessment_categories_fall_back_to_parent_when_child_empty(self):
+        parent = frappe._dict(
+            {
+                "name": "PROG-PARENT",
+                "parent_program": "",
+                "assessment_categories": [
+                    frappe._dict(
+                        {
+                            "assessment_category": "CAT-1",
+                            "default_weight": 40,
+                            "color_override": "#123456",
+                            "active": 1,
+                            "idx": 1,
+                        }
+                    )
+                ],
+            }
+        )
+        child = frappe._dict(
+            {
+                "name": "PROG-CHILD",
+                "parent_program": "PROG-PARENT",
+                "assessment_categories": [],
+            }
+        )
+
+        with patch.object(program_module.frappe, "get_doc", return_value=parent):
+            source_program, rows = program_module._resolve_effective_assessment_category_source(child)
+
+        self.assertEqual(source_program, "PROG-PARENT")
+        self.assertEqual(rows[0].assessment_category, "CAT-1")
+
+    def test_effective_assessment_categories_prefer_local_rows(self):
+        child = frappe._dict(
+            {
+                "name": "PROG-CHILD",
+                "parent_program": "PROG-PARENT",
+                "assessment_categories": [
+                    frappe._dict(
+                        {
+                            "assessment_category": "CAT-LOCAL",
+                            "default_weight": 50,
+                            "color_override": "#abcdef",
+                            "active": 1,
+                            "idx": 1,
+                        }
+                    )
+                ],
+            }
+        )
+
+        source_program, rows = program_module._resolve_effective_assessment_category_source(child)
+
+        self.assertEqual(source_program, "PROG-CHILD")
+        self.assertEqual(rows[0].assessment_category, "CAT-LOCAL")
+
+    def test_publishing_program_prepares_school_profiles_for_offered_schools(self):
+        organization = make_organization(prefix="Program Org")
+        school = make_school(organization.name, prefix="Program School")
+        school.is_published = 1
+        school.save(ignore_permissions=True)
+
+        academic_year = _make_academic_year(school.name)
+        program = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"Website Program {frappe.generate_hash(length=6)}",
+                "program_image": "/files/program-hero.jpg",
+                "program_overview": "<p>Program overview for families.</p>",
+            }
+        ).insert(ignore_permissions=True)
+
+        _make_program_offering(program.name, school.name, academic_year)
+
+        program.reload()
+        program.is_published = 1
+        program.save(ignore_permissions=True)
+
+        program.reload()
+        self.assertTrue(bool((program.program_slug or "").strip()))
+
+        profile_name = frappe.db.get_value(
+            "Program Website Profile",
+            {"program": program.name, "school": school.name},
+            "name",
+        )
+        self.assertTrue(profile_name)
+
+        profile = frappe.get_doc("Program Website Profile", profile_name)
+        self.assertEqual(profile.workflow_state, "Draft")
+        self.assertEqual(profile.status, "Draft")
+        self.assertEqual(profile.hero_image, program.program_image)
+        self.assertIn("Program overview for families", profile.intro_text)
+        self.assertEqual([row.block_type for row in profile.blocks], ["program_intro", "cta"])
+        self.assertTrue(bool((profile.seo_profile or "").strip()))
+
+        seo_profile = frappe.get_doc("Website SEO Profile", profile.seo_profile)
+        self.assertEqual(seo_profile.meta_title, program.program_name)
+        self.assertEqual(
+            seo_profile.canonical_url,
+            frappe.utils.get_url(f"/schools/{school.website_slug}/programs/{program.program_slug}"),
+        )
+
+
+def _make_grade_scale():
+    grade_scale = frappe.get_doc(
+        {
+            "doctype": "Grade Scale",
+            "grade_scale_name": f"Scale {frappe.generate_hash(length=6)}",
+            "boundaries": [
+                {"grade_code": "A", "boundary_interval": 90},
+                {"grade_code": "B-", "boundary_interval": 70},
+            ],
+        }
+    )
+    grade_scale.insert(ignore_permissions=True)
+    return grade_scale
+
+
+def _make_course(label):
+    course = frappe.get_doc(
+        {
+            "doctype": "Course",
+            "course_name": f"{label} {frappe.generate_hash(length=6)}",
+            "status": "Active",
+        }
+    )
+    course.insert(ignore_permissions=True)
+    return course
+
+
+def _make_academic_year(school_name):
+    academic_year = frappe.get_doc(
+        {
+            "doctype": "Academic Year",
+            "academic_year_name": f"AY {frappe.generate_hash(length=6)}",
+            "school": school_name,
+            "year_start_date": "2025-08-01",
+            "year_end_date": "2026-06-30",
+            "archived": 0,
+            "visible_to_admission": 1,
+        }
+    )
+    academic_year.insert(ignore_permissions=True)
+    return academic_year.name
+
+
+def _make_program_offering(program_name, school_name, academic_year_name):
+    offering = frappe.get_doc(
+        {
+            "doctype": "Program Offering",
+            "program": program_name,
+            "school": school_name,
+            "status": "Planned",
+            "offering_academic_years": [{"academic_year": academic_year_name}],
+        }
+    )
+    offering.insert(ignore_permissions=True)
+    return offering
+
+
+def _get_or_create_program_root():
+    if frappe.db.exists("Program", "All Programs"):
+        return frappe.get_doc("Program", "All Programs")
+
+    return frappe.get_doc(
+        {
+            "doctype": "Program",
+            "name": "All Programs",
+            "program_name": "All Programs",
+            "is_group": 1,
+        }
+    ).insert(ignore_permissions=True)

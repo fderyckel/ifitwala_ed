@@ -1,0 +1,206 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "GOV-POL-.####",
+ "creation": "2026-02-01 00:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "policy_key",
+  "policy_title",
+  "policy_category",
+  "description",
+  "column_break_xfzs",
+  "organization",
+  "school",
+  "applies_to",
+  "is_active",
+  "admissions_acknowledgement_mode"
+ ],
+ "fields": [
+  {
+   "fieldname": "policy_key",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Policy Key",
+   "reqd": 1
+  },
+  {
+   "fieldname": "policy_title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Policy Title",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "policy_category",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Policy Category",
+   "options": "Safeguarding\nPrivacy & Data Protection\nAdmissions\nAcademic\nConduct & Behaviour\nHealth & Safety\nOperations\nHandbooks\nEmployment",
+   "reqd": 1
+  },
+  {
+   "fieldname": "applies_to",
+   "fieldtype": "Table MultiSelect",
+   "label": "Applies To",
+   "options": "Institutional Policy Audience",
+   "reqd": 1
+  },
+  {
+   "default": "Child Acknowledgement",
+   "description": "Admissions-only policy signature scope. Ignored for non-Applicant policies.",
+   "fieldname": "admissions_acknowledgement_mode",
+   "fieldtype": "Select",
+   "label": "Admissions Acknowledgement Mode",
+   "options": "Child Acknowledgement\nFamily Acknowledgement\nChild Optional Consent"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Organization",
+   "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_xfzs",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-11 22:35:51.399091",
+ "modified_by": "Administrator",
+ "module": "Governance",
+ "name": "Institutional Policy",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Organization Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Administrator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor"
+  },
+  {
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "policy_title, policy_category",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "policy_title"
+}

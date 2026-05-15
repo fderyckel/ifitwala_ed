@@ -1,0 +1,1256 @@
+# Copyright (c) 2025, François de Ryckel and contributors
+# For license information, please see license.txt
+
+# ifitwala_ed/setup/doctype/org_communication/org_communication.py
+
+import frappe
+from frappe import _
+from frappe.model.document import Document
+from frappe.model.naming import make_autoname
+from frappe.utils import get_datetime, now_datetime
+from frappe.utils.nestedset import get_descendants_of
+
+from ifitwala_ed.curriculum.materials import validate_reference_url
+from ifitwala_ed.setup.doctype.org_communication.attachments import (
+    ORG_COMMUNICATION_ATTACHMENT_BINDING_ROLE,
+    ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX,
+    assert_org_communication_attachment_context_stable,
+    has_org_communication_governed_file_attachments,
+    resolve_org_communication_attachment_context,
+)
+from ifitwala_ed.utilities.employee_utils import get_schools_for_organization_scope
+
+# --------------------------------------------------------------------
+# Role constants & basic role helper
+# --------------------------------------------------------------------
+
+# Full admin: global control + delete rights
+ADMIN_ROLES_FULL = {"System Manager", "Academic Admin"}
+
+# Elevated audience rights: can target School Scope audiences with
+# Staff recipients, and can choose Issuing School within their nested scope.
+ELEVATED_WIDE_AUDIENCE_ROLES = {"System Manager", "Academic Admin", "Academic Assistant"}
+# Allowed to target/publish School Scope audiences that include Staff.
+# Kept separate from issuing-school elevation to avoid widening school-selection privileges.
+WIDE_AUDIENCE_RECIPIENT_ROLES = {
+    "System Manager",
+    "Academic Admin",
+    "Academic Assistant",
+    "HR Manager",
+    "Accounts Manager",
+    "Nurse",
+}
+WIDE_AUDIENCE_ROLE_LABEL = "Academic Admin, Academic Assistant, HR Manager, Accounts Manager, Nurse, or System Manager"
+
+AUDIENCE_TARGET_MODES = ("School Scope", "Organization", "Team", "Student Group")
+RECIPIENT_TOGGLE_FIELDS = ("to_staff", "to_students", "to_guardians")
+RECIPIENT_TOGGLE_LABELS = {
+    "to_staff": "Staff",
+    "to_students": "Students",
+    "to_guardians": "Guardians",
+}
+TARGET_MODE_ALLOWED_RECIPIENTS = {
+    "School Scope": {"to_staff", "to_students", "to_guardians"},
+    "Organization": {"to_staff", "to_guardians"},
+    "Team": {"to_staff"},
+    "Student Group": {"to_staff", "to_students", "to_guardians"},
+}
+BRIEF_PORTAL_SURFACES = ("Morning Brief", "Everywhere")
+DELIVERY_PROFILE_ALLOWED_PORTAL_SURFACES = {
+    "staff_only": {"Desk", "Morning Brief", "Everywhere"},
+    "portal_only": {"Portal Feed"},
+    "mixed": {"Portal Feed", "Everywhere"},
+}
+DELIVERY_PROFILE_PREFERRED_PORTAL_SURFACES = {
+    "undecided": ("Everywhere", "Desk", "Portal Feed", "Morning Brief"),
+    "staff_only": ("Everywhere", "Desk", "Morning Brief"),
+    "portal_only": ("Portal Feed",),
+    "mixed": ("Everywhere", "Portal Feed"),
+}
+DELIVERY_PROFILE_HELP_TEXT = {
+    "undecided": _("Choose the audience first to narrow delivery surfaces to the ones that match that communication."),
+    "staff_only": _("Staff-only communications can publish to Desk, Morning Brief, or Everywhere."),
+    "portal_only": _(
+        "Student and guardian audiences publish through Portal Feed. Morning Brief dates are not used for portal-only communications."
+    ),
+    "mixed": _(
+        "Communications that include both staff and portal recipients can publish to Portal Feed or Everywhere."
+    ),
+}
+ORG_COMMUNICATION_NAME_PATTERN = "ORG-COMM-.YY.-.MM.-.#####"
+
+
+def _user_has_any_role(user: str, roles: set[str]) -> bool:
+    """Return True if given user has any of the roles in `roles`."""
+    if not user or user == "Guest":
+        return False
+    user_roles = set(frappe.get_roles(user))
+    return bool(user_roles & roles)
+
+
+def _as_bool(value) -> bool:
+    return value in (1, "1", True)
+
+
+def _field_value(source, fieldname: str):
+    getter = getattr(source, "get", None)
+    if callable(getter):
+        return getter(fieldname)
+    return getattr(source, fieldname, None)
+
+
+def _set_field_value(target, fieldname: str, value) -> None:
+    if isinstance(target, dict):
+        target[fieldname] = value
+        return
+    setattr(target, fieldname, value)
+
+
+def _get_recipient_flags(row) -> dict[str, bool]:
+    return {field: _as_bool(_field_value(row, field)) for field in RECIPIENT_TOGGLE_FIELDS}
+
+
+def _get_enabled_recipient_fields(row) -> set[str]:
+    flags = _get_recipient_flags(row)
+    return {field for field, enabled in flags.items() if enabled}
+
+
+def _allows_partial_audience_editing(doc) -> bool:
+    return str(_field_value(doc, "status") or "").strip() == "Draft"
+
+
+def resolve_org_communication_delivery_profile(audiences) -> str:
+    has_staff = False
+    has_portal = False
+
+    for row in audiences or []:
+        enabled_recipients = _get_enabled_recipient_fields(row)
+        if enabled_recipients & {"to_staff"}:
+            has_staff = True
+        if enabled_recipients & {"to_students", "to_guardians"}:
+            has_portal = True
+
+    if has_staff and has_portal:
+        return "mixed"
+    if has_portal:
+        return "portal_only"
+    if has_staff:
+        return "staff_only"
+    return "undecided"
+
+
+def get_org_communication_allowed_portal_surfaces(profile: str) -> set[str]:
+    return set(DELIVERY_PROFILE_ALLOWED_PORTAL_SURFACES.get(profile, set()))
+
+
+def get_org_communication_delivery_rules(*, portal_surfaces: list[str], default_surface: str | None) -> dict:
+    available_surfaces = [str(surface or "").strip() for surface in portal_surfaces if str(surface or "").strip()]
+    default_value = str(default_surface or "").strip()
+
+    def _pick_preferred_surface(profile: str, allowed_surfaces: list[str]) -> str:
+        if not allowed_surfaces:
+            return ""
+        if default_value and default_value in allowed_surfaces:
+            return default_value
+        preferred_order = DELIVERY_PROFILE_PREFERRED_PORTAL_SURFACES.get(profile, ())
+        for candidate in preferred_order:
+            if candidate in allowed_surfaces:
+                return candidate
+        return allowed_surfaces[0]
+
+    profiles: dict[str, dict[str, object]] = {}
+    for profile in ("undecided", "staff_only", "portal_only", "mixed"):
+        if profile == "undecided":
+            allowed_surfaces = list(available_surfaces)
+        else:
+            allowed_set = get_org_communication_allowed_portal_surfaces(profile)
+            allowed_surfaces = [surface for surface in available_surfaces if surface in allowed_set]
+        profiles[profile] = {
+            "allowed_portal_surfaces": allowed_surfaces,
+            "preferred_portal_surface": _pick_preferred_surface(profile, allowed_surfaces),
+            "help_text": DELIVERY_PROFILE_HELP_TEXT.get(profile, ""),
+        }
+
+    return {
+        "brief_portal_surfaces": [surface for surface in available_surfaces if surface in set(BRIEF_PORTAL_SURFACES)],
+        "profiles": profiles,
+    }
+
+
+# --------------------------------------------------------------------
+# Main Document controller
+# --------------------------------------------------------------------
+
+
+class OrgCommunication(Document):
+    def autoname(self):
+        self.name = make_autoname(ORG_COMMUNICATION_NAME_PATTERN)
+
+    def validate(self):
+        """Main validation pipeline.
+
+        Order matters:
+        1. Resolve and validate Organization scope.
+        2. Enforce optional Issuing School based on user scope (node + descendants).
+        3. Validate School<->Organization alignment when school is set.
+        4. Handle date logic.
+        5. Lock attachment governance context once governed files exist.
+        6. Validate audience rows.
+        7. Enforce audience role restrictions.
+        8. Enforce status + publish window rules.
+        9. Enforce portal_surface rules.
+        10. Enforce Class Announcement pattern.
+        """
+        self._resolve_and_validate_organization_scope()
+        self._validate_and_enforce_issuing_school_scope()
+        self._validate_school_organization_alignment()
+        self._validate_activity_context_links()
+        self._normalize_and_validate_dates()
+        self._validate_attachment_context_lock()
+        self._validate_audiences()
+        self._validate_attachments()
+        self._enforce_role_restrictions_on_audiences()
+        self._enforce_status_rules()
+        self._enforce_portal_surface_rules()
+        self._validate_class_announcement_pattern()
+
+    # ----------------------------------------------------------------
+    # Issuing School / Organization
+    # ----------------------------------------------------------------
+
+    def _resolve_and_validate_organization_scope(self):
+        """Resolve mandatory Organization and enforce user scope."""
+        user = frappe.session.user
+        is_privileged = _user_has_any_role(user, ADMIN_ROLES_FULL | ELEVATED_WIDE_AUDIENCE_ROLES)
+
+        selected_org = (self.organization or "").strip()
+        if not selected_org and self.school:
+            selected_org = (frappe.db.get_value("School", self.school, "organization") or "").strip()
+        if not selected_org:
+            selected_org = (_resolve_user_base_org(user) or "").strip()
+
+        if not selected_org:
+            default_school = _get_user_default_school(user)
+            if default_school:
+                selected_org = (frappe.db.get_value("School", default_school, "organization") or "").strip()
+
+        if selected_org:
+            _set_field_value(self, "organization", selected_org)
+
+        if not (_field_value(self, "organization") or "").strip():
+            frappe.throw(
+                _("Organization is required for Org Communication."),
+                title=_("Missing Organization"),
+            )
+
+        if is_privileged:
+            return
+
+        allowed_orgs = set(_resolve_user_org_scope(user))
+        if not allowed_orgs:
+            default_school = _get_user_default_school(user)
+            if default_school:
+                school_org = frappe.db.get_value("School", default_school, "organization")
+                if school_org:
+                    allowed_orgs.add(school_org)
+
+        if not allowed_orgs:
+            frappe.throw(
+                _(
+                    "You do not have an organization scope configured. "
+                    "Please set a default organization or organization permission."
+                ),
+                title=_("No Organization Scope"),
+            )
+
+        if (_field_value(self, "organization") or "").strip() not in allowed_orgs:
+            frappe.throw(
+                _("You can only issue communications for organizations within your authorized scope."),
+                title=_("Organization Not Allowed"),
+            )
+
+    def _validate_and_enforce_issuing_school_scope(self):
+        """Enforce optional Issuing School rules using nestedset school hierarchy."""
+        user = frappe.session.user
+        default_school, tree = _get_school_scope_tree(user)
+        locked_class_school = OrgCommunication._resolve_locked_class_announcement_school(self)
+        has_non_school_scope_audience = any(
+            (_field_value(row, "target_mode") or "").strip()
+            and (_field_value(row, "target_mode") or "").strip() != "School Scope"
+            for row in (_field_value(self, "audiences") or [])
+        )
+
+        # School is optional. When user has a configured default school and no value
+        # was chosen, derive it for continuity with school-scoped users only.
+        if locked_class_school:
+            _set_field_value(self, "school", locked_class_school)
+        elif not _field_value(self, "school") and default_school and not has_non_school_scope_audience:
+            _set_field_value(self, "school", default_school)
+
+        if not _field_value(self, "school"):
+            return
+
+        if _user_has_any_role(user, ELEVATED_WIDE_AUDIENCE_ROLES):
+            if locked_class_school:
+                return
+            if tree and _field_value(self, "school") not in tree:
+                frappe.throw(
+                    _(
+                        "You can only issue communications from your school ({default_school}) or its child schools."
+                    ).format(default_school=default_school),
+                    title=_("Issuing School Not Allowed"),
+                )
+        else:
+            if locked_class_school:
+                if OrgCommunication._class_announcement_school_in_user_scope(
+                    self,
+                    user=user,
+                    target_school=_field_value(self, "school"),
+                    default_school=default_school,
+                    school_tree=tree,
+                ):
+                    return
+                frappe.throw(
+                    _(
+                        "You can only issue class announcements from the selected class school "
+                        "when it stays within your authorized organization scope."
+                    ),
+                    title=_("Issuing School Not Allowed"),
+                )
+
+            if default_school:
+                # Force, ignoring any client-side value
+                _set_field_value(self, "school", default_school)
+                return
+
+            allowed_schools = _get_allowed_schools_for_user(user)
+            if not allowed_schools:
+                frappe.throw(
+                    _(
+                        "You do not have an issuing school scope configured. "
+                        "Please set a default school or default organization before selecting Issuing School."
+                    ),
+                    title=_("No School Scope"),
+                )
+
+            if _field_value(self, "school") not in set(allowed_schools):
+                frappe.throw(
+                    _("You can only issue communications from schools within your organization scope."),
+                    title=_("Issuing School Not Allowed"),
+                )
+
+    def _validate_school_organization_alignment(self):
+        """When Issuing School is set, validate it is under selected Organization.
+
+        Organization can be the same as School.organization or any ancestor
+        organization in the organization tree.
+        """
+        if not _field_value(self, "school"):
+            return
+
+        school_org = frappe.db.get_value("School", _field_value(self, "school"), "organization")
+        if not school_org:
+            return
+
+        if not _field_value(self, "organization"):
+            _set_field_value(self, "organization", school_org)
+            return
+
+        allowed_scope = set(_get_descendant_organizations_uncached(_field_value(self, "organization")))
+        if school_org not in allowed_scope:
+            frappe.throw(
+                _(
+                    "Organization {org} does not include School {school}. School belongs to organization {school_org}."
+                ).format(
+                    org=_field_value(self, "organization"),
+                    school=_field_value(self, "school"),
+                    school_org=school_org,
+                ),
+                title=_("Invalid Organization"),
+            )
+
+    def _resolve_locked_class_announcement_school(self) -> str | None:
+        if (_field_value(self, "communication_type") or "").strip() != "Class Announcement":
+            return None
+
+        student_groups: list[str] = []
+        activity_student_group = (_field_value(self, "activity_student_group") or "").strip()
+        if activity_student_group:
+            student_groups.append(activity_student_group)
+
+        for row in _field_value(self, "audiences") or []:
+            if (_field_value(row, "target_mode") or "").strip() != "Student Group":
+                continue
+            student_group = (_field_value(row, "student_group") or "").strip()
+            if student_group and student_group not in student_groups:
+                student_groups.append(student_group)
+
+        if len(student_groups) != 1:
+            return None
+
+        school = frappe.db.get_value("Student Group", student_groups[0], "school")
+        return (school or "").strip() or None
+
+    def _class_announcement_school_in_user_scope(
+        self,
+        *,
+        user: str,
+        target_school: str,
+        default_school: str | None,
+        school_tree: list[str] | None,
+    ) -> bool:
+        if not target_school:
+            return False
+
+        if target_school in set(school_tree or []):
+            return True
+
+        target_org = (frappe.db.get_value("School", target_school, "organization") or "").strip()
+        if not target_org:
+            return False
+
+        default_org = (
+            (frappe.db.get_value("School", default_school, "organization") or "").strip() if default_school else ""
+        )
+        if default_org and target_org == default_org:
+            return True
+
+        return target_org in set(_get_allowed_organizations_for_user(user))
+
+    def _validate_activity_context_links(self):
+        """
+        Validate optional activity context links for deterministic activity filtering.
+        """
+        offering = (self.activity_program_offering or "").strip()
+        booking = (self.activity_booking or "").strip()
+        student_group = (self.activity_student_group or "").strip()
+
+        booking_row = None
+        if booking:
+            booking_row = frappe.db.get_value(
+                "Activity Booking",
+                booking,
+                ["program_offering", "allocated_student_group"],
+                as_dict=True,
+            )
+            if not booking_row:
+                frappe.throw(
+                    _("Activity Booking {booking} does not exist.").format(booking=booking),
+                    title=_("Invalid Activity Context"),
+                )
+            booking_offering = (booking_row.get("program_offering") or "").strip()
+            if offering and booking_offering and offering != booking_offering:
+                frappe.throw(
+                    _("Activity Program Offering does not match Activity Booking's Program Offering."),
+                    title=_("Invalid Activity Context"),
+                )
+            if not offering and booking_offering:
+                self.activity_program_offering = booking_offering
+
+        student_group_row = None
+        if student_group:
+            student_group_row = frappe.db.get_value(
+                "Student Group",
+                student_group,
+                ["group_based_on", "program_offering"],
+                as_dict=True,
+            )
+            if not student_group_row:
+                frappe.throw(
+                    _("Activity Student Group {student_group} does not exist.").format(student_group=student_group),
+                    title=_("Invalid Activity Context"),
+                )
+            if (student_group_row.get("group_based_on") or "").strip() != "Activity":
+                frappe.throw(
+                    _("Activity Student Group must be a Student Group with Group Based On = Activity."),
+                    title=_("Invalid Activity Context"),
+                )
+            sg_offering = (student_group_row.get("program_offering") or "").strip()
+            if offering and sg_offering and offering != sg_offering:
+                frappe.throw(
+                    _("Activity Student Group does not belong to the selected Activity Program Offering."),
+                    title=_("Invalid Activity Context"),
+                )
+            if not offering and sg_offering:
+                self.activity_program_offering = sg_offering
+
+        if booking_row and student_group:
+            booking_section = (booking_row.get("allocated_student_group") or "").strip()
+            if booking_section and booking_section != student_group:
+                frappe.throw(
+                    _("Activity Booking section does not match Activity Student Group."),
+                    title=_("Invalid Activity Context"),
+                )
+
+    # ----------------------------------------------------------------
+    # Date / window logic
+    # ----------------------------------------------------------------
+
+    def _normalize_and_validate_dates(self):
+        """Handle brief_start/end normalization and publish_from/to sanity checks."""
+        # Brief date range normalisation
+        if self.brief_start_date and not self.brief_end_date:
+            self.brief_end_date = self.brief_start_date
+
+        if self.brief_start_date and self.brief_end_date:
+            if self.brief_end_date < self.brief_start_date:
+                frappe.throw(
+                    _("Brief End Date cannot be before Brief Start Date."),
+                    title=_("Invalid Brief Date Range"),
+                )
+
+        # Publish window sanity checks
+        if self.publish_from and self.publish_to:
+            start = get_datetime(self.publish_from)
+            end = get_datetime(self.publish_to)
+            if end < start:
+                frappe.throw(
+                    _("Publish Until cannot be earlier than Publish From."),
+                    title=_("Invalid Publish Window"),
+                )
+
+    # ----------------------------------------------------------------
+    # Audience validation (structure + school alignment)
+    # ----------------------------------------------------------------
+
+    def _validate_audiences(self):
+        """Validate the audience rows structurally and by school scope.
+
+        - At least one row.
+        - Per target_mode, enforce required fields and recipient toggles.
+        - For non-admins: School Scope rows must be within allowed scope.
+        - For everyone: School Scope rows must be consistent with the parent
+          Issuing School nested tree.
+        """
+        allow_partial_audiences = _allows_partial_audience_editing(self)
+        if not self.audiences:
+            if allow_partial_audiences:
+                return
+            frappe.throw(
+                _("Please add at least one Audience for this communication."),
+                title=_("Missing Audience"),
+            )
+
+        user = frappe.session.user
+        is_privileged = _user_has_any_role(user, ADMIN_ROLES_FULL | ELEVATED_WIDE_AUDIENCE_ROLES)
+
+        # Non-privileged allowed schools (node + descendants)
+        allowed_schools = _get_allowed_schools_for_user(user)
+
+        # Parent school descendants for structural consistency
+        parent_descendants = []
+        if self.school:
+            if frappe.db.exists("School", self.school):
+                parent_descendants = get_descendants_of("School", self.school, ignore_permissions=True) or []
+                parent_descendants = {self.school, *parent_descendants}
+
+        school_scope_rows = [row for row in (self.audiences or []) if (row.target_mode or "").strip() == "School Scope"]
+        school_scope_names = sorted(
+            {(row.school or "").strip() for row in school_scope_rows if (row.school or "").strip()}
+        )
+        school_org_map: dict[str, str] = {}
+        if school_scope_names:
+            school_meta = frappe.get_all(
+                "School",
+                filters={"name": ["in", tuple(school_scope_names)]},
+                fields=["name", "organization"],
+                limit=0,
+            )
+            school_org_map = {
+                (row.get("name") or "").strip(): (row.get("organization") or "").strip() for row in school_meta
+            }
+
+        for row in self.audiences:
+            target_mode = (row.target_mode or "").strip()
+            if not target_mode:
+                if allow_partial_audiences:
+                    continue
+                frappe.throw(
+                    _("Target Mode is required for each Audience row."),
+                    title=_("Missing Target Mode"),
+                )
+
+            if target_mode not in AUDIENCE_TARGET_MODES:
+                frappe.throw(
+                    _("Unsupported Target Mode: {mode}").format(mode=target_mode),
+                    title=_("Invalid Audience"),
+                )
+
+            if target_mode == "School Scope":
+                if not row.school:
+                    if allow_partial_audiences:
+                        continue
+                    frappe.throw(
+                        _("Audience row for School Scope must specify a School."),
+                        title=_("Incomplete Audience"),
+                    )
+            elif target_mode == "Organization":
+                if row.school or row.team or row.student_group:
+                    frappe.throw(
+                        _("Audience row for Organization cannot specify School, Team, or Student Group."),
+                        title=_("Invalid Organization Audience"),
+                    )
+                if self.school and not allow_partial_audiences:
+                    frappe.throw(
+                        _("Organization audience rows require a blank Issuing School."),
+                        title=_("Invalid Organization Audience"),
+                    )
+            elif target_mode == "Team":
+                if not row.team:
+                    if allow_partial_audiences:
+                        continue
+                    frappe.throw(
+                        _("Audience row for Team must specify a Team."),
+                        title=_("Incomplete Audience"),
+                    )
+            elif target_mode == "Student Group":
+                if not row.student_group:
+                    if allow_partial_audiences:
+                        continue
+                    frappe.throw(
+                        _("Audience row for Student Group must specify a Student Group."),
+                        title=_("Incomplete Audience"),
+                    )
+
+            enabled_recipients = _get_enabled_recipient_fields(row)
+            if not enabled_recipients:
+                if allow_partial_audiences:
+                    continue
+                frappe.throw(
+                    _("Audience row must include at least one Recipient toggle."),
+                    title=_("Missing Recipients"),
+                )
+
+            allowed_roles = TARGET_MODE_ALLOWED_RECIPIENTS.get(target_mode, set())
+            invalid_roles = enabled_recipients - allowed_roles
+            if invalid_roles:
+                allowed_labels = ", ".join(sorted(RECIPIENT_TOGGLE_LABELS.get(role, role) for role in allowed_roles))
+                frappe.throw(
+                    _("Audience row for {mode} allows only: {roles}.").format(
+                        mode=target_mode,
+                        roles=allowed_labels,
+                    ),
+                    title=_("Invalid Audience Recipients"),
+                )
+
+            if target_mode == "School Scope":
+                if not is_privileged and allowed_schools:
+                    if row.school not in allowed_schools:
+                        frappe.throw(
+                            _(
+                                "You cannot target school {school} in this audience row. "
+                                "You may only target your school or its child schools."
+                            ).format(school=row.school),
+                            title=_("Audience School Not Allowed"),
+                        )
+
+                if parent_descendants and row.school not in parent_descendants:
+                    allow_same_org_explicit_school = (
+                        not _as_bool(getattr(row, "include_descendants", 0))
+                        and (self.organization or "").strip()
+                        and school_org_map.get((row.school or "").strip(), "") == (self.organization or "").strip()
+                    )
+                    if not allow_same_org_explicit_school:
+                        frappe.throw(
+                            _(
+                                "Audience row school {row_school} is not within the scope of the "
+                                "parent communication school {parent_school}."
+                            ).format(row_school=row.school, parent_school=self.school),
+                            title=_("Audience School Outside Scope"),
+                        )
+
+    # ----------------------------------------------------------------
+    # Role-based restrictions on audience choices
+    # ----------------------------------------------------------------
+
+    def _enforce_role_restrictions_on_audiences(self):
+        """Restrict wide staff/community audience rows to privileged roles."""
+        if _allows_partial_audience_editing(self):
+            return
+
+        user = frappe.session.user
+        is_wide_privileged = _user_has_any_role(user, WIDE_AUDIENCE_RECIPIENT_ROLES)
+
+        if not self.audiences:
+            return
+
+        for row in self.audiences:
+            target_mode = (row.target_mode or "").strip()
+            enabled_recipients = _get_enabled_recipient_fields(row)
+            if target_mode == "School Scope" and enabled_recipients & {"to_staff"} and not is_wide_privileged:
+                frappe.throw(
+                    _("You are not allowed to target Staff at School Scope. Only {roles} may do this.").format(
+                        roles=WIDE_AUDIENCE_ROLE_LABEL
+                    ),
+                    title=_("Audience Not Allowed"),
+                )
+            if target_mode == "Organization" and not is_wide_privileged:
+                frappe.throw(
+                    _("You are not allowed to target Organization audiences. Only {roles} may do this.").format(
+                        roles=WIDE_AUDIENCE_ROLE_LABEL
+                    ),
+                    title=_("Audience Not Allowed"),
+                )
+
+    def _validate_attachments(self):
+        rows = self.get("attachments") or []
+        if not rows:
+            return
+
+        if has_org_communication_governed_file_attachments(self):
+            # Governed file rows require a resolvable authoritative context even when
+            # the attachment rows themselves are unchanged on this save.
+            resolve_org_communication_attachment_context(self)
+
+        before = None if self.is_new() else self.get_doc_before_save()
+        unchanged_rows = {}
+        if before:
+            for row in before.get("attachments") or []:
+                row_name = str(row.get("name") or "").strip()
+                if row_name:
+                    unchanged_rows[row_name] = {
+                        "file": str(row.get("file") or "").strip(),
+                        "external_url": str(row.get("external_url") or "").strip(),
+                    }
+
+        for row in rows:
+            row_name = str(row.get("name") or "").strip()
+            file_url = str(row.get("file") or "").strip()
+            external_url = str(row.get("external_url") or "").strip()
+
+            if not file_url and not external_url:
+                continue
+
+            if file_url and external_url:
+                frappe.throw(_("Attachment rows may contain a file or an external URL, not both."))
+
+            if row_name and unchanged_rows.get(row_name) == {"file": file_url, "external_url": external_url}:
+                continue
+
+            if external_url:
+                row.external_url = validate_reference_url(external_url)
+                continue
+
+            if not self.name:
+                frappe.throw(_("Save the Org Communication before attaching governed files."))
+
+            if not row_name:
+                frappe.throw(_("Org Communication attachment rows must carry a stable governed row key."))
+
+            file_name = frappe.db.get_value(
+                "File",
+                {
+                    "attached_to_doctype": "Org Communication",
+                    "attached_to_name": self.name,
+                    "file_url": file_url,
+                },
+                "name",
+            )
+            if not file_name:
+                frappe.throw(
+                    _(
+                        "Org Communication files must be uploaded through the governed attachment action. "
+                        "Raw Desk Attach is not supported for this attachment table."
+                    )
+                )
+
+            binding_name = frappe.db.get_value(
+                "Drive Binding",
+                {
+                    "binding_doctype": "Org Communication",
+                    "binding_name": self.name,
+                    "binding_role": ORG_COMMUNICATION_ATTACHMENT_BINDING_ROLE,
+                    "slot": f"{ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX}{row_name}",
+                    "file": file_name,
+                    "status": "active",
+                },
+                "name",
+            )
+            if binding_name:
+                continue
+
+            drive_file_name = frappe.db.get_value(
+                "Drive File",
+                {
+                    "owner_doctype": "Org Communication",
+                    "owner_name": self.name,
+                    "slot": f"{ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX}{row_name}",
+                    "file": file_name,
+                    "status": ["in", ["active", "processing", "blocked"]],
+                },
+                "name",
+            )
+            if not drive_file_name:
+                frappe.throw(
+                    _(
+                        "This attachment is missing its governed Drive record. Re-upload it through the governed "
+                        "attachment action; raw Desk Attach is not supported here."
+                    )
+                )
+
+    def _validate_attachment_context_lock(self):
+        before = None if self.is_new() else self.get_doc_before_save()
+        if not before:
+            return
+
+        assert_org_communication_attachment_context_stable(self, before)
+
+    # ----------------------------------------------------------------
+    # Status / publish window rules
+    # ----------------------------------------------------------------
+
+    def _enforce_status_rules(self):
+        """Enforce basic rules around status + publish_from/publish_to."""
+        user = frappe.session.user
+        is_admin = _user_has_any_role(user, ADMIN_ROLES_FULL | WIDE_AUDIENCE_RECIPIENT_ROLES)
+
+        now = now_datetime()
+
+        # Auto-set publish_from when moving to Published without a value
+        if self.status == "Published" and not self.publish_from:
+            self.publish_from = now
+
+        if self.status == "Scheduled":
+            if not self.publish_from:
+                frappe.throw(
+                    _("Scheduled communications must have a 'Publish From' datetime."),
+                    title=_("Missing Publish From"),
+                )
+            if get_datetime(self.publish_from) <= now:
+                frappe.throw(
+                    _("Publish From for a Scheduled communication must be in the future."),
+                    title=_("Invalid Schedule"),
+                )
+
+        # Restrict publishing of wide audiences for non-privileged users
+        if self.status == "Published" and not is_admin:
+            if any(
+                ((r.target_mode or "").strip() == "School Scope" and _get_enabled_recipient_fields(r) & {"to_staff"})
+                or (r.target_mode or "").strip() == "Organization"
+                for r in self.audiences
+            ):
+                frappe.throw(
+                    _("You are not allowed to publish wide staff communications from your current role."),
+                    title=_("Publish Not Allowed"),
+                )
+
+    # ----------------------------------------------------------------
+    # Portal surface rules
+    # ----------------------------------------------------------------
+
+    def _enforce_portal_surface_rules(self):
+        """Ensure portal_surface is compatible with brief dates."""
+        portal_surface = (self.portal_surface or "").strip()
+        status = (self.status or "").strip()
+        delivery_profile = resolve_org_communication_delivery_profile(_field_value(self, "audiences") or [])
+
+        if not _allows_partial_audience_editing(self) and delivery_profile != "undecided":
+            allowed_surfaces = get_org_communication_allowed_portal_surfaces(delivery_profile)
+            if allowed_surfaces and portal_surface and portal_surface not in allowed_surfaces:
+                if delivery_profile == "portal_only":
+                    frappe.throw(
+                        _("Student and guardian audiences must use Portal Feed instead of {surface}.").format(
+                            surface=portal_surface
+                        ),
+                        title=_("Invalid Portal Surface"),
+                    )
+                if delivery_profile == "mixed":
+                    frappe.throw(
+                        _(
+                            "Audiences that include both staff and portal recipients must use Portal Feed or Everywhere."
+                        ),
+                        title=_("Invalid Portal Surface"),
+                    )
+                frappe.throw(
+                    _("Staff-only audiences must use Desk, Morning Brief, or Everywhere."),
+                    title=_("Invalid Portal Surface"),
+                )
+
+        if portal_surface in set(BRIEF_PORTAL_SURFACES) and status in {"Published", "Scheduled"}:
+            if not self.brief_start_date:
+                frappe.throw(
+                    _("Brief Start Date is required when Portal Surface is Morning Brief or Everywhere."),
+                    title=_("Missing Brief Start Date"),
+                )
+
+        # No further constraints for Desk / Portal Feed here;
+        # the front-end will decide which communications to pull where.
+
+    # ----------------------------------------------------------------
+    # Class Announcement pattern
+    # ----------------------------------------------------------------
+
+    def _validate_class_announcement_pattern(self):
+        """For Class Announcement type, enforce a sane audience pattern.
+
+        - Must target Students (and optionally Guardians/Staff).
+        - At least one Student Group audience row with to_students enabled.
+        """
+        if (self.communication_type or "").strip() != "Class Announcement":
+            return
+
+        has_student_group_row = False
+        for row in self.audiences:
+            if (row.target_mode or "").strip() != "Student Group":
+                continue
+            if not row.student_group:
+                continue
+            if _as_bool(getattr(row, "to_students", 0)):
+                has_student_group_row = True
+                break
+
+        if not has_student_group_row:
+            frappe.throw(
+                _(
+                    "Class Announcement communications must have at least one Audience row "
+                    "targeting Students with a Student Group."
+                ),
+                title=_("Invalid Class Announcement Audience"),
+            )
+
+    # ----------------------------------------------------------------
+    # Delete behaviour
+    # ----------------------------------------------------------------
+
+    def on_trash(self):
+        """Only high-privilege roles can delete communications.
+
+        Best practice in schools is to prefer archiving over hard delete.
+        """
+        user = frappe.session.user
+        if not _user_has_any_role(user, ADMIN_ROLES_FULL):
+            # Academic Assistant is intentionally excluded here: they can manage content
+            # but should not hard-delete the record.
+            frappe.throw(
+                _("You are not allowed to delete communications. Please archive instead."),
+                frappe.PermissionError,
+            )
+
+
+# --------------------------------------------------------------------
+# School scope helpers (nestedset-based)
+# --------------------------------------------------------------------
+
+
+def _get_user_default_school(user: str | None = None) -> str | None:
+    """Best-effort helper to get a user's default school.
+
+    Try in order:
+    - Employee.default_school
+    - Employee.school
+    """
+    if not user or user == "Guest":
+        return None
+
+    # Build field list defensively; only include default_school if column exists
+    fields = ["name", "school"]
+    if frappe.db.has_column("Employee", "default_school"):
+        fields.insert(1, "default_school")
+
+    emp = frappe.db.get_value(
+        "Employee",
+        {"user_id": user},
+        fields,
+        as_dict=True,
+    )
+    if not emp:
+        return None
+
+    return emp.get("default_school") or emp.get("school")
+
+
+def _get_school_scope_tree(user: str | None = None) -> tuple[str | None, list[str]]:
+    """Return (default_school, allowed_schools_tree) for a user.
+
+    default_school: node where the user "sits".
+    allowed_schools_tree: default_school + all descendants (nestedset).
+    """
+    user = user or frappe.session.user
+    default_school = _get_user_default_school(user)
+    if not default_school:
+        return None, []
+
+    descendants = get_descendants_of("School", default_school, ignore_permissions=True) or []
+    allowed = list({default_school, *descendants})
+    return default_school, allowed
+
+
+def _get_user_default_from_db(user: str, key: str) -> str | None:
+    rows = frappe.get_all(
+        "DefaultValue",
+        filters={"parent": user, "defkey": key},
+        fields=["defvalue"],
+        order_by="modified desc, creation desc, name desc",
+        limit=1,
+    )
+    if not rows:
+        return None
+    value = (rows[0].get("defvalue") or "").strip()
+    return value or None
+
+
+def _get_user_employee_organization(user: str | None = None) -> str | None:
+    if not user or user == "Guest":
+        return None
+
+    organization = frappe.db.get_value("Employee", {"user_id": user}, "organization")
+    return (organization or "").strip() or None
+
+
+def _resolve_user_base_org(user: str) -> str | None:
+    default_org = _get_user_default_from_db(user, "organization")
+    if default_org:
+        return default_org
+    return _get_user_employee_organization(user)
+
+
+def _get_descendant_organizations_uncached(org: str) -> list[str]:
+    org = (org or "").strip()
+    if not org:
+        return []
+
+    if not frappe.db.exists("Organization", org):
+        return []
+
+    descendants = get_descendants_of("Organization", org, ignore_permissions=True) or []
+    return [org, *[item for item in descendants if item and item != org]]
+
+
+def _resolve_user_org_scope(user: str | None = None) -> list[str]:
+    user = user or frappe.session.user
+    if not user or user == "Guest":
+        return []
+
+    scope: set[str] = set()
+
+    base_org = _resolve_user_base_org(user)
+    if base_org:
+        scope.update(item for item in _get_descendant_organizations_uncached(base_org) if item)
+
+    explicit_orgs = frappe.get_all(
+        "User Permission",
+        filters={"user": user, "allow": "Organization"},
+        pluck="for_value",
+    )
+    for org in explicit_orgs or []:
+        org_name = (org or "").strip()
+        if not org_name:
+            continue
+        scope.update(item for item in _get_descendant_organizations_uncached(org_name) if item)
+
+    return sorted(scope)
+
+
+def _get_org_scope_schools_for_user(user: str | None = None) -> list[str]:
+    user = user or frappe.session.user
+    org_scope = _resolve_user_org_scope(user)
+    if not org_scope:
+        return []
+
+    return get_schools_for_organization_scope(org_scope)
+
+
+def _get_allowed_schools_for_user(user: str | None = None) -> list[str]:
+    """Used in permission_query_conditions / has_permission.
+
+    Admins: return [] to indicate *no SQL restriction*.
+    Non-admins:
+    - default_school + descendants when a default school is configured
+    - otherwise, schools under effective organization scope (organization + descendants
+      from user defaults and explicit Organization User Permissions)
+    """
+    user = user or frappe.session.user
+
+    if _user_has_any_role(user, ADMIN_ROLES_FULL | ELEVATED_WIDE_AUDIENCE_ROLES):
+        # No school restriction for these roles at the query-condition level
+        return []
+
+    default_school, allowed = _get_school_scope_tree(user)
+    if default_school:
+        return allowed
+
+    return _get_org_scope_schools_for_user(user)
+
+
+def _get_allowed_organizations_for_user(user: str | None = None) -> list[str]:
+    """Organizations non-admin users can access for org-level communications."""
+    user = user or frappe.session.user
+
+    if _user_has_any_role(user, ADMIN_ROLES_FULL | ELEVATED_WIDE_AUDIENCE_ROLES):
+        # No organization restriction for these roles at query-condition level.
+        return []
+
+    org_scope = _resolve_user_org_scope(user)
+    if org_scope:
+        return org_scope
+
+    default_school = _get_user_default_school(user)
+    if not default_school:
+        return []
+
+    school_org = frappe.db.get_value("School", default_school, "organization")
+    return [school_org] if school_org else []
+
+
+# --------------------------------------------------------------------
+# Client context API (for Desk UX)
+# --------------------------------------------------------------------
+
+
+@frappe.whitelist()
+def get_org_communication_context(user: str | None = None) -> dict:
+    """Context for client-side UX:
+
+    - default_school: where the user "sits" in the nestedset
+    - allowed_schools:
+      * default_school node + descendants when default_school exists
+      * org-scope schools when no default_school for non-privileged users
+    - is_privileged: can choose Issuing School (Academic Admin, Academic Assistant, System Manager)
+    """
+    user = user or frappe.session.user
+    default_school, school_tree = _get_school_scope_tree(user)
+    is_privileged = _user_has_any_role(user, ELEVATED_WIDE_AUDIENCE_ROLES)
+
+    base_org = _resolve_user_base_org(user)
+    org_scope = _resolve_user_org_scope(user)
+    if not base_org and default_school:
+        base_org = frappe.db.get_value("School", default_school, "organization")
+    if not org_scope and base_org:
+        org_scope = _get_descendant_organizations_uncached(base_org)
+
+    # When no default school is configured, school selection comes from the
+    # effective organization scope so org-scoped admins can still target a
+    # specific school from quick-create.
+    if default_school:
+        allowed_schools = school_tree
+    else:
+        allowed_schools = _get_org_scope_schools_for_user(user)
+
+    can_select_school = bool(is_privileged or (not default_school and allowed_schools))
+    lock_to_default_school = bool(default_school and not is_privileged)
+
+    return {
+        "default_school": default_school,
+        "default_organization": base_org,
+        "allowed_schools": allowed_schools,
+        "allowed_organizations": org_scope,
+        "is_privileged": is_privileged,
+        "can_select_school": can_select_school,
+        "lock_to_default_school": lock_to_default_school,
+    }
+
+
+# --------------------------------------------------------------------
+# Permission hooks
+# --------------------------------------------------------------------
+
+
+def get_permission_query_conditions(user: str | None = None) -> str | None:
+    """Limit Org Communication list by school/org for non-admin users.
+
+    Admins (System Manager, Academic Admin, Academic Assistant) see all.
+    Others see communications for their effective school scope:
+    - default_school + descendants when available
+    - otherwise, schools under their authorized organization scope
+    """
+    user = user or frappe.session.user
+
+    if _user_has_any_role(user, ADMIN_ROLES_FULL | ELEVATED_WIDE_AUDIENCE_ROLES):
+        return None
+
+    allowed_schools = _get_allowed_schools_for_user(user)
+    allowed_orgs = _get_allowed_organizations_for_user(user)
+    if not allowed_schools and not allowed_orgs:
+        # No scope configured; effectively hide all.
+        return "1=0"
+
+    clauses = []
+    if allowed_schools:
+        escaped_schools = ", ".join(frappe.db.escape(s) for s in allowed_schools)
+        clauses.append(f"`tabOrg Communication`.`school` in ({escaped_schools})")
+
+    if allowed_orgs:
+        escaped_orgs = ", ".join(frappe.db.escape(o) for o in allowed_orgs)
+        clauses.append(
+            "("
+            "COALESCE(`tabOrg Communication`.`school`, '') = '' "
+            f"AND `tabOrg Communication`.`organization` in ({escaped_orgs})"
+            ")"
+        )
+
+    if not clauses:
+        return "1=0"
+
+    if len(clauses) == 1:
+        return clauses[0]
+
+    return "(" + " OR ".join(clauses) + ")"
+
+
+def has_permission(doc: "OrgCommunication", user: str = None, ptype: str = None) -> bool:
+    """Fine-tune permissions on top of role-based DocType perms.
+
+    - Read: must be within school/org scope unless admin.
+    - Write: admins always; others only for docs in their school/org scope, and
+      typically their own docs.
+    - Delete: restricted to ADMIN_ROLES_FULL; on_trash enforces as well.
+    """
+    user = user or frappe.session.user
+    ptype = ptype or "read"
+
+    # Admin roles: defer to role-based permissions except for delete, which we tighten.
+    if _user_has_any_role(user, ADMIN_ROLES_FULL | ELEVATED_WIDE_AUDIENCE_ROLES):
+        if ptype == "delete":
+            # Academic Assistant is not in ADMIN_ROLES_FULL, so only System Manager
+            # and Academic Admin get delete = True here.
+            return _user_has_any_role(user, ADMIN_ROLES_FULL)
+        return True
+
+    allowed_schools = set(_get_allowed_schools_for_user(user))
+    allowed_orgs = set(_get_allowed_organizations_for_user(user))
+
+    doc_school = (doc.school or "").strip() if getattr(doc, "school", None) else ""
+    doc_org = (doc.organization or "").strip() if getattr(doc, "organization", None) else ""
+
+    if doc_school:
+        if not allowed_schools or doc_school not in allowed_schools:
+            return False
+    else:
+        if not doc_org or not allowed_orgs or doc_org not in allowed_orgs:
+            return False
+
+    if ptype == "read":
+        return True
+
+    if ptype in {"write", "submit", "cancel", "amend"}:
+        # Non-admins can only modify their own docs, and only while not Archived.
+        if doc.owner == user and doc.status in {"Draft", "Scheduled", "Published"}:
+            return True
+        return False
+
+    if ptype == "delete":
+        return False
+
+    # Default fallback
+    return True
+
+
+def on_doctype_update():
+    frappe.db.add_index(
+        "Org Communication",
+        ["activity_program_offering", "publish_from"],
+        index_name="idx_org_comm_activity_offering_publish",
+    )
+    frappe.db.add_index(
+        "Org Communication",
+        ["activity_student_group", "publish_from"],
+        index_name="idx_org_comm_activity_group_publish",
+    )
+    if frappe.db.has_column("Org Communication", "admission_context_doctype") and frappe.db.has_column(
+        "Org Communication", "admission_context_name"
+    ):
+        frappe.db.add_index(
+            "Org Communication",
+            ["admission_context_doctype", "admission_context_name", "creation"],
+            index_name="idx_org_comm_admission_context",
+        )

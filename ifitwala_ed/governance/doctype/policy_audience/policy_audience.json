@@ -1,0 +1,72 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:policy_audience_name",
+ "creation": "2026-03-17 09:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "policy_audience_name"
+ ],
+ "fields": [
+  {
+   "fieldname": "policy_audience_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Policy Audience",
+   "reqd": 1,
+   "unique": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-17 09:00:00",
+ "modified_by": "Administrator",
+ "module": "Governance",
+ "name": "Policy Audience",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "report": 1,
+   "role": "System Manager"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Organization Admin"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Administrator"
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "policy_audience_name",
+ "sort_field": "policy_audience_name",
+ "sort_order": "ASC",
+ "states": [],
+ "title_field": "policy_audience_name"
+}

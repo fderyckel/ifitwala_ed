@@ -1,0 +1,985 @@
+# Copyright (c) 2026, François de Ryckel and contributors
+# For license information, please see license.txt
+
+# ifitwala_ed/api/test_users.py
+
+from unittest.mock import patch
+
+import frappe
+from frappe.tests.utils import FrappeTestCase
+from frappe.utils import nowdate
+
+try:
+    from werkzeug.routing import RequestRedirect
+except Exception:
+    from werkzeug.routing.exceptions import RequestRedirect
+
+from ifitwala_ed.api.users import (
+    STAFF_ROLES,
+    _strip_redirect_query,
+    get_users_with_role,
+    get_website_user_home_page,
+    redirect_non_staff_away_from_desk,
+    redirect_user_to_entry_portal,
+    sanitize_login_redirect_param,
+)
+
+_REQUIRED_TEST_APPS = ("frappe", "ifitwala_ed")
+_ORIGINAL_GET_INSTALLED_APPS = getattr(frappe, "get_installed_apps", None)
+
+
+def _get_test_installed_apps(*args, **kwargs):
+    apps = []
+    if callable(_ORIGINAL_GET_INSTALLED_APPS):
+        try:
+            apps = list(_ORIGINAL_GET_INSTALLED_APPS(*args, **kwargs) or [])
+        except Exception:
+            apps = []
+    for app_name in _REQUIRED_TEST_APPS:
+        if app_name not in apps:
+            apps.append(app_name)
+    return apps
+
+
+def _admission_settings_has_field(fieldname: str) -> bool:
+    if not frappe.db.exists("DocType", "Admission Settings"):
+        return False
+    return bool(frappe.get_meta("Admission Settings").has_field(fieldname))
+
+
+def _ensure_test_organization() -> str:
+    name = frappe.db.get_value("Organization", {"organization_name": "Redirect Test Org"}, "name")
+    if name:
+        return name
+    doc = frappe.get_doc(
+        {
+            "doctype": "Organization",
+            "organization_name": "Redirect Test Org",
+            "abbr": f"R{frappe.generate_hash(length=4)}",
+        }
+    )
+    doc.flags.skip_coa_setup = True
+    _insert_user(doc)
+    return doc.name
+
+
+def _ensure_role(role: str) -> None:
+    if frappe.db.exists("Role", role):
+        return
+    frappe.get_doc({"doctype": "Role", "role_name": role}).insert(ignore_permissions=True)
+
+
+def _append_role(user_doc, role: str) -> None:
+    _ensure_role(role)
+    user_doc.append("roles", {"role": role})
+
+
+def _new_test_user():
+    user = frappe.new_doc("User")
+    user.flags.no_welcome_mail = True
+    return user
+
+
+def _insert_user(user_doc):
+    if getattr(user_doc, "doctype", None) != "User":
+        user_doc.insert(ignore_permissions=True)
+        return
+    with (
+        patch.object(user_doc, "send_password_notification"),
+        patch.object(user_doc, "send_welcome_mail_to_user"),
+        patch("frappe.core.doctype.user.user.User.send_password_notification"),
+        patch("frappe.core.doctype.user.user.User.send_welcome_mail_to_user"),
+    ):
+        user_doc.insert(ignore_permissions=True)
+
+
+class TestUserRedirect(FrappeTestCase):
+    """Test unified login redirect logic."""
+
+    def setUp(self):
+        super().setUp()
+        self._installed_apps_patcher = patch.object(
+            frappe,
+            "get_installed_apps",
+            side_effect=_get_test_installed_apps,
+        )
+        self._installed_apps_patcher.start()
+        frappe.set_user("Administrator")
+
+    def tearDown(self):
+        self._installed_apps_patcher.stop()
+        frappe.set_user("Administrator")
+        super().tearDown()
+
+    def test_strip_redirect_query_removes_redirect_to_params(self):
+        raw = "/login?redirect-to=%2Fdesk&foo=bar&redirect_to=%2Fdesk#frag"
+        cleaned = _strip_redirect_query(raw)
+        self.assertEqual(cleaned, "/login?foo=bar#frag")
+
+    def test_sanitize_login_redirect_param_cleans_app_subpaths(self):
+        original_request = getattr(frappe.local, "request", None)
+        original_form_dict = getattr(frappe, "form_dict", None)
+        try:
+            frappe.local.request = frappe._dict(
+                path="/login",
+                method="GET",
+                full_path="/login?redirect-to=%2Fdesk%2Feca&foo=bar",
+                args={"redirect-to": "/desk/eca"},
+            )
+            frappe.form_dict = frappe._dict({"redirect_to": "/desk/eca"})
+            with patch("frappe.log_error") as log_error:
+                with self.assertRaises(RequestRedirect) as ctx:
+                    sanitize_login_redirect_param()
+            self.assertEqual(getattr(ctx.exception, "new_url", None), "/login?foo=bar")
+            self.assertEqual(frappe.form_dict.get("redirect_to"), "")
+            self.assertEqual(frappe.form_dict.get("redirect-to"), "")
+            log_error.assert_not_called()
+        finally:
+            if original_request is None:
+                if hasattr(frappe.local, "request"):
+                    del frappe.local.request
+            else:
+                frappe.local.request = original_request
+            if original_form_dict is None:
+                if hasattr(frappe, "form_dict"):
+                    delattr(frappe, "form_dict")
+            else:
+                frappe.form_dict = original_form_dict
+
+    def test_non_staff_desk_request_redirects_admissions_applicant(self):
+        user = _new_test_user()
+        user.email = f"test_admissions_desk_block_{frappe.generate_hash(length=6)}@example.com"
+        user.first_name = "Admissions"
+        user.last_name = "Applicant"
+        user.enabled = 1
+        _append_role(user, "Admissions Applicant")
+        _insert_user(user)
+
+        original_request = getattr(frappe.local, "request", None)
+        try:
+            frappe.set_user(user.email)
+            frappe.local.request = frappe._dict(path="/desk/eca", method="GET")
+            with self.assertRaises(RequestRedirect) as ctx:
+                redirect_non_staff_away_from_desk()
+            self.assertEqual(getattr(ctx.exception, "new_url", None), "/admissions")
+        finally:
+            if original_request is None:
+                if hasattr(frappe.local, "request"):
+                    del frappe.local.request
+            else:
+                frappe.local.request = original_request
+            frappe.set_user("Administrator")
+            frappe.delete_doc("User", user.email, force=True)
+
+    def test_staff_role_with_admissions_role_is_not_redirected_from_desk(self):
+        user = _new_test_user()
+        user.email = f"test_staff_plus_admissions_{frappe.generate_hash(length=6)}@example.com"
+        user.first_name = "Mixed"
+        user.last_name = "Roles"
+        user.enabled = 1
+        user.user_type = "System User"
+        _append_role(user, "Employee")
+        _append_role(user, "Admissions Applicant")
+        _insert_user(user)
+
+        employee = frappe.new_doc("Employee")
+        employee.employee_first_name = "Mixed"
+        employee.employee_last_name = "Roles"
+        employee.date_of_joining = nowdate()
+        employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
+        employee.employment_status = "Active"
+        _insert_user(employee)
+
+        original_request = getattr(frappe.local, "request", None)
+        try:
+            frappe.set_user(user.email)
+            frappe.local.flags.redirect_location = None
+            frappe.local.request = frappe._dict(path="/desk/eca", method="GET")
+            redirect_non_staff_away_from_desk()
+            self.assertIsNone(frappe.local.flags.redirect_location)
+        finally:
+            if original_request is None:
+                if hasattr(frappe.local, "request"):
+                    del frappe.local.request
+            else:
+                frappe.local.request = original_request
+            frappe.set_user("Administrator")
+            frappe.delete_doc("Employee", employee.name, force=True)
+            frappe.delete_doc("User", user.email, force=True)
+
+    def test_staff_desk_request_is_not_redirected(self):
+        user = _new_test_user()
+        user.email = f"test_staff_desk_allow_{frappe.generate_hash(length=6)}@example.com"
+        user.first_name = "Desk"
+        user.last_name = "Staff"
+        user.enabled = 1
+        _append_role(user, "Employee")
+        _insert_user(user)
+
+        employee = frappe.new_doc("Employee")
+        employee.employee_first_name = "Desk"
+        employee.employee_last_name = "Staff"
+        employee.date_of_joining = nowdate()
+        employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
+        employee.employment_status = "Active"
+        _insert_user(employee)
+
+        original_request = getattr(frappe.local, "request", None)
+        try:
+            frappe.set_user(user.email)
+            frappe.local.flags.redirect_location = None
+            frappe.local.request = frappe._dict(path="/desk/eca", method="GET")
+            redirect_non_staff_away_from_desk()
+            self.assertIsNone(frappe.local.flags.redirect_location)
+        finally:
+            if original_request is None:
+                if hasattr(frappe.local, "request"):
+                    del frappe.local.request
+            else:
+                frappe.local.request = original_request
+            frappe.set_user("Administrator")
+            frappe.delete_doc("Employee", employee.name, force=True)
+            frappe.delete_doc("User", user.email, force=True)
+
+    def test_users_without_portal_access_redirect_to_login(self):
+        """Users with no resolved portal entitlement must not be dropped onto Staff Home."""
+        # Create test user
+        user = _new_test_user()
+        user.email = "test_user_portal@example.com"
+        user.first_name = "Test"
+        user.last_name = "User"
+        user.enabled = 1
+        _insert_user(user)
+
+        # Simulate login
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+
+        # Call redirect function
+        redirect_user_to_entry_portal()
+
+        # Assert redirect to /login
+        self.assertEqual(frappe.local.response.get("home_page"), "/login")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/login")
+
+        # Cleanup
+        frappe.set_user("Administrator")
+        frappe.delete_doc("User", user.email, force=True)
+
+    def test_admissions_applicant_redirects_to_admissions(self):
+        """Admissions Applicants with a linked applicant should be redirected to /admissions."""
+        user = _new_test_user()
+        user.email = "test_admissions_applicant@example.com"
+        user.first_name = "Test"
+        user.last_name = "Admissions Applicant"
+        user.enabled = 1
+        _append_role(user, "Admissions Applicant")
+        _insert_user(user)
+
+        try:
+            frappe.set_user(user.email)
+            frappe.local.response = {}
+            with patch("ifitwala_ed.routing.policy.has_open_admissions_portal_access", return_value=True):
+                redirect_user_to_entry_portal()
+
+            self.assertEqual(frappe.local.response.get("home_page"), "/admissions")
+            self.assertEqual(frappe.local.response.get("redirect_to"), "/admissions")
+        finally:
+            frappe.set_user("Administrator")
+            frappe.delete_doc("User", user.email, force=True)
+
+    def test_staff_and_admissions_roles_redirect_to_staff(self):
+        """Mixed staff+admissions roles must prefer staff routing."""
+        user = _new_test_user()
+        user.email = f"test_staff_admissions_precedence_{frappe.generate_hash(length=6)}@example.com"
+        user.first_name = "Staff"
+        user.last_name = "Admissions"
+        user.enabled = 1
+        user.user_type = "System User"
+        _append_role(user, "Employee")
+        _append_role(user, "Admissions Applicant")
+        _insert_user(user)
+
+        employee = frappe.new_doc("Employee")
+        employee.employee_first_name = "Staff"
+        employee.employee_last_name = "Admissions"
+        employee.date_of_joining = nowdate()
+        employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
+        employee.employment_status = "Active"
+        _insert_user(employee)
+
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+
+        redirect_user_to_entry_portal()
+
+        self.assertEqual(frappe.local.response.get("home_page"), "/hub/staff")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/staff")
+
+        frappe.set_user("Administrator")
+        frappe.delete_doc("Employee", employee.name, force=True)
+        frappe.delete_doc("User", user.email, force=True)
+
+    def test_login_redirect_overrides_incoming_redirect_to_param(self):
+        """Role-based redirect must win over incoming redirect_to values like /desk."""
+        user = _new_test_user()
+        user.email = "test_override_redirect_param@example.com"
+        user.first_name = "Override"
+        user.last_name = "Redirect"
+        user.enabled = 1
+        _append_role(user, "Employee")
+        _insert_user(user)
+
+        employee = frappe.new_doc("Employee")
+        employee.employee_first_name = "Override"
+        employee.employee_last_name = "Redirect"
+        employee.date_of_joining = nowdate()
+        employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
+        employee.employment_status = "Active"
+        _insert_user(employee)
+
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+        frappe.form_dict = frappe._dict({"redirect_to": "/desk"})
+
+        redirect_user_to_entry_portal()
+
+        self.assertEqual(frappe.local.response.get("home_page"), "/hub/staff")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/staff")
+        self.assertEqual(frappe.form_dict.get("redirect_to"), "/hub/staff")
+        self.assertEqual(frappe.form_dict.get("redirect-to"), "/hub/staff")
+
+        frappe.set_user("Administrator")
+        frappe.delete_doc("Employee", employee.name, force=True)
+        frappe.delete_doc("User", user.email, force=True)
+
+    def test_login_redirect_sets_login_manager_home_page(self):
+        """Login hook must set login_manager.home_page to canonical portal target."""
+        user = _new_test_user()
+        user.email = "test_login_manager_home_page@example.com"
+        user.first_name = "Home"
+        user.last_name = "Page"
+        user.enabled = 1
+        _append_role(user, "Employee")
+        _insert_user(user)
+
+        employee = frappe.new_doc("Employee")
+        employee.employee_first_name = "Home"
+        employee.employee_last_name = "Page"
+        employee.date_of_joining = nowdate()
+        employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
+        employee.employment_status = "Active"
+        _insert_user(employee)
+
+        class _LoginManager:
+            def __init__(self):
+                self.home_page = "/app"
+
+        login_manager = _LoginManager()
+
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+        frappe.form_dict = frappe._dict({"redirect_to": "/app"})
+
+        redirect_user_to_entry_portal(login_manager=login_manager)
+
+        self.assertEqual(login_manager.home_page, "/hub/staff")
+        self.assertEqual(frappe.local.response.get("home_page"), "/hub/staff")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/staff")
+
+        frappe.set_user("Administrator")
+        frappe.delete_doc("Employee", employee.name, force=True)
+        frappe.delete_doc("User", user.email, force=True)
+
+    def test_login_redirect_trace_does_not_write_error_log(self):
+        user = _new_test_user()
+        user.email = f"test_redirect_trace_logging_{frappe.generate_hash(length=6)}@example.com"
+        user.first_name = "Trace"
+        user.last_name = "Logging"
+        user.enabled = 1
+        _append_role(user, "Employee")
+        _insert_user(user)
+
+        employee = frappe.new_doc("Employee")
+        employee.employee_first_name = "Trace"
+        employee.employee_last_name = "Logging"
+        employee.date_of_joining = nowdate()
+        employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
+        employee.employment_status = "Active"
+        _insert_user(employee)
+
+        original_request = getattr(frappe.local, "request", None)
+        original_form_dict = getattr(frappe, "form_dict", None)
+        try:
+            frappe.set_user(user.email)
+            frappe.local.response = {}
+            frappe.local.request = frappe._dict(path="/login", method="POST")
+            frappe.form_dict = frappe._dict({"cmd": "login", "redirect_to": "/hub/staff"})
+
+            with patch("frappe.log_error") as log_error:
+                redirect_user_to_entry_portal()
+
+            self.assertEqual(frappe.local.response.get("home_page"), "/hub/staff")
+            self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/staff")
+            log_error.assert_not_called()
+        finally:
+            if original_form_dict is None:
+                if hasattr(frappe, "form_dict"):
+                    delattr(frappe, "form_dict")
+            else:
+                frappe.form_dict = original_form_dict
+            if original_request is None:
+                if hasattr(frappe.local, "request"):
+                    del frappe.local.request
+            else:
+                frappe.local.request = original_request
+            frappe.set_user("Administrator")
+            frappe.delete_doc("Employee", employee.name, force=True)
+            frappe.delete_doc("User", user.email, force=True)
+
+    def test_guardian_redirects_to_guardian_portal(self):
+        """Guardians should be redirected to /hub/guardian."""
+        # Create test user with Guardian role
+        user = _new_test_user()
+        user.email = "test_guardian_portal@example.com"
+        user.first_name = "Test"
+        user.last_name = "Guardian"
+        user.enabled = 1
+        _append_role(user, "Guardian")
+        _insert_user(user)
+
+        # Create Guardian record linked to user
+        guardian = frappe.new_doc("Guardian")
+        guardian.guardian_first_name = "Test"
+        guardian.guardian_last_name = "Guardian"
+        guardian.guardian_email = user.email
+        guardian.guardian_mobile_phone = "5550000001"
+        guardian.user = user.email
+        guardian.save()
+
+        # Simulate login
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+
+        # Call redirect function
+        redirect_user_to_entry_portal()
+
+        # Assert redirect to guardian portal
+        self.assertEqual(frappe.local.response.get("home_page"), "/hub/guardian")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/guardian")
+
+        # Cleanup
+        frappe.set_user("Administrator")
+        frappe.delete_doc("Guardian", guardian.name, force=True)
+        frappe.delete_doc("User", user.email, force=True)
+
+    def test_admissions_family_redirects_to_admissions_when_family_workspace_is_open(self):
+        if not _admission_settings_has_field("admissions_access_mode"):
+            self.skipTest("Admission Settings.admissions_access_mode is required for family workspace tests.")
+
+        previous_mode = frappe.db.get_single_value("Admission Settings", "admissions_access_mode")
+
+        user = _new_test_user()
+        user.email = f"test_admissions_family_{frappe.generate_hash(length=6)}@example.com"
+        user.first_name = "Family"
+        user.last_name = "Admissions"
+        user.enabled = 1
+        _append_role(user, "Admissions Family")
+        _insert_user(user)
+
+        try:
+            frappe.db.set_single_value("Admission Settings", "admissions_access_mode", "Family Workspace")
+
+            frappe.set_user(user.email)
+            frappe.local.response = {}
+
+            with patch("ifitwala_ed.routing.policy.has_open_admissions_portal_access", return_value=True):
+                redirect_user_to_entry_portal()
+
+            self.assertEqual(frappe.local.response.get("home_page"), "/admissions")
+            self.assertEqual(frappe.local.response.get("redirect_to"), "/admissions")
+        finally:
+            frappe.set_user("Administrator")
+            frappe.db.set_single_value(
+                "Admission Settings",
+                "admissions_access_mode",
+                previous_mode or "Single Applicant Workspace",
+            )
+            frappe.delete_doc("User", user.email, force=True)
+
+    def test_student_redirects_to_student_portal(self):
+        """Students should be redirected to /hub/student."""
+        # Create test user with Student role
+        user = _new_test_user()
+        user.email = "test_student_portal@example.com"
+        user.first_name = "Test"
+        user.last_name = "Student"
+        user.enabled = 1
+        _append_role(user, "Student")
+        _insert_user(user)
+
+        # Create Student record linked to user
+        student = frappe.new_doc("Student")
+        student.student_first_name = "Test"
+        student.student_last_name = "Student"
+        student.student_email = user.email
+        student.student_user_id = user.email
+        student.allow_direct_creation = 1
+        previous_in_import = bool(getattr(frappe.flags, "in_import", False))
+        frappe.flags.in_import = True
+        try:
+            _insert_user(student)
+        finally:
+            frappe.flags.in_import = previous_in_import
+
+        # Simulate login
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+
+        # Call redirect function
+        redirect_user_to_entry_portal()
+
+        # Assert redirect to student portal
+        self.assertEqual(frappe.local.response.get("home_page"), "/hub/student")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/student")
+
+        # Cleanup
+        frappe.set_user("Administrator")
+        frappe.delete_doc("Student", student.name, force=True)
+        frappe.delete_doc("User", user.email, force=True)
+
+    def test_staff_redirects_to_staff_portal(self):
+        """Staff should be redirected to /hub/staff."""
+        # Create test user with Employee role
+        user = _new_test_user()
+        user.email = "test_staff_portal@example.com"
+        user.first_name = "Test"
+        user.last_name = "Staff"
+        user.enabled = 1
+        _append_role(user, "Employee")
+        _insert_user(user)
+
+        # Create Employee record linked to user
+        employee = frappe.new_doc("Employee")
+        employee.employee_first_name = "Test"
+        employee.employee_last_name = "Staff"
+        employee.date_of_joining = nowdate()
+        employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
+        employee.employment_status = "Active"
+        _insert_user(employee)
+
+        # Simulate login
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+
+        # Call redirect function
+        redirect_user_to_entry_portal()
+
+        # Assert redirect to staff portal
+        self.assertEqual(frappe.local.response.get("home_page"), "/hub/staff")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/staff")
+
+        # Cleanup
+        frappe.set_user("Administrator")
+        frappe.delete_doc("Employee", employee.name, force=True)
+        frappe.delete_doc("User", user.email, force=True)
+
+    def test_employee_role_without_employee_profile_redirects_to_staff(self):
+        """Employee role alone should route to /hub/staff."""
+        user = _new_test_user()
+        user.email = "test_employee_role_only_portal@example.com"
+        user.first_name = "Employee"
+        user.last_name = "RoleOnly"
+        user.enabled = 1
+        _insert_user(user)
+
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+
+        with patch("frappe.get_roles", return_value=["Employee"]):
+            redirect_user_to_entry_portal()
+
+        self.assertEqual(frappe.local.response.get("home_page"), "/hub/staff")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/staff")
+
+        frappe.set_user("Administrator")
+        frappe.delete_doc("User", user.email, force=True)
+
+    def test_staff_role_without_employee_profile_redirects_to_staff(self):
+        """Staff roles still route to /hub/staff even without Employee profile."""
+        user = _new_test_user()
+        user.email = "test_staff_role_only_portal@example.com"
+        user.first_name = "Teacher"
+        user.last_name = "RoleOnly"
+        user.enabled = 1
+        _append_role(user, "Teacher")
+        _insert_user(user)
+
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+
+        redirect_user_to_entry_portal()
+
+        self.assertEqual(frappe.local.response.get("home_page"), "/hub/staff")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/staff")
+
+        frappe.set_user("Administrator")
+        frappe.delete_doc("User", user.email, force=True)
+
+    def test_active_employee_record_redirects_to_staff_even_without_employee_role(self):
+        """Active employee profile should force /hub/staff even without Employee role."""
+        user = _new_test_user()
+        user.email = "test_active_employee_profile_redirect@example.com"
+        user.first_name = "Active"
+        user.last_name = "Employee"
+        user.enabled = 1
+        _insert_user(user)
+
+        employee = frappe.new_doc("Employee")
+        employee.employee_first_name = "Active"
+        employee.employee_last_name = "Employee"
+        employee.date_of_joining = nowdate()
+        employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
+        employee.employment_status = "Active"
+        _insert_user(employee)
+
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+
+        redirect_user_to_entry_portal()
+
+        self.assertEqual(frappe.local.response.get("home_page"), "/hub/staff")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/staff")
+
+        # Cleanup
+        frappe.set_user("Administrator")
+        frappe.delete_doc("Employee", employee.name, force=True)
+        frappe.delete_doc("User", user.email, force=True)
+
+    def test_non_active_employee_profile_redirects_to_login(self):
+        """Non-active employee profiles should not retain portal entry access."""
+        user = _new_test_user()
+        user.email = "test_temp_leave_employee_profile_redirect@example.com"
+        user.first_name = "Temporary"
+        user.last_name = "Leave"
+        user.enabled = 1
+        _insert_user(user)
+
+        employee = frappe.new_doc("Employee")
+        employee.employee_first_name = "Temporary"
+        employee.employee_last_name = "Leave"
+        employee.date_of_joining = nowdate()
+        employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
+        employee.employment_status = "Temporary Leave"
+        _insert_user(employee)
+
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+
+        redirect_user_to_entry_portal()
+
+        self.assertEqual(frappe.local.response.get("home_page"), "/login")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/login")
+
+        frappe.set_user("Administrator")
+        frappe.delete_doc("Employee", employee.name, force=True)
+        frappe.delete_doc("User", user.email, force=True)
+
+    def test_non_active_employee_with_stale_staff_role_redirects_to_login(self):
+        """Inactive employee status must win over stale staff-role rows."""
+        user = _new_test_user()
+        user.email = "test_temp_leave_employee_with_admin_role@example.com"
+        user.first_name = "Temporary"
+        user.last_name = "AdminRole"
+        user.enabled = 1
+        _append_role(user, "Administrator")
+        _insert_user(user)
+
+        employee = frappe.new_doc("Employee")
+        employee.employee_first_name = "Temporary"
+        employee.employee_last_name = "AdminRole"
+        employee.date_of_joining = nowdate()
+        employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
+        employee.employment_status = "Temporary Leave"
+        _insert_user(employee)
+
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+
+        redirect_user_to_entry_portal()
+
+        self.assertEqual(frappe.local.response.get("home_page"), "/login")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/login")
+
+        frappe.set_user("Administrator")
+        frappe.delete_doc("Employee", employee.name, force=True)
+        frappe.delete_doc("User", user.email, force=True)
+
+    def test_login_does_not_backfill_missing_employee_link_during_staff_redirect(self):
+        """Login redirects must not mutate Employee.user_id when role-only staff access resolves the portal."""
+        email = f"test_missing_employee_link_{frappe.generate_hash(length=6)}@example.com"
+        user = _new_test_user()
+        user.email = email
+        user.first_name = "Missing"
+        user.last_name = "Link"
+        user.enabled = 1
+        _append_role(user, "Teacher")
+        _insert_user(user)
+        frappe.clear_cache(user=user.name)
+
+        employee = frappe.new_doc("Employee")
+        employee.employee_first_name = "Missing"
+        employee.employee_last_name = "Link"
+        employee.date_of_joining = nowdate()
+        employee.employee_professional_email = email
+        employee.organization = _ensure_test_organization()
+        employee.employment_status = "Active"
+        _insert_user(employee)
+
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+
+        redirect_user_to_entry_portal()
+
+        employee.reload()
+        self.assertFalse(employee.user_id)
+        self.assertEqual(frappe.local.response.get("home_page"), "/hub/staff")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/staff")
+
+        frappe.set_user("Administrator")
+        frappe.delete_doc("Employee", employee.name, force=True)
+        frappe.delete_doc("User", user.email, force=True)
+
+    def test_unlinked_active_employee_email_match_no_longer_grants_staff_route(self):
+        """A matching professional email is not a runtime employee identity fallback anymore."""
+        email = f"test_unlinked_active_employee_{frappe.generate_hash(length=6)}@example.com"
+        user = _new_test_user()
+        user.email = email
+        user.first_name = "Unlinked"
+        user.last_name = "Active"
+        user.enabled = 1
+        _insert_user(user)
+
+        employee = frappe.new_doc("Employee")
+        employee.employee_first_name = "Unlinked"
+        employee.employee_last_name = "Active"
+        employee.date_of_joining = nowdate()
+        employee.employee_professional_email = email
+        employee.organization = _ensure_test_organization()
+        employee.employment_status = "Active"
+        _insert_user(employee)
+
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+
+        redirect_user_to_entry_portal()
+
+        self.assertEqual(frappe.local.response.get("home_page"), "/login")
+        self.assertEqual(frappe.local.response.get("redirect_to"), "/login")
+
+        frappe.set_user("Administrator")
+        frappe.delete_doc("Employee", employee.name, force=True)
+        frappe.delete_doc("User", user.email, force=True)
+
+    def test_guest_user_ignored(self):
+        """Guest users should not trigger redirect."""
+        frappe.set_user("Guest")
+        frappe.local.response = {}
+
+        # Call redirect function
+        redirect_user_to_entry_portal()
+
+        # Assert no redirect was set
+        self.assertNotIn("home_page", frappe.local.response)
+        self.assertNotIn("redirect_to", frappe.local.response)
+
+        # Cleanup
+        frappe.set_user("Administrator")
+
+    def test_get_website_user_home_page_uses_canonical_policy(self):
+        """Website home hook should resolve to canonical hub/staff for active staff users."""
+        user = _new_test_user()
+        user.email = "test_website_home_policy@example.com"
+        user.first_name = "Web"
+        user.last_name = "Home"
+        user.enabled = 1
+        _append_role(user, "Employee")
+        _insert_user(user)
+
+        employee = frappe.new_doc("Employee")
+        employee.employee_first_name = "Web"
+        employee.employee_last_name = "Home"
+        employee.date_of_joining = nowdate()
+        employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
+        employee.employment_status = "Active"
+        _insert_user(employee)
+
+        frappe.set_user(user.email)
+        self.assertEqual(get_website_user_home_page(), "/hub/staff")
+
+        frappe.set_user("Administrator")
+        frappe.delete_doc("Employee", employee.name, force=True)
+        frappe.delete_doc("User", user.email, force=True)
+
+    def test_get_website_user_home_page_returns_index_for_guest(self):
+        frappe.set_user("Guest")
+        self.assertEqual(get_website_user_home_page(), "index")
+        frappe.set_user("Administrator")
+
+    def test_logout_flow_does_not_force_redirect_exception(self):
+        """Logout-triggered on_login must not raise Redirect."""
+        user = _new_test_user()
+        user.email = "test_logout_no_redirect_exception@example.com"
+        user.first_name = "Logout"
+        user.last_name = "Safe"
+        user.enabled = 1
+        _append_role(user, "Employee")
+        _insert_user(user)
+
+        employee = frappe.new_doc("Employee")
+        employee.employee_first_name = "Logout"
+        employee.employee_last_name = "Safe"
+        employee.date_of_joining = nowdate()
+        employee.user_id = user.email
+        employee.employee_professional_email = user.email
+        employee.organization = _ensure_test_organization()
+        employee.employment_status = "Active"
+        _insert_user(employee)
+
+        frappe.set_user(user.email)
+        frappe.local.response = {}
+
+        original_request = getattr(frappe.local, "request", None)
+        original_form_dict = getattr(frappe, "form_dict", None)
+        original_in_test = bool(getattr(frappe.flags, "in_test", False))
+        try:
+            frappe.local.request = frappe._dict(path="/api/method/logout", method="POST")
+            frappe.form_dict = frappe._dict({"cmd": "logout"})
+            frappe.flags.in_test = False
+
+            redirect_user_to_entry_portal()
+
+            self.assertEqual(frappe.local.response.get("home_page"), "/hub/staff")
+            self.assertEqual(frappe.local.response.get("redirect_to"), "/hub/staff")
+        finally:
+            frappe.flags.in_test = original_in_test
+            if original_form_dict is None:
+                frappe.form_dict = frappe._dict()
+            else:
+                frappe.form_dict = original_form_dict
+            if original_request is None:
+                if hasattr(frappe.local, "request"):
+                    del frappe.local.request
+            else:
+                frappe.local.request = original_request
+            frappe.set_user("Administrator")
+            frappe.delete_doc("Employee", employee.name, force=True)
+            frappe.delete_doc("User", user.email, force=True)
+
+    def test_staff_roles_constant(self):
+        """Verify STAFF_ROLES contains expected roles."""
+        expected_roles = {
+            "Employee",
+            "Academic User",
+            "System Manager",
+            "Teacher",
+            "Administrator",
+            "Finance User",
+            "HR User",
+            "HR Manager",
+        }
+        self.assertEqual(STAFF_ROLES, expected_roles)
+
+
+class TestUserQueries(FrappeTestCase):
+    def setUp(self):
+        super().setUp()
+        self._installed_apps_patcher = patch.object(
+            frappe,
+            "get_installed_apps",
+            side_effect=_get_test_installed_apps,
+        )
+        self._installed_apps_patcher.start()
+        frappe.set_user("Administrator")
+
+    def tearDown(self):
+        self._installed_apps_patcher.stop()
+        frappe.set_user("Administrator")
+        super().tearDown()
+
+    def test_get_users_with_role_returns_only_enabled_matching_users(self):
+        frappe.set_user("Administrator")
+
+        def ensure_has_role(user_email: str, role_name: str) -> None:
+            if frappe.db.exists("Has Role", {"parent": user_email, "role": role_name, "parenttype": "User"}):
+                return
+            frappe.get_doc(
+                {
+                    "doctype": "Has Role",
+                    "parent": user_email,
+                    "parenttype": "User",
+                    "parentfield": "roles",
+                    "role": role_name,
+                }
+            ).insert(ignore_permissions=True)
+
+        employee_user = _new_test_user()
+        employee_user.email = f"test_employee_query_match_{frappe.generate_hash(length=6)}@example.com"
+        employee_user.first_name = "Interview"
+        employee_user.last_name = "Match"
+        employee_user.enabled = 1
+        _append_role(employee_user, "Employee")
+        _insert_user(employee_user)
+
+        disabled_employee = _new_test_user()
+        disabled_employee.email = f"test_employee_query_disabled_{frappe.generate_hash(length=6)}@example.com"
+        disabled_employee.first_name = "Interview"
+        disabled_employee.last_name = "Disabled"
+        disabled_employee.enabled = 0
+        _append_role(disabled_employee, "Employee")
+        _insert_user(disabled_employee)
+
+        non_employee_user = _new_test_user()
+        non_employee_user.email = f"test_employee_query_other_{frappe.generate_hash(length=6)}@example.com"
+        non_employee_user.first_name = "Interview"
+        non_employee_user.last_name = "Teacher"
+        non_employee_user.enabled = 1
+        _append_role(non_employee_user, "Teacher")
+        _insert_user(non_employee_user)
+        ensure_has_role(employee_user.email, "Employee")
+        ensure_has_role(disabled_employee.email, "Employee")
+        ensure_has_role(non_employee_user.email, "Teacher")
+
+        try:
+            rows = get_users_with_role("User", employee_user.email, "name", 0, 20, {"role": "Employee"})
+            names = {row[0] for row in rows}
+
+            self.assertIn(employee_user.email, names)
+            self.assertNotIn(disabled_employee.email, names)
+            self.assertNotIn(non_employee_user.email, names)
+        finally:
+            frappe.delete_doc("User", employee_user.email, force=True)
+            frappe.delete_doc("User", disabled_employee.email, force=True)
+            frappe.delete_doc("User", non_employee_user.email, force=True)

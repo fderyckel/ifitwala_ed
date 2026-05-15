@@ -1,0 +1,454 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "APPL-.YYYY.-.MM.-.###",
+ "creation": "2024-12-06 15:44:29.050774",
+ "default_view": "List",
+ "description": "Track each applicant document type, review status, and promotion relevance with strict immutability and governed file handling.",
+ "doctype": "DocType",
+ "documentation": "https://ifitwala.com/docs/en/student-applicant/",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_esdq",
+  "first_name",
+  "middle_name",
+  "last_name",
+  "inquiry",
+  "applicant_image",
+  "student_joining_date",
+  "column_break_frwx",
+  "organization",
+  "school",
+  "academic_year",
+  "term",
+  "program",
+  "program_offering",
+  "cohort",
+  "student_house",
+  "applicant_status_section",
+  "application_status",
+  "applicant_email",
+  "applicant_contact",
+  "decision_at",
+  "column_break_n1e1",
+  "submitted_at",
+  "portal_account_email",
+  "applicant_user",
+  "student",
+  "profile_section",
+  "student_preferred_name",
+  "student_date_of_birth",
+  "student_gender",
+  "student_mobile_number",
+  "column_break_profile",
+  "student_first_language",
+  "student_second_language",
+  "student_nationality",
+  "student_second_nationality",
+  "residency_status",
+  "guardians_section",
+  "guardians",
+  "billing_section",
+  "account_holder",
+  "review_section",
+  "review_snapshot",
+  "review_assignments_summary",
+  "interviews_section",
+  "interviews_summary",
+  "health_section",
+  "health_summary",
+  "policies_section",
+  "policies_summary",
+  "documents_section",
+  "documents_summary",
+  "title"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_esdq",
+   "fieldtype": "Section Break",
+   "label": "Applicant"
+  },
+  {
+   "fieldname": "first_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "First Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "middle_name",
+   "fieldtype": "Data",
+   "label": "Middle Name"
+  },
+  {
+   "fieldname": "last_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Last Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "inquiry",
+   "fieldtype": "Link",
+   "label": "Inquiry",
+   "options": "Inquiry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "label": "Student",
+   "options": "Student",
+   "read_only": 1
+  },
+  {
+   "fieldname": "applicant_user",
+   "fieldtype": "Link",
+   "label": "Applicant User",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "applicant_contact",
+   "fieldtype": "Link",
+   "label": "Applicant Contact",
+   "options": "Contact",
+   "read_only": 1
+  },
+  {
+   "fieldname": "applicant_email",
+   "fieldtype": "Data",
+   "label": "Applicant Email",
+   "options": "Email",
+   "read_only": 1
+  },
+  {
+   "fieldname": "portal_account_email",
+   "fieldtype": "Data",
+   "label": "Portal Account Email",
+   "options": "Email",
+   "read_only": 1
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "Organization",
+   "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "School",
+   "options": "School",
+   "reqd": 1
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "label": "Program (Intent)",
+   "options": "Program"
+  },
+  {
+   "fieldname": "column_break_frwx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "label": "Academic Year (Intent)",
+   "options": "Academic Year"
+  },
+  {
+   "fieldname": "term",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "label": "Term (Intent)",
+   "options": "Term"
+  },
+  {
+   "fieldname": "applicant_image",
+   "fieldtype": "Attach Image",
+   "label": "Applicant Image"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "application_status",
+   "fieldtype": "Select",
+   "label": "Application Status",
+   "options": "Draft\nInvited\nIn Progress\nSubmitted\nUnder Review\nMissing Info\nApproved\nRejected\nWithdrawn\nPromoted",
+   "read_only": 1
+  },
+  {
+   "fieldname": "submitted_at",
+   "fieldtype": "Datetime",
+   "label": "Submitted At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "decision_at",
+   "fieldtype": "Datetime",
+   "label": "Decision At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "guardians_section",
+   "fieldtype": "Section Break",
+   "label": "Guardians"
+  },
+  {
+   "fieldname": "guardians",
+   "fieldtype": "Table",
+   "label": "Guardians",
+   "options": "Student Applicant Guardian"
+  },
+  {
+   "fieldname": "billing_section",
+   "fieldtype": "Section Break",
+   "label": "Billing"
+  },
+  {
+   "fieldname": "account_holder",
+   "fieldtype": "Link",
+   "label": "Account Holder",
+   "options": "Account Holder"
+  },
+  {
+   "fieldname": "review_section",
+   "fieldtype": "Section Break",
+   "label": "Review Snapshot"
+  },
+  {
+   "fieldname": "review_snapshot",
+   "fieldtype": "HTML",
+   "label": "Review Snapshot"
+  },
+  {
+   "fieldname": "review_assignments_summary",
+   "fieldtype": "HTML",
+   "label": "Review Assignments Summary"
+  },
+  {
+   "fieldname": "interviews_section",
+   "fieldtype": "Section Break",
+   "label": "Interviews"
+  },
+  {
+   "fieldname": "interviews_summary",
+   "fieldtype": "HTML",
+   "label": "Interviews Summary"
+  },
+  {
+   "fieldname": "health_section",
+   "fieldtype": "Section Break",
+   "label": "Health Summary"
+  },
+  {
+   "fieldname": "health_summary",
+   "fieldtype": "HTML",
+   "label": "Health Summary"
+  },
+  {
+   "fieldname": "policies_section",
+   "fieldtype": "Section Break",
+   "label": "Policies"
+  },
+  {
+   "fieldname": "policies_summary",
+   "fieldtype": "HTML",
+   "label": "Policies Summary"
+  },
+  {
+   "fieldname": "documents_section",
+   "fieldtype": "Section Break",
+   "label": "Documents"
+  },
+  {
+   "fieldname": "documents_summary",
+   "fieldtype": "HTML",
+   "label": "Documents Summary"
+  },
+  {
+   "fieldname": "program_offering",
+   "fieldtype": "Link",
+   "label": "Program Offering",
+   "options": "Program Offering"
+  },
+  {
+   "fieldname": "profile_section",
+   "fieldtype": "Section Break",
+   "label": "Student Profile (Promotion Data)"
+  },
+  {
+   "fieldname": "student_preferred_name",
+   "fieldtype": "Data",
+   "label": "Preferred Name"
+  },
+  {
+   "fieldname": "student_date_of_birth",
+   "fieldtype": "Date",
+   "label": "Date of Birth"
+  },
+  {
+   "fieldname": "student_gender",
+   "fieldtype": "Select",
+   "label": "Student Gender",
+   "options": "Female\nMale\nOther"
+  },
+  {
+   "fieldname": "student_mobile_number",
+   "fieldtype": "Data",
+   "label": "Mobile Number",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "student_joining_date",
+   "fieldtype": "Date",
+   "label": "Joining Date"
+  },
+  {
+   "fieldname": "column_break_profile",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "student_first_language",
+   "fieldtype": "Link",
+   "label": "First Language",
+   "options": "Language Xtra"
+  },
+  {
+   "fieldname": "student_second_language",
+   "fieldtype": "Link",
+   "label": "Second Language",
+   "options": "Language Xtra"
+  },
+  {
+   "fieldname": "student_nationality",
+   "fieldtype": "Link",
+   "label": "Nationality",
+   "options": "Country"
+  },
+  {
+   "fieldname": "student_second_nationality",
+   "fieldtype": "Link",
+   "label": "Second Nationality",
+   "options": "Country"
+  },
+  {
+   "fieldname": "residency_status",
+   "fieldtype": "Select",
+   "label": "Residency Status",
+   "options": "Local Resident\nExpat Resident\nBoarder\nOther"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Title",
+   "read_only": 1
+  },
+  {
+   "fieldname": "applicant_status_section",
+   "fieldtype": "Section Break",
+   "label": "Applicant Status"
+  },
+  {
+   "fieldname": "column_break_n1e1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "cohort",
+   "fieldtype": "Link",
+   "label": "Cohort",
+   "options": "Student Cohort"
+  },
+  {
+   "fieldname": "student_house",
+   "fieldtype": "Link",
+   "label": "Student House",
+   "options": "Student House"
+  }
+ ],
+ "image_field": "applicant_image",
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-26 13:06:23.000000",
+ "modified_by": "Administrator",
+ "module": "Admission",
+ "name": "Student Applicant",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1
+  },
+  {
+   "read": 1,
+   "role": "Admissions Applicant",
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title"
+}

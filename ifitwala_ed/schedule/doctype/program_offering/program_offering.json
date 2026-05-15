@@ -1,0 +1,431 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "PRO-OFF-.YY.-.###",
+ "creation": "2025-09-20 05:43:54.178610",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_l7zl",
+  "program",
+  "school",
+  "offering_academic_years",
+  "column_break_y4ol",
+  "offering_title",
+  "grade_scale",
+  "status",
+  "student_cohort",
+  "section_break_ircj",
+  "start_date",
+  "end_date",
+  "column_break_dcmw",
+  "capacity",
+  "seat_policy",
+  "seat_hold_hours",
+  "allow_self_enroll",
+  "courses_section",
+  "offering_courses",
+  "offering_course_basket_groups",
+  "enrollment_rules_section",
+  "enrollment_rules",
+  "activity_booking_section",
+  "activity_booking_enabled",
+  "activity_booking_status",
+  "activity_allocation_mode",
+  "activity_booking_open_from",
+  "activity_booking_open_to",
+  "column_break_activity_policy",
+  "activity_allow_student_booking",
+  "activity_allow_guardian_booking",
+  "activity_allow_staff_booking",
+  "activity_min_age_years",
+  "activity_max_age_years",
+  "column_break_activity_waitlist",
+  "activity_waitlist_enabled",
+  "activity_auto_promote_waitlist",
+  "activity_waitlist_offer_hours",
+  "activity_payment_required",
+  "activity_fee_amount",
+  "activity_billable_offering",
+  "activity_sections_section",
+  "activity_sections"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_l7zl",
+   "fieldtype": "Section Break",
+   "label": "Identity"
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "Program",
+   "options": "Program",
+   "reqd": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "School",
+   "options": "School",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_y4ol",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Optional label e.g. IB DP class of 2029 A Campus",
+   "fieldname": "offering_title",
+   "fieldtype": "Data",
+   "label": "Offering Title"
+  },
+  {
+   "description": "Default grade scale for this offering, used for eligibility/prerequisites and enrollment validation.",
+   "fieldname": "grade_scale",
+   "fieldtype": "Link",
+   "label": "Grade Scale (Offering Default)",
+   "options": "Grade Scale"
+  },
+  {
+   "fieldname": "section_break_ircj",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date"
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "label": "End Date"
+  },
+  {
+   "fieldname": "capacity",
+   "fieldtype": "Int",
+   "label": "Capacity"
+  },
+  {
+   "default": "Approved Requests Hold Seats",
+   "description": "How Program Offering Course capacity is reserved during enrollment request flow.",
+   "fieldname": "seat_policy",
+   "fieldtype": "Select",
+   "label": "Seat Policy",
+   "options": "Committed Only\nApproved Requests Hold Seats\nSubmitted Holds Seats"
+  },
+  {
+   "default": "24",
+   "description": "Seat reservation expiry window (hours) for Submitted/Under Review requests.",
+   "fieldname": "seat_hold_hours",
+   "fieldtype": "Int",
+   "label": "Seat Hold Hours",
+   "non_negative": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_self_enroll",
+   "fieldtype": "Check",
+   "label": "Allow Self Enroll"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "activity_booking_section",
+   "fieldtype": "Section Break",
+   "label": "Activity Booking"
+  },
+  {
+   "default": "0",
+   "description": "Enable activity booking flow for this offering.",
+   "fieldname": "activity_booking_enabled",
+   "fieldtype": "Check",
+   "label": "Enable Activity Booking"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "activity_booking_status",
+   "fieldtype": "Select",
+   "label": "Activity Booking Status",
+   "options": "Draft\nReady\nOpen\nClosed"
+  },
+  {
+   "default": "First Come First Serve",
+   "fieldname": "activity_allocation_mode",
+   "fieldtype": "Select",
+   "label": "Allocation Mode",
+   "options": "First Come First Serve\nLottery (Preference)\nManual"
+  },
+  {
+   "fieldname": "activity_booking_open_from",
+   "fieldtype": "Datetime",
+   "label": "Booking Opens On"
+  },
+  {
+   "fieldname": "activity_booking_open_to",
+   "fieldtype": "Datetime",
+   "label": "Booking Closes On"
+  },
+  {
+   "fieldname": "column_break_activity_policy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "activity_allow_student_booking",
+   "fieldtype": "Check",
+   "label": "Allow Student Booking"
+  },
+  {
+   "default": "1",
+   "fieldname": "activity_allow_guardian_booking",
+   "fieldtype": "Check",
+   "label": "Allow Guardian Booking"
+  },
+  {
+   "default": "1",
+   "fieldname": "activity_allow_staff_booking",
+   "fieldtype": "Check",
+   "label": "Allow Staff Booking"
+  },
+  {
+   "fieldname": "activity_min_age_years",
+   "fieldtype": "Int",
+   "label": "Minimum Age (Years)",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "activity_max_age_years",
+   "fieldtype": "Int",
+   "label": "Maximum Age (Years)",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "column_break_activity_waitlist",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "activity_waitlist_enabled",
+   "fieldtype": "Check",
+   "label": "Enable Waitlist"
+  },
+  {
+   "default": "1",
+   "fieldname": "activity_auto_promote_waitlist",
+   "fieldtype": "Check",
+   "label": "Auto Promote Waitlist"
+  },
+  {
+   "default": "24",
+   "fieldname": "activity_waitlist_offer_hours",
+   "fieldtype": "Int",
+   "label": "Waitlist Offer Hours",
+   "non_negative": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "activity_payment_required",
+   "fieldtype": "Check",
+   "label": "Payment Required For Confirmation"
+  },
+  {
+   "fieldname": "activity_fee_amount",
+   "fieldtype": "Currency",
+   "label": "Activity Fee Amount"
+  },
+  {
+   "fieldname": "activity_billable_offering",
+   "fieldtype": "Link",
+   "label": "Billable Offering",
+   "options": "Billable Offering"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "activity_sections_section",
+   "fieldtype": "Section Break",
+   "label": "Activity Sections"
+  },
+  {
+   "fieldname": "activity_sections",
+   "fieldtype": "Table",
+   "label": "Activity Sections",
+   "options": "Program Offering Activity Section"
+  },
+  {
+   "fieldname": "enrollment_rules_section",
+   "fieldtype": "Section Break",
+   "label": "Enrollment Rules"
+  },
+  {
+   "fieldname": "enrollment_rules",
+   "fieldtype": "Table",
+   "label": "Enrollment Rules",
+   "options": "Program Offering Enrollment Rule"
+  },
+  {
+   "fieldname": "courses_section",
+   "fieldtype": "Section Break",
+   "label": "Courses"
+  },
+  {
+   "default": "Active",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Planned\nActive\nArchived"
+  },
+  {
+   "fieldname": "offering_academic_years",
+   "fieldtype": "Table MultiSelect",
+   "label": "Offering Academic Years",
+   "options": "Program Offering Academic Year"
+  },
+  {
+   "fieldname": "column_break_dcmw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "student_cohort",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Cohort",
+   "options": "Student Cohort"
+  },
+  {
+   "fieldname": "offering_courses",
+   "fieldtype": "Table",
+   "label": "Offering Courses",
+   "options": "Program Offering Course"
+  },
+  {
+   "description": "Map each offering course to the enrollment baskets it can satisfy.",
+   "fieldname": "offering_course_basket_groups",
+   "fieldtype": "Table",
+   "label": "Enrollment Basket Memberships",
+   "options": "Program Offering Course Basket Group"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-14 23:03:13.419326",
+ "modified_by": "Administrator",
+ "module": "Schedule",
+ "name": "Program Offering",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Counselor",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Activity Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "offering_title",
+ "show_title_field_in_link": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "offering_title"
+}

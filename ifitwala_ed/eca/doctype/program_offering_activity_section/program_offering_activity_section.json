@@ -1,0 +1,78 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-02-11 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "student_group",
+  "section_label",
+  "column_break_section",
+  "capacity_override",
+  "priority_tier",
+  "is_active",
+  "allow_waitlist"
+ ],
+ "fields": [
+  {
+   "fieldname": "student_group",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Student Group",
+   "options": "Student Group",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_label",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Section Label",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_section",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "capacity_override",
+   "fieldtype": "Int",
+   "label": "Capacity Override",
+   "non_negative": 1
+  },
+  {
+   "default": "100",
+   "fieldname": "priority_tier",
+   "fieldtype": "Int",
+   "label": "Priority Tier",
+   "non_negative": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active"
+  },
+  {
+   "default": "1",
+   "fieldname": "allow_waitlist",
+   "fieldtype": "Check",
+   "label": "Allow Waitlist"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-02-11 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "ECA",
+ "name": "Program Offering Activity Section",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

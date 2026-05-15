@@ -1,0 +1,35 @@
+{
+ "content": null,
+ "creation": "2025-04-12 22:35:35.467051",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 8,
+ "modified": "2025-10-21 18:03:55.121756",
+ "modified_by": "Administrator",
+ "module": "School Settings",
+ "name": "school_schedule_calendar",
+ "owner": "Administrator",
+ "page_name": "school_schedule_calendar",
+ "roles": [
+  {
+   "role": "HR Manager"
+  },
+  {
+   "role": "HR User"
+  },
+  {
+   "role": "Academic Admin"
+  },
+  {
+   "role": "Academic Staff"
+  },
+  {
+   "role": "Academic Assistant"
+  }
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 1,
+ "title": "School Schedule Calendar"
+}

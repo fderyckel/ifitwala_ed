@@ -1,0 +1,80 @@
+{% macro render_public_header(landing) -%}
+<header class="border-b border-slate-200/80 bg-white/90 backdrop-blur">
+	<div class="mx-auto w-full max-w-6xl px-6 py-5">
+		<div class="flex flex-col gap-5">
+			<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+				<a href="/" class="inline-flex min-w-0 items-center gap-3 text-slate-950">
+					<img
+						src="{{ landing.brand_logo }}"
+						alt="{{ landing.brand_name }}"
+						class="h-12 w-12 rounded-2xl border border-slate-200 bg-white object-cover shadow-sm"
+						loading="lazy"
+					>
+					<span class="min-w-0">
+						<span class="block truncate text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-slate-500">
+							{{ landing.organization_name }}
+						</span>
+						<span class="block truncate text-lg font-semibold tracking-tight text-slate-950">
+							{{ landing.brand_name }}
+						</span>
+					</span>
+				</a>
+
+				<div class="flex flex-wrap items-center gap-2">
+					{% if landing.is_guest_user %}
+						<a
+							href="{{ landing.login_url }}"
+							class="inline-flex rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100 hover:text-slate-950"
+						>
+							Login
+						</a>
+					{% else %}
+						<a
+							href="{{ landing.hub_url }}"
+							class="inline-flex rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100 hover:text-slate-950"
+						>
+							Hub
+						</a>
+						<a
+							href="{{ landing.logout_url }}"
+							class="inline-flex rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100 hover:text-slate-950"
+						>
+							Logout
+						</a>
+					{% endif %}
+					<a
+						href="{{ landing.inquiry_url }}"
+						class="inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+					>
+						Start an Inquiry
+					</a>
+				</div>
+			</div>
+
+			<nav aria-label="Public site navigation" class="flex flex-wrap items-center gap-2">
+				{% for item in landing.navigation %}
+					{% set is_active = landing.current_route == item.url or (item.url != '/' and landing.current_route.startswith(item.url ~ '/')) %}
+					<a
+						href="{{ item.url }}"
+						class="inline-flex rounded-full px-4 py-2 text-sm font-medium transition {{ 'bg-slate-950 text-white' if is_active else 'text-slate-700 hover:bg-slate-100 hover:text-slate-950' }}"
+					>
+						{{ item.label }}
+					</a>
+				{% endfor %}
+			</nav>
+		</div>
+	</div>
+</header>
+{%- endmacro %}
+
+{% macro render_public_footer(landing, current_year) -%}
+<footer class="border-t border-slate-200 bg-white">
+	<div class="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 py-6 text-sm text-slate-600 lg:flex-row lg:items-center lg:justify-between">
+		<div>
+			<span class="font-medium text-slate-900">{{ landing.brand_name }}</span>
+			<span class="ml-2">School discovery, admissions, and public information.</span>
+		</div>
+		<div>&copy; {{ current_year }} {{ landing.brand_name }}</div>
+	</div>
+</footer>
+{%- endmacro %}

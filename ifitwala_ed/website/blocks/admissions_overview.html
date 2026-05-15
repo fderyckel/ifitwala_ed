@@ -1,0 +1,21 @@
+<!-- ifitwala_ed/website/blocks/admissions_overview.html -->
+{% set width_class = "max-w-3xl" %}
+{% if data.max_width == "narrow" %}
+	{% set width_class = "max-w-2xl" %}
+{% elif data.max_width == "wide" %}
+	{% set width_class = "max-w-4xl" %}
+{% endif %}
+
+<section class="block-admissions-overview">
+	<div class="mx-auto max-w-6xl px-6">
+		<div class="admissions-overview-shell">
+			<div class="admissions-overview-copy mx-auto flex {{ width_class }} flex-col gap-6 text-center">
+				<p class="admissions-overview-eyebrow">Admissions</p>
+				<h1 class="text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">{{ data.heading }}</h1>
+				<div class="admissions-overview-prose prose prose-lg mx-auto max-w-none">
+					{{ data.content | safe }}
+				</div>
+			</div>
+		</div>
+	</div>
+</section>

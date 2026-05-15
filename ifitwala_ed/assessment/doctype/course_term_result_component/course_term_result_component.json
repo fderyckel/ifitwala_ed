@@ -1,0 +1,121 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-04-25 14:58:07.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "component_type",
+  "label",
+  "component_key",
+  "assessment_category",
+  "assessment_criteria",
+  "weight",
+  "raw_score",
+  "weighted_score",
+  "grade_value",
+  "evidence_count",
+  "included_outcome_count",
+  "excluded_outcome_count",
+  "calculation_note"
+ ],
+ "fields": [
+  {
+   "columns": 2,
+   "fieldname": "component_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Component Type",
+   "options": "Category\nTask\nCriterion\nSummary\nManual",
+   "reqd": 1
+  },
+  {
+   "columns": 3,
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Label",
+   "reqd": 1
+  },
+  {
+   "fieldname": "component_key",
+   "fieldtype": "Data",
+   "label": "Component Key"
+  },
+  {
+   "fieldname": "assessment_category",
+   "fieldtype": "Link",
+   "label": "Assessment Category",
+   "options": "Assessment Category"
+  },
+  {
+   "fieldname": "assessment_criteria",
+   "fieldtype": "Link",
+   "label": "Assessment Criteria",
+   "options": "Assessment Criteria"
+  },
+  {
+   "columns": 1,
+   "fieldname": "weight",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Weight"
+  },
+  {
+   "columns": 1,
+   "fieldname": "raw_score",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Raw Score"
+  },
+  {
+   "columns": 1,
+   "fieldname": "weighted_score",
+   "fieldtype": "Float",
+   "label": "Weighted Score"
+  },
+  {
+   "columns": 1,
+   "fieldname": "grade_value",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Grade Value"
+  },
+  {
+   "fieldname": "evidence_count",
+   "fieldtype": "Int",
+   "label": "Evidence Count"
+  },
+  {
+   "fieldname": "included_outcome_count",
+   "fieldtype": "Int",
+   "label": "Included Outcome Count"
+  },
+  {
+   "fieldname": "excluded_outcome_count",
+   "fieldtype": "Int",
+   "label": "Excluded Outcome Count"
+  },
+  {
+   "fieldname": "calculation_note",
+   "fieldtype": "Small Text",
+   "label": "Calculation Note"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-04-25 14:58:07.000000",
+ "modified_by": "Administrator",
+ "module": "Assessment",
+ "name": "Course Term Result Component",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

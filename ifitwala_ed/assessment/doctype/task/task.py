@@ -1,0 +1,150 @@
+# Copyright (c) 2025, François de Ryckel and contributors
+# For license information, please see license.txt
+
+# ifitwala_ed/assessment/doctype/task/task.py
+
+import frappe
+from frappe import _
+from frappe.model.document import Document
+
+
+class Task(Document):
+    def before_validate(self):
+        self._require_course()
+        self._validate_curriculum_alignment()
+
+    def validate(self):
+        self._enforce_quiz_defaults()
+        self._validate_task_criteria_unique()
+        self._enforce_grading_defaults()
+
+    def on_trash(self):
+        used = frappe.db.get_value("Task Delivery", {"task": self.name}, "name")
+        if used:
+            frappe.throw(_("This Task is already used in a delivery. Archive it instead."))
+
+    def _get_course_value(self):
+        return self.default_course
+
+    def _require_course(self):
+        if not self.default_course:
+            frappe.throw(_("Select a Course for this Task."))
+
+    def _get_unit_plan_course(self, unit_plan_name):
+        if not unit_plan_name:
+            return None
+        return frappe.db.get_value("Unit Plan", unit_plan_name, "course")
+
+    def _validate_curriculum_alignment(self):
+        course = self._get_course_value()
+        unit_plan_name = self.unit_plan or None
+
+        unit_course = None
+        if unit_plan_name and course:
+            unit_course = self._get_unit_plan_course(unit_plan_name)
+            if unit_course and unit_course != course:
+                frappe.throw(_("Unit Plan belongs to a different Course than the Task's Course."))
+
+    def _clear_grading_defaults(self):
+        self.default_allow_feedback = 0
+        self.default_grade_scale = None
+        self.default_max_points = None
+
+    def _clear_quiz_defaults(self):
+        for fieldname in (
+            "quiz_question_bank",
+            "quiz_question_count",
+            "quiz_time_limit_minutes",
+            "quiz_max_attempts",
+            "quiz_pass_percentage",
+            "quiz_shuffle_questions",
+            "quiz_shuffle_choices",
+        ):
+            setattr(self, fieldname, None if fieldname not in {"quiz_shuffle_questions", "quiz_shuffle_choices"} else 0)
+
+    def _count_published_quiz_questions(self, question_bank):
+        if not question_bank:
+            return 0
+        return int(
+            frappe.db.count(
+                "Quiz Question",
+                {"question_bank": question_bank, "is_published": 1},
+            )
+            or 0
+        )
+
+    def _enforce_quiz_defaults(self):
+        if (self.task_type or "").strip() != "Quiz":
+            self._clear_quiz_defaults()
+            return
+
+        if not self.quiz_question_bank:
+            frappe.throw(_("Quiz tasks require a Quiz Question Bank."))
+
+        available_questions = self._count_published_quiz_questions(self.quiz_question_bank)
+        if available_questions <= 0:
+            frappe.throw(_("Quiz Question Bank must contain at least one published Quiz Question."))
+
+        question_count = int(self.quiz_question_count or 0) if self.quiz_question_count not in (None, "") else 0
+        if question_count < 0:
+            frappe.throw(_("Questions Per Attempt cannot be negative."))
+        if question_count and question_count > available_questions:
+            frappe.throw(_("Questions Per Attempt cannot exceed the published questions in the bank."))
+        if not question_count:
+            self.quiz_question_count = available_questions
+
+        if self.quiz_time_limit_minutes not in (None, "") and int(self.quiz_time_limit_minutes or 0) <= 0:
+            frappe.throw(_("Time Limit must be greater than 0 minutes."))
+
+        if self.quiz_max_attempts not in (None, "") and int(self.quiz_max_attempts or 0) < 0:
+            frappe.throw(_("Maximum Attempts cannot be negative."))
+
+        if self.quiz_pass_percentage not in (None, ""):
+            try:
+                pass_percentage = float(self.quiz_pass_percentage)
+            except Exception:
+                frappe.throw(_("Pass Percentage must be a number between 0 and 100."))
+            if pass_percentage < 0 or pass_percentage > 100:
+                frappe.throw(_("Pass Percentage must be between 0 and 100."))
+
+    def _enforce_grading_defaults(self):
+        if (self.task_type or "").strip() == "Quiz":
+            if self.default_delivery_mode == "Assess":
+                self.default_grading_mode = "Points"
+                self.default_max_points = int(self.quiz_question_count or 0)
+                if not self.default_max_points:
+                    frappe.throw(_("Assessed quizzes require Questions Per Attempt to resolve Max Points."))
+            else:
+                self.default_grading_mode = "None"
+                self._clear_grading_defaults()
+            return
+
+        if self.default_delivery_mode and self.default_delivery_mode != "Assess":
+            self.default_grading_mode = "None"
+            self._clear_grading_defaults()
+            return
+
+        if self.default_grading_mode == "Points":
+            if not self.default_max_points or float(self.default_max_points) <= 0:
+                frappe.throw(_("Default Max Points must be greater than 0 when grading mode is Points."))
+
+        if self.default_grading_mode == "Criteria":
+            if not self.default_rubric_scoring_strategy:
+                self.default_rubric_scoring_strategy = "Sum Total"
+            if not self._has_task_criteria():
+                frappe.throw(_("At least one Task Criteria row is required when grading mode is Criteria."))
+
+    def _has_task_criteria(self):
+        rows = self.get("task_criteria") or []
+        return any((row.get("assessment_criteria") or "").strip() for row in rows)
+
+    def _validate_task_criteria_unique(self):
+        rows = self.get("task_criteria") or []
+        seen = set()
+        for row in rows:
+            criteria = (row.get("assessment_criteria") or "").strip()
+            if not criteria:
+                continue
+            if criteria in seen:
+                frappe.throw(_("Duplicate Assessment Criteria in Task Criteria are not allowed."))
+            seen.add(criteria)

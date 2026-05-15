@@ -1,0 +1,13 @@
+{
+  "doctype": "Letter Head",
+  "letter_head_name": "Ifitwala Default School Letter Head",
+  "source": "HTML",
+  "footer_source": "HTML",
+  "align": "Left",
+  "footer_align": "Left",
+  "disabled": 0,
+  "is_default": 1,
+  "header_script": "",
+  "footer_script": "",
+  "footer": ""
+}

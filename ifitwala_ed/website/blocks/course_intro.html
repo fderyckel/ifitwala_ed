@@ -1,0 +1,48 @@
+<!-- ifitwala_ed/website/blocks/course_intro.html -->
+{% import "ifitwala_ed/templates/includes/smart_image_macro.html" as img_macro %}
+
+<section class="block-course-intro">
+	<div class="mx-auto flex max-w-4xl flex-col gap-6 px-6">
+		{% if data.hero_image and data.hero_image.original %}
+			{{ img_macro.smart_image(
+				data.hero_image.hero,
+				data.hero_image.medium,
+				data.hero_image.card,
+				data.hero_image.thumb,
+				data.hero_image.original,
+				data.heading or "Course hero image",
+				"h-[50vh] w-full rounded-xl object-cover",
+				fallback="card"
+			) }}
+		{% endif %}
+		<h1 class="text-4xl font-semibold">{{ data.heading }}</h1>
+		{% if data.content %}
+			<div class="prose prose-lg max-w-none">
+				{{ data.content | safe }}
+			</div>
+		{% endif %}
+		{% if data.overview %}
+			<div class="prose prose-lg max-w-none">
+				<h2>{{ data.overview_heading }}</h2>
+				{{ data.overview | safe }}
+			</div>
+		{% endif %}
+		{% if data.aims %}
+			<div class="prose prose-lg max-w-none">
+				<h2>{{ data.aims_heading }}</h2>
+				{{ data.aims | safe }}
+			</div>
+		{% endif %}
+		{% if data.assessment_summary %}
+			<div class="prose prose-lg max-w-none">
+				<h2>{{ data.assessment_heading }}</h2>
+				{{ data.assessment_summary | safe }}
+			</div>
+		{% endif %}
+		{% if data.cta %}
+			<a href="{{ data.cta.url }}" class="site-cta site-cta-primary inline-flex items-center rounded-lg bg-slate-900 px-6 py-3 text-sm font-medium text-white">
+				{{ data.cta.label }}
+			</a>
+		{% endif %}
+	</div>
+</section>

@@ -1,0 +1,48 @@
+{% set school_name = ((doc.get("school") or doc.get("anchor_school") or "") | string).strip() %}
+{% if not school_name and (doc.get("doctype") or "") == "School" %}
+	{% set school_name = ((doc.get("name") or "") | string).strip() %}
+{% endif %}
+{% set organization_name = ((doc.get("organization") or "") | string).strip() %}
+{% if not organization_name and (doc.get("doctype") or "") == "Organization" %}
+	{% set organization_name = ((doc.get("name") or "") | string).strip() %}
+{% endif %}
+{% set school_meta = frappe.db.get_value("School", school_name, ["name", "school_name", "school_tagline", "organization", "lft", "rgt"], as_dict=True) if school_name else None %}
+{% if school_meta and school_meta.organization %}
+	{% set organization_name = (school_meta.organization or "").strip() %}
+{% endif %}
+{% set organization_meta = frappe.db.get_value("Organization", organization_name, ["name", "organization_name", "lft", "rgt"], as_dict=True) if organization_name and organization_name != "All Organizations" else None %}
+{% set school_lineage = frappe.get_all("School", filters={"organization": school_meta.organization, "lft": ["<=", school_meta.lft], "rgt": [">=", school_meta.rgt]}, fields=["name", "school_name", "school_tagline"], order_by="lft desc") if school_meta and school_meta.lft is not none and school_meta.rgt is not none else [] %}
+{% set brand = namespace(name="", tagline="", secondary="") %}
+{% if school_meta %}
+	{% set brand.name = (school_meta.school_name or school_meta.name or "").strip() %}
+{% elif organization_meta %}
+	{% set brand.name = (organization_meta.organization_name or organization_meta.name or "").strip() %}
+{% else %}
+	{% set brand.name = "Ifitwala Ed" %}
+{% endif %}
+{% if school_meta and organization_meta and organization_meta.organization_name and organization_meta.organization_name != brand.name %}
+	{% set brand.secondary = (organization_meta.organization_name or "").strip() %}
+{% endif %}
+{% for row in school_lineage %}
+	{% if not brand.tagline and row.school_tagline %}
+		{% set brand.tagline = row.school_tagline.strip() %}
+	{% endif %}
+{% endfor %}
+
+<div class="ifitwala-letterhead-footer">
+	<div class="ifitwala-letterhead-footer__rule">
+		<span class="ifitwala-letterhead-footer__rule-mark"></span>
+	</div>
+	<div class="ifitwala-letterhead-footer__meta">
+		<div class="ifitwala-letterhead-footer__brand">
+			<span class="ifitwala-letterhead-footer__name">{{ frappe.utils.escape_html(brand.name) }}</span>
+			{% if brand.secondary %}
+			<span class="ifitwala-letterhead-footer__secondary">{{ frappe.utils.escape_html(brand.secondary) }}</span>
+			{% endif %}
+			{% if brand.tagline %}
+			<span class="ifitwala-letterhead-footer__tagline">{{ frappe.utils.escape_html(brand.tagline) }}</span>
+			{% endif %}
+		</div>
+		<div class="ifitwala-letterhead-footer__accent"></div>
+	</div>
+</div>

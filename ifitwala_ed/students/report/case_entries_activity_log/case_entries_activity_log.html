@@ -1,0 +1,170 @@
+{% var rows = data || []; %}
+{% var curr = null; %}
+
+<meta name="pdfkit-orientation" content="Landscape" />
+
+<div class="print-heading text-center">
+	<h2>{{ __("Case Entries Activity Log") }}</h2>
+	<p class="text-muted">
+		{{ __("From") }}: {%= (filters && filters.from_date) || "—" %} ·
+		{{ __("To") }}: {%= (filters && filters.to_date) || "—" %} ·
+		{{ __("School") }}: {%= (filters && filters.school) || __("All") %} ·
+		{{ __("Program") }}: {%= (filters && filters.program) || __("All") %}
+	</p>
+
+	<!-- small legend -->
+	<div class="legend">
+		<span class="chip chip-ok"><span class="dot dot-ok"></span> {{ __("Closed") }}</span>
+		<span class="chip chip-warn"><span class="dot dot-warn"></span> {{ __("Open / In Progress / On Hold") }}</span>
+		<span class="chip chip-alert"><span class="dot dot-alert"></span> {{ __("Escalated") }}</span>
+	</div>
+</div>
+
+{% for (var i = 0; i < rows.length; i++) { var r = rows[i]; %}
+	{% if (r.referral_case !== curr) { %}
+		{% if (curr !== null) { %}
+			</tbody></table>
+		{% } %}
+		{% curr = r.referral_case; %}
+
+		{%
+			var status = String(r.case_status || "").toLowerCase();
+			var status_class = (status === "closed") ? "status-ok"
+				: (status === "escalated") ? "status-alert"
+				: "status-warn"; // open/in progress/on hold → amber
+		%}
+
+		<!-- Case header band -->
+		<div class="case-header {%= status_class %}">
+			<div class="case-title">
+				<strong>{{ __("Case") }}:</strong> {%= curr %}
+				<span class="pill {%= status_class.replace('status','pill') %}">{%= r.case_status || "" %}</span>
+
+				{% if (r.case_severity) { %}
+					<span class="pill {%= (function(v){
+						v = String(v||'').toLowerCase();
+						return v==='low' ? 'pill-ok' : (v==='moderate' ? 'pill-warn' : 'pill-alert');
+					})(r.case_severity) %}" style="margin-left:4px;">
+						{%= r.case_severity %}
+					</span>
+				{% } %}
+			</div>
+			<div class="case-meta text-muted">
+				{{ __("Student") }}: {%= r.student_full_name || r.student || "" %} ·
+				{{ __("Program") }}: {%= r.program || "" %} ·
+				{{ __("Case Manager") }}: {%= r.case_manager_name || "" %}
+			</div>
+		</div>
+
+		<table class="table table-bordered table-compact">
+			<thead>
+				<tr>
+					<th style="width:30mm;">{{ __("Date") }}</th>
+					<th style="width:28mm;">{{ __("Type") }}</th>
+					<th style="width:35mm;">{{ __("Assignee") }}</th>
+					<th>{{ __("Summary") }}</th>
+				</tr>
+			</thead>
+			<tbody>
+	{% } %}
+
+	<tr>
+		<td>{%= r.entry_date_pretty || "" %}</td>
+		<td>{%= r.entry_type || "" %}</td>
+		<td>{%= r.assignee || "" %}</td>
+		<td>
+			{%
+				var txt = String(r.summary_raw || "")
+					.replace(/<[^>]+>/g, "")
+					.replace(/\s+/g, " ")
+					.trim();
+				if (txt.length > 300) {
+					txt = txt.slice(0, 300).replace(/\s+\S*$/, "") + "…";
+				}
+			%}
+			{%= txt %}
+		</td>
+	</tr>
+{% } %}
+
+{% if (rows.length) { %}</tbody></table>{% } %}
+
+<style>
+:root {
+	/* palette (print-friendly) */
+	--ok: #2e7d32;        /* deep green */
+	--ok-bg: #e8f5e9;     /* light green tint */
+	--warn: #9c6615;      /* warm amber/brown for contrast */
+	--warn-bg: #fff4e6;   /* light amber tint */
+	--alert: #b3261e;     /* deep red */
+	--alert-bg: #fdecea;  /* light red tint */
+	--muted: #6c757d;
+	--border: #e5e5e5;
+}
+
+/* ---- Heading + legend ---- */
+.print-heading h2 { margin: 0; }
+.legend { font-size: 0.9rem; color: var(--muted); }
+.chip { display: inline-flex; align-items: center; gap: 6px; margin: 0 6px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.dot-ok { background: var(--ok); }
+.dot-warn { background: var(--warn); }
+.dot-alert { background: var(--alert); }
+
+/* ---- Case header band ---- */
+.case-header {
+	border: 1px solid var(--border);
+	border-left-width: 4px;
+	border-radius: 6px;
+	padding: 6px 8px;
+	margin: 10mm 0 3mm 0;
+	page-break-inside: avoid;
+}
+.case-header.status-ok { border-left-color: var(--ok); background: var(--ok-bg); }
+.case-header.status-warn { border-left-color: var(--warn); background: var(--warn-bg); }
+.case-header.status-alert { border-left-color: var(--alert); background: var(--alert-bg); }
+
+.case-title { font-size: 1rem; }
+.case-meta { font-size: .9rem; }
+
+/* ---- Pills ---- */
+.pill {
+	display: inline-block;
+	font-size: 0.8rem;
+	line-height: 1;
+	padding: 4px 8px;
+	border-radius: 999px;
+	border: 1px solid transparent;
+	vertical-align: middle;
+	background: #ffffff;
+}
+.pill-ok    { color: var(--ok); border-color: var(--ok); }
+.pill-warn  { color: var(--warn); border-color: var(--warn); }
+.pill-alert { color: var(--alert); border-color: var(--alert); }
+
+/* Map status pills via class swap */
+.pill-ok.status, .pill-warn.status, .pill-alert.status { /* reserved if needed */ }
+
+/* ---- Table tweaks ---- */
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td {
+	padding: 6px 8px;
+	border: 1px solid var(--border);
+	vertical-align: top;
+}
+.table thead th {
+	background: #f8f9fa;
+	font-weight: 600;
+}
+.table-compact th, .table-compact td { padding: 5px 7px; }
+
+/* Zebra rows for readability in print */
+.table tbody tr:nth-child(odd) { background: #fbfbfb; }
+
+/* Print pagination hints */
+@media print {
+	thead { display: table-header-group; }
+	tfoot { display: table-footer-group; }
+	.case-header { page-break-inside: avoid; }
+}
+</style>

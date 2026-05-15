@@ -1,0 +1,65 @@
+{
+ "add_total_row": 0,
+ "add_translate_data": 0,
+ "columns": [],
+ "creation": "2025-08-31 12:33:06.818201",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "From Date",
+   "mandatory": 0,
+   "wildcard_filter": 0
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "To Date",
+   "mandatory": 0,
+   "wildcard_filter": 0
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "label": "School",
+   "mandatory": 0,
+   "options": "School",
+   "wildcard_filter": 0
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "label": "Program",
+   "mandatory": 0,
+   "options": "Program",
+   "wildcard_filter": 0
+  }
+ ],
+ "idx": 0,
+ "is_standard": "Yes",
+ "letterhead": null,
+ "modified": "2025-08-31 12:41:19.842165",
+ "modified_by": "Administrator",
+ "module": "Students",
+ "name": "Referral Intake Overview",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "ref_doctype": "Student Referral",
+ "report_name": "Referral Intake Overview",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Counselor"
+  },
+  {
+   "role": "Academic Admin"
+  }
+ ],
+ "timeout": 0
+}

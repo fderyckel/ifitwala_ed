@@ -1,0 +1,71 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-04-11 12:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "account_holder",
+  "period_key",
+  "sales_invoice",
+  "billing_schedule_count",
+  "billing_row_count",
+  "grand_total"
+ ],
+ "fields": [
+  {
+   "fieldname": "account_holder",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Account Holder",
+   "options": "Account Holder",
+   "read_only": 1
+  },
+  {
+   "fieldname": "period_key",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Period Key",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sales_invoice",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Sales Invoice",
+   "options": "Sales Invoice",
+   "read_only": 1
+  },
+  {
+   "fieldname": "billing_schedule_count",
+   "fieldtype": "Int",
+   "label": "Billing Schedules",
+   "read_only": 1
+  },
+  {
+   "fieldname": "billing_row_count",
+   "fieldtype": "Int",
+   "label": "Billing Rows",
+   "read_only": 1
+  },
+  {
+   "fieldname": "grand_total",
+   "fieldtype": "Currency",
+   "label": "Grand Total",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-04-11 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Accounting",
+ "name": "Billing Run Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

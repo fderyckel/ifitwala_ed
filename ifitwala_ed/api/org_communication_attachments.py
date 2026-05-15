@@ -1,0 +1,320 @@
+from __future__ import annotations
+
+from typing import Any
+
+import frappe
+from frappe import _
+
+from ifitwala_ed.api import file_access as file_access_api
+from ifitwala_ed.api.attachment_previews import extract_file_extension, preview_status_allows_preview
+from ifitwala_ed.api.attachment_rows import build_governed_attachment_row
+from ifitwala_ed.setup.doctype.org_communication.attachments import (
+    ORG_COMMUNICATION_ATTACHMENT_BINDING_ROLE,
+    ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX,
+    assert_org_communication_attachment_upload_access,
+)
+from ifitwala_ed.utilities.governed_uploads import (
+    _drive_upload_and_finalize,
+    _get_uploaded_file,
+    _resolve_upload_mime_type_hint,
+    _workflow_result_payload,
+)
+
+ORG_COMMUNICATION_ATTACHMENT_SURFACE = "org_communication.attachment"
+
+
+def _clean_text(value) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _load_drive_callable(attribute: str):
+    try:
+        from ifitwala_drive.api import communications as drive_api
+    except ImportError as exc:
+        frappe.throw(_("Ifitwala Drive is required for communication attachments: {error}").format(error=exc))
+
+    callable_obj = getattr(drive_api, attribute, None)
+    if callable(callable_obj):
+        return callable_obj
+
+    frappe.throw(
+        _(
+            "Ifitwala Drive is missing public communications method '{method}'. Deploy the matching Drive API before using governed communication attachments."
+        ).format(method=attribute)
+    )
+
+
+def _get_attachment_row(doc, row_name: str):
+    resolved_row_name = str(row_name or "").strip()
+    if not resolved_row_name:
+        frappe.throw(_("Attachment row name is required."))
+
+    for row in doc.get("attachments") or []:
+        if str(getattr(row, "name", "") or "").strip() == resolved_row_name:
+            return row
+
+    frappe.throw(
+        _("Attachment row was not found: {row_name}").format(row_name=resolved_row_name),
+        frappe.DoesNotExistError,
+    )
+
+
+def _get_attachment_render_meta(org_communication: str, row_name: str) -> dict[str, Any]:
+    slot = f"{ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX}{str(row_name or '').strip()}"
+    if not slot or not org_communication:
+        return {"preview_status": None, "inline_preview_ready": False}
+
+    drive_file_id = frappe.db.get_value(
+        "Drive Binding",
+        {
+            "binding_doctype": "Org Communication",
+            "binding_name": org_communication,
+            "binding_role": ORG_COMMUNICATION_ATTACHMENT_BINDING_ROLE,
+            "slot": slot,
+            "status": "active",
+        },
+        "drive_file",
+    )
+    if not drive_file_id:
+        drive_file_id = frappe.db.get_value(
+            "Drive File",
+            {
+                "owner_doctype": "Org Communication",
+                "owner_name": org_communication,
+                "slot": slot,
+                "status": "active",
+            },
+            "name",
+        )
+    if not drive_file_id:
+        return {"preview_status": None, "inline_preview_ready": False}
+
+    drive_file = (
+        frappe.db.get_value(
+            "Drive File",
+            drive_file_id,
+            ["preview_status", "current_version"],
+            as_dict=True,
+        )
+        or {}
+    )
+    preview_status = _clean_text(drive_file.get("preview_status"))
+    return {
+        "preview_status": preview_status,
+        "inline_preview_ready": preview_status == "ready",
+    }
+
+
+def _build_attachment_thumbnail_url(org_communication: str, row_name: str, preview_url: str | None) -> str | None:
+    # Org Communication cards now reuse the richer governed preview route for inline media.
+    return preview_url
+
+
+def serialize_org_communication_attachment_row(org_communication: str, row) -> dict[str, Any]:
+    row_name = str(getattr(row, "name", "") or "").strip()
+    file_url = str(getattr(row, "file", "") or "").strip()
+    external_url = str(getattr(row, "external_url", "") or "").strip()
+    title = _clean_text(getattr(row, "section_break_sbex", None))
+    description = _clean_text(getattr(row, "description", None))
+    file_name = _clean_text(getattr(row, "file_name", None))
+    file_size = getattr(row, "file_size", None)
+
+    if not title:
+        title = file_name or external_url or row_name
+
+    if file_url and not file_name:
+        file_name = frappe.db.get_value(
+            "File",
+            {
+                "attached_to_doctype": "Org Communication",
+                "attached_to_name": org_communication,
+                "file_url": file_url,
+            },
+            "file_name",
+        )
+
+    if file_url:
+        preview_meta = _get_attachment_render_meta(org_communication, row_name)
+        preview_status = preview_meta.get("preview_status")
+        open_url = file_access_api.build_org_communication_attachment_open_url(
+            org_communication=org_communication,
+            row_name=row_name,
+        )
+        preview_url = file_access_api.build_org_communication_attachment_preview_url(
+            org_communication=org_communication,
+            row_name=row_name,
+        )
+        if not preview_status_allows_preview(preview_status):
+            preview_url = None
+        thumbnail_url = (
+            _build_attachment_thumbnail_url(org_communication, row_name, preview_url)
+            if preview_meta.get("inline_preview_ready")
+            else None
+        )
+        attachment = build_governed_attachment_row(
+            row_id=row_name,
+            surface=ORG_COMMUNICATION_ATTACHMENT_SURFACE,
+            item_id=row_name,
+            owner_doctype="Org Communication",
+            owner_name=org_communication,
+            display_name=title,
+            description=description,
+            extension=extract_file_extension(file_name=file_name, file_url=file_url),
+            size_bytes=file_size,
+            preview_status=preview_status,
+            thumbnail_url=thumbnail_url,
+            preview_url=preview_url,
+            open_url=open_url,
+            download_url=open_url,
+        )
+        return {
+            "row_name": row_name,
+            "kind": "file",
+            "title": title,
+            "description": description,
+            "file_name": file_name or title,
+            "file_size": file_size,
+            "attachment": attachment,
+        }
+
+    attachment = build_governed_attachment_row(
+        row_id=row_name,
+        surface=ORG_COMMUNICATION_ATTACHMENT_SURFACE,
+        item_id=row_name,
+        owner_doctype="Org Communication",
+        owner_name=org_communication,
+        link_url=external_url,
+        display_name=title,
+        description=description,
+        open_url=external_url,
+    )
+    return {
+        "row_name": row_name,
+        "kind": "link",
+        "title": title,
+        "description": description,
+        "external_url": external_url or None,
+        "attachment": attachment,
+    }
+
+
+@frappe.whitelist()
+def upload_org_communication_attachment(
+    org_communication: str | None = None,
+    row_name: str | None = None,
+    **_kwargs,
+) -> dict[str, Any]:
+    doc = assert_org_communication_attachment_upload_access(
+        str(org_communication or "").strip(), permission_type="write"
+    )
+    filename, content = _get_uploaded_file()
+    create_session_callable = _load_drive_callable("upload_org_communication_attachment")
+
+    session_payload = {
+        "org_communication": doc.name,
+        "row_name": _clean_text(row_name),
+        "filename_original": filename,
+        "mime_type_hint": _resolve_upload_mime_type_hint(filename=filename),
+        "expected_size_bytes": len(content),
+        "upload_source": "SPA",
+    }
+    session_response, finalize_response, _file_doc = _drive_upload_and_finalize(
+        create_session_callable=create_session_callable,
+        payload=session_payload,
+        content=content,
+    )
+
+    doc.reload()
+    session_workflow_result = _workflow_result_payload(session_response)
+    finalize_workflow_result = _workflow_result_payload(finalize_response)
+    resolved_row_name = (
+        _clean_text(finalize_workflow_result.get("row_name"))
+        or _clean_text(session_workflow_result.get("row_name"))
+        or _clean_text(row_name)
+    )
+    target_row = _get_attachment_row(doc, resolved_row_name)
+
+    return {
+        "ok": True,
+        "org_communication": doc.name,
+        "attachment": serialize_org_communication_attachment_row(doc.name, target_row),
+    }
+
+
+@frappe.whitelist()
+def add_org_communication_link(
+    org_communication: str | None = None,
+    external_url: str | None = None,
+    title: str | None = None,
+    description: str | None = None,
+) -> dict[str, Any]:
+    doc = assert_org_communication_attachment_upload_access(
+        str(org_communication or "").strip(), permission_type="write"
+    )
+    resolved_url = _clean_text(external_url)
+    if not resolved_url:
+        frappe.throw(_("External URL is required."))
+
+    row = doc.append(
+        "attachments",
+        {
+            "section_break_sbex": _clean_text(title) or resolved_url,
+            "external_url": resolved_url,
+            "description": _clean_text(description),
+            "public": 0,
+        },
+    )
+    doc.save()
+    return {
+        "ok": True,
+        "org_communication": doc.name,
+        "attachment": serialize_org_communication_attachment_row(doc.name, row),
+    }
+
+
+def _mark_binding_inactive(org_communication: str, row_name: str) -> None:
+    binding_names = frappe.get_all(
+        "Drive Binding",
+        filters={
+            "binding_doctype": "Org Communication",
+            "binding_name": org_communication,
+            "binding_role": ORG_COMMUNICATION_ATTACHMENT_BINDING_ROLE,
+            "slot": f"{ORG_COMMUNICATION_ATTACHMENT_SLOT_PREFIX}{row_name}",
+            "status": "active",
+        },
+        pluck="name",
+    )
+    for binding_name in binding_names or []:
+        binding_doc = frappe.get_doc("Drive Binding", binding_name)
+        binding_doc.status = "inactive"
+        binding_doc.save(ignore_permissions=True)
+
+
+@frappe.whitelist()
+def remove_org_communication_attachment(
+    org_communication: str | None = None,
+    row_name: str | None = None,
+) -> dict[str, Any]:
+    doc = assert_org_communication_attachment_upload_access(
+        str(org_communication or "").strip(), permission_type="write"
+    )
+    resolved_row_name = str(row_name or "").strip()
+    target_row = _get_attachment_row(doc, resolved_row_name)
+    if str(getattr(target_row, "file", "") or "").strip():
+        _mark_binding_inactive(doc.name, resolved_row_name)
+
+    remaining_rows = [
+        row.as_dict() if hasattr(row, "as_dict") else row
+        for row in (doc.get("attachments") or [])
+        if str(getattr(row, "name", "") or "").strip() != resolved_row_name
+    ]
+    doc.set("attachments", remaining_rows)
+    doc.save()
+    return {
+        "ok": True,
+        "org_communication": doc.name,
+        "row_name": resolved_row_name,
+    }

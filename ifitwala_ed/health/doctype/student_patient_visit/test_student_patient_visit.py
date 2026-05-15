@@ -1,0 +1,134 @@
+# Copyright (c) 2025, François de Ryckel and Contributors
+# See license.txt
+
+from unittest.mock import patch
+
+import frappe
+from frappe.tests.utils import FrappeTestCase
+from frappe.utils import nowdate
+
+from ifitwala_ed.tests.factories.organization import make_organization, make_school
+
+
+class TestStudentPatientVisit(FrappeTestCase):
+    def setUp(self):
+        frappe.set_user("Administrator")
+
+    def test_visit_insert_does_not_create_student_log(self):
+        student = _make_student("Visit Insert")
+        patient = _make_student_patient(student.name)
+        logs_before = frappe.db.count("Student Log", {"student": student.name})
+
+        visit = frappe.get_doc(
+            {
+                "doctype": "Student Patient Visit",
+                "date": nowdate(),
+                "student_patient": patient.name,
+                "note": "Student visited the nurse for observation.",
+            }
+        ).insert()
+
+        self.assertTrue(visit.name)
+        self.assertEqual(frappe.db.count("Student Log", {"student": student.name}), logs_before)
+
+    def test_visit_submit_does_not_create_student_log(self):
+        student = _make_student("Visit Submit")
+        patient = _make_student_patient(student.name)
+        logs_before = frappe.db.count("Student Log", {"student": student.name})
+
+        visit = frappe.get_doc(
+            {
+                "doctype": "Student Patient Visit",
+                "date": nowdate(),
+                "student_patient": patient.name,
+                "note": "Student was discharged after a short rest.",
+            }
+        ).insert()
+        visit.submit()
+
+        self.assertEqual(visit.docstatus, 1)
+        self.assertEqual(frappe.db.count("Student Log", {"student": student.name}), logs_before)
+
+    def test_visit_validate_sets_school_from_student_anchor_school(self):
+        organization = make_organization("Visit School Org")
+        school = make_school(organization.name, prefix="Visit School")
+        student = _make_student("Visit School")
+        frappe.db.set_value("Student", student.name, "anchor_school", school.name, update_modified=False)
+        patient = _make_student_patient(student.name)
+
+        visit = frappe.get_doc(
+            {
+                "doctype": "Student Patient Visit",
+                "date": nowdate(),
+                "student_patient": patient.name,
+                "note": "Student visited the nurse with school resolved server-side.",
+            }
+        ).insert()
+
+        self.assertEqual(visit.school, school.name)
+
+    def test_visit_insert_joins_student_group_for_parent_fields(self):
+        student = _make_student("Visit Group Join")
+        patient = _make_student_patient(student.name)
+        original_sql = frappe.db.sql
+        saw_group_lookup = {"value": False}
+
+        def guarded_sql(query, values=None, *args, **kwargs):
+            sql = str(query)
+            if "`tabStudent Group Student`" in sql and "`tabStudent Group`" in sql:
+                saw_group_lookup["value"] = True
+                self.assertIn("sg.academic_year", sql)
+                self.assertIn("sg.school", sql)
+                self.assertIn("sg.school_schedule", sql)
+                self.assertIn("IFNULL(sgs.active, 1) = 1", sql)
+                self.assertIn("IFNULL(sg.status, 'Active') = 'Active'", sql)
+                return []
+            return original_sql(query, values, *args, **kwargs)
+
+        with patch.object(frappe.db, "sql", side_effect=guarded_sql), patch.object(frappe, "log_error") as log_error:
+            visit = frappe.get_doc(
+                {
+                    "doctype": "Student Patient Visit",
+                    "date": nowdate(),
+                    "student_patient": patient.name,
+                    "note": "Student visited the nurse while assigned to a class.",
+                }
+            ).insert()
+            visit.notify_instructor()
+
+        self.assertTrue(visit.name)
+        self.assertTrue(saw_group_lookup["value"])
+        log_error.assert_not_called()
+
+
+def _make_student(prefix):
+    _ensure_gender("Female")
+    student = frappe.get_doc(
+        {
+            "doctype": "Student",
+            "student_first_name": prefix,
+            "student_last_name": f"Test {frappe.generate_hash(length=6)}",
+            "student_email": f"{frappe.generate_hash(length=8)}@example.com",
+            "student_gender": "Female",
+        }
+    )
+    previous_in_migration = bool(getattr(frappe.flags, "in_migration", False))
+    frappe.flags.in_migration = True
+    try:
+        student.insert()
+    finally:
+        frappe.flags.in_migration = previous_in_migration
+    return student
+
+
+def _make_student_patient(student_name):
+    existing_name = frappe.db.get_value("Student Patient", {"student": student_name}, "name")
+    if existing_name:
+        return frappe.get_doc("Student Patient", existing_name)
+    return frappe.get_doc({"doctype": "Student Patient", "student": student_name}).insert()
+
+
+def _ensure_gender(gender_name: str):
+    if frappe.db.exists("Gender", gender_name):
+        return
+    frappe.get_doc({"doctype": "Gender", "gender": gender_name}).insert(ignore_permissions=True)

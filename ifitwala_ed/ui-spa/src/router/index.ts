@@ -1,0 +1,257 @@
+// ui-spa/src/router/index.ts
+
+import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
+import { toast } from 'frappe-ui'
+
+const routes: RouteRecordRaw[] = [
+  // redirect to a named canonical portal namespace
+  {
+    path: '/',
+    redirect: () => {
+      const section = (window as any).defaultPortal || 'student';
+      return { name: `${section}-home` };
+    },
+  },
+
+  // Student
+  {
+    path: '/student',
+    name: 'student-home',
+    component: () => import('@/pages/student/StudentHome.vue'),
+    meta: { layout: 'student' },
+  },
+  {
+    path: '/student/course-selection',
+    name: 'student-course-selection',
+    component: () => import('@/pages/student/StudentCourseSelection.vue'),
+    meta: { layout: 'student' },
+  },
+  {
+    path: '/student/course-selection/:selection_window',
+    name: 'student-course-selection-detail',
+    component: () => import('@/pages/student/StudentCourseSelectionDetail.vue'),
+    meta: { layout: 'student' },
+  },
+  {
+    path: '/student/activities',
+    name: 'student-activities',
+    component: () => import('@/pages/student/StudentActivities.vue'),
+    meta: { layout: 'student' },
+  },
+  {
+    path: '/student/consents',
+    name: 'student-consents',
+    component: () => import('@/pages/student/StudentConsents.vue'),
+    meta: { layout: 'student' },
+  },
+  {
+    path: '/student/consents/:request_key/:student_id',
+    name: 'student-consent-detail',
+    component: () => import('@/pages/student/StudentConsentDetail.vue'),
+    meta: { layout: 'student' },
+  },
+  {
+    path: '/student/policies',
+    name: 'student-policies',
+    component: () => import('@/pages/student/StudentPolicies.vue'),
+    meta: { layout: 'student' },
+  },
+  {
+    path: '/student/communications',
+    name: 'student-communications',
+    component: () => import('@/pages/student/StudentCommunicationCenter.vue'),
+    meta: { layout: 'student' },
+  },
+  {
+    path: '/student/portfolio',
+    name: 'student-portfolio',
+    component: () => import('@/pages/student/StudentPortfolioFeed.vue'),
+    meta: { layout: 'student', portal: 'Student' },
+  },
+  {
+    path: '/student/logs',
+    name: 'student-logs',
+    component: () => import('@/pages/student/StudentLogs.vue'),
+    meta: { layout: 'student' },
+  },
+  {
+    path: '/student/profile',
+    name: 'student-profile',
+    component: () => import('@/pages/student/Profile.vue'),
+    meta: { layout: 'student' },
+  },
+  {
+    path: '/student/courses',
+    name: 'student-courses',
+    component: () => import('@/pages/student/Courses.vue'),
+    meta: { layout: 'student' },
+  },
+  {
+    path: '/student/courses/:course_id',
+    name: 'student-course-detail',
+    component: () => import('@/pages/student/CourseDetail.vue'),
+    props: route => ({
+      course_id: String(route.params.course_id || ''),
+      student_group:
+        typeof route.query.student_group === 'string' ? route.query.student_group : '',
+      unit_plan: typeof route.query.unit_plan === 'string' ? route.query.unit_plan : '',
+      class_session:
+        typeof route.query.class_session === 'string' ? route.query.class_session : '',
+      task_delivery:
+        typeof route.query.task_delivery === 'string' ? route.query.task_delivery : '',
+    }),
+    meta: { layout: 'student' },
+  },
+  {
+    path: '/student/courses/:course_id/quizzes/:task_delivery',
+    name: 'student-quiz',
+    component: () => import('@/pages/student/StudentQuiz.vue'),
+    props: route => ({
+      course_id: String(route.params.course_id || ''),
+      task_delivery: String(route.params.task_delivery || ''),
+      student_group:
+        typeof route.query.student_group === 'string' ? route.query.student_group : '',
+      unit_plan:
+        typeof route.query.unit_plan === 'string' ? route.query.unit_plan : '',
+      class_session:
+        typeof route.query.class_session === 'string' ? route.query.class_session : '',
+    }),
+    meta: { layout: 'student' },
+  },
+  {
+    path: '/student/courses/:course_id/feedback/:task_outcome',
+    name: 'student-released-feedback',
+    component: () => import('@/pages/student/StudentReleasedFeedbackDetail.vue'),
+    props: route => ({
+      course_id: String(route.params.course_id || ''),
+      task_outcome: String(route.params.task_outcome || ''),
+      student_group:
+        typeof route.query.student_group === 'string' ? route.query.student_group : '',
+      unit_plan:
+        typeof route.query.unit_plan === 'string' ? route.query.unit_plan : '',
+      class_session:
+        typeof route.query.class_session === 'string' ? route.query.class_session : '',
+      task_delivery:
+        typeof route.query.task_delivery === 'string' ? route.query.task_delivery : '',
+    }),
+    meta: { layout: 'student' },
+  },
+
+  // Guardian
+  { path: '/guardian', name: 'guardian-home', component: () => import('@/pages/guardian/GuardianHome.vue'), meta: { layout: 'student' } },
+  { path: '/guardian/communications', name: 'guardian-communications', component: () => import('@/pages/guardian/GuardianCommunicationCenter.vue'), meta: { layout: 'student' } },
+  { path: '/guardian/course-selection', name: 'guardian-course-selection', component: () => import('@/pages/guardian/GuardianCourseSelection.vue'), meta: { layout: 'student' } },
+  { path: '/guardian/course-selection/:selection_window/:student_id', name: 'guardian-course-selection-detail', component: () => import('@/pages/guardian/GuardianCourseSelectionDetail.vue'), meta: { layout: 'student' } },
+  { path: '/guardian/activities', name: 'guardian-activities', component: () => import('@/pages/guardian/GuardianActivities.vue'), meta: { layout: 'student' } },
+  { path: '/guardian/attendance', name: 'guardian-attendance', component: () => import('@/pages/guardian/GuardianAttendance.vue'), meta: { layout: 'student' } },
+  { path: '/guardian/consents', name: 'guardian-consents', component: () => import('@/pages/guardian/GuardianConsents.vue'), meta: { layout: 'student' } },
+  { path: '/guardian/consents/:request_key/:student_id', name: 'guardian-consent-detail', component: () => import('@/pages/guardian/GuardianConsentDetail.vue'), meta: { layout: 'student' } },
+  { path: '/guardian/policies', name: 'guardian-policies', component: () => import('@/pages/guardian/GuardianPolicies.vue'), meta: { layout: 'student' } },
+  { path: '/guardian/finance', name: 'guardian-finance', component: () => import('@/pages/guardian/GuardianFinance.vue'), meta: { layout: 'student' } },
+  { path: '/guardian/monitoring', name: 'guardian-monitoring', component: () => import('@/pages/guardian/GuardianMonitoring.vue'), meta: { layout: 'student' } },
+  {
+    path: '/guardian/students/:student_id/feedback/:task_outcome',
+    name: 'guardian-released-feedback',
+    component: () => import('@/pages/guardian/GuardianReleasedFeedbackDetail.vue'),
+    props: route => ({
+      student_id: String(route.params.student_id || ''),
+      task_outcome: String(route.params.task_outcome || ''),
+    }),
+    meta: { layout: 'student' },
+  },
+  { path: '/guardian/portfolio', name: 'guardian-portfolio', component: () => import('@/pages/guardian/GuardianPortfolioFeed.vue'), meta: { layout: 'student', portal: 'Guardian' } },
+  { path: '/guardian/students/:student_id', name: 'guardian-student', component: () => import('@/pages/guardian/GuardianStudentShell.vue'), meta: { layout: 'student' } },
+
+  // Staff
+  { path: '/staff', name: 'staff-home', component: () => import('@/pages/staff/StaffHome.vue'), meta: { layout: 'staff' } },
+  { path: '/staff/calendar-sync', name: 'staff-calendar-sync', component: () => import('@/pages/staff/StaffCalendarSync.vue'), meta: { layout: 'staff' } },
+  { path: '/staff/portfolio', name: 'staff-portfolio', component: () => import('@/pages/staff/StaffPortfolioFeed.vue'), meta: { layout: 'staff', portal: 'Staff' } },
+  { path: '/staff/professional-development', name: 'staff-professional-development', component: () => import('@/pages/staff/ProfessionalDevelopment.vue'), meta: { layout: 'staff' } },
+  { path: '/staff/organization-chart', name: 'staff-organization-chart', component: () => import('@/pages/staff/organization_chart/OrganizationChart.vue'), meta: { layout: 'staff' } },
+  {
+    path: '/staff/course-plans',
+    name: 'staff-course-plan-index',
+    component: () => import('@/pages/staff/CoursePlanIndex.vue'),
+    meta: { layout: 'staff' },
+  },
+  {
+    path: '/staff/course-plans/:coursePlan',
+    name: 'staff-course-plan',
+    component: () => import('@/pages/staff/CoursePlanWorkspace.vue'),
+    props: route => ({
+      coursePlan: String(route.params.coursePlan || ''),
+      unitPlan: typeof route.query.unit_plan === 'string' ? route.query.unit_plan : '',
+      quizQuestionBank:
+        typeof route.query.quiz_question_bank === 'string' ? route.query.quiz_question_bank : '',
+      studentGroup: typeof route.query.student_group === 'string' ? route.query.student_group : '',
+    }),
+    meta: { layout: 'staff' },
+  },
+  { path: '/staff/class/:studentGroup', name: 'ClassHub', component: () => import('@/pages/staff/ClassHub.vue'), meta: { layout: 'staff' } },
+  { path: '/staff/class/:studentGroup/planning', name: 'staff-class-planning', component: () => import('@/pages/staff/ClassPlanning.vue'), meta: { layout: 'staff' } },
+
+	{path: '/staff/morning-brief', name: 'MorningBriefing', component: () => import('@/pages/staff/morning_brief/MorningBriefing.vue'), meta: { layout: 'staff' } },
+  { path: '/staff/student-groups', name: 'staff-student-groups', component: () => import('@/pages/staff/schedule/student-groups/StudentGroups.vue'), meta: { layout: 'staff' } },
+  { path: '/staff/attendance', name: 'staff-attendance', component: () => import('@/pages/staff/schedule/StudentAttendanceTool.vue'), meta: { layout: 'staff' } },
+  { path: '/staff/gradebook', name: 'staff-gradebook', component: () => import('@/pages/staff/gradebook/Gradebook.vue'), meta: { layout: 'staff' } },
+  { path: '/staff/term-reporting', name: 'staff-term-reporting', component: () => import('@/pages/staff/TermReportingReview.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/analytics/student-logs', name: 'staff-student-log-analytics', component: () => import('@/pages/staff/analytics/StudentLogAnalytics.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/analytics/student-demographics', name: 'student-demographic-analytics', component: () => import('@/pages/staff/analytics/StudentDemographicAnalytics.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/analytics/student-overview', name: 'staff-student-overview', component: () => import('@/pages/staff/analytics/StudentOverview.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/analytics/attendance', name: 'staff-attendance-analytics', component: () => import('@/pages/staff/analytics/AttendanceAnalytics.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/analytics/attendance-ledger', name: 'staff-attendance-ledger', component: () => import('@/pages/staff/analytics/AttendanceLedger.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/analytics/enrollment', name: 'StaffEnrollmentAnalytics', component: () => import('@/pages/staff/analytics/EnrollmentAnalytics.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/analytics/academic-load', name: 'staff-academic-load', component: () => import('@/pages/staff/analytics/AcademicLoad.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/analytics/policy-signatures', name: 'staff-policy-signature-analytics', component: () => import('@/pages/staff/analytics/PolicySignatureAnalytics.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/analytics/forms-signatures', name: 'staff-forms-signatures-analytics', component: () => import('@/pages/staff/analytics/FormsSignaturesAnalytics.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/policies', name: 'staff-policies', component: () => import('@/pages/staff/StaffPolicies.vue'), meta: { layout: 'staff' } },
+  { path: '/staff/announcements', name: 'staff-announcements', component: () => import('@/pages/staff/OrgCommunicationArchive.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/analytics/inquiry', name: 'staff-inquiry-analytics', component: () => import('@/pages/staff/analytics/InquiryAnalytics.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/admissions/inbox', name: 'staff-admissions-inbox', component: () => import('@/pages/staff/admissions/AdmissionsInbox.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/admission-cockpit', name: 'staff-admission-cockpit', component: () => import('@/pages/staff/admissions/AdmissionsCockpit.vue'), meta: { layout: 'staff' } },
+	{ path: '/staff/room-utilization', name: 'staff-room-utilization', component: () => import('@/pages/staff/analytics/RoomUtilization.vue'), meta: { layout: 'staff' } },
+]
+
+const router = createRouter({
+  // Canonical portal namespace is /hub; route paths remain base-less inside SPA.
+  history: createWebHistory('/hub'),
+  routes,
+})
+
+router.beforeEach((to) => {
+  const rawDefaultPortal = (window as unknown as { defaultPortal?: string }).defaultPortal || 'student'
+  const defaultPortal = String(rawDefaultPortal || 'student').trim().toLowerCase() || 'student'
+
+  const rawRoles = (window as unknown as { portalRoles?: unknown }).portalRoles
+  const roles = (Array.isArray(rawRoles) ? rawRoles : [])
+    .map((role) => String(role || '').trim().toLowerCase())
+    .filter(Boolean)
+  if (!roles.length && defaultPortal) {
+    roles.push(defaultPortal)
+  }
+
+  const routePath = String(to.path || '')
+  const sectionFromPath =
+    routePath.startsWith('/staff')
+      ? 'staff'
+      : routePath.startsWith('/guardian')
+        ? 'guardian'
+        : routePath.startsWith('/student')
+          ? 'student'
+          : null
+
+  if (sectionFromPath && !roles.includes(sectionFromPath)) {
+    toast.error(`You do not have access to the ${sectionFromPath} portal.`)
+    return { name: `${defaultPortal}-home` }
+  }
+
+  const required = ((to.meta as any)?.portal as string | undefined)?.trim().toLowerCase()
+  if (required && !roles.includes(required)) {
+    toast.error(`You do not have access to the ${required} portfolio view.`)
+    return { name: `${defaultPortal}-home` }
+  }
+  return true
+})
+
+
+export default router

@@ -1,0 +1,153 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2026-01-14 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_main",
+  "inventory_item",
+  "serial_no",
+  "asset_tag",
+  "column_break_status",
+  "status",
+  "condition",
+  "section_break_custody",
+  "current_location",
+  "current_employee",
+  "current_student",
+  "current_guardian"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_main",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "inventory_item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Inventory Item",
+   "options": "Inventory Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "serial_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Serial No",
+   "unique": 1
+  },
+  {
+   "fieldname": "asset_tag",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Asset Tag",
+   "unique": 1
+  },
+  {
+   "fieldname": "column_break_status",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Available",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Available\nIssued\nUnder Repair\nLost\nRetired"
+  },
+  {
+   "fieldname": "condition",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Condition",
+   "options": "New\nGood\nWorn\nDamaged"
+  },
+  {
+   "fieldname": "section_break_custody",
+   "fieldtype": "Section Break",
+   "label": "Current Custody"
+  },
+  {
+   "fieldname": "current_location",
+   "fieldtype": "Link",
+   "label": "Current Location",
+   "options": "Location"
+  },
+  {
+   "fieldname": "current_employee",
+   "fieldtype": "Link",
+   "label": "Current Employee",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "current_student",
+   "fieldtype": "Link",
+   "label": "Current Student",
+   "options": "Student"
+  },
+  {
+   "fieldname": "current_guardian",
+   "fieldtype": "Link",
+   "label": "Current Guardian",
+   "options": "Guardian"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-01-14 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Stock",
+ "name": "Inventory Unit",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Item Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock User"
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales User"
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Purchase User"
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User"
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

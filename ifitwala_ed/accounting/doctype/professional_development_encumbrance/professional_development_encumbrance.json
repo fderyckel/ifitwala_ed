@@ -1,0 +1,264 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:PDE-{YYYY}-{####}",
+ "creation": "2026-03-20 09:59:26.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_scope",
+  "organization",
+  "school",
+  "academic_year",
+  "professional_development_budget",
+  "professional_development_request",
+  "professional_development_record",
+  "section_break_posting",
+  "posting_date",
+  "fiscal_year",
+  "liquidation_date",
+  "liquidation_fiscal_year",
+  "status",
+  "section_break_accounts",
+  "encumbrance_account",
+  "expense_account",
+  "clearing_account",
+  "section_break_amounts",
+  "encumbered_amount",
+  "liquidated_amount",
+  "released_amount",
+  "variance_amount"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_scope",
+   "fieldtype": "Section Break",
+   "label": "Scope"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Organization",
+   "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "School",
+   "options": "School",
+   "reqd": 1
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year",
+   "reqd": 1
+  },
+  {
+   "fieldname": "professional_development_budget",
+   "fieldtype": "Link",
+   "label": "Professional Development Budget",
+   "options": "Professional Development Budget",
+   "reqd": 1
+  },
+  {
+   "fieldname": "professional_development_request",
+   "fieldtype": "Link",
+   "label": "Professional Development Request",
+   "options": "Professional Development Request"
+  },
+  {
+   "fieldname": "professional_development_record",
+   "fieldtype": "Link",
+   "label": "Professional Development Record",
+   "options": "Professional Development Record"
+  },
+  {
+   "fieldname": "section_break_posting",
+   "fieldtype": "Section Break",
+   "label": "Posting"
+  },
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "fiscal_year",
+   "fieldtype": "Link",
+   "label": "Fiscal Year",
+   "options": "Fiscal Year",
+   "read_only": 1
+  },
+  {
+   "fieldname": "liquidation_date",
+   "fieldtype": "Date",
+   "label": "Liquidation Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "liquidation_fiscal_year",
+   "fieldtype": "Link",
+   "label": "Liquidation Fiscal Year",
+   "options": "Fiscal Year",
+   "read_only": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Draft\nReserved\nReleased\nLiquidated"
+  },
+  {
+   "fieldname": "section_break_accounts",
+   "fieldtype": "Section Break",
+   "label": "Accounts"
+  },
+  {
+   "fieldname": "encumbrance_account",
+   "fieldtype": "Link",
+   "label": "Encumbrance Account",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "expense_account",
+   "fieldtype": "Link",
+   "label": "Expense Account",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "clearing_account",
+   "fieldtype": "Link",
+   "label": "Clearing Account",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_amounts",
+   "fieldtype": "Section Break",
+   "label": "Amounts"
+  },
+  {
+   "default": "0",
+   "fieldname": "encumbered_amount",
+   "fieldtype": "Currency",
+   "label": "Encumbered Amount",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "liquidated_amount",
+   "fieldtype": "Currency",
+   "label": "Liquidated Amount",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "released_amount",
+   "fieldtype": "Currency",
+   "label": "Released Amount",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "variance_amount",
+   "fieldtype": "Currency",
+   "label": "Variance Amount",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-20 09:59:26.000000",
+ "modified_by": "Administrator",
+ "module": "Accounting",
+ "name": "Professional Development Encumbrance",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

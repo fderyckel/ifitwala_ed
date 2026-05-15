@@ -1,0 +1,371 @@
+# Copyright (c) 2026, Francois de Ryckel and contributors
+# For license information, please see license.txt
+
+# ifitwala_ed/schedule/enrollment_request_utils.py
+
+import json
+
+import frappe
+from frappe import _
+from frappe.utils import getdate, now_datetime
+
+from ifitwala_ed.schedule.schedule_utils import get_school_term_bounds
+
+
+def _requested_course_rows_from_doc(doc) -> list[dict]:
+    requested = []
+    seen = set()
+    for row in doc.courses or []:
+        course = (getattr(row, "course", None) or "").strip()
+        if not course or course in seen:
+            continue
+        seen.add(course)
+        requested.append(
+            {
+                "course": course,
+                "applied_basket_group": (getattr(row, "applied_basket_group", None) or "").strip(),
+                "choice_rank": getattr(row, "choice_rank", None),
+            }
+        )
+    return requested
+
+
+def build_program_enrollment_request_validation(doc, *, force=0):
+    force = int(force or 0)
+
+    if not force and (doc.validation_status or "").strip() == "Valid":
+        if doc.validation_payload:
+            try:
+                return json.loads(doc.validation_payload), None
+            except Exception:
+                return {"validation_payload": doc.validation_payload}, None
+        return {}, None
+
+    requested = _requested_course_rows_from_doc(doc)
+    if not requested:
+        frappe.throw(_("No courses selected to validate."))
+
+    from ifitwala_ed.schedule.enrollment_engine import evaluate_enrollment_request
+
+    seat_policy = frappe.db.get_value("Program Offering", doc.program_offering, "seat_policy")
+    capacity_policy = _map_offering_seat_policy_to_capacity_policy(seat_policy)
+
+    engine_payload = evaluate_enrollment_request(
+        {
+            "student": doc.student,
+            "program_offering": doc.program_offering,
+            "requested_courses": requested,
+            "request_id": doc.name,
+            "capacity_policy": capacity_policy,
+        }
+    )
+
+    summary = engine_payload.get("summary") or {}
+    results = engine_payload.get("results") or {}
+    basket = results.get("basket") or {}
+
+    basket_status = (summary.get("basket_status") or basket.get("status") or "").strip()
+    basket_pass = basket_status in {"ok", "valid"}
+    basket_override_required = bool(basket.get("override_required") or summary.get("override_required"))
+
+    all_ok = True
+    requires_override = False
+
+    if "valid" in summary:
+        all_ok = bool(summary.get("valid"))
+    else:
+        for row in results.get("courses") or []:
+            if row.get("blocked"):
+                all_ok = False
+            if row.get("override_required"):
+                requires_override = True
+        if not basket_pass:
+            all_ok = False
+
+    requires_override = bool(
+        requires_override
+        or any(bool(row.get("override_required")) for row in (results.get("courses") or []))
+        or basket_override_required
+    )
+
+    if not basket_pass:
+        all_ok = False
+
+    validation_status = "Valid" if all_ok else "Invalid"
+    updates = {
+        "validation_status": validation_status,
+        "validation_payload": json.dumps(engine_payload, sort_keys=True, default=str),
+        "validated_on": now_datetime(),
+        "validated_by": frappe.session.user,
+        "request_kind": (doc.request_kind or "Academic").strip() or "Academic",
+        "requires_override": 1 if requires_override else 0,
+    }
+    return engine_payload, updates
+
+
+def _map_offering_seat_policy_to_capacity_policy(seat_policy: str | None) -> str:
+    policy = (seat_policy or "").strip()
+    if policy == "Committed Only":
+        return "committed_only"
+    if policy == "Approved Requests Hold Seats":
+        return "approved_requests"
+    if policy == "Submitted Holds Seats":
+        return "submitted_holds"
+    return "committed_only"
+
+
+@frappe.whitelist()
+def validate_program_enrollment_request(request_name, force=0):
+    if not request_name:
+        frappe.throw(_("Program Enrollment Request is required."))
+
+    _assert_no_catalog_prereqs()
+
+    doc = frappe.get_doc("Program Enrollment Request", request_name)
+    engine_payload, updates = build_program_enrollment_request_validation(doc, force=force)
+    if updates:
+        doc.db_set(updates, update_modified=True)
+    return engine_payload
+
+
+def _resolve_materialization_enrollment_date(academic_year: str, enrollment_date=None):
+    if not academic_year:
+        frappe.throw(_("Academic Year is required to materialize enrollment."))
+
+    ay = frappe.get_doc("Academic Year", academic_year)
+    if not ay.year_start_date or not ay.year_end_date:
+        frappe.throw(
+            _("Academic Year {academic_year} must have start and end dates.").format(academic_year=academic_year)
+        )
+
+    if enrollment_date:
+        resolved = getdate(enrollment_date)
+        if resolved < getdate(ay.year_start_date) or resolved > getdate(ay.year_end_date):
+            frappe.throw(
+                _("Enrollment Date must fall inside Academic Year {academic_year}.").format(academic_year=academic_year)
+            )
+        return resolved
+
+    return frappe.utils.nowdate()
+
+
+def _resolve_materialization_course_terms(
+    *, program_offering: str, academic_year: str, school: str, courses: list[str]
+):
+    from ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment import (
+        _ay_bounds_for,
+        _offering_courses_index,
+    )
+
+    course_names = sorted({(course or "").strip() for course in (courses or []) if (course or "").strip()})
+    if not program_offering or not academic_year or not course_names:
+        return {}
+
+    ay_start, ay_end = _ay_bounds_for(program_offering, academic_year)
+    if not (ay_start and ay_end):
+        return {}
+
+    offering_index = _offering_courses_index(program_offering)
+    course_rows = frappe.get_all(
+        "Course",
+        filters={"name": ["in", course_names]},
+        fields=["name", "term_long"],
+        limit=max(200, len(course_names) * 2),
+    )
+    course_term_long = {
+        (row.get("name") or "").strip(): int(row.get("term_long") or 0)
+        for row in (course_rows or [])
+        if (row.get("name") or "").strip()
+    }
+    bounds = get_school_term_bounds(school, academic_year) or {}
+
+    output = {}
+    for course in course_names:
+        spans = [
+            span
+            for span in (offering_index.get(course) or [])
+            if ay_start <= span.get("end") and span.get("start") <= ay_end
+        ]
+        spans.sort(
+            key=lambda span: (
+                0 if span.get("term_start") or span.get("term_end") else 1,
+                span.get("start"),
+                span.get("end"),
+            )
+        )
+        chosen = spans[0] if spans else {}
+
+        term_start = (chosen.get("term_start") or "").strip()
+        term_end = (chosen.get("term_end") or "").strip()
+        if not course_term_long.get(course) and bounds:
+            term_start = term_start or (bounds.get("term_start") or "")
+            term_end = term_end or (bounds.get("term_end") or "")
+
+        output[course] = {
+            "term_start": term_start,
+            "term_end": term_end,
+        }
+
+    return output
+
+
+@frappe.whitelist()
+def materialize_program_enrollment_request(request_name, enrollment_date=None):
+    if not request_name:
+        frappe.throw(_("Program Enrollment Request is required."))
+
+    _assert_no_catalog_prereqs()
+
+    req = frappe.get_doc("Program Enrollment Request", request_name)
+
+    # 1) Hard gates: status + validation snapshot must exist
+    if (req.status or "").strip() != "Approved":
+        frappe.throw(_("Only Approved requests can be materialized."))
+
+    if (req.validation_status or "").strip() != "Valid":
+        frappe.throw(_("Request must be Valid before materializing enrollment."))
+
+    if not req.validation_payload:
+        frappe.throw(_("Validation Payload is required before materializing enrollment."))
+
+    materialization_enrollment_date = _resolve_materialization_enrollment_date(req.academic_year, enrollment_date)
+
+    # 2) Resolve program + school from request/offering (single fetch)
+    offering = (
+        frappe.db.get_value(
+            "Program Offering",
+            req.program_offering,
+            ["program", "school"],
+            as_dict=True,
+        )
+        or {}
+    )
+
+    program = req.program or offering.get("program")
+    if not program:
+        frappe.throw(_("Program is required to materialize enrollment."))
+
+    school = req.school or offering.get("school")
+
+    # 3) Collect unique request rows from request (no duplicate courses) and enrich with offering term intent.
+    request_rows = []
+    seen = set()
+    requested_courses = []
+    for row in req.courses or []:
+        course = (row.course or "").strip()
+        if not course or course in seen:
+            continue
+        seen.add(course)
+        requested_courses.append(course)
+        request_rows.append(
+            {
+                "course": course,
+                "required": 1 if int(row.required or 0) == 1 else 0,
+                "credited_basket_group": (row.applied_basket_group or "").strip(),
+            }
+        )
+
+    if not request_rows:
+        frappe.throw(_("No courses selected to materialize."))
+
+    course_terms = _resolve_materialization_course_terms(
+        program_offering=req.program_offering,
+        academic_year=req.academic_year,
+        school=school,
+        courses=requested_courses,
+    )
+    for row in request_rows:
+        term_info = course_terms.get(row["course"]) or {}
+        row["term_start"] = (term_info.get("term_start") or "").strip()
+        row["term_end"] = (term_info.get("term_end") or "").strip()
+
+    # 4) Find existing enrollment for same (student, offering, ay)
+    filters = {
+        "student": req.student,
+        "program_offering": req.program_offering,
+        "academic_year": req.academic_year,
+    }
+    match = frappe.get_all("Program Enrollment", filters=filters, fields=["name"], limit=1)
+
+    # 5) Create or update enrollment, forcing Request-source lock
+    if match:
+        enrollment = frappe.get_doc("Program Enrollment", match[0].name)
+
+        # If it already exists but isn't Request-source, this is an admin/migration enrollment.
+        # Do NOT mutate it silently; require explicit admin action instead.
+        if (enrollment.enrollment_source or "").strip() and (enrollment.enrollment_source or "").strip() != "Request":
+            frappe.throw(_("Cannot materialize into an enrollment that was not created from a Request source."))
+
+        # Ensure linkage (idempotent)
+        enrollment.enrollment_source = "Request"
+        enrollment.program_enrollment_request = req.name
+
+        existing = {r.course: r for r in (enrollment.courses or []) if r.course}
+        for row in request_rows:
+            course = row["course"]
+            if course in existing:
+                existing[course].status = "Enrolled"
+                existing[course].required = row["required"]
+                existing[course].credited_basket_group = row["credited_basket_group"]
+                existing[course].term_start = row["term_start"]
+                existing[course].term_end = row["term_end"]
+            else:
+                enrollment.append(
+                    "courses",
+                    {
+                        "course": course,
+                        "status": "Enrolled",
+                        "required": row["required"],
+                        "credited_basket_group": row["credited_basket_group"],
+                        "term_start": row["term_start"],
+                        "term_end": row["term_end"],
+                    },
+                )
+
+    else:
+        enrollment = frappe.get_doc(
+            {
+                "doctype": "Program Enrollment",
+                "student": req.student,
+                "program": program,
+                "program_offering": req.program_offering,
+                "academic_year": req.academic_year,
+                "school": school,
+                "enrollment_date": materialization_enrollment_date,
+                "enrollment_source": "Request",
+                "program_enrollment_request": req.name,
+                "courses": [
+                    {
+                        "course": row["course"],
+                        "status": "Enrolled",
+                        "required": row["required"],
+                        "credited_basket_group": row["credited_basket_group"],
+                        "term_start": row["term_start"],
+                        "term_end": row["term_end"],
+                    }
+                    for row in request_rows
+                ],
+            }
+        )
+
+    # 6) Save using the Request-source guard flag (keeps your Program Enrollment protection)
+    frappe.flags.enrollment_from_request = True
+    try:
+        enrollment.save()
+    finally:
+        frappe.flags.enrollment_from_request = False
+
+    enrollment.add_comment(
+        "Comment",
+        _("Materialized from Program Enrollment Request {request}.").format(request=req.name),
+    )
+    return enrollment.name
+
+
+def _assert_no_catalog_prereqs():
+    meta = frappe.get_meta("Course")
+    if not meta:
+        return
+    if meta.has_field("prerequisites"):
+        frappe.throw(_("Catalog-level prerequisites are not supported. Use program-scoped prerequisites."))
+    assert not meta.has_field("prerequisites")

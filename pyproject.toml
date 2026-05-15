@@ -1,0 +1,42 @@
+[project]
+name = "ifitwala_ed"
+authors = [
+    { name = "François de Ryckel", email = "f.deryckel@gmail.com"}
+]
+description = "School management System"
+requires-python = ">=3.10"
+readme = "README.md"
+dynamic = ["version"]
+dependencies = [
+    # "frappe~=16.0.0" # Installed and managed by bench.
+    "holidays>=0.86",
+    "jsonschema>=4.0.0",
+]
+
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.bench.frappe-dependencies]
+frappe = ">=16.0.0-dev,<=17.0.0-dev"
+
+# These dependencies are only installed when developer mode is enabled
+[tool.bench.dev-dependencies]
+# package_name = "~=1.1.0"
+
+# --- RUFF CONFIGURATION ---
+[tool.ruff]
+line-length = 120   # <--- This solves your "Line too long" errors
+indent-width = 4
+target-version = "py310"
+
+[tool.ruff.lint]
+# F = Pyflakes, E = pycodestyle errors, W = warnings, I = isort (imports)
+select = ["F", "E", "W", "I"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"

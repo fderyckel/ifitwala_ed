@@ -1,0 +1,473 @@
+# ifitwala_ed/admission/doctype/applicant_document/applicant_document.py
+
+import frappe
+from frappe import _
+from frappe.model.document import Document
+from frappe.utils import cint, now_datetime
+
+from ifitwala_ed.admission.access import (
+    ADMISSIONS_APPLICANT_ROLE,
+    ADMISSIONS_FAMILY_ROLE,
+    build_admissions_portal_access_exists_sql,
+    user_can_access_student_applicant,
+)
+from ifitwala_ed.admission.admission_utils import (
+    ADMISSIONS_ROLES,
+    READ_LIKE_PERMISSION_TYPES,
+    build_admissions_file_scope_exists_sql,
+    build_open_applicant_review_access_exists_sql,
+    has_open_applicant_review_access,
+    has_scoped_staff_access_to_student_applicant,
+    is_admissions_file_staff_user,
+)
+
+UPLOAD_ROLES = ADMISSIONS_ROLES | {
+    "Academic Admin",
+    "System Manager",
+    ADMISSIONS_APPLICANT_ROLE,
+    ADMISSIONS_FAMILY_ROLE,
+}
+REVIEW_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}
+OVERRIDE_ROLES = {"Admission Manager", "Academic Admin", "System Manager"}
+ALLOWED_REQUIREMENT_OVERRIDES = {"Waived", "Exception Approved"}
+AGGREGATE_FIELDS = ("review_status", "reviewed_by", "reviewed_on")
+OVERRIDE_FIELDS = ("requirement_override", "override_reason", "override_by", "override_on")
+PROMOTION_FIELDS = ("promotion_target", "promotion_notes")
+
+
+class ApplicantDocument(Document):
+    def validate(self):
+        before = self.get_doc_before_save() if not self.is_new() else None
+        self._normalize_fields()
+        self._validate_permissions(before)
+        self._validate_applicant_state()
+        self._validate_immutable_fields(before)
+        self._validate_unique_document_type()
+        self._validate_aggregate_fields(before)
+        self._validate_requirement_override(before)
+        self._validate_promotion_controls(before)
+
+    def before_trash(self):
+        self._validate_delete_allowed()
+
+    # Keep compatibility with older hook naming used in this app.
+    def before_delete(self):
+        self.before_trash()
+
+    def on_update(self):
+        before = self.get_doc_before_save()
+        if not before:
+            return
+        self._append_update_timeline(before)
+
+    def get_file_routing_context(self, file_doc):
+        doc_type_code = frappe.db.get_value("Applicant Document Type", self.document_type, "code") or self.document_type
+        return {
+            "root_folder": "Home/Admissions",
+            "subfolder": f"Applicant/{self.student_applicant}/Documents/{doc_type_code}",
+            "file_category": "Admissions Applicant Document",
+            "logical_key": doc_type_code,
+        }
+
+    def _normalize_fields(self):
+        self.student_applicant = (self.student_applicant or "").strip()
+        self.document_type = (self.document_type or "").strip()
+        self.document_label = (self.document_label or "").strip()
+        self.promotion_target = (self.promotion_target or "").strip()
+        self.promotion_notes = (self.promotion_notes or "").strip()
+        self.requirement_override = (self.requirement_override or "").strip()
+        self.override_reason = (self.override_reason or "").strip()
+
+    def _validate_permissions(self, before):
+        user_roles = set(frappe.get_roles(frappe.session.user))
+        if not user_roles & UPLOAD_ROLES:
+            frappe.throw(_("You do not have permission to manage Applicant Documents."))
+
+        if is_admissions_file_staff_user(frappe.session.user):
+            if not has_scoped_staff_access_to_student_applicant(
+                user=frappe.session.user,
+                student_applicant=self.student_applicant,
+            ):
+                frappe.throw(_("You do not have permission to manage this Applicant Document."), frappe.PermissionError)
+
+        is_staff_reviewer = bool(user_roles & REVIEW_ROLES)
+        is_portal_actor = bool(user_roles & {ADMISSIONS_APPLICANT_ROLE, ADMISSIONS_FAMILY_ROLE})
+        if is_portal_actor and not is_staff_reviewer:
+            if not user_can_access_student_applicant(
+                user=frappe.session.user, student_applicant=self.student_applicant
+            ):
+                frappe.throw(_("You do not have permission to manage this Applicant Document."), frappe.PermissionError)
+
+    def _validate_applicant_state(self):
+        status = frappe.db.get_value("Student Applicant", self.student_applicant, "application_status")
+        if status in {"Rejected", "Promoted"}:
+            frappe.throw(_("Applicant is read-only in terminal states."))
+
+    def _validate_immutable_fields(self, before):
+        if not before:
+            return
+        for field in ("student_applicant", "document_type"):
+            if before.get(field) != self.get(field):
+                frappe.throw(
+                    _("{field_label} is immutable once set.").format(field_label=field.replace("_", " ").title())
+                )
+
+    def _validate_unique_document_type(self):
+        if not self.student_applicant or not self.document_type:
+            return
+        exists = frappe.db.exists(
+            "Applicant Document",
+            {
+                "student_applicant": self.student_applicant,
+                "document_type": self.document_type,
+                "name": ["!=", self.name],
+            },
+        )
+        if exists:
+            frappe.throw(_("Only one Applicant Document per document type is allowed per Applicant."))
+
+    def _aggregate_fields_changed(self, before):
+        if not before:
+            status = (self.review_status or "").strip() or "Pending"
+            reviewed_by = (self.reviewed_by or "").strip()
+            reviewed_on = self.reviewed_on
+            return status != "Pending" or bool(reviewed_by or reviewed_on)
+        return any(before.get(field) != self.get(field) for field in AGGREGATE_FIELDS)
+
+    def _validate_aggregate_fields(self, before):
+        if self._aggregate_fields_changed(before):
+            frappe.throw(_("Requirement status is derived from submission review state and cannot be edited directly."))
+
+    def _override_fields_changed(self, before):
+        if not before:
+            return bool(self.requirement_override or self.override_reason or self.override_by or self.override_on)
+        return any(before.get(field) != self.get(field) for field in OVERRIDE_FIELDS)
+
+    def _validate_requirement_override(self, before):
+        if not self._override_fields_changed(before):
+            return
+
+        user_roles = set(frappe.get_roles(frappe.session.user))
+        if not user_roles & OVERRIDE_ROLES:
+            frappe.throw(
+                _(
+                    "Only Admission Manager, Academic Admin, or System Manager can set a requirement waiver or exception."
+                )
+            )
+
+        override_status = (self.requirement_override or "").strip()
+        if override_status and override_status not in ALLOWED_REQUIREMENT_OVERRIDES:
+            frappe.throw(_("Invalid requirement override: {override_status}.").format(override_status=override_status))
+
+        if not override_status:
+            self.override_reason = None
+            self.override_by = None
+            self.override_on = None
+            return
+
+        if not self.override_reason:
+            frappe.throw(_("Override reason is required when applying a waiver or exception."))
+
+        if not self.override_by:
+            self.override_by = frappe.session.user
+        if not self.override_on:
+            self.override_on = now_datetime()
+
+    def _promotion_fields_changed(self, before):
+        if not before:
+            return bool(self.promotion_target or self.promotion_notes)
+        return any(before.get(field) != self.get(field) for field in PROMOTION_FIELDS)
+
+    def _validate_promotion_controls(self, before):
+        if not self._promotion_fields_changed(before):
+            return
+        user_roles = set(frappe.get_roles(frappe.session.user))
+        if not user_roles & REVIEW_ROLES:
+            frappe.throw(
+                _(
+                    "Only Admission Officer, Admission Manager, Academic Admin, or System Manager can manage promotion routing."
+                )
+            )
+
+    def _validate_delete_allowed(self):
+        if not self.name:
+            return
+        files_exist = frappe.db.exists(
+            "File",
+            {
+                "attached_to_doctype": "Applicant Document",
+                "attached_to_name": self.name,
+            },
+        )
+        if not files_exist:
+            return
+        user_roles = set(frappe.get_roles(frappe.session.user))
+        if "System Manager" in user_roles:
+            return
+        frappe.throw(_("Cannot delete Applicant Document with attached files."))
+
+    def _append_update_timeline(self, before):
+        changes = []
+        before_override = (before.get("requirement_override") or "").strip()
+        current_override = (self.get("requirement_override") or "").strip()
+        if before_override != current_override:
+            changes.append(
+                _("Requirement Override: {before_override} -> {current_override}").format(
+                    before_override=before_override or _("None"),
+                    current_override=current_override or _("None"),
+                )
+            )
+
+        before_reason = (before.get("override_reason") or "").strip()
+        current_reason = (self.get("override_reason") or "").strip()
+        if before_reason != current_reason:
+            changes.append(_("Override reason updated") if current_reason else _("Override reason cleared"))
+
+        before_target = (before.get("promotion_target") or "").strip()
+        current_target = (self.get("promotion_target") or "").strip()
+        if before_target != current_target:
+            changes.append(
+                _("Promotion Target: {before_target} -> {current_target}").format(
+                    before_target=before_target or _("None"),
+                    current_target=current_target or _("None"),
+                )
+            )
+
+        if not changes:
+            return
+
+        document_label = (
+            frappe.db.get_value("Applicant Document Type", self.document_type, "code") or self.document_type
+        )
+        message = _(
+            "Applicant document updated: {document_label} ({applicant_document}) by {user} on {timestamp}. "
+            "Changes: {changes}."
+        ).format(
+            document_label=frappe.bold(document_label),
+            applicant_document=frappe.bold(self.name),
+            user=frappe.bold(frappe.session.user),
+            timestamp=now_datetime(),
+            changes="; ".join(changes),
+        )
+
+        try:
+            applicant = frappe.get_doc("Student Applicant", self.student_applicant)
+            applicant.add_comment("Comment", text=message)
+        except Exception:
+            frappe.log_error(
+                message=frappe.as_json(
+                    {
+                        "student_applicant": self.student_applicant,
+                        "applicant_document": self.name,
+                        "changes": changes,
+                    }
+                ),
+                title="Applicant document update timeline write failed",
+            )
+
+
+def _latest_review_actor(rows: list[dict], target_status: str) -> tuple[str | None, str | None]:
+    matching = [row for row in rows if (row.get("review_status") or "").strip() == target_status]
+    if not matching:
+        return None, None
+    matching.sort(key=lambda row: row.get("reviewed_on") or "", reverse=True)
+    picked = matching[0]
+    return (picked.get("reviewed_by") or None, picked.get("reviewed_on") or None)
+
+
+def sync_applicant_document_review_from_items(applicant_document: str | None) -> dict:
+    parent_name = (applicant_document or "").strip()
+    if not parent_name:
+        return {}
+    parent_row = (
+        frappe.db.get_value(
+            "Applicant Document",
+            parent_name,
+            ["name", "document_type"],
+            as_dict=True,
+        )
+        or {}
+    )
+    if not parent_row:
+        return {}
+
+    required_count = _required_count_for_document_type(parent_row.get("document_type"))
+
+    item_rows = frappe.get_all(
+        "Applicant Document Item",
+        filters={"applicant_document": parent_name},
+        fields=["review_status", "reviewed_by", "reviewed_on"],
+    )
+    active_rows = [row for row in item_rows if (row.get("review_status") or "Pending").strip() != "Superseded"]
+    statuses = [(row.get("review_status") or "Pending").strip() for row in active_rows]
+    approved_count = sum(1 for status in statuses if status == "Approved")
+
+    if approved_count >= required_count and approved_count > 0:
+        target_status = "Approved"
+        reviewed_by, reviewed_on = _latest_review_actor(active_rows, "Approved")
+    elif any(status == "Rejected" for status in statuses):
+        target_status = "Rejected"
+        reviewed_by, reviewed_on = _latest_review_actor(active_rows, "Rejected")
+    elif not statuses:
+        target_status = "Pending"
+        reviewed_by = None
+        reviewed_on = None
+    else:
+        target_status = "Pending"
+        reviewed_by = None
+        reviewed_on = None
+
+    current = (
+        frappe.db.get_value(
+            "Applicant Document",
+            parent_name,
+            ["review_status", "reviewed_by", "reviewed_on"],
+            as_dict=True,
+        )
+        or {}
+    )
+    updates = {}
+    if (current.get("review_status") or "Pending") != target_status:
+        updates["review_status"] = target_status
+    if (current.get("reviewed_by") or None) != reviewed_by:
+        updates["reviewed_by"] = reviewed_by
+    if (current.get("reviewed_on") or None) != reviewed_on:
+        updates["reviewed_on"] = reviewed_on
+
+    if updates:
+        frappe.db.set_value(
+            "Applicant Document",
+            parent_name,
+            updates,
+            update_modified=False,
+        )
+
+    return {
+        "review_status": target_status,
+        "reviewed_by": reviewed_by,
+        "reviewed_on": reviewed_on,
+    }
+
+
+def get_permission_query_conditions(user: str | None = None) -> str | None:
+    resolved_user = (user or frappe.session.user or "").strip()
+    if not resolved_user or resolved_user == "Guest":
+        return "1=0"
+
+    conditions: list[str] = []
+    if is_admissions_file_staff_user(resolved_user):
+        staff_condition = build_admissions_file_scope_exists_sql(
+            user=resolved_user,
+            student_applicant_expr_sql="`tabApplicant Document`.`student_applicant`",
+        )
+        if staff_condition is None:
+            return None
+        if staff_condition != "1=0":
+            conditions.append(f"({staff_condition})")
+
+    portal_condition = build_admissions_portal_access_exists_sql(
+        user=resolved_user,
+        student_applicant_expr_sql="`tabApplicant Document`.`student_applicant`",
+    )
+    if portal_condition != "1=0":
+        conditions.append(f"({portal_condition})")
+
+    reviewer_condition = build_open_applicant_review_access_exists_sql(
+        user=resolved_user,
+        student_applicant_expr_sql="`tabApplicant Document`.`student_applicant`",
+    )
+    if reviewer_condition != "1=0":
+        conditions.append(f"({reviewer_condition})")
+
+    return " OR ".join(conditions) if conditions else "1=0"
+
+
+def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bool:
+    resolved_user = (user or frappe.session.user or "").strip()
+    op = (ptype or "read").lower()
+    if not resolved_user or resolved_user == "Guest":
+        return False
+
+    if is_admissions_file_staff_user(resolved_user):
+        staff_ops = READ_LIKE_PERMISSION_TYPES | {"write", "create", "delete", "submit", "cancel", "amend"}
+        if op not in staff_ops:
+            return False
+        if op == "create":
+            if not doc:
+                return True
+        if not doc:
+            return True
+        student_applicant = _resolve_document_student_applicant(doc)
+        return has_scoped_staff_access_to_student_applicant(user=resolved_user, student_applicant=student_applicant)
+
+    if op in READ_LIKE_PERMISSION_TYPES and doc:
+        student_applicant = _resolve_document_student_applicant(doc)
+        if has_open_applicant_review_access(user=resolved_user, student_applicant=student_applicant):
+            return True
+
+    roles = set(frappe.get_roles(resolved_user))
+    if not roles & {ADMISSIONS_APPLICANT_ROLE, ADMISSIONS_FAMILY_ROLE}:
+        return False
+
+    applicant_ops = READ_LIKE_PERMISSION_TYPES | {"write", "create"}
+    if op not in applicant_ops:
+        return False
+    if op == "create":
+        if not doc:
+            return True
+    if not doc:
+        return op in READ_LIKE_PERMISSION_TYPES
+    return _is_document_applicant_self_user(doc=doc, user=resolved_user)
+
+
+def _resolve_document_student_applicant(doc) -> str:
+    if isinstance(doc, str):
+        document_name = (doc or "").strip()
+        if not document_name:
+            return ""
+        return (frappe.db.get_value("Applicant Document", document_name, "student_applicant") or "").strip()
+
+    if isinstance(doc, dict):
+        student_applicant = (doc.get("student_applicant") or "").strip()
+        if student_applicant:
+            return student_applicant
+        document_name = (doc.get("name") or "").strip()
+    else:
+        student_applicant = (getattr(doc, "student_applicant", None) or "").strip()
+        if student_applicant:
+            return student_applicant
+        document_name = (getattr(doc, "name", None) or "").strip()
+
+    if not document_name:
+        return ""
+    return (frappe.db.get_value("Applicant Document", document_name, "student_applicant") or "").strip()
+
+
+def _is_student_applicant_self_user(student_applicant: str | None, user: str | None) -> bool:
+    applicant_name = (student_applicant or "").strip()
+    resolved_user = (user or "").strip()
+    return user_can_access_student_applicant(user=resolved_user, student_applicant=applicant_name)
+
+
+def _is_document_applicant_self_user(*, doc, user: str) -> bool:
+    student_applicant = _resolve_document_student_applicant(doc)
+    return _is_student_applicant_self_user(student_applicant, user)
+
+
+def _required_count_for_document_type(document_type: str | None) -> int:
+    document_type_name = (document_type or "").strip()
+    if not document_type_name:
+        return 1
+
+    row = (
+        frappe.db.get_value(
+            "Applicant Document Type",
+            document_type_name,
+            ["is_repeatable", "min_items_required"],
+            as_dict=True,
+        )
+        or {}
+    )
+    if not cint(row.get("is_repeatable")):
+        return 1
+    return max(1, cint(row.get("min_items_required") or 1))

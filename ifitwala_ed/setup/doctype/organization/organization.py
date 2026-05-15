@@ -1,0 +1,291 @@
+# Copyright (c) 2024, fdR and contributors
+# For license information, please see license.txt
+
+# ifitwala_ed/setup/doctype/organization/organization.py
+
+import frappe
+from frappe import _
+from frappe.utils import cint, cstr
+from frappe.utils.nestedset import NestedSet
+
+from ifitwala_ed.utilities.employee_utils import get_user_base_org
+from ifitwala_ed.utilities.organization_media import get_governed_organization_media
+
+VIRTUAL_ROOT = "All Organizations"
+
+
+class Organization(NestedSet):
+    def validate(self):
+        if self.name == VIRTUAL_ROOT and self.parent_organization:
+            frappe.throw(
+                _("The root organization '{organization}' cannot have a parent.").format(organization=VIRTUAL_ROOT)
+            )
+        if self.parent_organization:
+            parent_is_group = frappe.db.get_value("Organization", self.parent_organization, "is_group")
+            if not parent_is_group:
+                frappe.throw(
+                    _("Parent Organization must be a Group. '{organization}' is not a Group.").format(
+                        organization=self.parent_organization
+                    )
+                )
+        self.validate_default_website_school()
+        self.validate_governed_public_media()
+
+    def after_insert(self):
+        if self.name == VIRTUAL_ROOT:
+            return
+        if getattr(self.flags, "skip_coa_setup", False) or getattr(frappe.flags, "skip_org_coa_setup", False):
+            return
+
+        from ifitwala_ed.accounting.coa_utils import create_coa_for_organization
+
+        create_coa_for_organization(self.name)
+
+    def validate_governed_public_media(self):
+        logo_file = (self.organization_logo_file or "").strip()
+        logo_url = (self.organization_logo or "").strip()
+
+        if not logo_file and logo_url:
+            frappe.throw(
+                _(
+                    "Organization Logo must use governed Organization Media. "
+                    "Re-upload it with Upload Organization Logo or relink it from Manage Organization Media."
+                )
+            )
+
+        if not logo_file:
+            if not logo_url:
+                self.organization_logo_file = None
+            return
+
+        media_row = get_governed_organization_media(logo_file)
+        if not media_row or media_row.get("organization") != self.name or media_row.get("school"):
+            frappe.throw(_("Organization Logo must reference an organization-scoped governed media file."))
+
+        media_url = (media_row.get("file_url") or "").strip()
+        if not media_url:
+            frappe.throw(_("Organization Logo file '{file_name}' is missing a file URL.").format(file_name=logo_file))
+
+        self.organization_logo_file = logo_file
+        self.organization_logo = media_url
+
+    def validate_default_website_school(self):
+        default_school = (self.default_website_school or "").strip()
+        if not default_school:
+            return
+
+        school_org = frappe.db.get_value("School", default_school, "organization")
+        if not school_org:
+            frappe.throw(
+                _("Default Website School '{school}' was not found.").format(school=default_school),
+                frappe.ValidationError,
+            )
+
+        if school_org != self.name:
+            frappe.throw(
+                _(
+                    "Default Website School must belong to this Organization.\n"
+                    "School '{school}' belongs to '{school_organization}', not '{organization}'."
+                ).format(
+                    school=default_school,
+                    school_organization=school_org,
+                    organization=self.name,
+                ),
+                frappe.ValidationError,
+            )
+
+
+@frappe.whitelist()
+def get_children(doctype, parent=None, is_root=False, **kwargs):
+    """
+    Return children of `parent`. For virtual root, return top-level orgs.
+    Top-level = parent_organization in [NULL, "", VIRTUAL_ROOT] to support legacy rows.
+    """
+    filters = dict(kwargs.get("filters") or {})
+
+    # Never show the virtual root as a child
+    filters.update({"name": ["!=", VIRTUAL_ROOT]})
+
+    if is_root or not parent or parent == VIRTUAL_ROOT:
+        rows = frappe.get_all(
+            "Organization",
+            fields=[
+                "name as value",
+                "organization_name as title",
+                "is_group as expandable",
+                "parent_organization",
+            ],
+            order_by="lft asc",
+            filters=filters,
+        )
+        visible_names = {row.get("value") for row in rows if row.get("value")}
+        root_rows = []
+        for row in rows:
+            parent_name = cstr(row.get("parent_organization")).strip()
+            if not parent_name or parent_name == VIRTUAL_ROOT or parent_name not in visible_names:
+                row["expandable"] = 1 if row.get("expandable") else 0
+                row.pop("parent_organization", None)
+                root_rows.append(row)
+        return root_rows
+
+    filters.update({"parent_organization": parent})
+    rows = frappe.get_all(
+        "Organization",
+        fields=[
+            "name as value",
+            "organization_name as title",
+            "is_group as expandable",
+        ],
+        order_by="lft asc",
+        filters=filters,
+    )
+
+    for row in rows:
+        row["expandable"] = 1 if row.get("expandable") else 0
+    return rows
+
+
+@frappe.whitelist()
+def get_parents(doc, name):
+    parents = []
+    doc = frappe.get_doc("Organization", name)
+    while doc.parent_organization:
+        parents.append(doc.parent_organization)
+        doc = frappe.get_doc("Organization", doc.parent_organization)
+    return parents
+
+
+@frappe.whitelist()
+def add_node(**kwargs):
+    org_name = (kwargs.get("organization_name") or "").strip()
+    abbr = (kwargs.get("abbr") or "").strip()
+    is_group = cint(kwargs.get("is_group") or 0)
+
+    parent = kwargs.get("parent_organization") or kwargs.get("parent")
+    if not parent or parent == VIRTUAL_ROOT:
+        parent = None
+
+    if not org_name or not abbr:
+        frappe.throw(_("Organization Name and Abbreviation are required."))
+
+    doc = frappe.get_doc(
+        {
+            "doctype": "Organization",
+            "organization_name": org_name,
+            "abbr": abbr,
+            "is_group": is_group,
+            "parent_organization": parent,
+        }
+    )
+    doc.insert()
+    return {"name": doc.name}
+
+
+def _resolve_user_base_org(user: str) -> str | None:
+    org = _get_user_default_from_db(user, "organization")
+    if org:
+        return org
+
+    employee_org = get_user_base_org(user)
+    return cstr(employee_org).strip() or None
+
+
+def _resolve_user_org_scope(user: str) -> list[str]:
+    scope: set[str] = set()
+
+    base_org = _resolve_user_base_org(user)
+    if base_org:
+        scope.update(
+            {cstr(org).strip() for org in (_get_descendant_organizations_uncached(base_org) or []) if cstr(org).strip()}
+        )
+
+    explicit_orgs = frappe.get_all(
+        "User Permission",
+        filters={"user": user, "allow": "Organization"},
+        pluck="for_value",
+    )
+    for org in explicit_orgs:
+        org_name = cstr(org).strip()
+        if not org_name:
+            continue
+        scope.update(
+            {
+                cstr(item).strip()
+                for item in (_get_descendant_organizations_uncached(org_name) or [])
+                if cstr(item).strip()
+            }
+        )
+
+    return sorted(scope)
+
+
+def _get_user_default_from_db(user: str, key: str) -> str | None:
+    rows = frappe.get_all(
+        "DefaultValue",
+        filters={"parent": user, "defkey": key},
+        fields=["defvalue"],
+        order_by="modified desc, creation desc, name desc",
+        limit=1,
+    )
+    if not rows:
+        return None
+    return cstr(rows[0].get("defvalue")).strip() or None
+
+
+def _get_descendant_organizations_uncached(org: str) -> list[str]:
+    org = cstr(org).strip()
+    if not org:
+        return []
+
+    bounds = frappe.db.get_value("Organization", org, ["lft", "rgt"], as_dict=True)
+    if not bounds or bounds.lft is None or bounds.rgt is None:
+        return []
+
+    return frappe.get_all(
+        "Organization",
+        filters={"lft": (">=", bounds.lft), "rgt": ("<=", bounds.rgt)},
+        pluck="name",
+    )
+
+
+def get_permission_query_conditions(user=None):
+    user = user or frappe.session.user
+    if not user or user == "Guest":
+        return None
+
+    roles = set(frappe.get_roles(user))
+    if "System Manager" in roles:
+        return None
+
+    orgs = _resolve_user_org_scope(user)
+    if not orgs:
+        return "1=0"
+
+    vals = ", ".join(frappe.db.escape(org) for org in orgs)
+    return f"`tabOrganization`.`name` IN ({vals})"
+
+
+def _get_scope_target_for_permission(doc, ptype: str | None) -> str:
+    ptype = cstr(ptype or "read").strip().lower()
+
+    if ptype == "create":
+        parent_org = cstr(getattr(doc, "parent_organization", "")).strip()
+        return parent_org or VIRTUAL_ROOT
+
+    return cstr(getattr(doc, "name", "")).strip()
+
+
+def has_permission(doc, ptype=None, user=None):
+    user = user or frappe.session.user
+    if not user or user == "Guest":
+        return False
+
+    roles = set(frappe.get_roles(user))
+    if "System Manager" in roles:
+        return True
+
+    target_org = _get_scope_target_for_permission(doc, ptype)
+    if not target_org:
+        return False
+
+    return target_org in set(_resolve_user_org_scope(user))

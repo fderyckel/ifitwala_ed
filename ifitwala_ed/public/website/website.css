@@ -1,0 +1,428 @@
+/* ifitwala_ed/public/website/website.css */
+@import 'tailwindcss' source(none);
+@source "../../website/templates/**/*.html";
+@source "../../website/blocks/**/*.html";
+@source "../../www/**/*.html";
+@source "./**/*.js";
+
+@layer base {
+	body.ifitwala-theme {
+		--if-theme-primary: #1d4ed8;
+		--if-theme-accent: #16a34a;
+		--if-theme-surface: #f8fafc;
+		--if-theme-text: #0f172a;
+		--if-type-scale-factor: 1;
+		--if-block-gap: 6rem;
+		--if-hero-radius: 1.4rem;
+		background-color: var(--if-theme-surface);
+		color: var(--if-theme-text);
+	}
+
+	#ifitwala-page-root h1 {
+		font-size: calc(2.25rem * var(--if-type-scale-factor));
+	}
+
+	#ifitwala-page-root h2 {
+		font-size: calc(1.875rem * var(--if-type-scale-factor));
+	}
+
+	#ifitwala-page-root h3 {
+		font-size: calc(1.25rem * var(--if-type-scale-factor));
+	}
+
+	#ifitwala-page-root
+		main
+		a:not(.site-cta):not(.site-nav-link):not(.site-login-link):not(.site-footer-link):not(
+			.site-utility-link
+		):not(.site-talk-bubble) {
+		color: var(--if-theme-accent);
+	}
+
+	img[loading='lazy'],
+	img[fallback='carousel'] {
+		opacity: 0;
+		transition: opacity 0.6s ease-in-out;
+	}
+
+	img[loading='lazy'].loaded,
+	img[fallback='carousel'].loaded {
+		opacity: 1;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		#ifitwala-page-root *,
+		#ifitwala-page-root *::before,
+		#ifitwala-page-root *::after {
+			animation-duration: 0.01ms !important;
+			animation-iteration-count: 1 !important;
+			transition-duration: 0.01ms !important;
+			scroll-behavior: auto !important;
+		}
+	}
+}
+
+@layer utilities {
+	.clamped-text {
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 5;
+		overflow: hidden;
+	}
+
+	.clamped-text.expanded {
+		-webkit-line-clamp: unset;
+	}
+
+	.reveal-ready {
+		opacity: 0;
+		transform: translateY(1rem);
+		transition:
+			opacity 520ms ease,
+			transform 520ms ease;
+		transition-delay: var(--if-reveal-delay, 0ms);
+	}
+
+	.reveal-ready.is-revealed {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@layer components {
+	body.ifitwala-theme[data-theme-motion='off'] .reveal-ready {
+		opacity: 1;
+		transform: none;
+		transition: none;
+	}
+
+	#ifitwala-page-root .site-page-content {
+		gap: var(--if-block-gap);
+	}
+
+	#ifitwala-page-root .site-header {
+		border-color: color-mix(in srgb, var(--if-theme-primary) 12%, #e2e8f0);
+		background-color: rgb(255 255 255 / 0.94);
+		box-shadow: 0 10px 30px -24px color-mix(in srgb, var(--if-theme-primary) 45%, #0f172a);
+	}
+
+	#ifitwala-page-root .site-brand-link,
+	#ifitwala-page-root .site-brand-link .site-brand-name {
+		color: var(--if-theme-primary);
+	}
+
+	#ifitwala-page-root .site-brand-link:hover {
+		text-decoration: none;
+	}
+
+	#ifitwala-page-root .site-brand-mark {
+		width: 3rem;
+		height: 3rem;
+		flex: 0 0 3rem;
+		box-shadow:
+			0 0 0 1px color-mix(in srgb, var(--if-theme-primary) 14%, #e2e8f0),
+			0 12px 28px -20px color-mix(in srgb, var(--if-theme-primary) 60%, #0f172a);
+	}
+
+	#ifitwala-page-root .site-brand-eyebrow {
+		color: color-mix(in srgb, var(--if-theme-primary) 48%, #64748b);
+	}
+
+	#ifitwala-page-root .site-nav-link.is-active {
+		background-color: var(--if-theme-primary);
+		color: #fff;
+		box-shadow: 0 12px 24px -18px color-mix(in srgb, var(--if-theme-primary) 80%, #0f172a);
+	}
+
+	#ifitwala-page-root .site-utility-link:hover {
+		background-color: color-mix(in srgb, var(--if-theme-primary) 9%, #fff);
+		color: var(--if-theme-primary);
+	}
+
+	#ifitwala-page-root .site-header-link:hover,
+	#ifitwala-page-root .site-nav-link:hover,
+	#ifitwala-page-root .site-footer-link:hover {
+		background-color: color-mix(in srgb, var(--if-theme-primary) 8%, #fff);
+		color: var(--if-theme-primary);
+	}
+
+	#ifitwala-page-root .site-login-link,
+	#ifitwala-page-root .site-nav-toggle,
+	#ifitwala-page-root .site-organization-logo-link {
+		border-color: color-mix(in srgb, var(--if-theme-primary) 18%, #e2e8f0);
+		color: var(--if-theme-primary);
+	}
+
+	#ifitwala-page-root .site-header-link {
+		color: #334155;
+	}
+
+	#ifitwala-page-root .site-login-link:hover,
+	#ifitwala-page-root .site-nav-toggle:hover,
+	#ifitwala-page-root .site-header-link:hover,
+	#ifitwala-page-root .site-organization-logo-link:hover {
+		background-color: color-mix(in srgb, var(--if-theme-primary) 8%, #fff);
+	}
+
+	#ifitwala-page-root .site-nav-panel {
+		box-shadow: 0 26px 60px -36px rgb(15 23 42 / 0.34);
+	}
+
+	#ifitwala-page-root .site-cta {
+		will-change: transform;
+	}
+
+	#ifitwala-page-root .site-cta-primary {
+		background-color: var(--if-theme-primary) !important;
+		color: #fff !important;
+	}
+
+	#ifitwala-page-root .site-cta-primary:hover {
+		filter: brightness(0.95);
+	}
+
+	#ifitwala-page-root .site-cta-secondary {
+		background-color: color-mix(in srgb, var(--if-theme-accent) 12%, #fff) !important;
+		color: var(--if-theme-primary) !important;
+	}
+
+	#ifitwala-page-root .site-cta-outline {
+		border-color: color-mix(in srgb, var(--if-theme-primary) 18%, #cbd5e1);
+		color: var(--if-theme-primary);
+	}
+
+	#ifitwala-page-root .site-cta.is-emphasized {
+		transform: translateY(-2px) scale(1.01);
+		box-shadow: 0 12px 28px -16px color-mix(in srgb, var(--if-theme-primary) 55%, #111827);
+	}
+
+	#ifitwala-page-root .block-hero [data-carousel] {
+		border-radius: var(--if-hero-radius);
+	}
+
+	#ifitwala-page-root .hero-image-fade[data-fade-mode='dark'] {
+		background: linear-gradient(180deg, rgb(2 6 23 / 0.02) 0%, rgb(2 6 23 / 0.56) 100%), #020617;
+	}
+
+	#ifitwala-page-root .hero-image-fade[data-fade-mode='primary'] {
+		background:
+			linear-gradient(
+				180deg,
+				rgb(2 6 23 / 0) 0%,
+				color-mix(in srgb, var(--if-theme-primary) 60%, #020617) 100%
+			),
+			var(--if-theme-primary);
+	}
+
+	#ifitwala-page-root .hero-image-fade[data-fade-mode='accent'] {
+		background:
+			linear-gradient(
+				180deg,
+				rgb(2 6 23 / 0) 0%,
+				color-mix(in srgb, var(--if-theme-accent) 68%, #020617) 100%
+			),
+			var(--if-theme-accent);
+	}
+
+	#ifitwala-page-root .site-talk-bubble {
+		color: inherit;
+		background-color: rgb(255 255 255 / 0.94);
+		border-color: color-mix(in srgb, var(--if-theme-primary) 14%, #e2e8f0);
+	}
+
+	#ifitwala-page-root .site-talk-bubble:hover {
+		background-color: color-mix(in srgb, var(--if-theme-primary) 8%, #fff);
+		text-decoration: none;
+	}
+
+	#ifitwala-page-root .site-talk-bubble span:first-child {
+		color: var(--if-theme-primary);
+	}
+
+	#ifitwala-page-root .admissions-overview-shell {
+		padding: 4rem 1.75rem;
+		border: 1px solid color-mix(in srgb, var(--if-theme-primary) 10%, #e2e8f0);
+		border-radius: 2rem;
+		background:
+			radial-gradient(
+				circle at top,
+				color-mix(in srgb, var(--if-theme-primary) 8%, #fff),
+				transparent 42%
+			),
+			linear-gradient(180deg, rgb(255 255 255 / 0.98), rgb(248 250 252 / 0.98));
+		box-shadow: 0 24px 60px -42px color-mix(in srgb, var(--if-theme-primary) 40%, #0f172a);
+	}
+
+	#ifitwala-page-root .admissions-overview-eyebrow {
+		margin: 0;
+		font-size: 0.72rem;
+		font-weight: 700;
+		letter-spacing: 0.26em;
+		text-transform: uppercase;
+		color: color-mix(in srgb, var(--if-theme-primary) 56%, #64748b);
+	}
+
+	#ifitwala-page-root .admissions-overview-prose {
+		color: #475569;
+	}
+
+	#ifitwala-page-root .admissions-overview-prose p {
+		line-height: 1.85;
+	}
+
+	#ifitwala-page-root .admissions-steps-grid {
+		align-items: stretch;
+	}
+
+	#ifitwala-page-root .admissions-step-card {
+		height: 100%;
+		border: 1px solid color-mix(in srgb, var(--if-theme-primary) 10%, #e2e8f0);
+		border-radius: 1.5rem;
+		background: linear-gradient(180deg, rgb(255 255 255 / 0.98), rgb(248 250 252 / 0.94));
+		box-shadow: 0 18px 48px -38px color-mix(in srgb, var(--if-theme-primary) 42%, #0f172a);
+	}
+
+	#ifitwala-page-root .admissions-step-index {
+		display: inline-flex;
+		align-self: center;
+		padding-bottom: 0.25rem;
+		font-size: 0.8rem;
+		font-weight: 700;
+		letter-spacing: 0.22em;
+		text-transform: uppercase;
+		color: color-mix(in srgb, var(--if-theme-primary) 58%, #64748b);
+	}
+
+	#ifitwala-page-root .admission-cta-pill {
+		min-width: 15rem;
+		justify-content: center;
+		box-shadow: 0 18px 34px -24px color-mix(in srgb, var(--if-theme-primary) 42%, #0f172a);
+	}
+
+	#ifitwala-page-root .site-people-section {
+		background:
+			radial-gradient(
+				circle at top left,
+				color-mix(in srgb, var(--if-theme-primary) 7%, #fff),
+				transparent 42%
+			),
+			linear-gradient(180deg, rgb(255 255 255 / 0.98), rgb(248 250 252 / 0.98));
+	}
+
+	#ifitwala-page-root .site-people-track {
+		scrollbar-width: none;
+		-ms-overflow-style: none;
+	}
+
+	#ifitwala-page-root .site-people-track::-webkit-scrollbar {
+		display: none;
+	}
+
+	#ifitwala-page-root .site-people-dot.is-active {
+		background-color: var(--if-theme-primary);
+		transform: scale(1.18);
+	}
+
+	#ifitwala-page-root .site-people-nav.hidden,
+	#ifitwala-page-root [data-people-carousel-dots].hidden {
+		display: none;
+	}
+
+	@media (max-width: 1023px) {
+		#ifitwala-page-root .site-header {
+			box-shadow: 0 14px 30px -26px rgb(15 23 42 / 0.28);
+		}
+	}
+
+	#ifitwala-page-root .block-hero[data-hero-style='split'] .mx-auto.max-w-5xl {
+		max-width: 64rem;
+		text-align: left;
+	}
+
+	#ifitwala-page-root .block-hero[data-hero-style='spotlight'] .mx-auto.max-w-5xl {
+		background: linear-gradient(
+			180deg,
+			color-mix(in srgb, var(--if-theme-primary) 4%, #fff) 0%,
+			transparent 100%
+		);
+		border-radius: 1rem;
+		padding-top: 2rem;
+		padding-bottom: 2.25rem;
+	}
+
+	body.for-login,
+	body:has(.for-login) {
+		background-color: #f8fafc;
+		color: #0f172a;
+	}
+
+	body.for-login .navbar,
+	body:has(.for-login) .navbar {
+		position: sticky;
+		top: 0;
+		z-index: 40;
+		border-bottom: 1px solid #e2e8f0;
+		background-color: rgb(255 255 255 / 0.95);
+		backdrop-filter: blur(10px);
+		-webkit-backdrop-filter: blur(10px);
+	}
+
+	body.for-login .navbar .container,
+	body:has(.for-login) .navbar .container {
+		max-width: 72rem;
+		margin-inline: auto;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 1rem 1.5rem;
+	}
+
+	body.for-login .navbar .navbar-brand,
+	body:has(.for-login) .navbar .navbar-brand {
+		font-size: 1.125rem;
+		font-weight: 600;
+		color: #0f172a;
+	}
+
+	body.for-login .navbar .navbar-toggler,
+	body:has(.for-login) .navbar .navbar-toggler,
+	body.for-login .navbar .dropdown-menu,
+	body:has(.for-login) .navbar .dropdown-menu {
+		display: none !important;
+	}
+
+	body.for-login .navbar .navbar-collapse,
+	body:has(.for-login) .navbar .navbar-collapse {
+		display: flex !important;
+		flex: 1 1 auto;
+		justify-content: flex-end;
+	}
+
+	body.for-login .navbar .navbar-nav,
+	body:has(.for-login) .navbar .navbar-nav {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.25rem;
+	}
+
+	body.for-login .navbar .nav-link,
+	body:has(.for-login) .navbar .nav-link {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.5rem 0.75rem;
+		border-radius: 0.375rem;
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: #334155;
+		text-decoration: none;
+	}
+
+	body.for-login .navbar .nav-link:hover,
+	body:has(.for-login) .navbar .nav-link:hover {
+		background-color: #f1f5f9;
+		color: #0f172a;
+	}
+}

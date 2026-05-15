@@ -1,0 +1,275 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:calendar_name",
+ "creation": "2024-12-03 13:33:47.840677",
+ "description": "Doctype tracking the weekend, breaks and holidays for a given school.  ",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_bgz7",
+  "calendar_name",
+  "academic_year",
+  "total_number_day",
+  "section_break_n0mc",
+  "school",
+  "total_holiday_days",
+  "total_instruction_days",
+  "term_sections_section",
+  "terms",
+  "add_school_break_section",
+  "start_of_break",
+  "break_description",
+  "get_long_break_dates",
+  "column_break_tz0r",
+  "end_of_break",
+  "break_color",
+  "add_weekends_section",
+  "weekly_off",
+  "add_to_holidays",
+  "column_break_bzdr",
+  "weekend_color",
+  "section_break_pslk",
+  "holidays",
+  "clear_table"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_bgz7",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "calendar_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Calendar Name",
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Academic Year",
+   "options": "Academic Year",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.academic_year",
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School",
+   "reqd": 1
+  },
+  {
+   "fieldname": "total_number_day",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Total Number Day",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_n0mc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_holiday_days",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Total Holiday Days",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_instruction_days",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Total Instruction Days",
+   "read_only": 1
+  },
+  {
+   "fieldname": "term_sections_section",
+   "fieldtype": "Section Break",
+   "label": "Term Sections"
+  },
+  {
+   "fieldname": "terms",
+   "fieldtype": "Table",
+   "label": "School Calendar Term",
+   "options": "School Calendar Term",
+   "read_only": 1
+  },
+  {
+   "fieldname": "add_school_break_section",
+   "fieldtype": "Section Break",
+   "label": "Add School Break"
+  },
+  {
+   "fieldname": "start_of_break",
+   "fieldtype": "Date",
+   "label": "Start Of Break"
+  },
+  {
+   "fieldname": "break_description",
+   "fieldtype": "Data",
+   "label": "Break Description"
+  },
+  {
+   "fieldname": "get_long_break_dates",
+   "fieldtype": "Button",
+   "label": "Add to Holidays",
+   "options": "get_long_break_dates"
+  },
+  {
+   "fieldname": "column_break_tz0r",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "end_of_break",
+   "fieldtype": "Date",
+   "label": "End of Break"
+  },
+  {
+   "fieldname": "break_color",
+   "fieldtype": "Color",
+   "label": "Break Color"
+  },
+  {
+   "fieldname": "add_weekends_section",
+   "fieldtype": "Section Break",
+   "label": "Add Weekends"
+  },
+  {
+   "fieldname": "weekly_off",
+   "fieldtype": "Select",
+   "label": "Weekly Off",
+   "options": "Sunday\nMonday\nTuesday\nWednesday\nThursday\nFriday\nSaturday"
+  },
+  {
+   "fieldname": "add_to_holidays",
+   "fieldtype": "Button",
+   "label": "Add to Holidays",
+   "options": "get_weekly_off_dates"
+  },
+  {
+   "fieldname": "column_break_bzdr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "weekend_color",
+   "fieldtype": "Color",
+   "label": "Weekend Color"
+  },
+  {
+   "fieldname": "section_break_pslk",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "clear_table",
+   "fieldtype": "Button",
+   "label": "Clear Table",
+   "options": "clear_table"
+  },
+  {
+   "fieldname": "holidays",
+   "fieldtype": "Table",
+   "label": "holidays",
+   "options": "School Calendar Holidays"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_calendar_and_gantt": 1,
+ "links": [],
+ "modified": "2026-01-22 19:32:10.257995",
+ "modified_by": "Administrator",
+ "module": "School Settings",
+ "name": "School Calendar",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Accreditation Visitor",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,1404 @@
+# Copyright (c) 2025, François de Ryckel and contributors
+# For license information, please see license.txt
+
+# ifitwala_ed/api/student_overview_dashboard.py
+
+from __future__ import annotations
+
+from typing import Dict, List
+
+import frappe
+from frappe import _
+from frappe.utils import getdate, nowdate, strip_html
+
+from ifitwala_ed.api.student_log_dashboard import get_authorized_schools
+from ifitwala_ed.api.student_overview_roles import ALLOWED_STAFF_ROLES
+from ifitwala_ed.api.student_task_status import (
+    DONE_GRADING_STATUSES,
+    DONE_SUBMISSION_STATUSES,
+    is_student_work_done,
+)
+from ifitwala_ed.students.doctype.student_log.student_log import get_student_log_visibility_predicate
+from ifitwala_ed.students.doctype.student_referral.student_referral import (
+    get_permission_query_conditions as get_student_referral_permission_query_conditions,
+)
+from ifitwala_ed.utilities.image_utils import get_preferred_student_avatar_url
+from ifitwala_ed.utilities.school_tree import get_descendant_schools
+from ifitwala_ed.utilities.student_utils import format_student_age, get_student_age_years
+
+
+def _current_user() -> str:
+    user = frappe.session.user
+    if not user or user == "Guest":
+        frappe.throw(_("You need to sign in to access Student Overview."), frappe.PermissionError)
+    return user
+
+
+def _user_roles(user: str | None = None) -> set[str]:
+    return set(frappe.get_roles(user or frappe.session.user))
+
+
+def _is_staff(user_roles: set[str]) -> bool:
+    return bool(user_roles & ALLOWED_STAFF_ROLES)
+
+
+def _ensure_student_overview_access(user: str | None = None):
+    user = user or _current_user()
+    roles = _user_roles(user)
+    student_scope = _get_student_scope(user)
+
+    if student_scope or _is_staff(roles):
+        return user, roles, student_scope
+
+    frappe.throw(_("You do not have permission to access Student Overview."), frappe.PermissionError)
+
+
+def _get_program_subtree(program: str | None) -> list[str] | None:
+    if not program:
+        return None
+
+    value = frappe.db.get_value("Program", program, ["lft", "rgt"])
+    if not value:
+        return [program]
+    lft, rgt = value
+    if lft is None or rgt is None:
+        return [program]
+
+    return frappe.get_all(
+        "Program",
+        filters={"lft": (">=", lft), "rgt": ("<=", rgt)},
+        pluck="name",
+    )
+
+
+def _students_for_guardian(user: str) -> List[str]:
+    """Return all student names for which this user is a guardian."""
+    rows = frappe.db.sql(
+        """
+        SELECT DISTINCT sg.parent
+        FROM `tabStudent Guardian` sg
+        INNER JOIN `tabGuardian` g ON g.name = sg.guardian
+        WHERE g.user = %(user)s
+        """,
+        {"user": user},
+        as_list=True,
+    )
+    return [row[0] for row in rows if row and row[0]]
+
+
+def _students_for_student_user(user: str) -> List[str]:
+    # Best-effort match: student_email stored on Student is the login username
+    stu = frappe.db.get_value("Student", {"student_email": user}, "name")
+    return [stu] if stu else []
+
+
+def _get_student_scope(user: str) -> List[str]:
+    roles = _user_roles(user)
+    if "Student" in roles:
+        return _students_for_student_user(user)
+    if "Guardian" in roles:
+        return _students_for_guardian(user)
+    # Staff → unrestricted (handled later by school filter)
+    return []
+
+
+@frappe.whitelist()
+def get_filter_meta():
+    """
+    Schools: default + descendants for the current user (via get_authorized_schools).
+    Programs: distinct programs that appear in ACTIVE Program Enrollments
+              under those schools (archived = 0).
+    """
+    user, _roles, student_scope = _ensure_student_overview_access()
+
+    # Students / Guardians: scope is their Program Enrollments only
+    if student_scope:
+        pe_rows = frappe.get_all(
+            "Program Enrollment",
+            filters={
+                "student": ["in", student_scope],
+                "archived": 0,
+            },
+            fields=["school", "program"],
+            distinct=True,
+        )
+        school_names = sorted({r.school for r in pe_rows if r.school})
+        program_names = sorted({r.program for r in pe_rows if r.program})
+
+        schools = frappe.get_all(
+            "School",
+            filters={"name": ["in", school_names]} if school_names else {},
+            fields=["name", "school_name as label"],
+            order_by="lft",
+        )
+
+        programs = []
+        if program_names:
+            for r in frappe.get_all(
+                "Program",
+                filters={"name": ["in", program_names]},
+                fields=["name", "program_name as label"],
+                order_by="program_name",
+            ):
+                programs.append(r)
+
+        default_school = school_names[0] if school_names else None
+
+        return {
+            "default_school": default_school,
+            "schools": schools,
+            "programs": programs,
+        }
+
+    # Staff path
+    auth_schools = get_authorized_schools(user)
+    if not auth_schools:
+        return {"default_school": None, "schools": [], "programs": []}
+
+    # Active Program Enrollments in authorized schools
+    pe_rows = frappe.db.sql(
+        """
+        SELECT DISTINCT pe.school, pe.program, p.program_name
+        FROM `tabProgram Enrollment` pe
+        LEFT JOIN `tabProgram` p ON p.name = pe.program
+        WHERE pe.archived = 0
+          AND pe.school IN %(schools)s
+        """,
+        {"schools": tuple(auth_schools)},
+        as_dict=True,
+    )
+
+    # School list (UI options)
+    schools = frappe.get_all(
+        "School",
+        filters={"name": ["in", auth_schools]},
+        fields=["name", "school_name as label"],
+        order_by="lft",
+    )
+
+    # Unique program options
+    seen_programs = set()
+    programs = []
+    for row in pe_rows:
+        if not row.program or row.program in seen_programs:
+            continue
+        seen_programs.add(row.program)
+        programs.append(
+            {
+                "name": row.program,
+                "label": row.program_name or row.program,
+                # optional, if you want school-aware program filter later
+                "school": row.school,
+            }
+        )
+
+    default_school = auth_schools[0]
+
+    return {
+        "default_school": default_school,
+        "schools": schools,
+        "programs": programs,
+    }
+
+
+@frappe.whitelist()
+def search_students(search_text: str = "", school: str | None = None, program: str | None = None):
+    """
+    Typeahead for the Student Overview filter.
+
+    Staff:
+      - universe is ACTIVE Program Enrollments (archived = 0)
+      - filtered by authorized school scope (+descendants) and optional program subtree.
+
+    Student / Guardian:
+      - universe is their own active Program Enrollments.
+
+    Blank search: up to 20 students in scope (no name filter).
+    """
+    user, roles, visible_students = _ensure_student_overview_access()
+
+    # ----- Student / Guardian path -----
+    if visible_students:
+        params: dict = {"students": tuple(visible_students)}
+        conditions = ["pe.archived = 0", "pe.student IN %(students)s"]
+
+        # school filter: selected school's descendants
+        if school:
+            school_scope = get_descendant_schools(school)
+            if school_scope:
+                conditions.append("pe.school IN %(schools)s")
+                params["schools"] = tuple(school_scope)
+
+        # program filter: nested subtree
+        if program:
+            program_scope = _get_program_subtree(program) or [program]
+            conditions.append("pe.program IN %(programs)s")
+            params["programs"] = tuple(program_scope)
+
+        search_text = (search_text or "").strip()
+        if search_text:
+            conditions.append("(s.name LIKE %(txt)s OR s.student_full_name LIKE %(txt)s)")
+            params["txt"] = f"%{search_text}%"
+
+        sql = f"""
+            SELECT DISTINCT s.name AS student, s.student_full_name
+            FROM `tabProgram Enrollment` pe
+            JOIN `tabStudent` s ON s.name = pe.student
+            WHERE {" AND ".join(conditions)}
+            ORDER BY s.student_full_name
+            LIMIT 20
+        """
+        rows = frappe.db.sql(sql, params, as_dict=True)
+        return [{"student": r.student, "student_full_name": r.student_full_name} for r in rows]
+
+    # ----- Staff path -----
+    auth_schools = get_authorized_schools(user) if _is_staff(roles) else []
+    if not auth_schools:
+        return []
+
+    # School scope = selected school's descendants ∩ authorized
+    if school:
+        school_scope = get_descendant_schools(school)
+        if auth_schools:
+            school_scope = [s for s in school_scope if s in auth_schools]
+    else:
+        school_scope = auth_schools
+
+    program_scope = None
+    if program:
+        program_scope = _get_program_subtree(program) or [program]
+
+    params: dict = {}
+    conditions = ["pe.archived = 0"]
+
+    if school_scope:
+        conditions.append("pe.school IN %(schools)s")
+        params["schools"] = tuple(school_scope)
+
+    if program_scope:
+        conditions.append("pe.program IN %(programs)s")
+        params["programs"] = tuple(program_scope)
+
+    search_text = (search_text or "").strip()
+    if search_text:
+        conditions.append("(s.name LIKE %(txt)s OR s.student_full_name LIKE %(txt)s)")
+        params["txt"] = f"%{search_text}%"
+
+    sql = f"""
+        SELECT DISTINCT s.name AS student, s.student_full_name
+        FROM `tabProgram Enrollment` pe
+        JOIN `tabStudent` s ON s.name = pe.student
+        WHERE {" AND ".join(conditions)}
+        ORDER BY s.student_full_name
+        LIMIT 20
+    """
+
+    rows = frappe.db.sql(sql, params, as_dict=True)
+    return [{"student": r.student, "student_full_name": r.student_full_name} for r in rows]
+
+
+def _ensure_can_view_student(student: str, school: str | None, program: str | None):
+    user = _current_user()
+    roles = _user_roles(user)
+
+    # Students/Guardians: only within their scope
+    scope = _get_student_scope(user)
+    if scope and student not in scope:
+        frappe.throw(_("You are not allowed to access this student."), frappe.PermissionError)
+
+    if _is_staff(roles):
+        authorized = set(get_authorized_schools(user))
+        if school and authorized and school not in authorized:
+            frappe.throw(_("You are not allowed to access this school."), frappe.PermissionError)
+        # program is best-effort; skip hard enforcement to avoid false negatives
+        return
+
+    # If not staff and no explicit scope match, deny
+    if not scope:
+        frappe.throw(_("You are not allowed to access this student."), frappe.PermissionError)
+
+
+def _attendance_rows(student: str):
+    return frappe.get_all(
+        "Student Attendance",
+        filters={"student": student},
+        fields=[
+            "attendance_date",
+            "attendance_code",
+            "course",
+            "student_group",
+            "program",
+            "school",
+            "academic_year",
+            "whole_day",
+        ],
+        order_by="attendance_date asc",
+    )
+
+
+def _attendance_code_bundle():
+    rows = frappe.get_all(
+        "Student Attendance Code",
+        fields=[
+            "name",
+            "attendance_code",
+            "attendance_code_name",
+            "count_as_present",
+            "color",
+            "show_in_reports",
+            "display_order",
+        ],
+    )
+
+    code_map: dict[str, dict] = {}
+    report_codes = []
+    for row in rows:
+        label = (row.attendance_code_name or row.attendance_code or "").lower()
+        is_late = "late" in label or row.attendance_code == "L"
+        payload = {
+            **row,
+            "is_late": is_late,
+        }
+        code_map[row.name] = payload
+        if row.attendance_code:
+            code_map[row.attendance_code] = payload
+        if getattr(row, "show_in_reports", 0):
+            report_codes.append(
+                {
+                    "value": row.attendance_code,
+                    "label": row.attendance_code_name,
+                    "count_as_present": row.count_as_present,
+                    "color": row.color,
+                    "display_order": row.display_order,
+                }
+            )
+
+    report_codes.sort(
+        key=lambda row: (
+            row.get("display_order") if row.get("display_order") is not None else 9999,
+            row.get("label") or "",
+        )
+    )
+
+    for row in report_codes:
+        row.pop("display_order", None)
+
+    return code_map, report_codes
+
+
+def _course_name_map(course_names: list[str] | None):
+    names = sorted({(course or "").strip() for course in (course_names or []) if (course or "").strip()})
+    if not names:
+        return {}
+
+    rows = frappe.get_all(
+        "Course",
+        filters={"name": ["in", names]},
+        fields=["name", "course_name"],
+    )
+    return {row.name: (row.course_name or row.name) for row in rows}
+
+
+def _task_rows_for_academic_year(task_rows, academic_year: str | None):
+    if not academic_year:
+        return list(task_rows or [])
+    return [row for row in task_rows or [] if not row.academic_year or row.academic_year == academic_year]
+
+
+def _build_student_snapshot_context(student: str, program: str | None, current_academic_year: str | None):
+    task_rows_scoped = _task_rows(student, program)
+    task_rows_all = task_rows_scoped if not program else _task_rows(student, None)
+    attendance_rows = _attendance_rows(student)
+    attendance_code_bundle = _attendance_code_bundle()
+    course_labels = _course_name_map([row.course for row in attendance_rows if getattr(row, "course", None)])
+
+    attendance_years = sorted(
+        {row.academic_year for row in attendance_rows if getattr(row, "academic_year", None)},
+        reverse=True,
+    )
+
+    support = {
+        "logs": _get_visible_student_logs(student=student, academic_year=None, limit=20),
+        "log_counts": _visible_student_log_support_counts(student, current_academic_year),
+        "referrals": _get_visible_student_referrals(student=student, academic_year=None, limit=10),
+        "referral_counts": _visible_student_referral_counts(student),
+        "nurse_visits": _get_visible_student_nurse_visits(student=student, limit=10),
+        "nurse_visit_count": _visible_student_nurse_visit_count(student),
+        "health_note": _get_student_health_note(student),
+    }
+
+    program_enrollment_years = frappe.get_all(
+        "Program Enrollment",
+        filters={"student": student},
+        fields=["academic_year"],
+        distinct=True,
+        order_by="academic_year desc",
+    )
+
+    return {
+        "task_rows_scoped": task_rows_scoped,
+        "task_rows_all": task_rows_all,
+        "attendance_rows": attendance_rows,
+        "attendance_code_bundle": attendance_code_bundle,
+        "attendance_course_labels": course_labels,
+        "attendance_years": attendance_years,
+        "support": support,
+        "program_enrollment_years": program_enrollment_years,
+    }
+
+
+def _identity_block(student: str, program: str | None, school: str | None):
+    student_doc = (
+        frappe.db.get_value(
+            "Student",
+            student,
+            [
+                "name",
+                "student_full_name",
+                "student_image",
+                "cohort",
+                "student_gender",
+                "student_date_of_birth",
+                "anchor_school",
+            ],
+            as_dict=True,
+        )
+        or {}
+    )
+
+    pe_filters = {"student": student}
+    program_scope = _get_program_subtree(program) if program else None
+    if program_scope:
+        pe_filters["program"] = ["in", program_scope]
+    school_scope = get_descendant_schools(school) if school else None
+    if school_scope:
+        pe_filters["school"] = ["in", school_scope]
+    elif school:
+        pe_filters["school"] = school
+
+    program_enrollment_rows = frappe.get_all(
+        "Program Enrollment",
+        filters=pe_filters,
+        fields=[
+            "name",
+            "program",
+            "program_offering",
+            "academic_year",
+            "enrollment_date",
+            "archived",
+            "school",
+        ],
+        order_by="enrollment_date desc",
+        limit=1,
+    )
+    program_enrollment = (program_enrollment_rows or [None])[0]
+
+    student_groups = frappe.db.sql(
+        """
+        SELECT sg.name,
+               sg.student_group_name AS label,
+               sg.student_group_abbreviation AS abbreviation,
+               sg.group_based_on,
+               sg.course,
+               sg.attendance_scope
+        FROM `tabStudent Group Student` sgs
+        LEFT JOIN `tabStudent Group` sg ON sg.name = sgs.parent
+        WHERE sgs.student = %s
+        ORDER BY sg.student_group_name
+        """,
+        (student,),
+        as_dict=True,
+    )
+
+    student_date_of_birth = student_doc.get("student_date_of_birth")
+
+    return {
+        "student": student,
+        "full_name": student_doc.get("student_full_name"),
+        "photo": get_preferred_student_avatar_url(
+            student,
+            original_url=student_doc.get("student_image"),
+        ),
+        "cohort": student_doc.get("cohort"),
+        "gender": student_doc.get("student_gender"),
+        "age": get_student_age_years(student_date_of_birth),
+        "student_age": format_student_age(student_date_of_birth),
+        "school": {
+            "name": student_doc.get("anchor_school") or (program_enrollment or {}).get("school") or school,
+            "label": frappe.db.get_value(
+                "School",
+                (student_doc.get("anchor_school") or school),
+                "school_name",
+            ),
+        },
+        "program_enrollment": program_enrollment or {},
+        "student_groups": student_groups,
+    }
+
+
+def _attendance_code_meta(code_map: dict[str, dict], attendance_code: str | None) -> dict[str, object]:
+    code = code_map.get(attendance_code, {})
+    code_value = code.get("attendance_code") or attendance_code
+    label = (code.get("attendance_code_name") or code_value or "").strip()
+    label_lower = label.lower()
+    is_excused = "excuse" in label_lower or "informed" in label_lower
+
+    return {
+        "attendance_code": code_value,
+        "attendance_code_name": label or code_value,
+        "count_as_present": bool(code.get("count_as_present")),
+        "is_late": bool(code.get("is_late")),
+        "is_excused": is_excused,
+        "color": code.get("color") or "#cbd5e1",
+    }
+
+
+def _attendance_block(
+    student: str,
+    academic_year: str | None,
+    *,
+    attendance_rows=None,
+    attendance_code_bundle=None,
+    course_name_map=None,
+):
+    if attendance_code_bundle is None:
+        attendance_code_bundle = _attendance_code_bundle()
+    code_map, report_codes = attendance_code_bundle
+
+    if attendance_rows is None:
+        if academic_year:
+            rows = frappe.get_all(
+                "Student Attendance",
+                filters={"student": student, "academic_year": academic_year},
+                fields=[
+                    "attendance_date",
+                    "attendance_code",
+                    "course",
+                    "student_group",
+                    "program",
+                    "school",
+                    "academic_year",
+                    "whole_day",
+                ],
+                order_by="attendance_date asc",
+            )
+        else:
+            rows = _attendance_rows(student)
+    else:
+        rows = list(attendance_rows or [])
+        if academic_year:
+            rows = [row for row in rows if row.academic_year == academic_year]
+
+    if course_name_map is None:
+        course_name_map = _course_name_map([row.course for row in rows if getattr(row, "course", None)])
+
+    whole_day_rows = [r for r in rows if getattr(r, "whole_day", 0)]
+    block_rows = [r for r in rows if not getattr(r, "whole_day", 0)]
+
+    # Use whole-day rows if they exist; otherwise base summary on per-course rows.
+    active_rows = whole_day_rows if whole_day_rows else block_rows
+
+    total = len(active_rows)
+    present = 0
+    excused_total = 0
+    unexcused_total = 0
+    late_total = 0
+    for r in active_rows:
+        code_meta = _attendance_code_meta(code_map, r.attendance_code)
+        is_present = bool(code_meta["count_as_present"])
+        is_late = bool(code_meta["is_late"])
+        is_excused = bool(code_meta["is_excused"])
+
+        if is_present:
+            present += 1
+        elif is_excused:
+            excused_total += 1
+        elif not is_late:
+            unexcused_total += 1
+
+        if is_late:
+            late_total += 1
+
+    all_day_heatmap = []
+    for r in whole_day_rows:
+        code_meta = _attendance_code_meta(code_map, r.attendance_code)
+        all_day_heatmap.append(
+            {
+                "date": r.attendance_date,
+                "attendance_code": code_meta["attendance_code"],
+                "attendance_code_name": code_meta["attendance_code_name"],
+                "count_as_present": code_meta["count_as_present"],
+                "is_late": code_meta["is_late"],
+                "is_excused": code_meta["is_excused"],
+                "color": code_meta["color"],
+                "academic_year": r.academic_year or academic_year,
+            }
+        )
+
+    # Course/activity heatmap uses ISO week label for grouping
+    by_course_heatmap = []
+    for r in block_rows:
+        week_label = ""
+        if r.attendance_date:
+            try:
+                week_label = getdate(r.attendance_date).strftime("%G-W%V")
+            except Exception:  # noqa: E722 (guard against unexpected date formats)
+                week_label = ""
+        code_meta = _attendance_code_meta(code_map, r.attendance_code)
+        is_present = bool(code_meta["count_as_present"])
+        is_late = bool(code_meta["is_late"])
+        is_excused = bool(code_meta["is_excused"])
+        entry = {
+            "course": r.course or "General",
+            "course_name": course_name_map.get(r.course, r.course) if r.course else "General",
+            "week_label": week_label,
+            "present_sessions": 1 if is_present else 0,
+            "absent_sessions": 1 if (not is_present and is_excused) else 0,
+            "late_sessions": 1 if is_late else 0,
+            "unexcused_sessions": 1 if (not is_present and not is_excused and not is_late) else 0,
+            "academic_year": r.academic_year or academic_year,
+            "attendance_code": code_meta["attendance_code"],
+        }
+        by_course_heatmap.append(entry)
+
+    breakdown_map: Dict[str, Dict[str, int]] = {}
+    for r in block_rows:
+        course_key = r.course or "General"
+        entry = breakdown_map.setdefault(
+            course_key,
+            {
+                "course": course_key,
+                "course_name": course_name_map.get(r.course, r.course) if r.course else "General",
+                "present_sessions": 0,
+                "excused_absent_sessions": 0,
+                "unexcused_absent_sessions": 0,
+                "late_sessions": 0,
+                "academic_year": r.academic_year or academic_year,
+            },
+        )
+        code_meta = _attendance_code_meta(code_map, r.attendance_code)
+        is_present = bool(code_meta["count_as_present"])
+        is_late = bool(code_meta["is_late"])
+        is_excused = bool(code_meta["is_excused"])
+
+        if is_present:
+            entry["present_sessions"] += 1
+        elif is_excused:
+            entry["excused_absent_sessions"] += 1
+        elif not is_late:
+            entry["unexcused_absent_sessions"] += 1
+        if is_late:
+            entry["late_sessions"] += 1
+
+    by_course_breakdown = list(breakdown_map.values())
+
+    return {
+        "summary": {
+            "present_percentage": present / total if total else 0,
+            "total_days": total,
+            "present_days": present,
+            "excused_absences": excused_total,
+            "unexcused_absences": unexcused_total,
+            "late_count": late_total,
+            "most_impacted_course": None,
+        },
+        "view_mode": "all_day",
+        "all_day_heatmap": all_day_heatmap,
+        "by_course_heatmap": by_course_heatmap,
+        "by_course_breakdown": by_course_breakdown,
+        "codes": report_codes,
+    }
+
+
+def _task_is_completed(row) -> bool:
+    return is_student_work_done(row)
+
+
+def _task_is_missed(row) -> bool:
+    return str(row.get("procedural_status") or "").strip() == "Absent"
+
+
+def _task_status_label(row) -> str:
+    if _task_is_missed(row):
+        return "Missed"
+
+    grading_status = str(row.get("grading_status") or "").strip()
+    if int(row.get("complete") or 0) == 1:
+        return "Completed"
+    if grading_status in DONE_GRADING_STATUSES:
+        return grading_status
+
+    submission_status = str(row.get("submission_status") or "").strip()
+    if submission_status in DONE_SUBMISSION_STATUSES:
+        return submission_status
+
+    available_from = row.get("available_from")
+    due_date = row.get("due_date")
+    today = getdate(nowdate())
+    if due_date:
+        try:
+            due_day = getdate(due_date)
+            if due_day < today:
+                return "Overdue"
+            if due_day == today:
+                return "Due Today"
+            return "Upcoming"
+        except Exception:
+            pass
+
+    if available_from:
+        try:
+            if getdate(available_from) > today:
+                return "Not Yet Open"
+        except Exception:
+            pass
+
+    return "Open"
+
+
+def _task_rows(student: str, program: str | None):
+    sql = """
+        SELECT
+            td.task,
+            t.title,
+            COALESCE(td.course, o.course, sg.course, t.default_course) AS course,
+            COALESCE(c.course_name, td.course, o.course, sg.course, t.default_course) AS course_name,
+            td.student_group,
+            td.delivery_mode AS delivery_type,
+            td.available_from,
+            td.due_date,
+            td.lock_date,
+            COALESCE(o.program, sg.program) AS program,
+            COALESCE(o.academic_year, td.academic_year, sg.academic_year) AS academic_year,
+            o.submission_status,
+            o.grading_status,
+            o.procedural_status,
+            COALESCE(o.is_complete, 0) AS complete,
+            COALESCE(o.has_submission, 0) AS has_submission,
+            o.official_score AS mark_awarded,
+            td.max_points AS out_of,
+            o.name AS outcome_id,
+            0 AS visible_to_student,
+            0 AS visible_to_guardian,
+            COALESCE(o.modified, o.completed_on, td.modified) AS updated_on
+        FROM `tabTask Delivery` td
+        INNER JOIN `tabTask` t ON t.name = td.task
+        LEFT JOIN `tabStudent Group Student` sgs
+            ON sgs.parent = td.student_group
+           AND sgs.parenttype = 'Student Group'
+           AND sgs.student = %(student)s
+        LEFT JOIN `tabStudent Group` sg ON sg.name = td.student_group
+        LEFT JOIN `tabTask Outcome` o ON o.task_delivery = td.name AND o.student = %(student)s
+        LEFT JOIN `tabCourse` c ON c.name = COALESCE(td.course, o.course, sg.course, t.default_course)
+        WHERE td.docstatus = 1
+          AND COALESCE(t.is_archived, 0) = 0
+          AND (o.name IS NOT NULL OR COALESCE(sgs.active, 0) = 1)
+    """
+    params = {"student": student}
+    program_scope = _get_program_subtree(program) if program else None
+    if program_scope:
+        sql += " AND COALESCE(o.program, sg.program) IN %(programs)s"
+        params["programs"] = tuple(program_scope)
+
+    rows = frappe.db.sql(sql, params, as_dict=True)
+    _apply_task_publication_visibility(rows)
+    for row in rows:
+        row["status"] = _task_status_label(row)
+        row["complete"] = _task_is_completed(row)
+    return rows
+
+
+def _apply_task_publication_visibility(rows):
+    outcome_ids = [row.get("outcome_id") for row in rows or [] if row.get("outcome_id")]
+    if not outcome_ids:
+        return
+
+    from ifitwala_ed.assessment import task_feedback_service
+
+    publication_map = task_feedback_service.build_publication_state_map(outcome_ids)
+    for row in rows:
+        publication = publication_map.get(row.get("outcome_id")) or {}
+        row["visible_to_student"] = bool(publication.get("visible_to_student"))
+        row["visible_to_guardian"] = bool(publication.get("visible_to_guardian"))
+
+
+def _learning_block(student: str, program: str | None, academic_year: str | None, *, snapshot_ctx=None):
+    task_rows = snapshot_ctx["task_rows_scoped"] if snapshot_ctx else _task_rows(student, program)
+    scoped_task_rows = _task_rows_for_academic_year(task_rows, academic_year)
+
+    # Status distribution
+    status_distribution = []
+    if scoped_task_rows:
+        counter: Dict[str, int] = {}
+        for row in scoped_task_rows:
+            key = row.status or "Assigned"
+            counter[key] = counter.get(key, 0) + 1
+        status_distribution = [{"status": k, "count": v, "year_scope": "current"} for k, v in counter.items()]
+
+    # By course completion
+    course_map: Dict[str, Dict[str, int]] = {}
+    for row in scoped_task_rows:
+        key = row.course or "General"
+        entry = course_map.setdefault(
+            key,
+            {
+                "course": key,
+                "course_name": row.course_name or key,
+                "completion_rate": 0,
+                "total_tasks": 0,
+                "completed_tasks": 0,
+                "missed_tasks": 0,
+                "academic_year": row.academic_year,
+            },
+        )
+        entry["total_tasks"] += 1
+        if row.complete:
+            entry["completed_tasks"] += 1
+        if _task_is_missed(row):
+            entry["missed_tasks"] += 1
+
+    for entry in course_map.values():
+        total = entry["total_tasks"]
+        entry["completion_rate"] = (entry["completed_tasks"] / total) if total else 0
+
+    # Recent tasks (latest 10 by parsed date to avoid str/datetime mixups)
+    def _task_sort_key(r: dict):
+        val = r.get("due_date") or r.get("updated_on") or ""
+        try:
+            return getdate(val) if val else getdate("1900-01-01")
+        except Exception:
+            return getdate("1900-01-01")
+
+    recent_tasks = sorted(scoped_task_rows, key=_task_sort_key, reverse=True)[:10]
+
+    # Current courses from Program Enrollment Course
+    program_scope = _get_program_subtree(program) if program else None
+    pec_rows = frappe.db.sql(
+        """
+        SELECT pec.course, pec.course_name, pec.status, pec.term_start, pec.term_end
+        FROM `tabProgram Enrollment` pe
+        LEFT JOIN `tabProgram Enrollment Course` pec ON pec.parent = pe.name
+        WHERE pe.student = %(student)s {program_filter}
+        ORDER BY pec.course_name
+        """.format(program_filter="AND pe.program IN %(programs)s" if program_scope else ""),
+        {"student": student, "programs": tuple(program_scope)} if program_scope else {"student": student},
+        as_dict=True,
+    )
+
+    completion_by_course = {course: entry["completion_rate"] for course, entry in course_map.items()}
+    current_courses = [
+        {
+            "course": r.course,
+            "course_name": r.course_name or r.course,
+            "status": r.status or "current",
+            "completion_rate": completion_by_course.get(r.course, 0),
+            "academic_summary": {},
+        }
+        for r in pec_rows
+    ]
+
+    return {
+        "current_courses": current_courses,
+        "task_progress": {
+            "status_distribution": status_distribution,
+            "by_course_completion": list(course_map.values()),
+        },
+        "recent_tasks": recent_tasks,
+    }
+
+
+def _wellbeing_block(student: str, academic_year: str | None, *, snapshot_ctx=None):
+    support = snapshot_ctx["support"] if snapshot_ctx else None
+    logs = support["logs"] if support else _get_visible_student_logs(student=student, academic_year=None, limit=20)
+    referrals = (
+        support["referrals"]
+        if support
+        else _get_visible_student_referrals(student=student, academic_year=None, limit=10)
+    )
+    nurse = support["nurse_visits"] if support else _get_visible_student_nurse_visits(student=student, limit=10)
+    health_note = support["health_note"] if support else _get_student_health_note(student)
+
+    timeline = []
+    for r in logs:
+        timeline.append(
+            {
+                "type": "student_log",
+                "doctype": "Student Log",
+                "name": r.name,
+                "date": r.date,
+                "academic_year": r.academic_year,
+                "title": r.log_type or "Log",
+                "summary": _preview_text(r.log, limit=None),
+                "status": r.follow_up_status,
+                "is_sensitive": False,
+            }
+        )
+    for r in referrals:
+        timeline.append(
+            {
+                "type": "referral",
+                "doctype": "Student Referral",
+                "name": r.name,
+                "date": r.date,
+                "academic_year": r.academic_year,
+                "title": r.referral_category or r.referral_source or "Referral",
+                "summary": _preview_text(r.referral_description, limit=None),
+                "status": None,
+                "is_sensitive": True,
+            }
+        )
+    for r in nurse:
+        timeline.append(
+            {
+                "type": "nurse_visit",
+                "doctype": "Student Patient Visit",
+                "name": r.name,
+                "date": r.date,
+                "title": "Nurse visit",
+                "summary": _preview_text(r.note, limit=None),
+                "status": None,
+                "is_sensitive": True,
+            }
+        )
+
+    timeline = sorted(timeline, key=lambda r: r.get("date") or "", reverse=True)[:30]
+    if support:
+        visible_logs_total, visible_logs_open_followups = support["log_counts"]
+        visible_referrals_total, visible_referrals_active = support["referral_counts"]
+        visible_nurse_visits_total = support["nurse_visit_count"]
+    else:
+        visible_logs_total, visible_logs_open_followups = _visible_student_log_support_counts(student, academic_year)
+        visible_referrals_total, visible_referrals_active = _visible_student_referral_counts(student)
+        visible_nurse_visits_total = _visible_student_nurse_visit_count(student)
+
+    metrics = {
+        "student_logs": {
+            "total": visible_logs_total,
+            "open_followups": visible_logs_open_followups,
+        },
+        "referrals": {
+            "total": visible_referrals_total,
+            "active": visible_referrals_active,
+        },
+        "nurse_visits": {"total": visible_nurse_visits_total, "this_term": visible_nurse_visits_total},
+        "time_series": [],
+    }
+
+    return {"timeline": timeline, "health_note": health_note, "metrics": metrics}
+
+
+def _preview_text(value: str | None, limit: int | None = 140) -> str | None:
+    text = strip_html(value or "").strip()
+    if not text:
+        return None
+    compact = " ".join(text.split())
+    if limit is None:
+        return compact
+    return compact[:limit]
+
+
+def _get_visible_student_referrals(student: str, academic_year: str | None, limit: int = 10) -> list[dict]:
+    if not frappe.db.exists("DocType", "Student Referral"):
+        return []
+
+    user = _current_user()
+    if not frappe.has_permission("Student Referral", ptype="read", user=user):
+        return []
+
+    visibility_sql = get_student_referral_permission_query_conditions(user=user)
+    params = {"student": student, "limit": int(limit)}
+    conditions = ["docstatus = 1", "student = %(student)s"]
+
+    if academic_year:
+        conditions.append("academic_year = %(academic_year)s")
+        params["academic_year"] = academic_year
+    if visibility_sql:
+        conditions.append(f"({visibility_sql})")
+
+    return frappe.db.sql(
+        f"""
+        SELECT
+            name,
+            date,
+            academic_year,
+            referral_category,
+            referral_source,
+            referral_description
+        FROM `tabStudent Referral`
+        WHERE {" AND ".join(conditions)}
+        ORDER BY date DESC, modified DESC
+        LIMIT %(limit)s
+        """,
+        params,
+        as_dict=True,
+    )
+
+
+def _visible_student_referral_counts(student: str) -> tuple[int, int]:
+    if not frappe.db.exists("DocType", "Student Referral"):
+        return 0, 0
+
+    user = _current_user()
+    if not frappe.has_permission("Student Referral", ptype="read", user=user):
+        return 0, 0
+
+    visibility_sql = get_student_referral_permission_query_conditions(user=user)
+    params = {"student": student}
+    conditions = ["docstatus = 1", "student = %(student)s"]
+    if visibility_sql:
+        conditions.append(f"({visibility_sql})")
+
+    row = frappe.db.sql(
+        f"""
+        SELECT COUNT(*) AS total_referrals
+        FROM `tabStudent Referral`
+        WHERE {" AND ".join(conditions)}
+        """,
+        params,
+        as_dict=True,
+    )
+    total = int((row or [{}])[0].get("total_referrals") or 0)
+    return total, total
+
+
+def _get_student_health_note(student: str) -> dict | None:
+    if not frappe.db.exists("DocType", "Student Patient"):
+        return None
+
+    patient = frappe.db.get_value(
+        "Student Patient",
+        {"student": student},
+        ["name", "medical_info", "modified"],
+        as_dict=True,
+    )
+    if not patient or not patient.name:
+        return None
+    if not frappe.has_permission("Student Patient", ptype="read", doc=patient.name, user=_current_user()):
+        return None
+
+    summary = _preview_text(patient.medical_info, limit=240)
+    if not summary:
+        return None
+
+    return {
+        "doctype": "Student Patient",
+        "name": patient.name,
+        "title": "Health note to staff",
+        "summary": summary,
+        "updated_on": patient.modified,
+        "is_sensitive": True,
+    }
+
+
+def _get_visible_student_nurse_visits(student: str, limit: int = 10) -> list[dict]:
+    if not frappe.db.exists("DocType", "Student Patient Visit"):
+        return []
+
+    student_patient = frappe.db.get_value("Student Patient", {"student": student}, "name")
+    if not student_patient:
+        return []
+
+    user = _current_user()
+    if not frappe.has_permission("Student Patient Visit", ptype="read", user=user):
+        return []
+
+    return frappe.db.sql(
+        """
+        SELECT
+            name,
+            date,
+            note
+        FROM `tabStudent Patient Visit`
+        WHERE docstatus = 1
+          AND student_patient = %(student_patient)s
+        ORDER BY date DESC, modified DESC
+        LIMIT %(limit)s
+        """,
+        {"student_patient": student_patient, "limit": int(limit)},
+        as_dict=True,
+    )
+
+
+def _visible_student_nurse_visit_count(student: str) -> int:
+    if not frappe.db.exists("DocType", "Student Patient Visit"):
+        return 0
+
+    student_patient = frappe.db.get_value("Student Patient", {"student": student}, "name")
+    if not student_patient:
+        return 0
+    if not frappe.has_permission("Student Patient Visit", ptype="read", user=_current_user()):
+        return 0
+
+    return int(
+        frappe.db.count(
+            "Student Patient Visit",
+            {
+                "docstatus": 1,
+                "student_patient": student_patient,
+            },
+        )
+        or 0
+    )
+
+
+def _get_visible_student_logs(student: str, academic_year: str | None, limit: int = 20) -> list[dict]:
+    visibility_sql, visibility_params = get_student_log_visibility_predicate(
+        user=_current_user(),
+        table_alias="sl",
+        allow_aggregate_only=False,
+    )
+    if visibility_sql == "0=1":
+        return []
+
+    params = {
+        **(visibility_params or {}),
+        "student": student,
+        "limit": int(limit),
+    }
+    ay_clause = ""
+    if academic_year:
+        ay_clause = "AND sl.academic_year = %(academic_year)s"
+        params["academic_year"] = academic_year
+
+    return frappe.db.sql(
+        f"""
+        SELECT
+            sl.name,
+            sl.date,
+            sl.academic_year,
+            sl.log_type,
+            sl.follow_up_status,
+            sl.log,
+            sl.requires_follow_up
+        FROM `tabStudent Log` sl
+        WHERE sl.docstatus = 1
+          AND sl.student = %(student)s
+          {ay_clause}
+          AND ({visibility_sql})
+        ORDER BY sl.date DESC, sl.time DESC
+        LIMIT %(limit)s
+        """,
+        params,
+        as_dict=True,
+    )
+
+
+def _visible_student_log_support_counts(student: str, academic_year: str | None) -> tuple[int, int]:
+    visibility_sql, visibility_params = get_student_log_visibility_predicate(
+        user=_current_user(),
+        table_alias="sl",
+        allow_aggregate_only=False,
+    )
+    if visibility_sql == "0=1":
+        return 0, 0
+
+    params = {
+        **(visibility_params or {}),
+        "student": student,
+    }
+    ay_clause = ""
+    if academic_year:
+        ay_clause = "AND sl.academic_year = %(academic_year)s"
+        params["academic_year"] = academic_year
+
+    row = frappe.db.sql(
+        f"""
+        SELECT
+            COUNT(*) AS total_logs,
+            SUM(CASE WHEN sl.requires_follow_up = 1 THEN 1 ELSE 0 END) AS open_followups
+        FROM `tabStudent Log` sl
+        WHERE sl.docstatus = 1
+          AND sl.student = %(student)s
+          {ay_clause}
+          AND ({visibility_sql})
+        """,
+        params,
+        as_dict=True,
+    )
+    if not row:
+        return 0, 0
+
+    return int(row[0].get("total_logs") or 0), int(row[0].get("open_followups") or 0)
+
+
+def _history_block(student: str, program: str | None, *, snapshot_ctx=None):
+    # Use Program Enrollment academic years as a backbone
+    years = (
+        snapshot_ctx["program_enrollment_years"]
+        if snapshot_ctx
+        else frappe.get_all(
+            "Program Enrollment",
+            filters={"student": student},
+            fields=["academic_year"],
+            distinct=True,
+            order_by="academic_year desc",
+        )
+    )
+    year_options = []
+    for idx, y in enumerate(years):
+        if idx == 0:
+            year_options.append({"key": "current", "label": "This year", "academic_year": y.academic_year})
+        elif idx == 1:
+            year_options.append({"key": "previous", "label": "Last year", "academic_year": y.academic_year})
+    year_options.append({"key": "all", "label": "All years", "academic_years": [y.academic_year for y in years]})
+
+    academic_trend = []
+    attendance_trend = []
+
+    # Task completion per AY
+    task_rows = snapshot_ctx["task_rows_scoped"] if snapshot_ctx else _task_rows(student, program)
+    for ay in {r.academic_year for r in task_rows if r.academic_year}:
+        yr_rows = [r for r in task_rows if r.academic_year == ay]
+        total = len(yr_rows)
+        completed = sum(1 for r in yr_rows if r.complete)
+        academic_trend.append(
+            {
+                "academic_year": ay,
+                "label": ay,
+                "overall_grade_label": None,
+                "overall_grade_value": None,
+                "task_completion_rate": (completed / total) if total else 0,
+            }
+        )
+
+    # Attendance per AY
+    att_years = (
+        snapshot_ctx["attendance_years"]
+        if snapshot_ctx
+        else [
+            row.academic_year
+            for row in frappe.get_all(
+                "Student Attendance",
+                filters={"student": student},
+                fields=["academic_year"],
+                distinct=True,
+                order_by="academic_year desc",
+            )
+        ]
+    )
+    for ay in att_years:
+        if snapshot_ctx:
+            stats = _attendance_block(
+                student,
+                ay,
+                attendance_rows=snapshot_ctx["attendance_rows"],
+                attendance_code_bundle=snapshot_ctx["attendance_code_bundle"],
+                course_name_map=snapshot_ctx["attendance_course_labels"],
+            )["summary"]
+        else:
+            stats = _attendance_block(student, ay)["summary"]
+        attendance_trend.append(
+            {
+                "academic_year": ay,
+                "label": ay,
+                "present_percentage": stats["present_percentage"],
+                "unexcused_absences": stats["unexcused_absences"],
+            }
+        )
+
+    return {
+        "year_options": year_options,
+        "selected_year_scope": "all",
+        "academic_trend": sorted(academic_trend, key=lambda r: r["academic_year"]),
+        "attendance_trend": sorted(attendance_trend, key=lambda r: r["academic_year"]),
+        "reflection_flags": [],
+    }
+
+
+def _kpi_block(student: str, academic_year: str | None, *, snapshot_ctx=None):
+    attendance_summary = _attendance_block(
+        student,
+        academic_year,
+        attendance_rows=snapshot_ctx["attendance_rows"] if snapshot_ctx else None,
+        attendance_code_bundle=snapshot_ctx["attendance_code_bundle"] if snapshot_ctx else None,
+        course_name_map=snapshot_ctx["attendance_course_labels"] if snapshot_ctx else None,
+    )["summary"]
+    task_rows = snapshot_ctx["task_rows_all"] if snapshot_ctx else _task_rows(student, None)
+    if snapshot_ctx:
+        student_logs_total, student_logs_open_followups = snapshot_ctx["support"]["log_counts"]
+        visible_referrals_total, visible_referrals_active = snapshot_ctx["support"]["referral_counts"]
+        visible_nurse_visits_total = snapshot_ctx["support"]["nurse_visit_count"]
+    else:
+        student_logs_total, student_logs_open_followups = _visible_student_log_support_counts(student, academic_year)
+        visible_referrals_total, visible_referrals_active = _visible_student_referral_counts(student)
+        visible_nurse_visits_total = _visible_student_nurse_visit_count(student)
+    task_rows = _task_rows_for_academic_year(task_rows, academic_year)
+
+    total_tasks = len(task_rows)
+    completed_tasks = sum(1 for r in task_rows if r.complete)
+    overdue_tasks = sum(
+        1
+        for r in task_rows
+        if r.due_date and getdate(r.due_date) < getdate(nowdate()) and not r.complete and not _task_is_missed(r)
+    )
+    missed_tasks = sum(1 for r in task_rows if _task_is_missed(r))
+
+    return {
+        "attendance": attendance_summary,
+        "tasks": {
+            "completion_rate": (completed_tasks / total_tasks) if total_tasks else 0,
+            "total_tasks": total_tasks,
+            "completed_tasks": completed_tasks,
+            "overdue_tasks": overdue_tasks,
+            "missed_tasks": missed_tasks,
+        },
+        "academic": {"latest_overall_label": None, "latest_overall_value": None, "trend": None},
+        "support": {
+            "student_logs_total": student_logs_total,
+            "student_logs_open_followups": student_logs_open_followups,
+            "active_referrals": visible_referrals_active,
+            "nurse_visits_this_term": visible_nurse_visits_total,
+        },
+    }
+
+
+def _permissions_for_view(view_mode: str) -> Dict[str, bool]:
+    is_student_view = view_mode in {"student", "guardian"}
+    user = _current_user()
+    return {
+        "can_view_tasks": True,
+        "can_view_task_marks": not is_student_view,
+        "can_view_logs": not is_student_view and bool(frappe.has_permission("Student Log", ptype="read", user=user)),
+        "can_view_referrals": not is_student_view
+        and bool(frappe.has_permission("Student Referral", ptype="read", user=user)),
+        "can_view_nurse_details": not is_student_view
+        and bool(frappe.has_permission("Student Patient", ptype="read", user=user))
+        and bool(frappe.has_permission("Student Patient Visit", ptype="read", user=user)),
+        "can_view_attendance_details": True,
+    }
+
+
+@frappe.whitelist()
+def get_student_center_snapshot(student: str, school: str, program: str, view_mode: str = "staff"):
+    student = student or ""
+    program = program or ""
+    school = school or ""
+    _ensure_can_view_student(student, school, program)
+
+    identity = _identity_block(student, program, school)
+    current_ay = identity.get("program_enrollment", {}).get("academic_year")
+    snapshot_ctx = _build_student_snapshot_context(student, program, current_ay)
+
+    return {
+        "meta": {
+            "student": student,
+            "student_name": identity.get("full_name"),
+            "school": school,
+            "program": program,
+            "current_academic_year": current_ay,
+            "view_mode": view_mode,
+            "permissions": _permissions_for_view(view_mode),
+        },
+        "identity": identity,
+        "kpis": _kpi_block(student, current_ay, snapshot_ctx=snapshot_ctx),
+        "learning": _learning_block(student, program, current_ay, snapshot_ctx=snapshot_ctx),
+        "attendance": _attendance_block(
+            student,
+            None,
+            attendance_rows=snapshot_ctx["attendance_rows"],
+            attendance_code_bundle=snapshot_ctx["attendance_code_bundle"],
+            course_name_map=snapshot_ctx["attendance_course_labels"],
+        ),
+        "wellbeing": _wellbeing_block(student, current_ay, snapshot_ctx=snapshot_ctx),
+        "history": _history_block(student, program, snapshot_ctx=snapshot_ctx),
+    }

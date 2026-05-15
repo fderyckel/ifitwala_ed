@@ -1,0 +1,319 @@
+<!-- ifitwala_ed/ui-spa/src/components/overlays/class-hub/StudentContextOverlay.vue -->
+<!--
+  StudentContextOverlay.vue
+  Detail view for a specific student within the Class Hub context.
+  Allows viewing/editing signals, evidence, and notes for that student.
+
+  Used by:
+  - ClassHub.vue (via OverlayHost)
+-->
+<template>
+	<TransitionRoot :show="open" as="template" @after-leave="$emit('after-leave')">
+		<Dialog
+			as="div"
+			class="if-overlay if-overlay--class-hub"
+			:style="overlayStyle"
+			@close="onDialogClose"
+		>
+			<TransitionChild
+				as="template"
+				enter="if-overlay__fade-enter"
+				enter-from="if-overlay__fade-from"
+				enter-to="if-overlay__fade-to"
+				leave="if-overlay__fade-leave"
+				leave-from="if-overlay__fade-to"
+				leave-to="if-overlay__fade-from"
+			>
+				<div class="if-overlay__backdrop" @click="emitClose('backdrop')" />
+			</TransitionChild>
+
+			<div class="if-overlay__wrap" @click.self="emitClose('backdrop')">
+				<TransitionChild
+					as="template"
+					enter="if-overlay__panel-enter"
+					enter-from="if-overlay__panel-from"
+					enter-to="if-overlay__panel-to"
+					leave="if-overlay__panel-leave"
+					leave-from="if-overlay__panel-to"
+					leave-to="if-overlay__panel-from"
+				>
+					<DialogPanel class="if-overlay__panel">
+						<div class="if-overlay__header px-6 pt-6">
+							<div class="flex items-start justify-between gap-4">
+								<div>
+									<p class="type-overline text-slate-token/70">Student Context</p>
+									<h2 class="type-h2 text-ink">{{ student_name }}</h2>
+								</div>
+								<button
+									type="button"
+									class="if-overlay__icon-button"
+									aria-label="Close"
+									@click="emitClose('programmatic')"
+								>
+									<span aria-hidden="true">x</span>
+								</button>
+							</div>
+						</div>
+
+						<div class="if-overlay__body space-y-5">
+							<div class="flex flex-wrap gap-2">
+								<button
+									v-for="tab in tabs"
+									:key="tab"
+									type="button"
+									class="rounded-full border px-4 py-1 type-button-label"
+									:class="
+										activeTab === tab
+											? 'border-jacaranda bg-jacaranda/10 text-jacaranda'
+											: 'border-slate-200 bg-white text-slate-token/70'
+									"
+									@click="activeTab = tab"
+								>
+									{{ tab }}
+								</button>
+							</div>
+
+							<section v-if="activeTab === 'Snapshot'" class="space-y-4">
+								<div class="space-y-2">
+									<p class="type-caption text-slate-token/70">Signal</p>
+									<div class="flex flex-wrap gap-2">
+										<button
+											v-for="option in signalOptions"
+											:key="option"
+											type="button"
+											class="rounded-full border px-4 py-1 type-button-label"
+											:class="
+												signal === option
+													? 'border-canopy bg-canopy/10 text-canopy'
+													: 'border-slate-200 bg-white text-slate-token/70'
+											"
+											@click="signal = option"
+										>
+											{{ option }}
+										</button>
+									</div>
+								</div>
+
+								<div class="space-y-2">
+									<label class="type-caption text-slate-token/70" for="snapshot-note"
+										>Quick note</label
+									>
+									<textarea
+										id="snapshot-note"
+										v-model="snapshotNote"
+										rows="3"
+										class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 type-body text-ink"
+										placeholder="Add a quick note..."
+									></textarea>
+								</div>
+
+								<p v-if="errorMessage" class="type-caption text-flame">
+									{{ errorMessage }}
+								</p>
+
+								<button
+									type="button"
+									class="rounded-full bg-jacaranda px-5 py-2 type-button-label text-white shadow-soft"
+									@click="saveSnapshot"
+								>
+									Save snapshot
+								</button>
+							</section>
+
+							<section v-else-if="activeTab === 'Evidence'" class="space-y-4">
+								<div class="rounded-xl border border-slate-200 bg-white/90 px-4 py-4">
+									<p class="type-body text-slate-token/70">
+										No evidence recorded yet for this session.
+									</p>
+								</div>
+								<button
+									type="button"
+									class="rounded-full border border-slate-200 bg-white px-5 py-2 type-button-label text-ink shadow-sm hover:border-jacaranda/60"
+									@click="openQuickEvidence"
+								>
+									Add evidence
+								</button>
+							</section>
+
+							<section v-else class="space-y-4">
+								<div class="space-y-2">
+									<label class="type-caption text-slate-token/70" for="teacher-note"
+										>Student log note</label
+									>
+									<template v-if="canCreateStudentLog">
+										<textarea
+											id="teacher-note"
+											v-model="teacherNote"
+											rows="4"
+											class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 type-body text-ink"
+											placeholder="Draft the note you want to add to Student Log."
+										></textarea>
+									</template>
+									<div v-else class="rounded-xl border border-slate-200 bg-white/90 px-4 py-4">
+										<p class="type-body text-slate-token/70">
+											Student Log creation is not available for your current role in this Hub flow.
+										</p>
+									</div>
+								</div>
+								<p v-if="noteMessage" class="type-caption text-flame">
+									{{ noteMessage }}
+								</p>
+								<button
+									type="button"
+									class="rounded-full bg-jacaranda px-5 py-2 type-button-label text-white shadow-soft"
+									:disabled="!canCreateStudentLog"
+									@click="saveNote"
+								>
+									Create student log
+								</button>
+							</section>
+						</div>
+					</DialogPanel>
+				</TransitionChild>
+			</div>
+		</Dialog>
+	</TransitionRoot>
+</template>
+
+<script setup lang="ts">
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { Dialog, DialogPanel, TransitionChild, TransitionRoot } from '@headlessui/vue';
+import { useOverlayStack } from '@/composables/useOverlayStack';
+import { createClassHubService } from '@/lib/classHubService';
+import type { ClassHubSignal } from '@/types/classHub';
+
+type CloseReason = 'backdrop' | 'esc' | 'programmatic';
+
+const props = defineProps<{
+	open: boolean;
+	zIndex?: number;
+	overlayId?: string | null;
+	student: string;
+	student_name: string;
+	student_group: string;
+	class_session?: string | null;
+	can_create_student_log?: boolean;
+}>();
+
+const emit = defineEmits<{
+	(e: 'close', reason: CloseReason): void;
+	(e: 'after-leave'): void;
+}>();
+
+const overlay = useOverlayStack();
+const service = createClassHubService();
+
+const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 60 }));
+
+const tabs = ['Snapshot', 'Evidence', 'Notes'] as const;
+const activeTab = ref<(typeof tabs)[number]>('Snapshot');
+
+const signalOptions: ClassHubSignal['signal'][] = ['Not Yet', 'Almost', 'Got It', 'Exceeded'];
+const signal = ref<ClassHubSignal['signal'] | ''>('');
+const snapshotNote = ref('');
+const teacherNote = ref('');
+const errorMessage = ref('');
+const noteMessage = ref('');
+const canCreateStudentLog = computed(() => Boolean(props.can_create_student_log));
+
+function emitClose(reason: CloseReason = 'programmatic') {
+	emit('close', reason);
+}
+
+async function saveSnapshot() {
+	errorMessage.value = '';
+	if (!props.class_session) {
+		errorMessage.value = 'Start a session before saving snapshots.';
+		return;
+	}
+	if (!signal.value) {
+		errorMessage.value = 'Choose a signal before saving.';
+		return;
+	}
+
+	const payload: ClassHubSignal[] = [
+		{
+			student: props.student,
+			signal: signal.value,
+			note: snapshotNote.value.trim() || null,
+		},
+	];
+
+	try {
+		await service.saveSignals(props.class_session, payload);
+		emitClose('programmatic');
+	} catch (err) {
+		errorMessage.value = 'Unable to save right now.';
+		console.error('[StudentContextOverlay] saveSnapshot failed', err);
+	}
+}
+
+function openQuickEvidence() {
+	overlay.replaceTop('class-hub-quick-evidence', {
+		student_group: props.student_group,
+		class_session: props.class_session ?? null,
+		preselected_students: [
+			{
+				student: props.student,
+				student_name: props.student_name,
+			},
+		],
+	});
+}
+
+async function saveNote() {
+	noteMessage.value = '';
+	if (!canCreateStudentLog.value) {
+		noteMessage.value =
+			'Your current Student Log permission does not allow note creation from the Hub.';
+		return;
+	}
+	if (!teacherNote.value.trim()) {
+		noteMessage.value = 'Add a note before saving.';
+		return;
+	}
+
+	try {
+		overlay.open('student-log-create', {
+			mode: 'attendance',
+			sourceLabel: 'Class Hub',
+			initial_log_text: teacherNote.value.trim(),
+			student: {
+				id: props.student,
+				label: props.student_name,
+				image: null,
+				meta: null,
+			},
+			student_group: {
+				id: props.student_group,
+				label: props.student_group,
+			},
+		});
+	} catch (err) {
+		noteMessage.value = 'Unable to save right now.';
+		console.error('[StudentContextOverlay] saveNote failed', err);
+	}
+}
+
+function onDialogClose(_payload: unknown) {
+	// OverlayHost owns close enforcement.
+}
+
+function onKeydown(event: KeyboardEvent) {
+	if (!props.open) return;
+	if (event.key === 'Escape') emitClose('esc');
+}
+
+watch(
+	() => props.open,
+	value => {
+		if (value) document.addEventListener('keydown', onKeydown, true);
+		else document.removeEventListener('keydown', onKeydown, true);
+	},
+	{ immediate: true }
+);
+
+onBeforeUnmount(() => {
+	document.removeEventListener('keydown', onKeydown, true);
+});
+</script>

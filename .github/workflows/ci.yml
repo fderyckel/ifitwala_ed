@@ -1,0 +1,320 @@
+name: Ifitwala CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ifitwala-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.14"
+  NODE_VERSION: "24.x"
+  NODE_OPTIONS: "--disable-warning=DEP0169"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  backend-smoke:
+    name: backend-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    services:
+      mariadb:
+        image: mariadb:10.6
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Verify Node runtime
+        run: |
+          which node
+          node -v
+          which yarn
+          yarn --version
+
+      - name: Install system deps
+        run: sudo apt-get update && sudo apt-get install -y redis-server
+      - name: Start Redis for bench
+        run: |
+          for port in 11000 12000 13000; do
+            if redis-cli -p "$port" ping >/dev/null 2>&1; then
+              echo "Redis already running on :$port"
+              continue
+            fi
+            redis-server --port "$port" --daemonize yes
+            redis-cli -p "$port" ping
+          done
+
+      - name: Install Bench
+        run: pip install frappe-bench
+
+      - name: Init bench
+        run: |
+          bench init --frappe-branch version-16 frappe-bench
+          cd frappe-bench
+          bench get-app --branch main ifitwala_drive https://github.com/fderyckel/ifitwala_drive.git
+          bench get-app ifitwala_ed "$GITHUB_WORKSPACE"
+
+      - name: Create test site
+        run: |
+          cd frappe-bench
+          bench new-site test_site \
+            --db-name test_site \
+            --admin-password admin \
+            --mariadb-root-password root \
+            --install-app ifitwala_ed \
+            --force
+
+      - name: Run backend smoke suite
+        run: |
+          cd frappe-bench
+          set +e
+          failed=0
+          modules=(
+            "ifitwala_ed.schedule.test_enrollment_engine"
+            "ifitwala_ed.schedule.doctype.program_enrollment_request.test_program_enrollment_request"
+            "ifitwala_ed.tests.test_workspace_sidebar_contract"
+            "ifitwala_ed.api.test_guardian_home"
+            "ifitwala_ed.api.test_users"
+            "ifitwala_ed.api.test_calendar"
+            "ifitwala_ed.api.test_file_access"
+            "ifitwala_ed.api.test_analytics_permissions"
+            "ifitwala_ed.api.test_self_enrollment"
+            "ifitwala_ed.api.test_policy_signature"
+            "ifitwala_ed.api.test_focus_applicant_review"
+            "ifitwala_ed.api.test_admissions_portal"
+            "ifitwala_ed.hr.test_leave_permissions"
+            "ifitwala_ed.website.tests.test_root_route_resolution"
+            "ifitwala_ed.website.tests.test_portal_route"
+          )
+
+          for module in "${modules[@]}"; do
+            echo "Running $module"
+            bench --site test_site run-tests --app ifitwala_ed --module "$module"
+            if [ "$?" -ne 0 ]; then
+              failed=1
+            fi
+          done
+
+          exit "$failed"
+
+  backend-domain:
+    name: backend-domain
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    services:
+      mariadb:
+        image: mariadb:10.6
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Verify Node runtime
+        run: |
+          which node
+          node -v
+          which yarn
+          yarn --version
+
+      - name: Install system deps
+        run: sudo apt-get update && sudo apt-get install -y redis-server
+      - name: Start Redis for bench
+        run: |
+          for port in 11000 12000 13000; do
+            if redis-cli -p "$port" ping >/dev/null 2>&1; then
+              echo "Redis already running on :$port"
+              continue
+            fi
+            redis-server --port "$port" --daemonize yes
+            redis-cli -p "$port" ping
+          done
+
+      - name: Install Bench
+        run: pip install frappe-bench
+
+      - name: Init bench
+        run: |
+          bench init --frappe-branch version-16 frappe-bench
+          cd frappe-bench
+          bench get-app --branch main ifitwala_drive https://github.com/fderyckel/ifitwala_drive.git
+          bench get-app ifitwala_ed "$GITHUB_WORKSPACE"
+
+      - name: Create test site
+        run: |
+          cd frappe-bench
+          bench new-site test_site \
+            --db-name test_site \
+            --admin-password admin \
+            --mariadb-root-password root \
+            --install-app ifitwala_ed \
+            --force
+
+      - name: Resolve changed python module targets
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          python <<'PY' >> "$GITHUB_ENV"
+          import os
+          import subprocess
+
+          base_sha = (os.environ.get("BASE_SHA") or "").strip()
+          if base_sha:
+              diff_cmd = ["git", "diff", "--name-only", f"{base_sha}...HEAD"]
+          else:
+              diff_cmd = ["git", "diff", "--name-only", "HEAD~1...HEAD"]
+
+          changed = subprocess.check_output(diff_cmd, text=True).splitlines()
+          python_files = [
+              f for f in changed
+              if f.startswith("ifitwala_ed/") and f.endswith(".py")
+          ]
+
+          if not python_files:
+              print("NO_PY_CHANGES=1")
+              raise SystemExit(0)
+
+          targets = set()
+          for file_path in python_files:
+              rel = file_path[len("ifitwala_ed/"):]
+              if "/" in rel:
+                  root = rel.split("/", 1)[0]
+                  targets.add(f"ifitwala_ed.{root}")
+              else:
+                  targets.add(f"ifitwala_ed.{rel[:-3]}")
+
+          print("NO_PY_CHANGES=0")
+          print("TARGETS=" + ",".join(sorted(targets)))
+          PY
+
+      - name: Run domain suite for changed modules
+        run: |
+          cd frappe-bench
+          set +e
+          failed=0
+
+          if [ "${NO_PY_CHANGES}" = "1" ]; then
+            echo "No python file changes detected. Running fallback domain smoke test."
+            bench --site test_site run-tests --app ifitwala_ed --module ifitwala_ed.schedule.doctype.program_enrollment_request.test_program_enrollment_request
+            exit $?
+          fi
+
+          IFS=',' read -ra targets <<< "${TARGETS}"
+          for target in "${targets[@]}"; do
+            echo "Running target module: $target"
+            bench --site test_site run-tests --app ifitwala_ed --module "$target"
+            if [ "$?" -ne 0 ]; then
+              failed=1
+            fi
+          done
+
+          exit "$failed"
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install pre-commit
+        run: pip install pre-commit==4.3.0
+      - name: Run pre-commit suite
+        run: pre-commit run --all-files
+      - name: Run SPA contracts guardrails
+        run: bash scripts/contracts_guardrails.sh
+      - name: Run i18n guardrails
+        run: bash scripts/i18n/check.sh
+      - name: Compute backend test coverage baseline metrics
+        run: bash scripts/test_metrics.sh
+
+  desk-build:
+    name: desk-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: yarn
+          cache-dependency-path: |
+            yarn.lock
+            ifitwala_ed/ui-spa/yarn.lock
+
+      - name: Install dependencies (root)
+        run: yarn install --frozen-lockfile
+
+      - name: Build unified assets (Desk + SPA)
+        run: yarn build
+
+  spa-typecheck-build:
+    name: spa-typecheck-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    defaults:
+      run:
+        working-directory: ifitwala_ed/ui-spa
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: yarn
+          cache-dependency-path: ifitwala_ed/ui-spa/yarn.lock
+
+      - name: Install SPA deps
+        run: yarn install --frozen-lockfile
+
+      - name: Type check and run SPA unit tests
+        run: |
+          yarn type-check
+          yarn test:unit:run

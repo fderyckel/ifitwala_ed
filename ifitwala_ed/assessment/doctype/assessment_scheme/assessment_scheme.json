@@ -1,0 +1,172 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:ASC-{YYYY}-{#####}",
+ "creation": "2026-04-25 14:58:07.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "scheme_name",
+  "status",
+  "calculation_method",
+  "default_grade_scale",
+  "scope_section",
+  "school",
+  "academic_year",
+  "program",
+  "course",
+  "description",
+  "categories"
+ ],
+ "fields": [
+  {
+   "fieldname": "scheme_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Scheme Name",
+   "reqd": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Draft\nActive\nRetired"
+  },
+  {
+   "default": "Weighted Categories",
+   "fieldname": "calculation_method",
+   "fieldtype": "Select",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "Calculation Method",
+   "options": "Weighted Categories\nTotal Points\nWeighted Tasks\nCategory + Task Weight Hybrid\nCriteria-Based\nManual Final",
+   "reqd": 1
+  },
+  {
+   "fieldname": "default_grade_scale",
+   "fieldtype": "Link",
+   "label": "Default Grade Scale",
+   "options": "Grade Scale"
+  },
+  {
+   "fieldname": "scope_section",
+   "fieldtype": "Section Break",
+   "label": "Scope"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "label": "School",
+   "options": "School",
+   "reqd": 1
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "label": "Academic Year",
+   "options": "Academic Year"
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "label": "Program",
+   "options": "Program"
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "label": "Course",
+   "options": "Course"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "categories",
+   "fieldtype": "Table",
+   "label": "Categories",
+   "options": "Assessment Scheme Category"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-04-25 14:58:07.000000",
+ "modified_by": "Administrator",
+ "module": "Assessment",
+ "name": "Assessment Scheme",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "scheme_name"
+}
