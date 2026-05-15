@@ -95,9 +95,7 @@ class TestStudentUnit(TestCase):
         self.assertEqual(fields["student_age"].get("read_only"), 1)
 
         dob_read_roles = {
-            row.get("role")
-            for row in payload["permissions"]
-            if row.get("permlevel") == 2 and row.get("read")
+            row.get("role") for row in payload["permissions"] if row.get("permlevel") == 2 and row.get("read")
         }
         self.assertEqual(dob_read_roles, {"Academic Admin", "System Manager"})
 

@@ -532,7 +532,9 @@
 											>
 												<p class="type-body-strong text-ink">
 													{{ doc.document_label || doc.document_type || doc.name }}
-													<span class="text-ink/60">· {{ doc.review_status || __('Pending') }}</span>
+													<span class="text-ink/60"
+														>· {{ doc.review_status || __('Pending') }}</span
+													>
 												</p>
 												<p class="type-caption text-ink/70 mt-1">
 													{{
@@ -912,10 +914,10 @@
 																type="button"
 																class="mt-2 inline-flex text-sm font-medium text-canopy underline"
 																@click="
-																openWorkspaceFile(
-																	row.open_url,
-																	row.file_name || row.label || __('submitted file')
-																)
+																	openWorkspaceFile(
+																		row.open_url,
+																		row.file_name || row.label || __('submitted file')
+																	)
 																"
 															>
 																{{ row.file_name || __('Open file') }}
@@ -984,9 +986,7 @@
 														<label class="block space-y-1">
 															<span class="type-caption text-ink/70">
 																{{ __('Review note') }}
-																<span v-if="submissionRequiresNotes">
-																	{{ __('(required)') }}</span
-																>
+																<span v-if="submissionRequiresNotes"> {{ __('(required)') }}</span>
 															</span>
 															<textarea
 																v-model="submissionDecisionNotes"
@@ -1104,7 +1104,9 @@
 													<div class="flex items-start justify-between gap-3">
 														<div class="min-w-0">
 															<p class="type-body-strong text-ink truncate">
-																{{ row.recommender_name || row.recommender_email || __('Referee') }}
+																{{
+																	row.recommender_name || row.recommender_email || __('Referee')
+																}}
 															</p>
 															<p class="mt-1 type-caption text-ink/65 truncate">
 																{{
@@ -1292,9 +1294,7 @@
 															class="mt-2 type-caption text-ink/60"
 														>
 															{{
-																__(
-																	'No structured answers were captured for this recommendation.'
-																)
+																__('No structured answers were captured for this recommendation.')
 															}}
 														</div>
 														<div v-else class="mt-3 space-y-2">
@@ -1340,7 +1340,9 @@
 																<p v-else class="mt-1 type-body whitespace-pre-wrap text-ink">
 																	{{
 																		answer.display_value ||
-																		(answer.has_value ? String(answer.value || '') : __('No response'))
+																		(answer.has_value
+																			? String(answer.value || '')
+																			: __('No response'))
 																	}}
 																</p>
 															</div>

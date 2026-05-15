@@ -3,7 +3,9 @@
 		<header class="page-header">
 			<div class="page-header__intro">
 				<h1 class="type-h1 text-ink">{{ __('Admissions Inbox') }}</h1>
-				<p class="type-meta text-slate-token/80">{{ __('Lead and applicant communication queues') }}</p>
+				<p class="type-meta text-slate-token/80">
+					{{ __('Lead and applicant communication queues') }}
+				</p>
 			</div>
 			<div class="page-header__actions">
 				<p v-if="lastRefreshedLabel" class="type-caption text-slate-token/70">
@@ -115,9 +117,9 @@
 							</div>
 							<div class="inbox-row-card__pills">
 								<span class="inbox-pill inbox-pill--stage">{{ stageLabel(row.stage) }}</span>
-								<span v-if="row.needs_reply" class="inbox-pill inbox-pill--reply"
-									>{{ __('Needs reply') }}</span
-								>
+								<span v-if="row.needs_reply" class="inbox-pill inbox-pill--reply">{{
+									__('Needs reply')
+								}}</span>
 								<span v-if="row.unread_count" class="inbox-pill inbox-pill--unread">
 									{{ __('{0} unread', [row.unread_count]) }}
 								</span>
@@ -467,10 +469,9 @@
 
 				<p v-if="unsupportedActionLabels.length" class="action-drawer__note">
 					{{
-						__(
-							'Handled from the source record in this phase: {0}.',
-							[unsupportedActionLabels.join(', ')]
-						)
+						__('Handled from the source record in this phase: {0}.', [
+							unsupportedActionLabels.join(', '),
+						])
 					}}
 				</p>
 
@@ -504,7 +505,11 @@
 						</label>
 						<label class="action-field">
 							<span>{{ __('Outcome') }}</span>
-							<input v-model="actionForm.outcome" type="text" :placeholder="__('Optional outcome')" />
+							<input
+								v-model="actionForm.outcome"
+								type="text"
+								:placeholder="__('Optional outcome')"
+							/>
 						</label>
 						<label class="action-field">
 							<span>{{ __('Next Action On') }}</span>
@@ -512,7 +517,11 @@
 						</label>
 						<label class="action-field">
 							<span>{{ __('Note') }}</span>
-							<textarea v-model="actionForm.note" rows="4" :placeholder="__('Structured CRM note')" />
+							<textarea
+								v-model="actionForm.note"
+								rows="4"
+								:placeholder="__('Structured CRM note')"
+							/>
 						</label>
 					</template>
 
@@ -631,7 +640,11 @@
 						<div class="action-form__grid">
 							<label class="action-field">
 								<span>{{ __('Inquiry') }}</span>
-								<input v-model="actionForm.inquiry" type="text" :placeholder="__('Optional Inquiry')" />
+								<input
+									v-model="actionForm.inquiry"
+									type="text"
+									:placeholder="__('Optional Inquiry')"
+								/>
 							</label>
 							<label class="action-field">
 								<span>{{ __('Student Applicant') }}</span>
@@ -643,11 +656,19 @@
 							</label>
 							<label class="action-field">
 								<span>{{ __('Contact') }}</span>
-								<input v-model="actionForm.contact" type="text" :placeholder="__('Optional Contact')" />
+								<input
+									v-model="actionForm.contact"
+									type="text"
+									:placeholder="__('Optional Contact')"
+								/>
 							</label>
 							<label class="action-field">
 								<span>{{ __('Guardian') }}</span>
-								<input v-model="actionForm.guardian" type="text" :placeholder="__('Optional Guardian')" />
+								<input
+									v-model="actionForm.guardian"
+									type="text"
+									:placeholder="__('Optional Guardian')"
+								/>
 							</label>
 						</div>
 					</template>

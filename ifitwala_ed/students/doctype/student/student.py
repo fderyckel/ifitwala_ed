@@ -52,7 +52,6 @@ from ifitwala_ed.accounting.account_holder_utils import validate_account_holder_
 from ifitwala_ed.utilities.employee_utils import get_user_visible_schools
 from ifitwala_ed.utilities.student_utils import format_student_age
 
-
 STUDENT_SCHOOL_SCOPED_ROLES = {
     "Academic Admin",
     "Academic Assistant",
@@ -468,9 +467,7 @@ class Student(Document):
 
     def _hydrate_sibling_age_rows(self):
         sibling_names = [
-            row.student
-            for row in (self.siblings or [])
-            if getattr(row, "student", None) and row.student != self.name
+            row.student for row in (self.siblings or []) if getattr(row, "student", None) and row.student != self.name
         ]
         if not sibling_names:
             return
