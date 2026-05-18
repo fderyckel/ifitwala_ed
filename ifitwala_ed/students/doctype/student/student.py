@@ -645,12 +645,17 @@ class Student(Document):
         contact.save(ignore_permissions=True)
 
 
-@frappe.whitelist()
-def get_contact_linked_to_student(student_name):
+def _get_contact_linked_to_student_unchecked(student_name):
     """Pure read: return Contact name linked to this Student, or None."""
     return frappe.db.get_value(
         "Dynamic Link", {"link_doctype": "Student", "link_name": student_name, "parenttype": "Contact"}, "parent"
     )
+
+
+@frappe.whitelist()
+def get_contact_linked_to_student(student_name):
+    student = _require_student_access(student_name, ptype="read")
+    return _get_contact_linked_to_student_unchecked(student.name)
 
 
 def _require_student_access(student_name: str, *, ptype: str = "read") -> "Student":
@@ -659,7 +664,10 @@ def _require_student_access(student_name: str, *, ptype: str = "read") -> "Stude
         frappe.throw(_("Invalid Student: {student}").format(student=student_name or _("missing")))
     student = frappe.get_doc("Student", student_name)
     if not frappe.has_permission("Student", doc=student, ptype=ptype):
-        frappe.throw(_("You do not have permission to {permission_type} this Student.").format(permission_type=ptype))
+        frappe.throw(
+            _("You do not have permission to {permission_type} this Student.").format(permission_type=ptype),
+            frappe.PermissionError,
+        )
     return student
 
 
@@ -974,7 +982,7 @@ def _build_student_address_summaries(address_names: list[str]) -> list[dict]:
 @frappe.whitelist()
 def get_student_crm_summary(student_name: str) -> dict:
     student = _require_student_access(student_name, ptype="read")
-    contact_name = (get_contact_linked_to_student(student.name) or "").strip()
+    contact_name = (_get_contact_linked_to_student_unchecked(student.name) or "").strip()
     address_names = _get_student_address_names(student.name)
     contact_summary = _build_student_contact_summary(contact_name)
     address_summaries = _build_student_address_summaries(address_names)
@@ -1096,9 +1104,10 @@ def get_student_guardians(student_id: str) -> list[dict]:
     """Return guardians for a given student. Used for sibling guardian sync."""
     if not student_id or not frappe.db.exists("Student", student_id):
         return []
+    student = _require_student_access(student_id, ptype="read")
 
     return frappe.get_all(
         "Student Guardian",
-        filters={"parent": student_id, "parenttype": "Student", "parentfield": "guardians"},
+        filters={"parent": student.name, "parenttype": "Student", "parentfield": "guardians"},
         fields=["guardian", "guardian_name", "relation", "can_consent", "email", "phone"],
     )

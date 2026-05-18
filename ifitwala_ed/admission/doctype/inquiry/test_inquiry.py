@@ -413,6 +413,59 @@ class TestInquiry(FrappeTestCase):
         finally:
             frappe.set_user(previous_user)
 
+    def test_create_contact_from_inquiry_rejects_unassigned_non_admissions_user(self):
+        inquiry = self._make_inquiry(email=f"lead-{frappe.generate_hash(length=8)}@example.com")
+        user = make_user()
+
+        previous_user = frappe.session.user
+        try:
+            frappe.set_user(user.name)
+            with self.assertRaises(frappe.PermissionError):
+                inquiry.create_contact_from_inquiry()
+        finally:
+            frappe.set_user(previous_user)
+
+        self.assertFalse(bool(frappe.db.get_value("Inquiry", inquiry.name, "contact")))
+
+    def test_create_contact_from_inquiry_does_not_reuse_protected_guardian_contact(self):
+        email = f"guardian-lead-{frappe.generate_hash(length=8)}@example.com"
+        guardian = frappe.get_doc(
+            {
+                "doctype": "Guardian",
+                "guardian_first_name": "Protected",
+                "guardian_last_name": "Guardian",
+                "guardian_email": email,
+                "guardian_mobile_phone": "+14155550130",
+            }
+        ).insert(ignore_permissions=True)
+        contact_name = frappe.db.get_value("Contact Email", {"email_id": email}, "parent")
+        self.assertTrue(bool(contact_name))
+        self.assertTrue(
+            bool(
+                frappe.db.exists(
+                    "Dynamic Link",
+                    {
+                        "parenttype": "Contact",
+                        "parentfield": "links",
+                        "parent": contact_name,
+                        "link_doctype": "Guardian",
+                        "link_name": guardian.name,
+                    },
+                )
+            )
+        )
+        inquiry = self._make_inquiry(email=email)
+
+        previous_user = frappe.session.user
+        try:
+            frappe.set_user("Administrator")
+            with self.assertRaises(frappe.PermissionError):
+                inquiry.create_contact_from_inquiry()
+        finally:
+            frappe.set_user(previous_user)
+
+        self.assertFalse(bool(frappe.db.get_value("Inquiry", inquiry.name, "contact")))
+
     def test_archive_requires_and_stores_reason(self):
         inquiry = self._make_inquiry()
 

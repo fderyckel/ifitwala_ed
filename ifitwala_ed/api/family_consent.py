@@ -31,7 +31,7 @@ from ifitwala_ed.governance.doctype.family_consent_request.family_consent_reques
     SUBJECT_SCOPE_PER_STUDENT,
 )
 from ifitwala_ed.integrations.drive.authority import get_drive_file_for_file
-from ifitwala_ed.students.doctype.student.student import get_contact_linked_to_student
+from ifitwala_ed.students.doctype.student.student import _get_contact_linked_to_student_unchecked
 from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 
 CURRENT_STATUS_COMPLETED = "completed"
@@ -317,7 +317,7 @@ def _ensure_contact_link(*, contact_name: str, link_doctype: str, link_name: str
 
 
 def _get_or_create_student_contact(student_name: str, student_row: dict[str, Any]) -> str:
-    contact_name = _clean_data(get_contact_linked_to_student(student_name))
+    contact_name = _clean_data(_get_contact_linked_to_student_unchecked(student_name))
     if contact_name:
         return contact_name
 
@@ -701,7 +701,7 @@ def _build_guardian_binding_context(student_name: str, guardian_name: str) -> di
         or {}
     )
 
-    student_contact_name = _clean_data(get_contact_linked_to_student(student_name))
+    student_contact_name = _clean_data(_get_contact_linked_to_student_unchecked(student_name))
     guardian_contact_name = _clean_data(_get_guardian_contact_name(guardian_name))
     student_address_name, student_address_value = _resolve_single_address(
         link_doctype="Student", link_name=student_name
@@ -742,7 +742,7 @@ def _build_student_binding_context(student_name: str) -> dict[str, Any]:
         )
         or {}
     )
-    student_contact_name = _clean_data(get_contact_linked_to_student(student_name))
+    student_contact_name = _clean_data(_get_contact_linked_to_student_unchecked(student_name))
     student_address_name, student_address_value = _resolve_single_address(
         link_doctype="Student", link_name=student_name
     )

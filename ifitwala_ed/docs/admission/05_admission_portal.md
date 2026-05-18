@@ -1587,6 +1587,8 @@ get_admissions_portal_invite_options(
 ) -> dict
 ```
 
+Invite option and invite mutation APIs must enforce admissions staff role plus scoped access to the target `Student Applicant` before returning applicant Contact emails, guardian invite rows, or creating/updating linked Contact/User records. `System Manager` role membership alone is not an applicant-scope bypass for these contact-sensitive invite APIs.
+
 The Staff Desk form must make the staff user choose who the login represents:
 
 1. `Applicant Self`

@@ -55,6 +55,8 @@ Current domain indexes:
 - `i18n/README.md`
 - `printing/README.md`
 - `scheduling/README.md`
+- `security/README.md`
+- `setup/README.md`
 - `spa/README.md`
 - `testing/README.md`
 - `website/README.md`

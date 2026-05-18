@@ -150,3 +150,14 @@ class TestGuardianUnit(TestCase):
         find_contact_name.assert_not_called()
         ensure_contact_link.assert_not_called()
         ensure_portal_routing.assert_called_once_with("guardian@example.com")
+
+    def test_create_guardian_user_endpoint_rejects_unwritable_guardian(self):
+        with _guardian_module() as guardian_module:
+            guardian = guardian_module.Guardian.__new__(guardian_module.Guardian)
+            guardian.name = "GRD-0001"
+            guardian_module.frappe.db.exists = lambda doctype, name=None: doctype == "Guardian" and name == "GRD-0001"
+            guardian_module.frappe.get_doc = lambda doctype, name: guardian
+            guardian_module.frappe.has_permission = lambda *args, **kwargs: False
+
+            with self.assertRaises(guardian_module.frappe.PermissionError):
+                guardian_module.create_guardian_user("GRD-0001")

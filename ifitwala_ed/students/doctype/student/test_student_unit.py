@@ -166,6 +166,40 @@ class TestStudentUnit(TestCase):
 
         self.assertFalse(allowed)
 
+    def test_get_contact_linked_to_student_rejects_unreadable_student(self):
+        with _student_module() as (student_module, frappe):
+            student = SimpleNamespace(name="STU-0001")
+            frappe.db.exists = lambda doctype, name=None: doctype == "Student" and name == "STU-0001"
+            frappe.get_doc = lambda doctype, name: student
+            frappe.has_permission = lambda *args, **kwargs: False
+
+            with self.assertRaises(frappe.PermissionError):
+                student_module.get_contact_linked_to_student("STU-0001")
+
+    def test_get_contact_linked_to_student_returns_scoped_contact_name(self):
+        with _student_module() as (student_module, frappe):
+            student = SimpleNamespace(name="STU-0001")
+            frappe.db.exists = lambda doctype, name=None: doctype == "Student" and name == "STU-0001"
+            frappe.get_doc = lambda doctype, name: student
+            frappe.has_permission = lambda *args, **kwargs: True
+            frappe.db.get_value = lambda doctype, filters=None, fieldname=None: (
+                "CONTACT-0001" if doctype == "Dynamic Link" else None
+            )
+
+            contact_name = student_module.get_contact_linked_to_student("STU-0001")
+
+        self.assertEqual(contact_name, "CONTACT-0001")
+
+    def test_get_student_guardians_rejects_unreadable_student(self):
+        with _student_module() as (student_module, frappe):
+            student = SimpleNamespace(name="STU-0001")
+            frappe.db.exists = lambda doctype, name=None: doctype == "Student" and name == "STU-0001"
+            frappe.get_doc = lambda doctype, name: student
+            frappe.has_permission = lambda *args, **kwargs: False
+
+            with self.assertRaises(frappe.PermissionError):
+                student_module.get_student_guardians("STU-0001")
+
     def test_after_insert_for_applicant_promotion_still_materializes_contact_binding(self):
         with _student_module() as (student_module, frappe):
             frappe.flags.from_applicant_promotion = True

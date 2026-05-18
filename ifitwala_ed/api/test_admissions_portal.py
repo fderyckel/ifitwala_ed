@@ -3,6 +3,8 @@
 # See license.txt
 
 import base64
+import re
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -169,6 +171,36 @@ class TestAdmissionsPortalContracts(FrappeTestCase):
         recommendation_actions = [row for row in actions if row.get("route_name") == "admissions-status"]
         self.assertEqual(len(recommendation_actions), 1)
         self.assertTrue(bool(recommendation_actions[0].get("is_blocking")))
+
+
+class TestContactPrivacyStaticGuards(FrappeTestCase):
+    def test_sensitive_runtime_paths_do_not_serialize_person_records_with_fields_star(self):
+        package_root = Path(__file__).resolve().parents[1]
+        sensitive_paths = [
+            "api/admissions_portal.py",
+            "api/family_consent.py",
+            "admission/admission_utils.py",
+            "admission/doctype/student_applicant/student_applicant.py",
+            "admission/doctype/inquiry/inquiry.py",
+            "students/doctype/student/student.py",
+            "students/doctype/guardian/guardian.py",
+            "hr/doctype/employee/employee.py",
+        ]
+        sensitive_doctypes = ("Contact", "Guardian", "Student", "Student Applicant")
+        forbidden: list[str] = []
+
+        for relative_path in sensitive_paths:
+            source = package_root.joinpath(relative_path).read_text(encoding="utf-8")
+            for doctype in sensitive_doctypes:
+                pattern = re.compile(
+                    rf"frappe\.(?:db\.)?get_all\(\s*['\"]{re.escape(doctype)}['\"][\s\S]*?"
+                    r"fields\s*=\s*\[\s*['\"]\*['\"]",
+                    re.MULTILINE,
+                )
+                if pattern.search(source):
+                    forbidden.append(f"{relative_path}: {doctype}")
+
+        self.assertEqual(forbidden, [])
 
 
 class TestInviteApplicant(FrappeTestCase):
@@ -398,6 +430,33 @@ class TestInviteApplicant(FrappeTestCase):
         self.assertEqual(payload.get("contact"), contact.name)
         self.assertIn(email, payload.get("emails") or [])
         self.assertIn(alt_email, payload.get("emails") or [])
+
+    def test_get_invite_email_options_rejects_out_of_scope_applicant(self):
+        outside_organization = self._create_organization()
+        outside_school = self._create_school(outside_organization)
+        outside_applicant = self._create_applicant(outside_organization, outside_school)
+        contact_email = f"outside-{frappe.generate_hash(length=8)}@example.com"
+        contact = self._create_contact(primary_email=contact_email)
+        outside_applicant.db_set("applicant_contact", contact.name, update_modified=False)
+
+        with self.assertRaises(frappe.PermissionError):
+            get_invite_email_options(student_applicant=outside_applicant.name)
+
+    def test_invite_applicant_rejects_out_of_scope_applicant(self):
+        outside_organization = self._create_organization()
+        outside_school = self._create_school(outside_organization)
+        outside_applicant = self._create_applicant(outside_organization, outside_school)
+        invite_email = f"outside-invite-{frappe.generate_hash(length=8)}@example.com"
+
+        with (
+            patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email") as send_invite,
+            self.assertRaises(frappe.PermissionError),
+        ):
+            invite_applicant(student_applicant=outside_applicant.name, email=invite_email)
+
+        send_invite.assert_not_called()
+        outside_applicant.reload()
+        self.assertFalse(bool((outside_applicant.applicant_user or "").strip()))
 
     def test_invite_applicant_rejects_email_linked_to_different_contact(self):
         applicant_contact = self._create_contact(primary_email=f"app-{frappe.generate_hash(length=8)}@example.com")
@@ -950,6 +1009,37 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertIn("profile", payload.get("completeness") or {})
         self.assertIn("recommendations", payload.get("completeness") or {})
         self.assertIn("recommendations_summary", payload)
+
+    def test_applicant_profile_rejects_other_applicant_contact_data(self):
+        self._set_guardians_section_setting(1)
+        other_user = self._create_applicant_user()
+        other_applicant = self._create_applicant(self.organization, self.school, other_user)
+        other_contact = self._create_applicant_contact(
+            first_name="Other",
+            last_name="Contact",
+            email=f"other-contact-{frappe.generate_hash(length=8)}@example.com",
+            phone="+14155550128",
+        )
+        other_applicant.db_set("applicant_contact", other_contact.name, update_modified=False)
+        other_applicant.append(
+            "guardians",
+            {
+                "relationship": "Mother",
+                "can_consent": 1,
+                "is_primary": 1,
+                "is_primary_guardian": 1,
+                "guardian_first_name": "Other",
+                "guardian_last_name": "Guardian",
+                "guardian_email": f"other-guardian-{frappe.generate_hash(length=8)}@example.com",
+                "guardian_mobile_phone": "+14155550129",
+                "guardian_image": "/private/files/other-guardian.png",
+            },
+        )
+        other_applicant.save(ignore_permissions=True)
+
+        frappe.set_user(self.applicant_user)
+        with self.assertRaises(frappe.PermissionError):
+            get_applicant_profile(student_applicant=other_applicant.name)
 
     def test_offer_sent_snapshot_surfaces_offer_response_action(self):
         if not _policy_schema_available():

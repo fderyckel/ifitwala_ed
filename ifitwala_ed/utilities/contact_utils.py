@@ -52,27 +52,13 @@ HR_CONTACT_ROLES = {"HR Manager", "HR User"}
 ACADEMIC_CONTACT_ROLES = {"Academic Admin", "Academic Assistant"}
 ADMISSIONS_CONTACT_ROLES = {"Admission Manager", "Admission Officer"}
 MARKETING_CONTACT_ROLES = {"Marketing Manager", "Marketing User"}
-CONTACT_GLOBAL_ACCESS_ROLES = ADMISSIONS_CONTACT_ROLES | MARKETING_CONTACT_ROLES
-CONTACT_GLOBAL_MANAGER_ROLES = {"Admission Manager", "Marketing Manager"}
-EDUCATION_CONTACT_ROLES = ACADEMIC_CONTACT_ROLES | ADMISSIONS_CONTACT_ROLES
+EDUCATION_CONTACT_ROLES = ACADEMIC_CONTACT_ROLES | ADMISSIONS_CONTACT_ROLES | MARKETING_CONTACT_ROLES
 READ_LIKE_CONTACT_PTYPES = {"read", "report", "export", "print", "email"}
 CONTACT_EDITOR_PTYPES = READ_LIKE_CONTACT_PTYPES | {"write", "create", "comment", "assign"}
 
 
-def _is_adminish(user: str) -> bool:
-    return user == "Administrator" or "System Manager" in set(frappe.get_roles(user))
-
-
-def _has_global_contact_access(roles: set[str], ptype: str | None) -> bool:
-    if not roles & CONTACT_GLOBAL_ACCESS_ROLES:
-        return False
-
-    op = (ptype or "read").lower()
-    if op in CONTACT_EDITOR_PTYPES:
-        return True
-    if op == "delete" and roles & CONTACT_GLOBAL_MANAGER_ROLES:
-        return True
-    return False
+def _is_administrator(user: str) -> bool:
+    return user == "Administrator"
 
 
 def _resolve_hr_contact_org_scope(user: str) -> list[str]:
@@ -570,10 +556,10 @@ def contact_has_permission(doc, ptype, user):
     roles = set(frappe.get_roles(user))
     op = (ptype or "read").lower()
 
-    if _is_adminish(user):
+    if _is_administrator(user):
         return True
-    if _has_global_contact_access(roles, op):
-        return True
+    if op in {"delete", "export", "report"}:
+        return False
 
     education_allowed = _education_contact_scope_matches(getattr(doc, "name", None), user, roles)
     if education_allowed is False:
@@ -584,41 +570,35 @@ def contact_has_permission(doc, ptype, user):
             return False
         return True
 
+    employee_allowed = _employee_contact_scope_matches(getattr(doc, "name", None), user, roles)
+    if employee_allowed is False:
+        return False
+    if employee_allowed is True and op in READ_LIKE_CONTACT_PTYPES:
+        return True
+    if op in CONTACT_EDITOR_PTYPES:
+        return False
+
     core_allowed = _core_has_permission(doc, ptype, user)
     if not core_allowed:
         return core_allowed
 
-    scope_allowed = _employee_contact_scope_matches(getattr(doc, "name", None), user, roles)
-    if scope_allowed is None:
-        return core_allowed
-
-    return bool(scope_allowed)
+    return core_allowed
 
 
 # ------------------------------------------------------------------ #
 #  List / report filter
 # ------------------------------------------------------------------ #
 def contact_permission_query_conditions(user):
-    """Restrict scoped Contact links while leaving unrelated contacts to core rules."""
-    if not user or user == "Guest" or _is_adminish(user):
+    """Restrict native Contact lists to scoped education/employee relationships."""
+    if not user or user == "Guest":
+        return "1=0"
+    if _is_administrator(user):
         return ""
 
     roles = set(frappe.get_roles(user))
-    if roles & CONTACT_GLOBAL_ACCESS_ROLES:
-        return ""
-
     conditions = []
     employee_scope_sql = _employee_contact_scope_sql(user)
     if employee_scope_sql:
-        employee_link_exists = """
-            EXISTS (
-                SELECT 1
-                FROM `tabDynamic Link` contact_employee_link
-                WHERE contact_employee_link.parenttype = 'Contact'
-                    AND contact_employee_link.parent = `tabContact`.name
-                    AND contact_employee_link.link_doctype = 'Employee'
-            )
-        """
         scoped_employee_link_exists = f"""
             EXISTS (
                 SELECT 1
@@ -630,38 +610,12 @@ def contact_permission_query_conditions(user):
                     AND {employee_scope_sql}
             )
         """
-
-        if roles & ACADEMIC_CONTACT_ROLES:
-            conditions.append(f"((NOT {employee_link_exists}) OR {scoped_employee_link_exists})")
-        else:
-            conditions.append(f"({scoped_employee_link_exists})")
+        conditions.append(f"({scoped_employee_link_exists})")
 
     if roles & EDUCATION_CONTACT_ROLES:
         education_scope_sql = _education_contact_scope_sql(user)
         reverse_inquiry_scope_sql = _reverse_inquiry_contact_scope_sql(user)
         reverse_student_applicant_scope_sql = _reverse_student_applicant_contact_scope_sql(user)
-        education_link_exists = """
-            (
-                EXISTS (
-                    SELECT 1
-                    FROM `tabInquiry` reverse_contact_inquiry
-                    WHERE reverse_contact_inquiry.contact = `tabContact`.name
-                )
-                OR
-                EXISTS (
-                    SELECT 1
-                    FROM `tabStudent Applicant` reverse_contact_applicant
-                    WHERE reverse_contact_applicant.applicant_contact = `tabContact`.name
-                )
-                OR EXISTS (
-                SELECT 1
-                FROM `tabDynamic Link` contact_education_link
-                WHERE contact_education_link.parenttype = 'Contact'
-                    AND contact_education_link.parent = `tabContact`.name
-                    AND contact_education_link.link_doctype IN ('Inquiry', 'Student Applicant', 'Student', 'Guardian')
-                )
-            )
-        """
         scoped_education_link_exists = f"""
             (
                 {reverse_inquiry_scope_sql}
@@ -676,6 +630,6 @@ def contact_permission_query_conditions(user):
                 )
             )
         """
-        conditions.append(f"((NOT {education_link_exists}) OR {scoped_education_link_exists})")
+        conditions.append(f"({scoped_education_link_exists})")
 
-    return " AND ".join(f"({condition})" for condition in conditions) if conditions else ""
+    return " OR ".join(f"({condition})" for condition in conditions) if conditions else "1=0"

@@ -33,6 +33,7 @@ from ifitwala_ed.admission.admission_utils import (
     get_applicant_scope_ancestors,
     get_contact_primary_email,
     has_complete_applicant_document_type_classification,
+    has_scoped_staff_access_to_student_applicant,
     is_applicant_document_type_in_scope,
     normalize_email_value,
     sync_student_applicant_contact_binding,
@@ -3899,6 +3900,20 @@ def _require_family_workspace_mode() -> None:
         )
 
 
+def _require_scoped_staff_applicant_access(student_applicant: str | None) -> str:
+    user = ensure_admissions_permission()
+    applicant_name = _as_text(student_applicant).strip()
+    if not applicant_name:
+        frappe.throw(_("student_applicant is required."))
+    if not has_scoped_staff_access_to_student_applicant(
+        user=user,
+        student_applicant=applicant_name,
+        allow_system_bypass=False,
+    ):
+        frappe.throw(_("You do not have permission to access this Applicant."), frappe.PermissionError)
+    return user
+
+
 def _guardian_row_display_name(row) -> str:
     full_name = _as_text(row.get("guardian_full_name")).strip()
     if full_name:
@@ -4063,11 +4078,8 @@ def _clear_applicant_self_login_for_family_conversion(*, applicant, invite_email
 
 @frappe.whitelist()
 def get_family_invite_options(*, student_applicant: str | None = None) -> dict:
-    ensure_admissions_permission()
+    _require_scoped_staff_applicant_access(student_applicant)
     _require_family_workspace_mode()
-
-    if not student_applicant:
-        frappe.throw(_("student_applicant is required."))
 
     applicant = frappe.get_doc("Student Applicant", student_applicant)
     return _family_invite_options_payload(applicant)
@@ -4080,11 +4092,8 @@ def invite_family_collaborator(
     guardian_row: str | None = None,
     email: str | None = None,
 ) -> dict:
-    ensure_admissions_permission()
+    _require_scoped_staff_applicant_access(student_applicant)
     _require_family_workspace_mode()
-
-    if not student_applicant:
-        frappe.throw(_("student_applicant is required."))
 
     applicant = frappe.get_doc("Student Applicant", student_applicant)
     requested_guardian_row = (guardian_row or "").strip()
@@ -4176,15 +4185,12 @@ def invite_family_collaborator(
 
 @frappe.whitelist()
 def get_invite_email_options(*, student_applicant: str | None = None) -> dict:
-    ensure_admissions_permission()
+    _require_scoped_staff_applicant_access(student_applicant)
     if is_family_workspace_enabled():
         frappe.throw(
             _("Single applicant invites are disabled while Family Workspace mode is enabled."),
             frappe.ValidationError,
         )
-
-    if not student_applicant:
-        frappe.throw(_("student_applicant is required."))
 
     applicant = frappe.get_doc("Student Applicant", student_applicant)
     blocked_reason = _applicant_self_invite_blocked_reason(applicant)
@@ -4196,10 +4202,7 @@ def get_invite_email_options(*, student_applicant: str | None = None) -> dict:
 
 @frappe.whitelist()
 def get_admissions_portal_invite_options(*, student_applicant: str | None = None) -> dict:
-    ensure_admissions_permission()
-
-    if not student_applicant:
-        frappe.throw(_("student_applicant is required."))
+    _require_scoped_staff_applicant_access(student_applicant)
 
     applicant = frappe.get_doc("Student Applicant", student_applicant)
     access_mode = get_admissions_access_mode()
@@ -4240,15 +4243,13 @@ def get_admissions_portal_invite_options(*, student_applicant: str | None = None
 
 @frappe.whitelist()
 def invite_applicant(*, student_applicant: str | None = None, email: str | None = None) -> dict:
-    ensure_admissions_permission()
+    _require_scoped_staff_applicant_access(student_applicant)
     if is_family_workspace_enabled():
         frappe.throw(
             _("Use the Family collaborator invite while Family Workspace mode is enabled."),
             frappe.ValidationError,
         )
 
-    if not student_applicant:
-        frappe.throw(_("student_applicant is required."))
     if not email:
         frappe.throw(_("email is required."))
 

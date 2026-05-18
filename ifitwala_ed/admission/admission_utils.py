@@ -731,7 +731,7 @@ def build_open_applicant_review_access_exists_sql(
     )
 
 
-def get_admissions_file_staff_scope(user: str | None = None) -> dict:
+def get_admissions_file_staff_scope(user: str | None = None, *, allow_system_bypass: bool = True) -> dict:
     resolved_user = (user or frappe.session.user or "").strip()
     denied = {
         "allowed": False,
@@ -743,7 +743,7 @@ def get_admissions_file_staff_scope(user: str | None = None) -> dict:
         return denied
 
     roles = set(frappe.get_roles(resolved_user))
-    if resolved_user == "Administrator" or "System Manager" in roles:
+    if allow_system_bypass and (resolved_user == "Administrator" or "System Manager" in roles):
         return {
             "allowed": True,
             "bypass": True,
@@ -856,12 +856,17 @@ def _get_effective_student_schools(*, student: str | None, applicant_school: str
     return effective_schools
 
 
-def has_scoped_staff_access_to_student_applicant(*, user: str | None = None, student_applicant: str | None) -> bool:
+def has_scoped_staff_access_to_student_applicant(
+    *,
+    user: str | None = None,
+    student_applicant: str | None,
+    allow_system_bypass: bool = True,
+) -> bool:
     applicant_name = (student_applicant or "").strip()
     if not applicant_name:
         return False
 
-    scope = get_admissions_file_staff_scope(user)
+    scope = get_admissions_file_staff_scope(user, allow_system_bypass=allow_system_bypass)
     if not scope.get("allowed"):
         return False
 

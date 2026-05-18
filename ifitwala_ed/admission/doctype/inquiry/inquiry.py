@@ -22,6 +22,7 @@ from ifitwala_ed.admission.admission_utils import (
 from ifitwala_ed.admission.inquiry_acknowledgement import queue_inquiry_family_acknowledgement
 
 CANONICAL_INQUIRY_STATES = {"New", "Assigned", "Contacted", "Qualified", "Archived"}
+PROTECTED_CONTACT_LINK_DOCTYPES = frozenset({"Student", "Guardian", "Employee", "Student Applicant"})
 
 
 def _normalize_inquiry_state(state: str | None) -> str:
@@ -173,6 +174,28 @@ class Inquiry(Document):
         )
         return user
 
+    def _ensure_contact_can_be_linked_to_inquiry(self, contact_name: str) -> None:
+        contact_name = (contact_name or "").strip()
+        if not contact_name:
+            return
+
+        rows = frappe.get_all(
+            "Dynamic Link",
+            filters={
+                "parenttype": "Contact",
+                "parentfield": "links",
+                "parent": contact_name,
+                "link_doctype": ["in", sorted(PROTECTED_CONTACT_LINK_DOCTYPES)],
+            },
+            fields=["link_doctype", "link_name"],
+            limit=1,
+        )
+        if rows:
+            frappe.throw(
+                _("Matched Contact is already linked to protected education records. Ask admissions staff to review."),
+                frappe.PermissionError,
+            )
+
     def _set_workflow_state(self, target_state: str, comment: str | None = None) -> bool:
         current = _normalize_inquiry_state(self.workflow_state)
         target = _normalize_inquiry_state(target_state)
@@ -314,6 +337,8 @@ class Inquiry(Document):
 
     @frappe.whitelist()
     def create_contact_from_inquiry(self):
+        self._ensure_contact_action_permission()
+
         if self.contact:
             frappe.msgprint(_("This Inquiry is already linked to Contact: {contact}").format(contact=self.contact))
             return
@@ -329,6 +354,7 @@ class Inquiry(Document):
             )
 
         if existing_contact:
+            self._ensure_contact_can_be_linked_to_inquiry(existing_contact)
             self.contact = existing_contact
             self.db_set("contact", existing_contact)
         else:
