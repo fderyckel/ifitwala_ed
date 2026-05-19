@@ -1,7 +1,7 @@
 # Contact Data Governance - No Universal Address Book
 
 Status: Locked target architecture with current-runtime gap register
-Last updated: 2026-05-18
+Last updated: 2026-05-19
 Code refs:
 - `ifitwala_ed/setup/setup.py`
 - `ifitwala_ed/hooks.py`
@@ -14,6 +14,13 @@ Code refs:
 - `ifitwala_ed/admission/admission_utils.py`
 - `ifitwala_ed/api/admissions_portal.py`
 - `ifitwala_ed/api/family_consent.py`
+- `ifitwala_ed/contacts/contact_privacy.py`
+- `ifitwala_ed/contacts/contact_audit.py`
+- `ifitwala_ed/contacts/contact_export.py`
+- `ifitwala_ed/contacts/doctype/contact_access_log/contact_access_log.py`
+- `ifitwala_ed/contacts/doctype/contact_access_log/contact_access_log.json`
+- `ifitwala_ed/contacts/doctype/contact_export_request/contact_export_request.py`
+- `ifitwala_ed/contacts/doctype/contact_export_request/contact_export_request.json`
 Test refs:
 - `ifitwala_ed/setup/test_contact_permissions.py`
 - `ifitwala_ed/students/doctype/student/test_student_unit.py`
@@ -23,6 +30,9 @@ Test refs:
 - `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`
 - `ifitwala_ed/api/test_admissions_portal.py`
 - `ifitwala_ed/api/test_family_consent.py`
+- `ifitwala_ed/contacts/test_contact_privacy.py`
+- `ifitwala_ed/contacts/doctype/contact_access_log/test_contact_access_log.py`
+- `ifitwala_ed/contacts/test_contact_export.py`
 
 This document defines the target security posture for personal contact data across Ifitwala Ed.
 
@@ -121,7 +131,7 @@ Current-runtime lockdown status:
 - Admissions and marketing roles no longer bypass Contact query scoping.
 - Native `Contact` create/write DocPerm rows still exist as transitional Frappe seed data, but document-level editor operations are blocked by the permission hook while domain-owned contact-point services are future work.
 
-Remaining gaps require approved implementation slices: named privacy services, raw-value access logging, governed exports, and eventual Contact Point schema/migration.
+Remaining gaps require approved implementation slices: full export execution with per-row logging, and eventual Contact Point schema/migration.
 
 API hardening status:
 
@@ -130,6 +140,34 @@ API hardening status:
 - Student Contact lookup and Student Guardian helper endpoints are scoped through `Student` read permission before returning native Contact names or guardian contact rows.
 - Family consent write-back does not accept caller-supplied Contact IDs; it resolves Contact rows only from the already authorized student/guardian context.
 - Inquiry-to-Contact creation now blocks reuse of existing native `Contact` rows already linked to protected education records (`Student`, `Guardian`, `Employee`, or `Student Applicant`).
+
+Contact privacy service boundary status:
+
+- `ifitwala_ed/contacts/contact_privacy.py` is the approved current-runtime boundary for the first contact-sensitive workflows.
+- Covered workflows are applicant contact prefill/invite email options, Student CRM contact summaries, Student guardian summaries, family-consent profile contact write-back, and Inquiry protected-contact reuse checks.
+- The service still reads legacy native `Contact`, `Contact Email`, and `Contact Phone` internally because the Contact Point schema is not implemented.
+- Callers must provide a non-empty `purpose`; masked DTOs are the default for Student/Guardian summaries.
+- Raw values are still allowed only through explicitly named current workflows such as applicant invite/prefill and family-consent write-back.
+- Legacy Contact creation/update code in Student, Guardian, Inquiry, and admissions profile flows remains a migration gap, not an approved pattern for new surfaces.
+
+Contact access logging status:
+
+- `Contact Access Log` is an append-only audit DocType for contact-sensitive access metadata.
+- The audit helper is `ifitwala_ed/contacts/contact_audit.py`; callers should not create log rows directly.
+- Raw applicant prefill, applicant invite recipient resolution, family-consent raw read/write-back, Inquiry Contact reuse resolution, and denied contact-sensitive attempts are logged through the contact privacy boundary.
+- Audit rows must never store raw email, phone, mobile, address, file names, or full request payload values.
+- `Contact Access Log` rows are service-created only, immutable after insert, and cannot be deleted through the document controller.
+
+Contact export request gate status:
+
+- `Contact Export Request` is implemented as the governed approval object for contact-data export metadata.
+- The current service boundary is `ifitwala_ed/contacts/contact_export.py`.
+- PR-5 supports only these scoped request types: `Student Group Guardians`, `Admissions Applicants`, `Inquiry Leads`, and `Employees`.
+- Global scopes such as `All Contacts`, `All Guardians`, `All Students`, `All Applicants`, and `All Employees` are rejected.
+- Approval requires `Data Protection Officer`; `System Manager` does not bypass the workflow.
+- `assert_approved_contact_export(...)` denies unless the request is approved, unexpired, purpose-matched, scope-matched, and used by the requester or a privacy approver.
+- Approval, rejection, allowed assertions, and denied assertions create request-level `Contact Access Log` metadata with `access_type = export`.
+- No CSV generation, downloadable file, watermarking, or per-row export execution exists yet.
 
 ## 5. Export Contract
 
@@ -154,18 +192,24 @@ Contact Export Request
 - status
 ```
 
-Rules:
+Implemented gate rules:
 
 1. Default decision is denied.
 2. "All contacts" is not an allowed scope.
 3. Row count must be shown before approval.
-4. Approval threshold must be explicit and role-separated from ordinary system configuration.
-5. Generated files must expire quickly.
-6. Every export must be watermarked with requester, timestamp, school, and purpose.
-7. Export execution must log each exported subject/contact point.
-8. Exports must not run in the background without an approved request record.
+4. Approval is role-separated from ordinary system configuration and requires `Data Protection Officer`.
+5. Approved requests expire.
+6. Export execution must not proceed unless `assert_approved_contact_export(...)` passes.
+7. Approval, rejection, allowed assertions, and denied assertions must log metadata through `Contact Access Log`.
 
-This workflow is not implemented today.
+Future export execution rules:
+
+1. Generated files must expire quickly.
+2. Every export must be watermarked with requester, timestamp, school, and purpose.
+3. Export execution must log each exported subject/contact point.
+4. Exports must not run in the background without an approved request record.
+
+CSV generation, watermarking, and per-row export logging are not implemented yet.
 
 ## 6. Raw-Value Access Contract
 

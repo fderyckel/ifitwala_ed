@@ -33,7 +33,6 @@ from ifitwala_ed.admission.admission_utils import (
     get_applicant_scope_ancestors,
     get_contact_primary_email,
     has_complete_applicant_document_type_classification,
-    has_scoped_staff_access_to_student_applicant,
     is_applicant_document_type_in_scope,
     normalize_email_value,
     sync_student_applicant_contact_binding,
@@ -56,6 +55,11 @@ from ifitwala_ed.api.file_access import (
 from ifitwala_ed.api.recommendation_intake import (
     get_recommendation_status_for_applicant,
     get_recommendation_template_rows_for_applicant,
+)
+from ifitwala_ed.contacts.contact_privacy import (
+    assert_user_can_access_student_applicant_contact,
+    get_raw_applicant_contact_prefill,
+    get_raw_contact_email_options_for_applicant_invite,
 )
 from ifitwala_ed.governance.doctype.policy_acknowledgement.policy_acknowledgement import (
     get_policy_version_acknowledgement_clauses_map,
@@ -677,52 +681,13 @@ def _profile_completeness(profile_payload: dict) -> dict:
     return {"ok": not missing, "missing": missing, "required": required}
 
 
-def _contact_primary_mobile(contact_doc) -> str:
-    for row in contact_doc.get("phone_nos") or []:
-        if cint(row.get("is_primary_mobile_no") or 0):
-            phone = _as_text(row.get("phone")).strip()
-            if phone:
-                return phone
-
-    mobile = _as_text(contact_doc.get("mobile_no")).strip()
-    if mobile:
-        return mobile
-
-    for row in contact_doc.get("phone_nos") or []:
-        phone = _as_text(row.get("phone")).strip()
-        if phone:
-            return phone
-
-    return ""
-
-
 def _applicant_contact_prefill_payload(applicant) -> dict:
     contact_name = _as_text(_resolve_applicant_contact(applicant, allow_create=False)).strip()
-    payload = {
-        "available": False,
-        "contact": contact_name,
-        "first_name": "",
-        "last_name": "",
-        "email": "",
-        "mobile_phone": "",
-    }
-    if not contact_name or not frappe.db.exists("Contact", contact_name):
-        payload["contact"] = ""
-        return payload
-
-    contact_doc = frappe.get_doc("Contact", contact_name)
-    payload.update(
-        {
-            "first_name": _as_text(contact_doc.get("first_name")).strip(),
-            "last_name": _as_text(contact_doc.get("last_name")).strip(),
-            "email": normalize_email_value(get_contact_primary_email(contact_name)) or "",
-            "mobile_phone": _contact_primary_mobile(contact_doc),
-        }
+    return get_raw_applicant_contact_prefill(
+        student_applicant=applicant.name,
+        contact=contact_name,
+        purpose="applicant_contact_prefill",
     )
-    payload["available"] = bool(
-        payload["first_name"] and payload["last_name"] and payload["email"] and payload["mobile_phone"]
-    )
-    return payload
 
 
 def _build_profile_payload(applicant) -> dict:
@@ -3711,31 +3676,16 @@ def _canonical_applicant_contact_for_invite(
     return None
 
 
-def _invite_contact_email_options(contact_name: str | None) -> list[str]:
-    contact_name = (contact_name or "").strip()
-    if not contact_name:
-        return []
-
-    rows = frappe.get_all(
-        "Contact Email",
-        filters={"parent": contact_name},
-        fields=["email_id", "is_primary", "idx"],
-        order_by="is_primary desc, idx asc, creation asc",
-        ignore_permissions=True,
+def _invite_contact_email_options(contact_name: str | None, student_applicant: str | None) -> list[str]:
+    return get_raw_contact_email_options_for_applicant_invite(
+        contact=contact_name,
+        student_applicant=student_applicant,
+        purpose="applicant_invite_contact_options",
     )
-    emails: list[str] = []
-    seen: set[str] = set()
-    for row in rows:
-        normalized = normalize_email_value(row.get("email_id"))
-        if not normalized or normalized in seen:
-            continue
-        seen.add(normalized)
-        emails.append(normalized)
-    return emails
 
 
-def _invite_contact_primary_email(contact_name: str | None) -> str | None:
-    options = _invite_contact_email_options(contact_name)
+def _invite_contact_primary_email(contact_name: str | None, student_applicant: str | None) -> str | None:
+    options = _invite_contact_email_options(contact_name, student_applicant)
     if options:
         return options[0]
     return get_contact_primary_email(contact_name)
@@ -3765,7 +3715,7 @@ def _applicant_invite_options_payload(applicant) -> dict:
             seen.add(value)
             emails.append(value)
 
-    for value in _invite_contact_email_options(contact_name):
+    for value in _invite_contact_email_options(contact_name, applicant.name):
         if value and value not in seen:
             seen.add(value)
             emails.append(value)
@@ -3905,12 +3855,11 @@ def _require_scoped_staff_applicant_access(student_applicant: str | None) -> str
     applicant_name = _as_text(student_applicant).strip()
     if not applicant_name:
         frappe.throw(_("student_applicant is required."))
-    if not has_scoped_staff_access_to_student_applicant(
-        user=user,
+    assert_user_can_access_student_applicant_contact(
         student_applicant=applicant_name,
-        allow_system_bypass=False,
-    ):
-        frappe.throw(_("You do not have permission to access this Applicant."), frappe.PermissionError)
+        purpose="admissions_staff_contact_workflow",
+        user=user,
+    )
     return user
 
 
@@ -3955,7 +3904,7 @@ def _bootstrap_applicant_contact_guardian_row(*, applicant, email: str | None = 
     invite_email = normalize_email_value(email or contact_payload.get("email"))
     if not invite_email:
         frappe.throw(_("email is required."))
-    contact_emails = set(_invite_contact_email_options(contact_name))
+    contact_emails = set(_invite_contact_email_options(contact_name, applicant.name))
     if invite_email not in contact_emails:
         frappe.throw(_("Invite email must belong to the Inquiry Contact."))
 
@@ -4282,7 +4231,7 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
         if not contact_name:
             frappe.throw(_("Unable to resolve Applicant Contact for this invite."))
         upsert_contact_email(contact_name, email, set_primary_if_missing=True)
-        primary_contact_email = _invite_contact_primary_email(contact_name) or email
+        primary_contact_email = _invite_contact_primary_email(contact_name, applicant.name) or email
 
         applicant.flags.from_applicant_invite = True
         applicant.flags.from_contact_sync = True
@@ -4342,7 +4291,7 @@ def invite_applicant(*, student_applicant: str | None = None, email: str | None 
     if not contact_name:
         frappe.throw(_("Unable to resolve Applicant Contact for this invite."))
     upsert_contact_email(contact_name, email, set_primary_if_missing=True)
-    primary_contact_email = _invite_contact_primary_email(contact_name) or email
+    primary_contact_email = _invite_contact_primary_email(contact_name, applicant.name) or email
 
     existing_link = frappe.db.get_value(
         "Student Applicant",

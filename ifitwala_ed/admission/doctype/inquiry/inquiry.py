@@ -20,9 +20,9 @@ from ifitwala_ed.admission.admission_utils import (
     update_sla_status,
 )
 from ifitwala_ed.admission.inquiry_acknowledgement import queue_inquiry_family_acknowledgement
+from ifitwala_ed.contacts.contact_privacy import get_existing_contact_for_inquiry_reuse
 
 CANONICAL_INQUIRY_STATES = {"New", "Assigned", "Contacted", "Qualified", "Archived"}
-PROTECTED_CONTACT_LINK_DOCTYPES = frozenset({"Student", "Guardian", "Employee", "Student Applicant"})
 
 
 def _normalize_inquiry_state(state: str | None) -> str:
@@ -174,28 +174,6 @@ class Inquiry(Document):
         )
         return user
 
-    def _ensure_contact_can_be_linked_to_inquiry(self, contact_name: str) -> None:
-        contact_name = (contact_name or "").strip()
-        if not contact_name:
-            return
-
-        rows = frappe.get_all(
-            "Dynamic Link",
-            filters={
-                "parenttype": "Contact",
-                "parentfield": "links",
-                "parent": contact_name,
-                "link_doctype": ["in", sorted(PROTECTED_CONTACT_LINK_DOCTYPES)],
-            },
-            fields=["link_doctype", "link_name"],
-            limit=1,
-        )
-        if rows:
-            frappe.throw(
-                _("Matched Contact is already linked to protected education records. Ask admissions staff to review."),
-                frappe.PermissionError,
-            )
-
     def _set_workflow_state(self, target_state: str, comment: str | None = None) -> bool:
         current = _normalize_inquiry_state(self.workflow_state)
         target = _normalize_inquiry_state(target_state)
@@ -343,18 +321,15 @@ class Inquiry(Document):
             frappe.msgprint(_("This Inquiry is already linked to Contact: {contact}").format(contact=self.contact))
             return
 
-        # Check for existing email or phone match
-        existing_contact = None
-        if self.email:
-            existing_contact = frappe.db.get_value("Contact Email", {"email_id": self.email, "is_primary": 1}, "parent")
-
-        if not existing_contact and self.phone_number:
-            existing_contact = frappe.db.get_value(
-                "Contact Phone", {"phone": self.phone_number, "is_primary_mobile_no": 1}, "parent"
-            )
+        existing_contact = get_existing_contact_for_inquiry_reuse(
+            email=self.email,
+            phone=self.phone_number,
+            purpose="inquiry_contact_reuse",
+            subject_doctype="Inquiry",
+            subject_name=self.name,
+        )
 
         if existing_contact:
-            self._ensure_contact_can_be_linked_to_inquiry(existing_contact)
             self.contact = existing_contact
             self.db_set("contact", existing_contact)
         else:
