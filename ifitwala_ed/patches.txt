@@ -1,4 +1,5 @@
 [pre_model_sync]
+ifitwala_ed.patches.repair_core_contacts_module_ownership
 # removed most stuff
 ifitwala_ed.patches.backfill_course_plan_academic_year_scope
 ifitwala_ed.patches.backfill_supporting_material_binding_roles
