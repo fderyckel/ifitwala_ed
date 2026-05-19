@@ -51,10 +51,13 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
         self.school = self._create_school(self.organization)
         self.applicant_user = self._create_applicant_user()
         self.applicant = self._create_applicant(self.organization, self.school, self.applicant_user)
+        self._delete_applicant_documents(self.applicant.name)
         self.document_type = self._create_document_type(self.organization, self.school)
 
     def tearDown(self):
         frappe.set_user("Administrator")
+        if getattr(self, "applicant", None):
+            self._delete_applicant_documents(self.applicant.name)
         for doctype, name in reversed(self._created):
             if frappe.db.exists(doctype, name):
                 frappe.delete_doc(doctype, name, force=1, ignore_permissions=True)
@@ -651,6 +654,43 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Document", doc.name))
         return doc.name
+
+    def _delete_applicant_documents(self, student_applicant: str) -> None:
+        document_names = frappe.get_all(
+            "Applicant Document",
+            filters={"student_applicant": student_applicant},
+            pluck="name",
+            limit=0,
+        )
+        if not document_names:
+            return
+
+        item_names = frappe.get_all(
+            "Applicant Document Item",
+            filters={"applicant_document": ["in", document_names]},
+            pluck="name",
+            limit=0,
+        )
+        if item_names:
+            file_names = frappe.get_all(
+                "File",
+                filters={
+                    "attached_to_doctype": "Applicant Document Item",
+                    "attached_to_name": ["in", item_names],
+                },
+                pluck="name",
+                limit=0,
+            )
+            for file_name in file_names:
+                if frappe.db.exists("File", file_name):
+                    frappe.delete_doc("File", file_name, force=1, ignore_permissions=True)
+            for item_name in item_names:
+                if frappe.db.exists("Applicant Document Item", item_name):
+                    frappe.delete_doc("Applicant Document Item", item_name, force=1, ignore_permissions=True)
+
+        for document_name in document_names:
+            if frappe.db.exists("Applicant Document", document_name):
+                frappe.delete_doc("Applicant Document", document_name, force=1, ignore_permissions=True)
 
     def _tiny_file_base64(self) -> str:
         return base64.b64encode(b"test-file-content").decode("ascii")

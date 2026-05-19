@@ -307,6 +307,7 @@ class TestFocusStudentLog(FrappeTestCase):
 
         author = make_user()
         self._created.append(("User", author.name))
+        self._ensure_role(author.name, "Instructor")
 
         student = self._make_student()
         log_type = self._make_student_log_type(school=school.name)

@@ -13,6 +13,7 @@ from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
 @contextmanager
 def _module():
     with stubbed_frappe() as frappe:
+        import_fresh("ifitwala_ed.contacts.contact_audit")
         module = import_fresh("ifitwala_ed.contacts.contact_privacy")
         module._normalize_email_value = lambda value: str(value or "").strip().lower()
         yield module, frappe

@@ -376,7 +376,17 @@ def _render_acknowledgement_email(*, inquiry, profile: dict | None, acknowledgem
         email_template = frappe.get_doc("Email Template", profile.get("email_template"))
         context = _email_template_context(inquiry=inquiry, profile=profile, acknowledgement=acknowledgement)
         subject = frappe.render_template(email_template.subject or "", context)
-        message = frappe.render_template(email_template.response_ or "", context)
+        template_body = (
+            (
+                email_template.get("response_html")
+                if cint(email_template.get("use_html"))
+                else email_template.get("response")
+            )
+            or email_template.get("response")
+            or email_template.get("response_html")
+            or ""
+        )
+        message = frappe.render_template(template_body, context)
         if message:
             return subject or _("We received your inquiry"), message
         fallback_subject, fallback_message = _render_acknowledgement_email(

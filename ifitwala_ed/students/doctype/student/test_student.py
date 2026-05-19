@@ -7,6 +7,7 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.contacts.contact_privacy import mask_email
 from ifitwala_ed.students.doctype.student.student import (
     get_family_address_link_proposal,
     get_student_crm_summary,
@@ -131,7 +132,7 @@ class TestStudent(FrappeTestCase):
         self.assertEqual(summary.get("contact_summary", {}).get("display_name"), student.student_full_name)
         self.assertEqual(
             summary.get("contact_summary", {}).get("emails"),
-            [{"value": student.student_email, "is_primary": 1}],
+            [{"value": mask_email(student.student_email), "is_primary": 1}],
         )
         self.assertEqual(
             summary.get("address_summaries"),
@@ -172,7 +173,7 @@ class TestStudent(FrappeTestCase):
         self.assertEqual(summary.get("contact_summary", {}).get("display_name"), student.student_full_name)
         self.assertEqual(
             summary.get("contact_summary", {}).get("emails"),
-            [{"value": student.student_email, "is_primary": 1}],
+            [{"value": mask_email(student.student_email), "is_primary": 1}],
         )
         self.assertEqual(
             summary.get("address_summaries"),

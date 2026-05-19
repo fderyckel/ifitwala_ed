@@ -415,11 +415,12 @@ class TestAdmissionCockpit(FrappeTestCase):
         return user
 
     def _create_employee(self, user: str, organization: str, school: str):
+        unique_staff_label = user.split("@", 1)[0].replace("cockpit-", "")[:30]
         employee = frappe.get_doc(
             {
                 "doctype": "Employee",
                 "employee_first_name": "Cockpit",
-                "employee_last_name": "Staff",
+                "employee_last_name": f"Staff {unique_staff_label}",
                 "employee_gender": "Male",
                 "employee_professional_email": user,
                 "date_of_joining": "2025-01-01",

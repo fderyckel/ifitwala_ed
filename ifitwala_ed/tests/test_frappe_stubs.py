@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -35,3 +36,41 @@ class TestFrappeStubs(TestCase):
                 sys.modules.pop("stubpkg.subpkg", None)
                 sys.modules.pop("stubpkg", None)
                 sys.path.remove(temp_dir)
+
+    def test_stubbed_frappe_removes_preexisting_stub_bound_controller_module(self):
+        module_name = "ifitwala_ed.governance.doctype.contact_access_log.contact_access_log"
+        parent_name = "ifitwala_ed.governance.doctype.contact_access_log"
+        attr_name = "contact_access_log"
+
+        with stubbed_frappe():
+            leaked_module = import_fresh(module_name)
+
+        parent_module = importlib.import_module(parent_name)
+        sys.modules[module_name] = leaked_module
+        setattr(parent_module, attr_name, leaked_module)
+
+        try:
+            with stubbed_frappe():
+                self.assertIs(sys.modules[module_name], leaked_module)
+
+            self.assertNotIn(module_name, sys.modules)
+            self.assertFalse(hasattr(parent_module, attr_name))
+        finally:
+            if getattr(parent_module, attr_name, None) is leaked_module:
+                delattr(parent_module, attr_name)
+            sys.modules.pop(module_name, None)
+
+    def test_import_fresh_does_not_restore_previous_stub_bound_module(self):
+        module_name = "ifitwala_ed.governance.doctype.contact_access_log.contact_access_log"
+
+        with stubbed_frappe():
+            leaked_module = import_fresh(module_name)
+
+        sys.modules[module_name] = leaked_module
+        try:
+            with stubbed_frappe():
+                import_fresh(module_name)
+
+            self.assertNotIn(module_name, sys.modules)
+        finally:
+            sys.modules.pop(module_name, None)

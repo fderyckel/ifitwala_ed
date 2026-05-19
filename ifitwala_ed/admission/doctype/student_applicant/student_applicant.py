@@ -693,6 +693,7 @@ class StudentApplicant(Document):
         self._validate_enrollment_plan_for_promotion()
         self._validate_deposit_for_promotion()
 
+        hydrated_request = None
         if self.student:
             self._sync_account_holder_to_student(self.student)
             self._carry_guardians_to_promoted_student(self.student)

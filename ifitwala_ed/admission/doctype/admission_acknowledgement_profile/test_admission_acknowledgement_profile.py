@@ -200,7 +200,7 @@ class TestAdmissionAcknowledgementProfile(FrappeTestCase):
                 "name": template_name,
                 "email_template_name": template_name,
                 "subject": subject,
-                "response_": response_,
+                "response": response_,
             }
         )
         doc.insert(ignore_permissions=True)

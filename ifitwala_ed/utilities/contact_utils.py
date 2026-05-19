@@ -251,6 +251,28 @@ def _reverse_student_applicant_contact_scope_sql(user: str) -> str:
     """
 
 
+def _education_contact_association_exists_sql() -> str:
+    return """
+        EXISTS (
+            SELECT 1
+            FROM `tabDynamic Link` education_contact_link
+            WHERE education_contact_link.parenttype = 'Contact'
+                AND education_contact_link.parent = `tabContact`.name
+                AND education_contact_link.link_doctype IN ('Inquiry', 'Student Applicant', 'Student', 'Guardian')
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM `tabInquiry` education_contact_inquiry
+            WHERE education_contact_inquiry.contact = `tabContact`.name
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM `tabStudent Applicant` education_contact_applicant
+            WHERE education_contact_applicant.applicant_contact = `tabContact`.name
+        )
+    """
+
+
 def _reverse_inquiry_contact_scope_sql(user: str) -> str:
     schools = _resolve_education_contact_school_scope(user)
     orgs = _resolve_education_contact_org_scope(user)
@@ -610,6 +632,12 @@ def contact_permission_query_conditions(user):
                     AND {employee_scope_sql}
             )
         """
+        if roles & EDUCATION_CONTACT_ROLES:
+            education_contact_association_exists = _education_contact_association_exists_sql()
+            scoped_employee_link_exists = f"""
+                {scoped_employee_link_exists}
+                AND NOT ({education_contact_association_exists})
+            """
         conditions.append(f"({scoped_employee_link_exists})")
 
     if roles & EDUCATION_CONTACT_ROLES:
