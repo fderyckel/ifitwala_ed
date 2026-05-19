@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import json
 from datetime import datetime
 from pathlib import Path
 from unittest import TestCase
@@ -82,7 +83,7 @@ def _request_doc(**overrides):
 class TestContactExportRequestController(TestCase):
     def test_manual_insert_is_blocked(self):
         with stubbed_frappe() as frappe:
-            module = import_fresh("ifitwala_ed.contacts.doctype.contact_export_request.contact_export_request")
+            module = import_fresh("ifitwala_ed.governance.doctype.contact_export_request.contact_export_request")
             doc = module.ContactExportRequest.__new__(module.ContactExportRequest)
             doc.flags = {}
 
@@ -91,7 +92,7 @@ class TestContactExportRequestController(TestCase):
 
     def test_global_scope_is_rejected_by_controller(self):
         with stubbed_frappe() as frappe:
-            module = import_fresh("ifitwala_ed.contacts.doctype.contact_export_request.contact_export_request")
+            module = import_fresh("ifitwala_ed.governance.doctype.contact_export_request.contact_export_request")
             doc = module.ContactExportRequest.__new__(module.ContactExportRequest)
             doc.flags = {"from_contact_export_service": True}
             doc.requester = "unit.test@example.com"
@@ -394,13 +395,28 @@ class TestContactExportService(TestCase):
 
 
 class TestContactExportStaticBoundary(TestCase):
+    def _package_root(self) -> Path:
+        return Path(__file__).resolve().parents[1]
+
     def _function_sources(self, relative_path: str):
-        package_root = Path(__file__).resolve().parents[1]
-        source = package_root.joinpath(relative_path).read_text(encoding="utf-8")
+        source = self._package_root().joinpath(relative_path).read_text(encoding="utf-8")
         tree = ast.parse(source)
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 yield node.name, ast.get_source_segment(source, node) or ""
+
+    def test_contact_privacy_doctypes_do_not_claim_core_contacts_module(self):
+        package_root = self._package_root()
+        modules = package_root.joinpath("modules.txt").read_text(encoding="utf-8").splitlines()
+        self.assertNotIn("Contacts", modules)
+
+        metadata_paths = [
+            package_root.joinpath("governance/doctype/contact_access_log/contact_access_log.json"),
+            package_root.joinpath("governance/doctype/contact_export_request/contact_export_request.json"),
+        ]
+        for metadata_path in metadata_paths:
+            payload = json.loads(metadata_path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["module"], "Governance")
 
     def test_contact_export_endpoints_must_use_approval_gate(self):
         targets = [

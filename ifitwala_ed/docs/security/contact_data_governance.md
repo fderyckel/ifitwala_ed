@@ -17,10 +17,10 @@ Code refs:
 - `ifitwala_ed/contacts/contact_privacy.py`
 - `ifitwala_ed/contacts/contact_audit.py`
 - `ifitwala_ed/contacts/contact_export.py`
-- `ifitwala_ed/contacts/doctype/contact_access_log/contact_access_log.py`
-- `ifitwala_ed/contacts/doctype/contact_access_log/contact_access_log.json`
-- `ifitwala_ed/contacts/doctype/contact_export_request/contact_export_request.py`
-- `ifitwala_ed/contacts/doctype/contact_export_request/contact_export_request.json`
+- `ifitwala_ed/governance/doctype/contact_access_log/contact_access_log.py`
+- `ifitwala_ed/governance/doctype/contact_access_log/contact_access_log.json`
+- `ifitwala_ed/governance/doctype/contact_export_request/contact_export_request.py`
+- `ifitwala_ed/governance/doctype/contact_export_request/contact_export_request.json`
 Test refs:
 - `ifitwala_ed/setup/test_contact_permissions.py`
 - `ifitwala_ed/students/doctype/student/test_student_unit.py`
@@ -31,7 +31,7 @@ Test refs:
 - `ifitwala_ed/api/test_admissions_portal.py`
 - `ifitwala_ed/api/test_family_consent.py`
 - `ifitwala_ed/contacts/test_contact_privacy.py`
-- `ifitwala_ed/contacts/doctype/contact_access_log/test_contact_access_log.py`
+- `ifitwala_ed/governance/doctype/contact_access_log/test_contact_access_log.py`
 - `ifitwala_ed/contacts/test_contact_export.py`
 
 This document defines the target security posture for personal contact data across Ifitwala Ed.
@@ -162,6 +162,7 @@ Contact export request gate status:
 
 - `Contact Export Request` is implemented as the governed approval object for contact-data export metadata.
 - The current service boundary is `ifitwala_ed/contacts/contact_export.py`.
+- The audit/export DocTypes live in the existing `Governance` module; Ifitwala Ed must not claim a `Contacts` module because Frappe core owns native `Contact`/`Address` DocTypes there.
 - PR-5 supports only these scoped request types: `Student Group Guardians`, `Admissions Applicants`, `Inquiry Leads`, and `Employees`.
 - Global scopes such as `All Contacts`, `All Guardians`, `All Students`, `All Applicants`, and `All Employees` are rejected.
 - Approval requires `Data Protection Officer`; `System Manager` does not bypass the workflow.

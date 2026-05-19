@@ -8,7 +8,7 @@ from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
 class TestContactAccessLogController(TestCase):
     def test_manual_insert_is_blocked(self):
         with stubbed_frappe() as frappe:
-            module = import_fresh("ifitwala_ed.contacts.doctype.contact_access_log.contact_access_log")
+            module = import_fresh("ifitwala_ed.governance.doctype.contact_access_log.contact_access_log")
             doc = module.ContactAccessLog.__new__(module.ContactAccessLog)
             doc.flags = {}
 
@@ -17,7 +17,7 @@ class TestContactAccessLogController(TestCase):
 
     def test_edit_is_blocked(self):
         with stubbed_frappe() as frappe:
-            module = import_fresh("ifitwala_ed.contacts.doctype.contact_access_log.contact_access_log")
+            module = import_fresh("ifitwala_ed.governance.doctype.contact_access_log.contact_access_log")
             doc = module.ContactAccessLog.__new__(module.ContactAccessLog)
             doc.is_new = lambda: False
 
@@ -26,7 +26,7 @@ class TestContactAccessLogController(TestCase):
 
     def test_delete_is_blocked(self):
         with stubbed_frappe() as frappe:
-            module = import_fresh("ifitwala_ed.contacts.doctype.contact_access_log.contact_access_log")
+            module = import_fresh("ifitwala_ed.governance.doctype.contact_access_log.contact_access_log")
             doc = module.ContactAccessLog.__new__(module.ContactAccessLog)
 
             with self.assertRaises(frappe.ValidationError):
