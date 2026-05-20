@@ -3,7 +3,7 @@ title: "Inquiry: Managing Website Visitor Intake"
 slug: inquiry
 category: Admission
 doc_order: 2
-version: "1.7.2"
+version: "1.7.3"
 last_change_date: "2026-05-20"
 summary: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
 seo_title: "Inquiry: Managing Website Visitor Intake"
@@ -171,7 +171,7 @@ Action-level guard in server code: assignment/reassignment require admissions pe
 ## Related Docs
 
 <RelatedDocs
-  slugs="admission-settings,organization,student-applicant"
+  slugs="admission-settings,admission-cockpit,organization,student-applicant"
   title="Continue With Related Admission Docs"
 />
 

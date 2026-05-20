@@ -3,7 +3,7 @@ title: "Applicant Enrollment Plan: Admissions to Enrollment Bridge"
 slug: applicant-enrollment-plan
 category: Admission
 doc_order: 5
-version: "1.2.2"
+version: "1.2.3"
 last_change_date: "2026-05-20"
 summary: "Stage placement, offer, deposit terms, family response, and pre-request basket choices before student promotion, then hydrate the real Program Enrollment Request without duplicating admissions truth."
 seo_title: "Applicant Enrollment Plan: Admissions to Enrollment Bridge"
@@ -121,7 +121,7 @@ This is not the real enrollment transaction. The committed enrollment path still
 ## Related Docs
 
 <RelatedDocs
-  slugs="student-applicant,program-offering,basket-group,program-enrollment-request,admission-settings,student-enrollment-playbook"
+  slugs="student-applicant,admission-cockpit,program-offering,basket-group,program-enrollment-request,admission-settings,student-enrollment-playbook"
   title="Related Admissions and Enrollment Docs"
 />
 

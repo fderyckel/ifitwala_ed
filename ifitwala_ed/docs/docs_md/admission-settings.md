@@ -3,7 +3,7 @@ title: "Admission Settings: Admissions SLA and Assignment Policy"
 slug: admission-settings
 category: Admission
 doc_order: 1
-version: "1.5.3"
+version: "1.5.4"
 last_change_date: "2026-05-20"
 summary: "Define admissions SLA windows, assignment task color defaults, admissions-portal family/access toggles, and admissions-to-enrollment hydration and deposit policy."
 seo_title: "Admission Settings: Admissions SLA and Assignment Policy"
@@ -20,7 +20,7 @@ seo_description: "Define admissions SLA windows, assignment task color defaults,
 
 ## Authoritative Contract
 
-[[fig:fig-1 size=auto]]
+![admission settings form](docs://fig1){data-size="auto"}
 
 This doctype owns ten operational configuration fields:
 
@@ -116,7 +116,7 @@ Treat SLA value updates as policy changes. Mid-cycle edits can shift operational
 ## Related Docs
 
 <RelatedDocs
-  slugs="inquiry,student-applicant,applicant-enrollment-plan,applicant-review-assignment"
+  slugs="inquiry,admission-cockpit,student-applicant,applicant-enrollment-plan,applicant-review-assignment"
   title="Related Admissions Operations Docs"
 />
 

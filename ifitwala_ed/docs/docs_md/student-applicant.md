@@ -3,7 +3,7 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.20.7"
+version: "1.20.8"
 last_change_date: "2026-05-20"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
 seo_title: "Student Applicant: The Admission Record of Truth"
@@ -310,6 +310,7 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
   - non-admissions reviewers handle `Applicant Document Item` assignments in Focus
   - desk shows completed Health and Overall Application assignment decisions in `review_assignments_summary`
   - staff morning brief surface (`ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue`) renders applicant status breakdown
+
 ## Inquiry Carry-Over (Speed)
 
 When admissions triggers invite-to-apply from an inquiry, the applicant is prefilled with:
@@ -466,7 +467,7 @@ Runtime controller rules (server):
 ## Related Docs
 
 <RelatedDocs
-  slugs="inquiry,applicant-enrollment-plan,applicant-document-type,applicant-document,applicant-health-profile,applicant-interview,institutional-policy,policy-version,policy-acknowledgement"
+  slugs="inquiry,admission-cockpit,applicant-enrollment-plan,applicant-document-type,applicant-document,applicant-health-profile,applicant-interview,institutional-policy,policy-version,policy-acknowledgement"
   title="Related Applicant Lifecycle Docs"
 />
 
