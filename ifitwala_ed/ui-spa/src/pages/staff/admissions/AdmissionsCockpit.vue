@@ -3,9 +3,9 @@
 	<div class="analytics-shell">
 		<header class="page-header">
 			<div class="page-header__intro">
-				<h1 class="type-h1 text-canopy">Admissions Cockpit</h1>
+				<h1 class="type-h1 text-canopy">{{ __('Admissions Cockpit') }}</h1>
 				<p class="type-meta text-slate-token/80">
-					Application progression and blockers (applicant-centered)
+					{{ __('Application progression and blockers (applicant-centered)') }}
 				</p>
 			</div>
 			<div class="page-header__actions">
@@ -16,30 +16,30 @@
 					rel="noopener noreferrer"
 					class="if-button if-button--primary"
 				>
-					New Inquiry
+					{{ __('New Inquiry') }}
 				</a>
 				<button type="button" class="if-button if-button--quiet" @click="refreshNow">
-					Refresh
+					{{ __('Refresh') }}
 				</button>
 			</div>
 		</header>
 
 		<FiltersBar class="analytics-filters">
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Organization</label>
+				<label class="type-label">{{ __('Organization') }}</label>
 				<select
 					v-model="filters.organization"
 					class="h-9 min-w-[180px] rounded-md border px-2 text-sm"
 				>
-					<option value="">All Organizations</option>
+					<option value="">{{ __('All Organizations') }}</option>
 					<option v-for="org in organizations" :key="org" :value="org">{{ org }}</option>
 				</select>
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">School</label>
+				<label class="type-label">{{ __('School') }}</label>
 				<select v-model="filters.school" class="h-9 min-w-[180px] rounded-md border px-2 text-sm">
-					<option value="">All Schools</option>
+					<option value="">{{ __('All Schools') }}</option>
 					<option v-for="school in schools" :key="school" :value="school">{{ school }}</option>
 				</select>
 			</div>
@@ -47,7 +47,7 @@
 			<div class="flex min-w-[180px] items-end pb-1">
 				<label class="inline-flex items-center gap-2 type-label">
 					<input v-model="filters.assigned_to_me" type="checkbox" class="h-4 w-4 rounded border" />
-					<span>My Assignments Only</span>
+					<span>{{ __('My Assignments Only') }}</span>
 				</label>
 			</div>
 		</FiltersBar>
@@ -59,13 +59,17 @@
 			{{ error }}
 		</div>
 
-		<div v-if="loading" class="py-10 text-center text-slate-500">Loading cockpit...</div>
+		<div v-if="loading" class="py-10 text-center text-slate-500">
+			{{ __('Loading cockpit...') }}
+		</div>
 
 		<template v-else>
 			<KpiRow :items="kpiItems" />
 
 			<section class="rounded-xl border border-slate-200 bg-white p-4">
-				<h2 class="type-overline mb-3 text-slate-token/70">Top Admission Blockers</h2>
+				<h2 class="type-overline mb-3 text-slate-token/70">
+					{{ __('Top Admission Blockers') }}
+				</h2>
 				<div class="flex flex-wrap gap-2">
 					<button
 						class="rounded-full border px-3 py-1 text-xs font-semibold transition"
@@ -76,7 +80,7 @@
 						"
 						@click="activeBlocker = ''"
 					>
-						All
+						{{ __('All') }}
 					</button>
 					<button
 						v-for="blocker in blockers"
@@ -133,14 +137,14 @@
 											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
 											@click="openScheduleInterview(item)"
 										>
-											Schedule Interview
+											{{ __('Schedule Interview') }}
 										</button>
 										<button
 											type="button"
 											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
 											@click="openThread(item)"
 										>
-											Message
+											{{ __('Message') }}
 										</button>
 										<a
 											:href="item.open_url"
@@ -148,7 +152,7 @@
 											rel="noopener noreferrer"
 											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
 										>
-											Open
+											{{ __('Open') }}
 										</a>
 									</div>
 								</div>
@@ -160,7 +164,7 @@
 
 								<div class="mb-2 flex flex-wrap gap-1">
 									<span v-if="column.id === 'review'" :class="reviewStageClass(item)">
-										{{ item.ready ? 'Ready for Decision' : 'Needs Review' }}
+										{{ item.ready ? __('Ready for Decision') : __('Needs Review') }}
 									</span>
 									<span
 										class="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-token"
@@ -168,7 +172,7 @@
 										{{ item.application_status }}
 									</span>
 									<span v-if="item.aep?.has_plan" :class="aepPillClass(item.aep?.status)">
-										AEP · {{ item.aep?.status || 'Plan' }}
+										{{ __('AEP') }} · {{ item.aep?.status || __('Plan') }}
 									</span>
 									<span
 										v-if="item.aep?.deposit?.deposit_required"
@@ -176,28 +180,28 @@
 									>
 										{{
 											item.aep.deposit.is_paid
-												? 'Deposit paid'
-												: item.aep.deposit.blocker_label || 'Deposit required'
+												? __('Deposit paid')
+												: item.aep.deposit.blocker_label || __('Deposit required')
 										}}
 									</span>
-									<span :class="pillClass(item.readiness.profile_ok)">Profile</span>
-									<span :class="pillClass(item.readiness.documents_ok)">Docs</span>
-									<span :class="pillClass(item.readiness.recommendations_ok)"
-										>Recommendations</span
-									>
-									<span :class="pillClass(item.readiness.policies_ok)">Policies</span>
-									<span :class="pillClass(item.readiness.health_ok)">Health</span>
+									<span :class="pillClass(item.readiness.profile_ok)">{{ __('Profile') }}</span>
+									<span :class="pillClass(item.readiness.documents_ok)">{{ __('Docs') }}</span>
+									<span :class="pillClass(item.readiness.recommendations_ok)">{{
+										__('Recommendations')
+									}}</span>
+									<span :class="pillClass(item.readiness.policies_ok)">{{ __('Policies') }}</span>
+									<span :class="pillClass(item.readiness.health_ok)">{{ __('Health') }}</span>
 									<span
 										v-if="(item.interviews?.count || 0) > 0"
 										class="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-token"
 									>
-										Interviews · {{ item.interviews?.count || 0 }}
+										{{ __('Interviews') }} · {{ item.interviews?.count || 0 }}
 									</span>
 									<span
 										v-if="(item.comms?.unread_count || 0) > 0"
 										class="rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700"
 									>
-										Comms · {{ item.comms?.unread_count || 0 }}
+										{{ __('Comms') }} · {{ item.comms?.unread_count || 0 }}
 									</span>
 								</div>
 
@@ -207,7 +211,9 @@
 								>
 									<div class="flex items-start justify-between gap-3">
 										<div class="min-w-0">
-											<p class="text-xs font-semibold text-slate-900">Enrollment Plan</p>
+											<p class="text-xs font-semibold text-slate-900">
+												{{ __('Enrollment Plan') }}
+											</p>
 											<p class="text-xs text-slate-token/80">
 												{{ item.aep?.name }}
 												<span v-if="item.aep?.status">· {{ item.aep?.status }}</span>
@@ -216,7 +222,7 @@
 												v-if="item.aep?.status === 'Offer Sent' && item.aep?.offer_expires_on"
 												class="text-xs text-slate-token/80"
 											>
-												Offer expires {{ formatDateOnly(item.aep.offer_expires_on) }}
+												{{ __('Offer expires {0}', [formatDateOnly(item.aep.offer_expires_on)]) }}
 											</p>
 										</div>
 										<div class="flex flex-wrap justify-end gap-2">
@@ -229,8 +235,8 @@
 											>
 												{{
 													isAepActionPending(item.aep?.name, 'send_offer')
-														? 'Sending...'
-														: 'Send Offer'
+														? __('Sending...')
+														: __('Send Offer')
 												}}
 											</button>
 											<button
@@ -242,8 +248,8 @@
 											>
 												{{
 													isAepActionPending(item.aep?.name, 'hydrate_request')
-														? 'Hydrating...'
-														: 'Hydrate Request'
+														? __('Hydrating...')
+														: __('Hydrate Request')
 												}}
 											</button>
 											<a
@@ -253,7 +259,7 @@
 												rel="noopener noreferrer"
 												class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
 											>
-												Open Request
+												{{ __('Open Request') }}
 											</a>
 											<a
 												v-if="item.aep?.open_url"
@@ -262,7 +268,7 @@
 												rel="noopener noreferrer"
 												class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
 											>
-												Open Plan
+												{{ __('Open Plan') }}
 											</a>
 										</div>
 									</div>
@@ -274,7 +280,7 @@
 								>
 									<div class="flex items-start justify-between gap-3">
 										<div class="min-w-0">
-											<p class="text-xs font-semibold text-slate-900">Deposit</p>
+											<p class="text-xs font-semibold text-slate-900">{{ __('Deposit') }}</p>
 											<p class="text-xs text-slate-token/80">
 												{{
 													formatAmount(item.aep.deposit.amount || item.aep.deposit.deposit_amount)
@@ -282,26 +288,30 @@
 												<span
 													v-if="item.aep.deposit.due_date || item.aep.deposit.deposit_due_date"
 												>
-													· Due
+													·
 													{{
-														formatDateOnly(
-															item.aep.deposit.due_date || item.aep.deposit.deposit_due_date
-														)
+														__('Due {0}', [
+															formatDateOnly(
+																item.aep.deposit.due_date || item.aep.deposit.deposit_due_date
+															),
+														])
 													}}
 												</span>
 											</p>
 											<p class="text-xs text-slate-token/80">
 												{{
 													item.aep.deposit.invoice
-														? `${item.aep.deposit.invoice} · ${item.aep.deposit.invoice_status || 'Draft'}`
-														: item.aep.deposit.blocker_label || 'Invoice not generated'
+														? `${item.aep.deposit.invoice} · ${
+																item.aep.deposit.invoice_status || __('Draft')
+															}`
+														: item.aep.deposit.blocker_label || __('Invoice not generated')
 												}}
 											</p>
 											<p
 												v-if="item.aep.deposit.requires_override_approval"
 												class="text-xs font-semibold text-amber-800"
 											>
-												Override approval required
+												{{ __('Override approval required') }}
 											</p>
 										</div>
 										<div class="flex flex-wrap justify-end gap-2">
@@ -314,8 +324,8 @@
 											>
 												{{
 													isAepActionPending(item.aep?.name, 'generate_deposit')
-														? 'Generating...'
-														: 'Generate Invoice'
+														? __('Generating...')
+														: __('Generate Invoice')
 												}}
 											</button>
 											<a
@@ -325,7 +335,7 @@
 												rel="noopener noreferrer"
 												class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
 											>
-												Open Invoice
+												{{ __('Open Invoice') }}
 											</a>
 										</div>
 									</div>
@@ -337,11 +347,20 @@
 								>
 									<div class="flex items-center justify-between gap-3">
 										<div>
-											<p class="text-xs font-semibold text-amber-900">Recommendation review</p>
+											<p class="text-xs font-semibold text-amber-900">
+												{{ __('Recommendation review') }}
+											</p>
 											<p class="text-xs text-amber-900/80">
-												{{ item.recommendations.pending_review_count }} awaiting review
+												{{
+													__('{0} awaiting review', [item.recommendations.pending_review_count])
+												}}
 												<span v-if="item.recommendations.latest_submitted_on">
-													· latest {{ formatDate(item.recommendations.latest_submitted_on) }}
+													·
+													{{
+														__('latest {0}', [
+															formatDate(item.recommendations.latest_submitted_on),
+														])
+													}}
 												</span>
 											</p>
 										</div>
@@ -352,8 +371,8 @@
 										>
 											{{
 												item.recommendations.pending_review_count === 1
-													? 'Review Recommendation'
-													: 'Review Recommendations'
+													? __('Review Recommendation')
+													: __('Review Recommendations')
 											}}
 										</button>
 									</div>
@@ -365,9 +384,11 @@
 								>
 									<div class="flex items-start justify-between gap-3">
 										<div class="min-w-0">
-											<p class="text-xs font-semibold text-slate-900">Latest Interview</p>
+											<p class="text-xs font-semibold text-slate-900">
+												{{ __('Latest Interview') }}
+											</p>
 											<p class="text-xs text-slate-token/80">
-												{{ item.interviews.latest.interview_type || 'Interview' }}
+												{{ item.interviews.latest.interview_type || __('Interview') }}
 												<span v-if="item.interviews.latest.mode">
 													· {{ item.interviews.latest.mode }}
 												</span>
@@ -389,7 +410,7 @@
 														: 'text-amber-800'
 												"
 											>
-												Feedback · {{ item.interviews.latest.feedback_status_label }}
+												{{ __('Feedback') }} · {{ item.interviews.latest.feedback_status_label }}
 											</p>
 										</div>
 										<button
@@ -397,7 +418,7 @@
 											class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
 											@click="openInterviewWorkspace(item.interviews.latest.name)"
 										>
-											Open Interview
+											{{ __('Open Interview') }}
 										</button>
 									</div>
 								</div>
@@ -412,7 +433,7 @@
 								</div>
 
 								<div v-if="item.top_blockers.length" class="space-y-1">
-									<p class="type-caption text-slate-token/80">Missing / Blocked</p>
+									<p class="type-caption text-slate-token/80">{{ __('Missing / Blocked') }}</p>
 									<template
 										v-for="issue in item.top_blockers"
 										:key="`${item.name}-${issue.kind}-${issue.label}`"
@@ -442,7 +463,7 @@
 								v-if="!filteredItems(column.items).length"
 								class="flex flex-1 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white/70 p-4 text-xs text-slate-500"
 							>
-								No applicants in this stage.
+								{{ __('No applicants in this stage.') }}
 							</div>
 						</div>
 					</section>
@@ -459,7 +480,7 @@
 				<header class="border-b border-slate-200 px-5 py-4">
 					<div class="flex items-start justify-between gap-3">
 						<div>
-							<p class="type-label text-canopy">Case Communication</p>
+							<p class="type-label text-canopy">{{ __('Case Communication') }}</p>
 							<p class="type-body-strong text-ink">{{ activeThreadCard.display_name }}</p>
 							<p class="type-caption text-slate-token/70">{{ activeThreadCard.name }}</p>
 						</div>
@@ -468,13 +489,15 @@
 							class="rounded-full border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-token hover:border-slate-400"
 							@click="closeThread"
 						>
-							Close
+							{{ __('Close') }}
 						</button>
 					</div>
 				</header>
 
 				<div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-					<p v-if="threadLoading" class="text-sm text-slate-500">Loading messages...</p>
+					<p v-if="threadLoading" class="text-sm text-slate-500">
+						{{ __('Loading messages...') }}
+					</p>
 					<div
 						v-else-if="threadError"
 						class="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"
@@ -485,7 +508,7 @@
 						v-else-if="!threadMessages.length"
 						class="rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-sm text-slate-600"
 					>
-						No messages yet.
+						{{ __('No messages yet.') }}
 					</div>
 					<div v-else class="space-y-2">
 						<article
@@ -506,13 +529,13 @@
 				</div>
 
 				<footer class="border-t border-slate-200 px-5 py-4">
-					<p class="mb-1 text-xs font-semibold text-slate-700">Reply</p>
+					<p class="mb-1 text-xs font-semibold text-slate-700">{{ __('Reply') }}</p>
 					<textarea
 						v-model="threadDraft"
 						rows="4"
 						maxlength="300"
 						class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-canopy focus:outline-none focus:ring-2 focus:ring-canopy/20"
-						placeholder="Write a message to applicant..."
+						:placeholder="__('Write a message to applicant...')"
 						@keydown.ctrl.enter.prevent="sendThreadMessage"
 						@keydown.meta.enter.prevent="sendThreadMessage"
 					/>
@@ -523,7 +546,7 @@
 								type="checkbox"
 								class="h-4 w-4 rounded border-slate-300"
 							/>
-							<span>Internal note (not visible to applicant)</span>
+							<span>{{ __('Internal note (not visible to applicant)') }}</span>
 						</label>
 						<div class="ml-auto flex items-center gap-3">
 							<p class="text-xs text-slate-500">{{ threadDraft.length }}/300</p>
@@ -533,11 +556,13 @@
 								:disabled="threadSending"
 								@click="sendThreadMessage"
 							>
-								{{ threadSending ? 'Sending...' : 'Send' }}
+								{{ threadSending ? __('Sending...') : __('Send') }}
 							</button>
 						</div>
 					</div>
-					<p class="mt-1 text-[11px] text-slate-500">Shortcut: Ctrl/Cmd + Enter</p>
+					<p class="mt-1 text-[11px] text-slate-500">
+						{{ __('Shortcut: Ctrl/Cmd + Enter') }}
+					</p>
 					<p v-if="threadSendError" class="mt-2 text-xs text-rose-700">{{ threadSendError }}</p>
 				</footer>
 			</section>
@@ -551,6 +576,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
+import { __ } from '@/lib/i18n';
 import { SIGNAL_ADMISSIONS_COCKPIT_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 import {
 	getAdmissionsCaseThread,
@@ -750,22 +776,22 @@ const boardColumns = computed<CockpitColumn[]>(() => {
 	return [
 		{
 			id: 'preparation',
-			title: 'Preparation',
+			title: __('Preparation'),
 			items: [...(byId.get('in_progress') || []), ...(byId.get('draft') || [])],
 		},
 		{
 			id: 'submitted',
-			title: 'Submitted',
+			title: __('Submitted'),
 			items: [...(byId.get('submitted') || [])],
 		},
 		{
 			id: 'review',
-			title: 'Review',
+			title: __('Review'),
 			items: [...(byId.get('awaiting_decision') || []), ...(byId.get('under_review') || [])],
 		},
 		{
 			id: 'accepted',
-			title: 'Accepted',
+			title: __('Accepted'),
 			items: [...(byId.get('accepted_pending_promotion') || [])],
 		},
 	];
@@ -781,20 +807,25 @@ const kpiItems = computed(() => {
 		unread_applicant_replies: 0,
 	};
 	return [
-		{ id: 'active', label: 'Active Applications', value: counts.active_applications },
-		{ id: 'blocked', label: 'Blocked', value: counts.blocked_applications, hint: 'Action Needed' },
-		{ id: 'decision', label: 'Ready for Decision', value: counts.ready_for_decision },
+		{ id: 'active', label: __('Active Applications'), value: counts.active_applications },
+		{
+			id: 'blocked',
+			label: __('Blocked'),
+			value: counts.blocked_applications,
+			hint: __('Action Needed'),
+		},
+		{ id: 'decision', label: __('Ready for Decision'), value: counts.ready_for_decision },
 		{
 			id: 'promotion',
-			label: 'Accepted Pending Promotion',
+			label: __('Accepted Pending Promotion'),
 			value: counts.accepted_pending_promotion,
 		},
-		{ id: 'assignments', label: 'My Open Assignments', value: counts.my_open_assignments },
+		{ id: 'assignments', label: __('My Open Assignments'), value: counts.my_open_assignments },
 		{
 			id: 'unread-replies',
-			label: 'Unread Applicant Replies',
+			label: __('Unread Applicant Replies'),
 			value: counts.unread_applicant_replies,
-			hint: 'Comms Queue',
+			hint: __('Comms Queue'),
 		},
 	];
 });

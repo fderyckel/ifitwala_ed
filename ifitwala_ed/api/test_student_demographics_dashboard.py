@@ -5,6 +5,7 @@
 
 from unittest.mock import patch
 
+import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.api import student_demographics_dashboard as demographics_dashboard
@@ -12,6 +13,35 @@ from ifitwala_ed.api.student_demographics_dashboard import get_dashboard, get_sl
 
 
 class TestStudentDemographicsDashboard(FrappeTestCase):
+    def make_student(self, index: int, **overrides):
+        student = {
+            "name": f"STU-{index:03d}",
+            "student_full_name": f"Student {index}",
+            "anchor_school": "School A",
+            "cohort": "Cohort A",
+            "student_house": "Red House",
+            "student_gender": "Female",
+            "student_nationality": "TH",
+            "student_second_nationality": "",
+            "student_first_language": "English",
+            "student_second_language": "",
+            "residency_status": "Local Resident",
+            "student_date_of_birth": "2014-01-01",
+        }
+        student.update(overrides)
+        return student
+
+    def assert_no_slice_metadata(self, payload):
+        if isinstance(payload, dict):
+            self.assertNotIn("sliceKey", payload)
+            self.assertNotIn("sliceKeys", payload)
+            self.assertNotIn("slices", payload)
+            for value in payload.values():
+                self.assert_no_slice_metadata(value)
+        elif isinstance(payload, list):
+            for value in payload:
+                self.assert_no_slice_metadata(value)
+
     def test_active_students_intersects_requested_school_with_authorized_scope(self):
         with (
             patch(
@@ -27,6 +57,7 @@ class TestStudentDemographicsDashboard(FrappeTestCase):
 
         query, params = sql.call_args.args[:2]
         self.assertIn("st.anchor_school in %(schools)s", query)
+        self.assertNotIn("st.student_full_name", query)
         self.assertEqual(params["schools"], ("SCH-CHILD",))
 
     def test_active_students_uses_instructor_scope_condition_before_aggregation(self):
@@ -46,50 +77,63 @@ class TestStudentDemographicsDashboard(FrappeTestCase):
         instructor_scope.assert_called_once_with("teacher@example.com", table_alias="st")
         self.assertIn("EXISTS (SELECT 1 FROM instructor_scope)", query)
 
-    def test_dashboard_includes_student_house_by_cohort(self):
+    def test_dashboard_suppresses_low_count_demographic_buckets(self):
+        students = [self.make_student(index) for index in range(1, 6)]
+        students.append(
+            self.make_student(
+                6,
+                student_full_name="Ben Hidden",
+                student_house="Blue House",
+                student_gender="Male",
+                student_nationality="FR",
+                student_first_language="French",
+                residency_status="Expat Resident",
+                student_date_of_birth="2013-06-15",
+            )
+        )
+
+        with (
+            patch(
+                "ifitwala_ed.api.student_demographics_dashboard._get_demographics_access_context",
+                return_value={"user": "analytics@example.com", "mode": "full"},
+            ),
+            patch("ifitwala_ed.api.student_demographics_dashboard._get_active_students", return_value=students),
+            patch("ifitwala_ed.api.student_demographics_dashboard._get_guardian_links", return_value=[]),
+        ):
+            payload = get_dashboard(filters={"school": "School A"})
+
+        house_rows = payload.get("student_house_by_cohort") or []
+        self.assertEqual(len(house_rows), 1)
+
+        cohort_a = next(row for row in house_rows if row.get("cohort") == "Cohort A")
+        self.assertEqual(
+            cohort_a.get("buckets"),
+            [
+                {
+                    "label": "Red House",
+                    "count": 5,
+                },
+            ],
+        )
+        self.assertEqual(payload["gender_by_cohort"][0]["female"], 5)
+        self.assertEqual(payload["gender_by_cohort"][0]["male"], 0)
+        self.assert_no_slice_metadata(payload)
+        payload_text = repr(payload)
+        self.assertNotIn("Blue House", payload_text)
+        self.assertNotIn("FR", payload_text)
+        self.assertNotIn("STU-006", payload_text)
+        self.assertNotIn("Ben Hidden", payload_text)
+
+    def test_dashboard_rolls_up_combined_suppressed_demographic_buckets(self):
+        houses = ["Blue House", "Green House", "Yellow House", "Purple House", "Orange House"]
         students = [
-            {
-                "name": "STU-001",
-                "student_full_name": "Ada One",
-                "anchor_school": "School A",
-                "cohort": "Cohort A",
-                "student_house": "Red House",
-                "student_gender": "Female",
-                "student_nationality": "TH",
-                "student_second_nationality": "",
-                "student_first_language": "English",
-                "student_second_language": "",
-                "residency_status": "Local Resident",
-                "student_date_of_birth": "2014-01-01",
-            },
-            {
-                "name": "STU-002",
-                "student_full_name": "Ben Two",
-                "anchor_school": "School A",
-                "cohort": "Cohort A",
-                "student_house": "Blue House",
-                "student_gender": "Male",
-                "student_nationality": "TH",
-                "student_second_nationality": "",
-                "student_first_language": "English",
-                "student_second_language": "",
-                "residency_status": "Expat Resident",
-                "student_date_of_birth": "2013-06-15",
-            },
-            {
-                "name": "STU-003",
-                "student_full_name": "Cam Three",
-                "anchor_school": "School A",
-                "cohort": "Cohort B",
-                "student_house": "Red House",
-                "student_gender": "Other",
-                "student_nationality": "FR",
-                "student_second_nationality": "",
-                "student_first_language": "French",
-                "student_second_language": "",
-                "residency_status": "Boarder",
-                "student_date_of_birth": "2012-09-30",
-            },
+            self.make_student(
+                index,
+                student_house=house,
+                student_nationality=f"Nationality {index}",
+                student_first_language=f"Language {index}",
+            )
+            for index, house in enumerate(houses, start=1)
         ]
 
         with (
@@ -103,83 +147,19 @@ class TestStudentDemographicsDashboard(FrappeTestCase):
             payload = get_dashboard(filters={"school": "School A"})
 
         house_rows = payload.get("student_house_by_cohort") or []
-        self.assertEqual(len(house_rows), 2)
-
-        cohort_a = next(row for row in house_rows if row.get("cohort") == "Cohort A")
+        self.assertEqual(len(house_rows), 1)
         self.assertEqual(
-            cohort_a.get("buckets"),
-            [
-                {
-                    "label": "Blue House",
-                    "count": 1,
-                    "sliceKey": "student:student_house:Blue House:cohort:Cohort A",
-                },
-                {
-                    "label": "Red House",
-                    "count": 1,
-                    "sliceKey": "student:student_house:Red House:cohort:Cohort A",
-                },
-            ],
+            house_rows[0].get("buckets"),
+            [{"label": demographics_dashboard.SUPPRESSED_BUCKET_LABEL, "count": 5}],
         )
-        self.assertEqual(
-            (payload.get("slices") or {}).get("student:student_house:Red House:cohort:Cohort B", {}).get("title"),
-            "Cohort B · Red House",
-        )
+        self.assert_no_slice_metadata(payload)
+        payload_text = repr(payload)
+        for house in houses:
+            self.assertNotIn(house, payload_text)
 
-    def test_student_house_slice_returns_matching_students(self):
-        students = [
-            {
-                "name": "STU-001",
-                "student_full_name": "Ada One",
-                "anchor_school": "School A",
-                "cohort": "Cohort A",
-                "student_house": "Red House",
-                "student_gender": "Female",
-                "student_nationality": "TH",
-                "student_second_nationality": "",
-                "student_first_language": "English",
-                "student_second_language": "",
-                "residency_status": "Local Resident",
-                "student_date_of_birth": "2014-01-01",
-            },
-            {
-                "name": "STU-002",
-                "student_full_name": "Ben Two",
-                "anchor_school": "School A",
-                "cohort": "Cohort A",
-                "student_house": "Blue House",
-                "student_gender": "Male",
-                "student_nationality": "TH",
-                "student_second_nationality": "",
-                "student_first_language": "English",
-                "student_second_language": "",
-                "residency_status": "Expat Resident",
-                "student_date_of_birth": "2013-06-15",
-            },
-        ]
-
-        with (
-            patch(
-                "ifitwala_ed.api.student_demographics_dashboard._get_demographics_access_context",
-                return_value={"user": "analytics@example.com", "mode": "full"},
-            ),
-            patch("ifitwala_ed.api.student_demographics_dashboard._get_active_students", return_value=students),
-            patch("ifitwala_ed.api.student_demographics_dashboard._get_guardian_links", return_value=[]),
-        ):
-            rows = get_slice_entities(
+    def test_slice_entities_is_disabled_for_aggregate_only_privacy(self):
+        with self.assertRaises(frappe.PermissionError):
+            get_slice_entities(
                 slice_key="student:student_house:Red House:cohort:Cohort A",
                 filters={"school": "School A"},
             )
-
-        self.assertEqual(
-            rows,
-            [
-                {
-                    "id": "STU-001",
-                    "name": "Ada One",
-                    "cohort": "Cohort A",
-                    "subtitle": "Cohort A · Red House",
-                    "nationality": "TH",
-                }
-            ],
-        )

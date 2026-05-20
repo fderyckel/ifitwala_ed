@@ -49,19 +49,19 @@
 							tabindex="0"
 							@click="requestClose('programmatic')"
 						>
-							Close
+							{{ __('Close') }}
 						</button>
 						<!-- Header -->
 						<div class="flex items-start justify-between gap-3 px-5 pt-5">
 							<div>
-								<p class="type-overline">Task</p>
+								<p class="type-overline">{{ __('Task') }}</p>
 								<DialogTitle class="type-h3 text-ink mt-1">{{ dialogTitle }}</DialogTitle>
 							</div>
 
 							<button
 								type="button"
 								class="if-overlay__icon-button"
-								aria-label="Close"
+								:aria-label="__('Close')"
 								@click="requestClose('programmatic')"
 							>
 								<FeatherIcon name="x" class="h-5 w-5" />
@@ -74,8 +74,10 @@
 								<template v-if="!createdTask">
 									<section class="card-panel space-y-4 p-5">
 										<div class="flex items-center gap-3">
-											<span class="chip">Mode</span>
-											<h3 class="type-h3 text-ink">How do you want to assign this work?</h3>
+											<span class="chip">{{ __('Mode') }}</span>
+											<h3 class="type-h3 text-ink">
+												{{ __('How do you want to assign this work?') }}
+											</h3>
 										</div>
 										<div class="grid gap-3 md:grid-cols-2">
 											<button
@@ -88,9 +90,11 @@
 												"
 												@click="setTaskMode('create')"
 											>
-												<p class="text-sm font-semibold text-ink">Create new task</p>
+												<p class="text-sm font-semibold text-ink">
+													{{ __('Create new task') }}
+												</p>
 												<p class="mt-1 text-xs text-ink/60">
-													Author a new reusable task, then assign it to this class.
+													{{ __('Author a new reusable task, then assign it to this class.') }}
 												</p>
 											</button>
 											<button
@@ -103,53 +107,63 @@
 												"
 												@click="setTaskMode('reuse')"
 											>
-												<p class="text-sm font-semibold text-ink">Reuse existing task</p>
+												<p class="text-sm font-semibold text-ink">
+													{{ __('Reuse existing task') }}
+												</p>
 												<p class="mt-1 text-xs text-ink/60">
-													Assign one of your course tasks again without rewriting the task
-													definition.
+													{{
+														__(
+															'Assign one of your course tasks again without rewriting the task definition.'
+														)
+													}}
 												</p>
 											</button>
 										</div>
 										<p class="text-xs text-ink/60">
-											New tasks stay reusable for you across your groups and future years. Share
-											with the course team only when the task is ready for other teachers too.
+											{{
+												__(
+													'New tasks stay reusable for you across your groups and future years. Share with the course team only when the task is ready for other teachers too.'
+												)
+											}}
 										</p>
 									</section>
 
 									<template v-if="taskMode === 'create'">
 										<section class="card-panel space-y-4 p-5">
 											<div class="flex items-center gap-3">
-												<span class="chip">Step 1</span>
-												<h3 class="type-h3 text-ink">What are you giving students?</h3>
+												<span class="chip">{{ __('Step 1') }}</span>
+												<h3 class="type-h3 text-ink">
+													{{ __('What are you giving students?') }}
+												</h3>
 											</div>
 
 											<div class="grid gap-4 md:grid-cols-2">
 												<div class="space-y-1">
-													<label class="type-label">Title</label>
+													<label class="type-label">{{ __('Title') }}</label>
 													<FormControl
 														v-model="form.title"
 														type="text"
-														placeholder="Assignment title"
+														:placeholder="__('Assignment title')"
 													/>
 												</div>
 												<div class="space-y-1">
-													<label class="type-label">Type</label>
+													<label class="type-label">{{ __('Type') }}</label>
 													<FormControl
 														v-model="form.task_type"
 														type="select"
 														:options="taskTypeOptions"
 														option-label="label"
 														option-value="value"
-														placeholder="Select type (optional)"
+														:placeholder="__('Select type (optional)')"
 													/>
 												</div>
 											</div>
 
 											<div class="space-y-1">
-												<label class="type-label">Instructions</label>
+												<label class="type-label">{{ __('Instructions') }}</label>
 												<PlanningRichTextField
 													v-model="form.instructions"
-													placeholder="Share directions, resources, or expectations..."
+													:placeholder="__('Share directions, resources, or expectations...')"
 													min-height-class="min-h-[11rem]"
 												/>
 											</div>
@@ -158,14 +172,17 @@
 												class="space-y-4 rounded-2xl border border-line-soft bg-surface-soft p-4"
 											>
 												<div class="flex items-center gap-3">
-													<span class="chip">Attachments</span>
+													<span class="chip">{{ __('Attachments') }}</span>
 													<div>
 														<h4 class="type-body-strong text-ink">
-															Include files or links with this task
+															{{ __('Include files or links with this task') }}
 														</h4>
 														<p class="type-caption text-ink/70">
-															Queue attachments while you write the task. They upload automatically
-															when you create it.
+															{{
+																__(
+																	'Queue attachments while you write the task. They upload automatically when you create it.'
+																)
+															}}
 														</p>
 													</div>
 												</div>
@@ -181,7 +198,7 @@
 														"
 														@click="setMaterialComposerMode('link')"
 													>
-														Add link
+														{{ __('Add link') }}
 													</button>
 													<button
 														type="button"
@@ -193,21 +210,21 @@
 														"
 														@click="setMaterialComposerMode('file')"
 													>
-														Queue file or image
+														{{ __('Queue file or image') }}
 													</button>
 												</div>
 
 												<div class="grid gap-4 md:grid-cols-2">
 													<div class="space-y-1">
-														<label class="type-label">Attachment title</label>
+														<label class="type-label">{{ __('Attachment title') }}</label>
 														<FormControl
 															v-model="materialForm.title"
 															type="text"
-															placeholder="Material title"
+															:placeholder="__('Material title')"
 														/>
 													</div>
 													<div class="space-y-1">
-														<label class="type-label">How students use it</label>
+														<label class="type-label">{{ __('How students use it') }}</label>
 														<FormControl
 															v-model="materialForm.modality"
 															type="select"
@@ -220,7 +237,7 @@
 
 												<div class="grid gap-4 md:grid-cols-2">
 													<div class="space-y-1">
-														<label class="type-label">Usage role</label>
+														<label class="type-label">{{ __('Usage role') }}</label>
 														<FormControl
 															v-model="materialForm.usage_role"
 															type="select"
@@ -230,31 +247,31 @@
 														/>
 													</div>
 													<div class="space-y-1">
-														<label class="type-label">Teacher note</label>
+														<label class="type-label">{{ __('Teacher note') }}</label>
 														<FormControl
 															v-model="materialForm.placement_note"
 															type="text"
-															placeholder="Optional note for students"
+															:placeholder="__('Optional note for students')"
 														/>
 													</div>
 												</div>
 
 												<div class="space-y-1">
-													<label class="type-label">Description</label>
+													<label class="type-label">{{ __('Description') }}</label>
 													<FormControl
 														v-model="materialForm.description"
 														type="textarea"
 														:rows="3"
-														placeholder="Optional context about this material"
+														:placeholder="__('Optional context about this material')"
 													/>
 												</div>
 
 												<div v-if="materialComposerMode === 'link'" class="space-y-1">
-													<label class="type-label">Reference URL</label>
+													<label class="type-label">{{ __('Reference URL') }}</label>
 													<FormControl
 														v-model="materialForm.reference_url"
 														type="text"
-														placeholder="https://..."
+														:placeholder="__('https://...')"
 													/>
 												</div>
 
@@ -272,14 +289,14 @@
 															class="if-button if-button--secondary"
 															@click="materialFileInput?.click()"
 														>
-															Choose PDF or image
+															{{ __('Choose PDF or image') }}
 														</button>
 														<p class="type-caption text-ink/70">
-															{{ selectedMaterialFile?.name || 'No file selected yet.' }}
+															{{ selectedMaterialFile?.name || __('No file selected yet.') }}
 														</p>
 													</div>
 													<p class="type-caption text-ink/60">
-														Supported formats: PDF, JPG, PNG, and WEBP.
+														{{ __('Supported formats: PDF, JPG, PNG, and WEBP.') }}
 													</p>
 												</div>
 
@@ -312,20 +329,25 @@
 												>
 													<div class="flex items-center justify-between gap-3">
 														<div class="flex items-center gap-3">
-															<span class="chip">Queued</span>
+															<span class="chip">{{ __('Queued') }}</span>
 															<h4 class="type-body-strong text-ink">
-																Attachments saved with this task
+																{{ __('Attachments saved with this task') }}
 															</h4>
 														</div>
-														<span class="chip">{{ queuedTaskAttachments.length }} items</span>
+														<span class="chip">
+															{{ __('{0} items', [queuedTaskAttachments.length]) }}
+														</span>
 													</div>
 
 													<div
 														v-if="!queuedTaskAttachments.length"
 														class="rounded-xl border border-dashed border-border/70 bg-slate-50 px-4 py-3 text-sm text-ink/70"
 													>
-														Add files, images, or links here and they will be attached when you
-														create the task.
+														{{
+															__(
+																'Add files, images, or links here and they will be attached when you create the task.'
+															)
+														}}
 													</div>
 
 													<div v-else class="grid gap-3 lg:grid-cols-2">
@@ -339,7 +361,9 @@
 																	<p class="type-body-strong text-ink">{{ draft.title }}</p>
 																	<span class="chip">
 																		{{
-																			draft.mode === 'file' ? 'File attachment' : 'Reference link'
+																			draft.mode === 'file'
+																				? __('File attachment')
+																				: __('Reference link')
 																		}}
 																	</span>
 																</div>
@@ -362,7 +386,7 @@
 																	class="if-button if-button--danger"
 																	@click="removeQueuedTaskAttachment(draft.id)"
 																>
-																	Remove
+																	{{ __('Remove') }}
 																</button>
 															</div>
 														</article>
@@ -375,68 +399,71 @@
 												class="flex flex-wrap gap-2"
 											>
 												<span v-if="props.prefillUnitPlan" class="chip">
-													Unit {{ props.prefillUnitPlan }}
+													{{ __('Unit {0}', [props.prefillUnitPlan]) }}
 												</span>
 												<span v-if="props.prefillQuizQuestionBankLabel" class="chip">
-													Quiz {{ props.prefillQuizQuestionBankLabel }}
+													{{ __('Quiz {0}', [props.prefillQuizQuestionBankLabel]) }}
 												</span>
 											</div>
 
 											<div v-if="isQuizTask" class="grid gap-4 md:grid-cols-2">
 												<div class="space-y-1">
-													<label class="type-label">Question bank</label>
+													<label class="type-label">{{ __('Question bank') }}</label>
 													<FormControl
 														v-model="form.quiz_question_bank"
 														type="select"
 														:options="quizBankOptions"
 														option-label="label"
 														option-value="value"
-														placeholder="Select a quiz bank"
+														:placeholder="__('Select a quiz bank')"
 													/>
 													<p v-if="!quizBankOptions.length" class="type-caption text-ink/70">
-														No published quiz banks are available yet. Build one in the shared
-														course-plan workspace first.
+														{{
+															__(
+																'No published quiz banks are available yet. Build one in the shared course-plan workspace first.'
+															)
+														}}
 													</p>
 												</div>
 												<div class="space-y-1">
-													<label class="type-label">Questions per attempt</label>
+													<label class="type-label">{{ __('Questions per attempt') }}</label>
 													<FormControl
 														v-model="form.quiz_question_count"
 														type="number"
 														:min="1"
 														:step="1"
-														placeholder="Use all if blank"
+														:placeholder="__('Use all if blank')"
 													/>
 												</div>
 												<div class="space-y-1">
-													<label class="type-label">Time limit (minutes)</label>
+													<label class="type-label">{{ __('Time limit (minutes)') }}</label>
 													<FormControl
 														v-model="form.quiz_time_limit_minutes"
 														type="number"
 														:min="1"
 														:step="1"
-														placeholder="Optional"
+														:placeholder="__('Optional')"
 													/>
 												</div>
 												<div class="space-y-1">
-													<label class="type-label">Maximum attempts</label>
+													<label class="type-label">{{ __('Maximum attempts') }}</label>
 													<FormControl
 														v-model="form.quiz_max_attempts"
 														type="number"
 														:min="0"
 														:step="1"
-														placeholder="Unlimited if blank"
+														:placeholder="__('Unlimited if blank')"
 													/>
 												</div>
 												<div class="space-y-1">
-													<label class="type-label">Pass percentage</label>
+													<label class="type-label">{{ __('Pass percentage') }}</label>
 													<FormControl
 														v-model="form.quiz_pass_percentage"
 														type="number"
 														:min="0"
 														:max="100"
 														:step="1"
-														placeholder="Optional"
+														:placeholder="__('Optional')"
 													/>
 												</div>
 											</div>
@@ -451,11 +478,14 @@
 												/>
 												<span>
 													<span class="block font-medium text-ink">
-														Share this task with other teachers on this course
+														{{ __('Share this task with other teachers on this course') }}
 													</span>
 													<span class="block text-xs text-ink/60">
-														Leave this off to keep the task private to you. You can still reuse it
-														across your own groups and future school years.
+														{{
+															__(
+																'Leave this off to keep the task private to you. You can still reuse it across your own groups and future school years.'
+															)
+														}}
 													</span>
 												</span>
 											</label>
@@ -463,18 +493,20 @@
 
 										<section class="card-panel space-y-4 p-5">
 											<div class="flex items-center gap-3">
-												<span class="chip">Step 2</span>
-												<h3 class="type-h3 text-ink">Which class?</h3>
+												<span class="chip">{{ __('Step 2') }}</span>
+												<h3 class="type-h3 text-ink">{{ __('Which class?') }}</h3>
 											</div>
 
 											<div class="space-y-1">
-												<label class="type-label">Class</label>
+												<label class="type-label">{{ __('Class') }}</label>
 
 												<div
 													v-if="isGroupLocked"
 													class="rounded-xl border border-border/80 bg-slate-50 px-3 py-2 text-sm text-ink/80"
 												>
-													{{ selectedGroupLabel || props.prefillStudentGroup || 'Class selected' }}
+													{{
+														selectedGroupLabel || props.prefillStudentGroup || __('Class selected')
+													}}
 												</div>
 
 												<FormControl
@@ -485,14 +517,14 @@
 													option-label="label"
 													option-value="value"
 													:disabled="groupsLoading"
-													placeholder="Select a class"
+													:placeholder="__('Select a class')"
 												/>
 
 												<p
 													v-if="!groupsLoading && !groupOptions.length"
 													class="type-caption text-slate-token/70"
 												>
-													No classes available for your role yet.
+													{{ __('No classes available for your role yet.') }}
 												</p>
 												<p v-if="groupLoadError" class="type-caption text-flame">
 													{{ groupLoadError }}
@@ -503,10 +535,10 @@
 													class="mt-3 flex flex-wrap gap-2"
 												>
 													<span v-if="props.prefillUnitPlan" class="chip">
-														Unit {{ props.prefillUnitPlan }}
+														{{ __('Unit {0}', [props.prefillUnitPlan]) }}
 													</span>
 													<span v-if="props.prefillClassSession" class="chip">
-														Session {{ props.prefillClassSession }}
+														{{ __('Session {0}', [props.prefillClassSession]) }}
 													</span>
 												</div>
 											</div>
@@ -516,18 +548,22 @@
 									<template v-else>
 										<section class="card-panel space-y-4 p-5">
 											<div class="flex items-center gap-3">
-												<span class="chip">Step 1</span>
-												<h3 class="type-h3 text-ink">Which class and which reusable task?</h3>
+												<span class="chip">{{ __('Step 1') }}</span>
+												<h3 class="type-h3 text-ink">
+													{{ __('Which class and which reusable task?') }}
+												</h3>
 											</div>
 
 											<div class="space-y-1">
-												<label class="type-label">Class</label>
+												<label class="type-label">{{ __('Class') }}</label>
 
 												<div
 													v-if="isGroupLocked"
 													class="rounded-xl border border-border/80 bg-slate-50 px-3 py-2 text-sm text-ink/80"
 												>
-													{{ selectedGroupLabel || props.prefillStudentGroup || 'Class selected' }}
+													{{
+														selectedGroupLabel || props.prefillStudentGroup || __('Class selected')
+													}}
 												</div>
 
 												<FormControl
@@ -538,14 +574,14 @@
 													option-label="label"
 													option-value="value"
 													:disabled="groupsLoading"
-													placeholder="Select a class"
+													:placeholder="__('Select a class')"
 												/>
 
 												<p
 													v-if="!groupsLoading && !groupOptions.length"
 													class="type-caption text-slate-token/70"
 												>
-													No classes available for your role yet.
+													{{ __('No classes available for your role yet.') }}
 												</p>
 												<p v-if="groupLoadError" class="type-caption text-flame">
 													{{ groupLoadError }}
@@ -557,21 +593,21 @@
 												class="flex flex-wrap gap-2"
 											>
 												<span v-if="props.prefillUnitPlan" class="chip">
-													Unit {{ props.prefillUnitPlan }}
+													{{ __('Unit {0}', [props.prefillUnitPlan]) }}
 												</span>
 												<span v-if="props.prefillClassSession" class="chip">
-													Session {{ props.prefillClassSession }}
+													{{ __('Session {0}', [props.prefillClassSession]) }}
 												</span>
 											</div>
 
 											<div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
 												<div class="space-y-1">
-													<label class="type-label">Search reusable tasks</label>
+													<label class="type-label">{{ __('Search reusable tasks') }}</label>
 													<FormControl
 														v-model="taskLibraryQuery"
 														type="text"
 														:disabled="!form.student_group"
-														placeholder="Search by title"
+														:placeholder="__('Search by title')"
 													/>
 												</div>
 												<button
@@ -580,7 +616,7 @@
 													:disabled="!form.student_group || taskLibraryLoading"
 													@click="loadReusableTasks"
 												>
-													Refresh library
+													{{ __('Refresh library') }}
 												</button>
 											</div>
 
@@ -595,21 +631,21 @@
 												v-else-if="!form.student_group"
 												class="rounded-xl border border-dashed border-border/80 bg-slate-50 px-4 py-3 text-sm text-ink/70"
 											>
-												Select a class first to load reusable tasks for its course.
+												{{ __('Select a class first to load reusable tasks for its course.') }}
 											</div>
 
 											<div
 												v-else-if="taskLibraryLoading && !reusableTasks.length"
 												class="rounded-xl border border-line-soft bg-surface-soft px-4 py-3 text-sm text-ink/70"
 											>
-												Loading reusable tasks...
+												{{ __('Loading reusable tasks...') }}
 											</div>
 
 											<div
 												v-else-if="!reusableTasks.length"
 												class="rounded-xl border border-dashed border-border/80 bg-slate-50 px-4 py-3 text-sm text-ink/70"
 											>
-												No reusable tasks found for this course yet.
+												{{ __('No reusable tasks found for this course yet.') }}
 											</div>
 
 											<div v-else class="space-y-3">
@@ -629,14 +665,14 @@
 														<div class="min-w-0">
 															<p class="text-sm font-semibold text-ink">{{ task.title }}</p>
 															<p class="mt-1 text-xs text-ink/60">
-																{{ task.task_type || 'Task' }}
+																{{ task.task_type || __('Task') }}
 																<span v-if="task.unit_plan"> · {{ task.unit_plan }}</span>
 															</p>
 															<p
 																v-if="task.visibility_scope === 'shared' && task.owner"
 																class="mt-1 text-xs text-ink/60"
 															>
-																Shared by {{ task.owner }}
+																{{ __('Shared by {0}', [task.owner]) }}
 															</p>
 														</div>
 														<span class="chip">{{ task.visibility_label }}</span>
@@ -647,8 +683,8 @@
 
 										<section v-if="selectedReusableTaskDetails" class="card-panel space-y-4 p-5">
 											<div class="flex items-center gap-3">
-												<span class="chip">Step 2</span>
-												<h3 class="type-h3 text-ink">Selected reusable task</h3>
+												<span class="chip">{{ __('Step 2') }}</span>
+												<h3 class="type-h3 text-ink">{{ __('Selected reusable task') }}</h3>
 											</div>
 
 											<div class="rounded-2xl border border-line-soft bg-surface-soft p-4">
@@ -657,13 +693,13 @@
 														{{ selectedReusableTaskDetails.title }}
 													</p>
 													<span class="chip">
-														{{ selectedReusableTaskDetails.task_type || 'Task' }}
+														{{ selectedReusableTaskDetails.task_type || __('Task') }}
 													</span>
 													<span class="chip">
 														{{
 															selectedReusableTaskDetails.visibility_scope === 'shared'
-																? 'Shared with course team'
-																: 'Your reusable task'
+																? __('Shared with course team')
+																: __('Your reusable task')
 														}}
 													</span>
 													<span v-if="selectedReusableTaskDetails.unit_plan" class="chip">
@@ -677,8 +713,11 @@
 													{{ selectedReusableTaskInstructionsPreview }}
 												</p>
 												<p class="mt-3 text-xs text-ink/60">
-													Task definition edits and task materials stay on the reusable task. Use
-													this flow only for class-local assignment settings.
+													{{
+														__(
+															'Task definition edits and task materials stay on the reusable task. Use this flow only for class-local assignment settings.'
+														)
+													}}
 												</p>
 											</div>
 										</section>
@@ -690,8 +729,10 @@
 										class="card-panel space-y-4 p-5"
 									>
 										<div class="flex items-center gap-3">
-											<span class="chip">Step 3</span>
-											<h3 class="type-h3 text-ink">How will students complete this work?</h3>
+											<span class="chip">{{ __('Step 3') }}</span>
+											<h3 class="type-h3 text-ink">
+												{{ __('How will students complete this work?') }}
+											</h3>
 										</div>
 
 										<div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -713,8 +754,11 @@
 										</div>
 
 										<p v-if="isQuizTask" class="type-caption text-ink/70">
-											For platform quizzes, students answer in the quiz player. No separate hand-in
-											is requested.
+											{{
+												__(
+													'For platform quizzes, students answer in the quiz player. No separate hand-in is requested.'
+												)
+											}}
 										</p>
 									</section>
 
@@ -724,13 +768,13 @@
 										class="card-panel space-y-4 p-5"
 									>
 										<div class="flex items-center gap-3">
-											<span class="chip">Step 4</span>
-											<h3 class="type-h3 text-ink">Dates</h3>
+											<span class="chip">{{ __('Step 4') }}</span>
+											<h3 class="type-h3 text-ink">{{ __('Dates') }}</h3>
 										</div>
 
 										<div class="grid gap-4 md:grid-cols-3">
 											<div class="space-y-1">
-												<label class="type-label">Available from</label>
+												<label class="type-label">{{ __('Available from') }}</label>
 												<input
 													v-model="form.available_from"
 													type="datetime-local"
@@ -738,7 +782,7 @@
 												/>
 											</div>
 											<div class="space-y-1">
-												<label class="type-label">Due date</label>
+												<label class="type-label">{{ __('Due date') }}</label>
 												<input
 													v-model="form.due_date"
 													type="datetime-local"
@@ -746,7 +790,7 @@
 												/>
 											</div>
 											<div class="space-y-1">
-												<label class="type-label">Lock date</label>
+												<label class="type-label">{{ __('Lock date') }}</label>
 												<input
 													v-model="form.lock_date"
 													type="datetime-local"
@@ -765,7 +809,7 @@
 													type="checkbox"
 													class="rounded border-border/70 text-jacaranda"
 												/>
-												Allow late submissions
+												{{ __('Allow late submissions') }}
 											</label>
 										</div>
 									</section>
@@ -773,8 +817,8 @@
 									<!-- Step 5 -->
 									<section v-if="showGradingSection" class="card-panel space-y-4 p-5">
 										<div class="flex items-center gap-3">
-											<span class="chip">Step 5</span>
-											<h3 class="type-h3 text-ink">Marking</h3>
+											<span class="chip">{{ __('Step 5') }}</span>
+											<h3 class="type-h3 text-ink">{{ __('Marking') }}</h3>
 										</div>
 
 										<div class="space-y-4">
@@ -797,13 +841,13 @@
 											</div>
 
 											<div v-if="form.grading_mode === 'Points'" class="max-w-xs space-y-1">
-												<label class="type-label">Max points</label>
+												<label class="type-label">{{ __('Max points') }}</label>
 												<FormControl
 													v-model="form.max_points"
 													type="number"
 													:min="0"
 													:step="0.5"
-													placeholder="Enter max points"
+													:placeholder="__('Enter max points')"
 												/>
 											</div>
 
@@ -813,14 +857,14 @@
 											>
 												<div class="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
 													<div class="space-y-1">
-														<label class="type-label">Rubric strategy</label>
+														<label class="type-label">{{ __('Rubric strategy') }}</label>
 														<FormControl
 															v-model="form.rubric_scoring_strategy"
 															type="select"
 															:options="rubricScoringStrategyOptions"
 															option-label="label"
 															option-value="value"
-															placeholder="Select strategy"
+															:placeholder="__('Select strategy')"
 															data-rubric-strategy-select="true"
 														/>
 													</div>
@@ -828,12 +872,14 @@
 														class="rounded-2xl border border-dashed border-border/80 bg-white/70 px-4 py-3 text-sm text-ink/70"
 													>
 														<p class="font-medium text-ink">
-															Criteria stay reusable. Scoring stays local.
+															{{ __('Criteria stay reusable. Scoring stays local.') }}
 														</p>
 														<p class="mt-1 text-xs">
-															`Sum Total` computes one task total from weighted criterion points.
-															`Separate Criteria` keeps the task criterion-by-criterion with no
-															task total.
+															{{
+																__(
+																	'`Sum Total` computes one task total from weighted criterion points. `Separate Criteria` keeps the task criterion-by-criterion with no task total.'
+																)
+															}}
 														</p>
 													</div>
 												</div>
@@ -844,18 +890,25 @@
 												>
 													<div class="flex items-start justify-between gap-3">
 														<div>
-															<p class="text-sm font-semibold text-ink">Task criteria</p>
+															<p class="text-sm font-semibold text-ink">
+																{{ __('Task criteria') }}
+															</p>
 															<p class="mt-1 text-xs text-ink/60">
-																Choose from this course's assessment criteria, then set the local
-																weighting and max points that this task will snapshot.
+																{{
+																	__(
+																		"Choose from this course's assessment criteria, then set the local weighting and max points that this task will snapshot."
+																	)
+																}}
 															</p>
 														</div>
-														<span class="chip">{{ taskCriteriaRows.length }} selected</span>
+														<span class="chip">
+															{{ __('{0} selected', [taskCriteriaRows.length]) }}
+														</span>
 													</div>
 
 													<div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
 														<div class="space-y-1">
-															<label class="type-label">Add course criterion</label>
+															<label class="type-label">{{ __('Add course criterion') }}</label>
 															<FormControl
 																v-model="criteriaLibrarySelection"
 																type="select"
@@ -863,7 +916,7 @@
 																option-label="label"
 																option-value="value"
 																:disabled="criteriaLibraryLoading || !form.student_group"
-																placeholder="Select a criterion"
+																:placeholder="__('Select a criterion')"
 																data-criteria-library-select="true"
 															/>
 														</div>
@@ -874,7 +927,7 @@
 															data-add-task-criterion="true"
 															@click="addTaskCriterion"
 														>
-															Add criterion
+															{{ __('Add criterion') }}
 														</button>
 													</div>
 
@@ -889,21 +942,25 @@
 														v-else-if="criteriaLibraryLoading && !courseCriteriaLibrary.length"
 														class="rounded-xl border border-dashed border-border/80 bg-slate-50 px-4 py-3 text-sm text-ink/70"
 													>
-														Loading course criteria...
+														{{ __('Loading course criteria...') }}
 													</div>
 
 													<div
 														v-else-if="!courseCriteriaLibrary.length"
 														class="rounded-xl border border-dashed border-border/80 bg-slate-50 px-4 py-3 text-sm text-ink/70"
 													>
-														No course assessment criteria are configured for this class yet.
+														{{
+															__(
+																'No course assessment criteria are configured for this class yet.'
+															)
+														}}
 													</div>
 
 													<div
 														v-else-if="!taskCriteriaRows.length"
 														class="rounded-xl border border-dashed border-border/80 bg-slate-50 px-4 py-3 text-sm text-ink/70"
 													>
-														Add at least one criterion to create a criteria-based task.
+														{{ __('Add at least one criterion to create a criteria-based task.') }}
 													</div>
 
 													<div v-else class="space-y-3">
@@ -920,7 +977,7 @@
 																	<p class="mt-1 text-xs text-ink/60">
 																		{{ row.assessment_criteria }}
 																		<span v-if="row.levels?.length">
-																			· Levels:
+																			· {{ __('Levels:') }}
 																			{{ row.levels.map(level => level.level).join(' · ') }}
 																		</span>
 																	</p>
@@ -930,29 +987,29 @@
 																	class="text-xs font-medium text-flame transition hover:text-flame/80"
 																	@click="removeTaskCriterion(row.assessment_criteria)"
 																>
-																	Remove
+																	{{ __('Remove') }}
 																</button>
 															</div>
 
 															<div class="mt-3 grid gap-3 md:grid-cols-2">
 																<div class="space-y-1">
-																	<label class="type-label">Weighting (%)</label>
+																	<label class="type-label">{{ __('Weighting (%)') }}</label>
 																	<FormControl
 																		v-model="row.criteria_weighting"
 																		type="number"
 																		:min="0"
 																		:step="0.1"
-																		placeholder="e.g. 25"
+																		:placeholder="__('e.g. 25')"
 																	/>
 																</div>
 																<div class="space-y-1">
-																	<label class="type-label">Max points</label>
+																	<label class="type-label">{{ __('Max points') }}</label>
 																	<FormControl
 																		v-model="row.criteria_max_points"
 																		type="number"
 																		:min="0"
 																		:step="0.1"
-																		placeholder="e.g. 8"
+																		:placeholder="__('e.g. 8')"
 																	/>
 																</div>
 															</div>
@@ -967,8 +1024,12 @@
 														class="text-xs"
 														:class="criteriaWeightingLooksReady ? 'text-ink/60' : 'text-clay'"
 													>
-														Current weighting total: {{ criteriaWeightTotalLabel }}%. Sum Total
-														works best when the course weighting adds to 100%.
+														{{
+															__(
+																'Current weighting total: {0}%. Sum Total works best when the course weighting adds to 100%.',
+																[criteriaWeightTotalLabel]
+															)
+														}}
 													</p>
 												</div>
 
@@ -978,21 +1039,31 @@
 												>
 													<div class="flex items-start justify-between gap-3">
 														<div>
-															<p class="text-sm font-semibold text-ink">Reusable task criteria</p>
+															<p class="text-sm font-semibold text-ink">
+																{{ __('Reusable task criteria') }}
+															</p>
 															<p class="mt-1 text-xs text-ink/60">
-																This reusable task already owns its criteria rows. You can review
-																them here and change only the delivery strategy for this class.
+																{{
+																	__(
+																		'This reusable task already owns its criteria rows. You can review them here and change only the delivery strategy for this class.'
+																	)
+																}}
 															</p>
 														</div>
-														<span class="chip">{{ activeCriteriaRows.length }} criteria</span>
+														<span class="chip">
+															{{ __('{0} criteria', [activeCriteriaRows.length]) }}
+														</span>
 													</div>
 
 													<div
 														v-if="!activeCriteriaRows.length"
 														class="rounded-xl border border-flame/30 bg-flame/10 px-4 py-3 text-sm text-flame"
 													>
-														This reusable task is marked as criteria-based but does not carry task
-														criteria yet.
+														{{
+															__(
+																'This reusable task is marked as criteria-based but does not carry task criteria yet.'
+															)
+														}}
 													</div>
 
 													<div v-else class="space-y-3">
@@ -1020,7 +1091,11 @@
 																</div>
 															</div>
 															<p v-if="row.levels?.length" class="mt-2 text-xs text-ink/60">
-																Levels: {{ row.levels.map(level => level.level).join(' · ') }}
+																{{
+																	__('Levels: {0}', [
+																		row.levels.map(level => level.level).join(' · '),
+																	])
+																}}
 															</p>
 														</div>
 													</div>
@@ -1034,8 +1109,8 @@
 										>
 											<div class="flex flex-wrap items-center justify-between gap-3">
 												<div class="flex items-center gap-3">
-													<span class="chip">Reporting</span>
-													<p class="type-body-strong text-ink">Term report setup</p>
+													<span class="chip">{{ __('Reporting') }}</span>
+													<p class="type-body-strong text-ink">{{ __('Term report setup') }}</p>
 												</div>
 												<span v-if="resolvedAssessmentSchemeLabel" class="chip">
 													{{ resolvedAssessmentSchemeLabel }}
@@ -1052,13 +1127,13 @@
 												v-else-if="assessmentSetupLoading"
 												class="rounded-xl border border-line-soft bg-white px-4 py-3 text-sm text-ink/70"
 											>
-												Loading reporting setup...
+												{{ __('Loading reporting setup...') }}
 											</div>
 
 											<div class="grid gap-4 md:grid-cols-2">
 												<div v-if="assessmentCategoryVisible" class="space-y-1">
 													<label class="type-label">
-														Assessment category
+														{{ __('Assessment category') }}
 														<span v-if="assessmentCategoryRequired" class="text-flame">*</span>
 													</label>
 													<FormControl
@@ -1067,29 +1142,29 @@
 														:options="assessmentCategoryOptions"
 														option-label="label"
 														option-value="value"
-														placeholder="Select category"
+														:placeholder="__('Select category')"
 														data-assessment-category-select="true"
 													/>
 												</div>
 												<div v-if="reportingWeightVisible" class="space-y-1">
-													<label class="type-label">Task weight</label>
+													<label class="type-label">{{ __('Task weight') }}</label>
 													<FormControl
 														v-model="form.reporting_weight"
 														type="number"
 														:min="0"
 														:step="0.1"
-														placeholder="Default 1"
+														:placeholder="__('Default 1')"
 														data-reporting-weight-input="true"
 													/>
 													<p v-if="!reportingWeightLooksValid" class="type-caption text-flame">
-														Task weight cannot be negative.
+														{{ __('Task weight cannot be negative.') }}
 													</p>
 												</div>
 											</div>
 										</div>
 
 										<div class="space-y-2">
-											<p class="type-label">Allow comment in gradebook?</p>
+											<p class="type-label">{{ __('Allow comment in gradebook?') }}</p>
 											<div class="flex flex-wrap gap-2">
 												<button
 													type="button"
@@ -1101,7 +1176,7 @@
 													"
 													@click="form.allow_feedback = true"
 												>
-													Yes
+													{{ __('Yes') }}
 												</button>
 												<button
 													type="button"
@@ -1113,17 +1188,20 @@
 													"
 													@click="form.allow_feedback = false"
 												>
-													No
+													{{ __('No') }}
 												</button>
 											</div>
 											<p class="text-xs text-ink/60">
-												Show a comment box in the gradebook only when this is turned on. Comments
-												stay separate from points, criteria, or completion.
+												{{
+													__(
+														'Show a comment box in the gradebook only when this is turned on. Comments stay separate from points, criteria, or completion.'
+													)
+												}}
 											</p>
 										</div>
 
 										<p class="text-xs text-ink/60">
-											Moderation happens after grading (peer check).
+											{{ __('Moderation happens after grading (peer check).') }}
 										</p>
 									</section>
 
@@ -1141,7 +1219,7 @@
 												class="if-button if-button--secondary"
 												@click="openClassPlanning"
 											>
-												Open class planning
+												{{ __('Open class planning') }}
 											</button>
 										</div>
 									</div>
@@ -1150,32 +1228,37 @@
 								<template v-else>
 									<section class="card-panel space-y-4 p-5">
 										<div class="flex items-center gap-3">
-											<span class="chip">Review</span>
-											<h3 class="type-h3 text-ink">Finish task setup</h3>
+											<span class="chip">{{ __('Review') }}</span>
+											<h3 class="type-h3 text-ink">{{ __('Finish task setup') }}</h3>
 										</div>
 										<p class="type-body text-ink/80">
-											The task and delivery are ready.
+											{{ __('The task and delivery are ready.') }}
 											<span v-if="hasQueuedTaskAttachments">
-												Some queued attachments still need attention below. Retry or remove them,
-												then finish this flow once.
+												{{
+													__(
+														'Some queued attachments still need attention below. Retry or remove them, then finish this flow once.'
+													)
+												}}
 											</span>
 											<span v-else>
-												You can add or review governed attachments here before you finish.
+												{{
+													__('You can add or review governed attachments here before you finish.')
+												}}
 											</span>
 										</p>
 										<div class="grid gap-3 md:grid-cols-3">
 											<div class="rounded-2xl border border-line-soft bg-surface-soft p-4">
-												<p class="type-overline text-ink/60">Task</p>
+												<p class="type-overline text-ink/60">{{ __('Task') }}</p>
 												<p class="mt-1 type-body-strong text-ink">{{ createdTask.task }}</p>
 											</div>
 											<div class="rounded-2xl border border-line-soft bg-surface-soft p-4">
-												<p class="type-overline text-ink/60">Delivery</p>
+												<p class="type-overline text-ink/60">{{ __('Delivery') }}</p>
 												<p class="mt-1 type-body-strong text-ink">
 													{{ createdTask.task_delivery }}
 												</p>
 											</div>
 											<div class="rounded-2xl border border-line-soft bg-surface-soft p-4">
-												<p class="type-overline text-ink/60">Outcomes</p>
+												<p class="type-overline text-ink/60">{{ __('Outcomes') }}</p>
 												<p class="mt-1 type-body-strong text-ink">
 													{{ createdTask.outcomes_created ?? '—' }}
 												</p>
@@ -1189,8 +1272,8 @@
 									>
 										<div class="flex items-center justify-between gap-3">
 											<div class="flex items-center gap-3">
-												<span class="chip">Pending</span>
-												<h3 class="type-h3 text-ink">Queued attachments</h3>
+												<span class="chip">{{ __('Pending') }}</span>
+												<h3 class="type-h3 text-ink">{{ __('Queued attachments') }}</h3>
 											</div>
 											<button
 												type="button"
@@ -1198,12 +1281,15 @@
 												:disabled="materialSubmitting"
 												@click="retryQueuedTaskAttachments"
 											>
-												Retry attachments
+												{{ __('Retry attachments') }}
 											</button>
 										</div>
 										<p class="type-caption text-ink/70">
-											These were queued before the task was created. Retry them here or remove any
-											attachment you no longer want.
+											{{
+												__(
+													'These were queued before the task was created. Retry them here or remove any attachment you no longer want.'
+												)
+											}}
 										</p>
 
 										<div class="grid gap-3 lg:grid-cols-2">
@@ -1216,7 +1302,11 @@
 													<div class="flex flex-wrap items-center gap-2">
 														<p class="type-body-strong text-ink">{{ draft.title }}</p>
 														<span class="chip">
-															{{ draft.mode === 'file' ? 'File attachment' : 'Reference link' }}
+															{{
+																draft.mode === 'file'
+																	? __('File attachment')
+																	: __('Reference link')
+															}}
 														</span>
 													</div>
 													<p v-if="draft.description" class="type-caption text-ink/70">
@@ -1247,12 +1337,15 @@
 
 									<section v-if="canEditTaskMaterials" class="card-panel space-y-4 p-5">
 										<div class="flex items-center gap-3">
-											<span class="chip">Attachments</span>
-											<h3 class="type-h3 text-ink">Add task attachments</h3>
+											<span class="chip">{{ __('Attachments') }}</span>
+											<h3 class="type-h3 text-ink">{{ __('Add task attachments') }}</h3>
 										</div>
 										<p class="type-caption text-ink/70">
-											Use governed PDF or image attachments here so students can preview and
-											download them from the task brief.
+											{{
+												__(
+													'Use governed PDF or image attachments here so students can preview and download them from the task brief.'
+												)
+											}}
 										</p>
 
 										<div class="flex flex-wrap gap-2">
@@ -1266,7 +1359,7 @@
 												"
 												@click="setMaterialComposerMode('link')"
 											>
-												Add link
+												{{ __('Add link') }}
 											</button>
 											<button
 												type="button"
@@ -1278,21 +1371,21 @@
 												"
 												@click="setMaterialComposerMode('file')"
 											>
-												Upload attachment
+												{{ __('Upload attachment') }}
 											</button>
 										</div>
 
 										<div class="grid gap-4 md:grid-cols-2">
 											<div class="space-y-1">
-												<label class="type-label">Title</label>
+												<label class="type-label">{{ __('Title') }}</label>
 												<FormControl
 													v-model="materialForm.title"
 													type="text"
-													placeholder="Material title"
+													:placeholder="__('Material title')"
 												/>
 											</div>
 											<div class="space-y-1">
-												<label class="type-label">How students use it</label>
+												<label class="type-label">{{ __('How students use it') }}</label>
 												<FormControl
 													v-model="materialForm.modality"
 													type="select"
@@ -1305,7 +1398,7 @@
 
 										<div class="grid gap-4 md:grid-cols-2">
 											<div class="space-y-1">
-												<label class="type-label">Usage role</label>
+												<label class="type-label">{{ __('Usage role') }}</label>
 												<FormControl
 													v-model="materialForm.usage_role"
 													type="select"
@@ -1315,31 +1408,31 @@
 												/>
 											</div>
 											<div class="space-y-1">
-												<label class="type-label">Teacher note</label>
+												<label class="type-label">{{ __('Teacher note') }}</label>
 												<FormControl
 													v-model="materialForm.placement_note"
 													type="text"
-													placeholder="Optional note for students"
+													:placeholder="__('Optional note for students')"
 												/>
 											</div>
 										</div>
 
 										<div class="space-y-1">
-											<label class="type-label">Description</label>
+											<label class="type-label">{{ __('Description') }}</label>
 											<FormControl
 												v-model="materialForm.description"
 												type="textarea"
 												:rows="3"
-												placeholder="Optional context about this material"
+												:placeholder="__('Optional context about this material')"
 											/>
 										</div>
 
 										<div v-if="materialComposerMode === 'link'" class="space-y-1">
-											<label class="type-label">Reference URL</label>
+											<label class="type-label">{{ __('Reference URL') }}</label>
 											<FormControl
 												v-model="materialForm.reference_url"
 												type="text"
-												placeholder="https://..."
+												:placeholder="__('https://...')"
 											/>
 										</div>
 
@@ -1357,14 +1450,14 @@
 													class="if-button if-button--secondary"
 													@click="materialFileInput?.click()"
 												>
-													Choose PDF or image
+													{{ __('Choose PDF or image') }}
 												</button>
 												<p class="type-caption text-ink/70">
-													{{ selectedMaterialFile?.name || 'No file selected yet.' }}
+													{{ selectedMaterialFile?.name || __('No file selected yet.') }}
 												</p>
 											</div>
 											<p class="type-caption text-ink/60">
-												Supported formats: PDF, JPG, PNG, and WEBP.
+												{{ __('Supported formats: PDF, JPG, PNG, and WEBP.') }}
 											</p>
 											<InlineUploadStatus
 												v-if="materialUploadProgress"
@@ -1401,24 +1494,24 @@
 									<section v-if="canEditTaskMaterials" class="card-panel space-y-4 p-5">
 										<div class="flex items-center justify-between gap-3">
 											<div class="flex items-center gap-3">
-												<span class="chip">Current</span>
-												<h3 class="type-h3 text-ink">Current task attachments</h3>
+												<span class="chip">{{ __('Current') }}</span>
+												<h3 class="type-h3 text-ink">{{ __('Current task attachments') }}</h3>
 											</div>
-											<span class="chip">{{ taskMaterials.length }} items</span>
+											<span class="chip">{{ __('{0} items', [taskMaterials.length]) }}</span>
 										</div>
 
 										<div
 											v-if="materialsLoading"
 											class="rounded-xl border border-line-soft bg-surface-soft px-4 py-3 text-sm text-ink/70"
 										>
-											Loading attachments...
+											{{ __('Loading attachments...') }}
 										</div>
 
 										<div
 											v-else-if="!taskMaterials.length"
 											class="rounded-xl border border-dashed border-border/80 bg-slate-50 px-4 py-3 text-sm text-ink/70"
 										>
-											No attachments shared on this task yet.
+											{{ __('No attachments shared on this task yet.') }}
 										</div>
 
 										<div v-else class="grid gap-3 lg:grid-cols-2">
@@ -1443,7 +1536,7 @@
 															:disabled="removingPlacement === material.placement"
 															@click="removeMaterial(material.placement)"
 														>
-															Remove
+															{{ __('Remove') }}
 														</button>
 													</template>
 												</AttachmentPreviewCard>
@@ -1470,7 +1563,7 @@
 															:disabled="removingPlacement === material.placement"
 															@click="removeMaterial(material.placement)"
 														>
-															Remove
+															{{ __('Remove') }}
 														</button>
 													</div>
 												</div>
@@ -1489,7 +1582,7 @@
 								class="if-button if-button--secondary"
 								@click="requestClose('programmatic')"
 							>
-								Cancel
+								{{ __('Cancel') }}
 							</button>
 							<button
 								v-if="!createdTask"
@@ -1532,6 +1625,7 @@ import AttachmentPreviewCard from '@/components/attachments/AttachmentPreviewCar
 import InlineUploadStatus from '@/components/feedback/InlineUploadStatus.vue';
 import PlanningRichTextField from '@/components/planning/PlanningRichTextField.vue';
 import { apiUpload } from '@/lib/client';
+import { __ } from '@/lib/i18n';
 import { emitTaskDeliveryCreatedSignal } from '@/lib/services/tasks/taskDeliveryWorkflowService';
 import type { UploadProgressState } from '@/lib/uploadProgress';
 import type { GovernedAttachmentRow } from '@/types/contracts/attachments/shared';
@@ -1599,7 +1693,7 @@ const materialFileInput = ref<HTMLInputElement | null>(null);
 const removingPlacement = ref<string | null>(null);
 const materialUploadProgress = ref<UploadProgressState | null>(null);
 const queuedTaskAttachments = ref<TaskMaterialDraft[]>([]);
-const currentMaterialUploadLabel = ref('Uploading attachment');
+const currentMaterialUploadLabel = ref(__('Uploading attachment'));
 const workflowCommitted = ref(false);
 
 const initialFocus = ref<HTMLElement | null>(null);
@@ -1626,18 +1720,18 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 const taskTypeOptions = [
-	{ label: 'Assignment', value: 'Assignment' },
-	{ label: 'Homework', value: 'Homework' },
-	{ label: 'Classwork', value: 'Classwork' },
-	{ label: 'Quiz', value: 'Quiz' },
-	{ label: 'Test', value: 'Test' },
-	{ label: 'Summative assessment', value: 'Summative assessment' },
-	{ label: 'Formative assessment', value: 'Formative assessment' },
-	{ label: 'Discussion', value: 'Discussion' },
-	{ label: 'Project', value: 'Project' },
-	{ label: 'Long Term Project', value: 'Long Term Project' },
-	{ label: 'Exam', value: 'Exam' },
-	{ label: 'Other', value: 'Other' },
+	{ label: __('Assignment'), value: 'Assignment' },
+	{ label: __('Homework'), value: 'Homework' },
+	{ label: __('Classwork'), value: 'Classwork' },
+	{ label: __('Quiz'), value: 'Quiz' },
+	{ label: __('Test'), value: 'Test' },
+	{ label: __('Summative assessment'), value: 'Summative assessment' },
+	{ label: __('Formative assessment'), value: 'Formative assessment' },
+	{ label: __('Discussion'), value: 'Discussion' },
+	{ label: __('Project'), value: 'Project' },
+	{ label: __('Long Term Project'), value: 'Long Term Project' },
+	{ label: __('Exam'), value: 'Exam' },
+	{ label: __('Other'), value: 'Other' },
 ];
 
 type TaskComposerMode = 'create' | 'reuse';
@@ -1673,52 +1767,58 @@ type TaskMaterialRow = {
 
 const workflowOptions: Array<{ label: string; value: WorkflowMode; help: string }> = [
 	{
-		label: 'Share work',
+		label: __('Share work'),
 		value: 'share',
-		help: 'Students see the task. Nothing is handed in or marked.',
+		help: __('Students see the task. Nothing is handed in or marked.'),
 	},
 	{
-		label: 'Collect work',
+		label: __('Collect work'),
 		value: 'collect',
-		help: 'Students hand in work for review or records. No marks are entered.',
+		help: __('Students hand in work for review or records. No marks are entered.'),
 	},
 	{
-		label: 'Collect and mark',
+		label: __('Collect and mark'),
 		value: 'collect_and_mark',
-		help: 'Students hand in work, then you mark it and return feedback.',
+		help: __('Students hand in work, then you mark it and return feedback.'),
 	},
 	{
-		label: 'Mark class work',
+		label: __('Mark class work'),
 		value: 'mark_class_work',
-		help: 'Students complete it in class, on paper, in a lab, oral, studio, or exam. You record marks and feedback later.',
+		help: __(
+			'Students complete it in class, on paper, in a lab, oral, studio, or exam. You record marks and feedback later.'
+		),
 	},
 ];
 
 const gradingOptions = [
-	{ label: 'Points', value: 'Points', help: 'Score work with a numeric total.' },
-	{ label: 'Complete / Not complete', value: 'Completion', help: 'Track completion only.' },
-	{ label: 'Yes / No', value: 'Binary', help: 'Simple yes or no grading.' },
+	{ label: __('Points'), value: 'Points', help: __('Score work with a numeric total.') },
 	{
-		label: 'Criteria',
+		label: __('Complete / Not complete'),
+		value: 'Completion',
+		help: __('Track completion only.'),
+	},
+	{ label: __('Yes / No'), value: 'Binary', help: __('Simple yes or no grading.') },
+	{
+		label: __('Criteria'),
 		value: 'Criteria',
-		help: 'Assess with reusable criteria and a local rubric strategy.',
+		help: __('Assess with reusable criteria and a local rubric strategy.'),
 	},
 ];
 const rubricScoringStrategyOptions: Array<{ label: string; value: RubricScoringStrategy }> = [
-	{ label: 'Sum Total', value: 'Sum Total' },
-	{ label: 'Separate Criteria', value: 'Separate Criteria' },
+	{ label: __('Sum Total'), value: 'Sum Total' },
+	{ label: __('Separate Criteria'), value: 'Separate Criteria' },
 ];
 const materialModalityOptions = [
-	{ label: 'Read', value: 'Read' },
-	{ label: 'Watch', value: 'Watch' },
-	{ label: 'Listen', value: 'Listen' },
-	{ label: 'Use', value: 'Use' },
+	{ label: __('Read'), value: 'Read' },
+	{ label: __('Watch'), value: 'Watch' },
+	{ label: __('Listen'), value: 'Listen' },
+	{ label: __('Use'), value: 'Use' },
 ];
 const materialUsageRoleOptions = [
-	{ label: 'Reference', value: 'Reference' },
-	{ label: 'Required', value: 'Required' },
-	{ label: 'Template', value: 'Template' },
-	{ label: 'Example', value: 'Example' },
+	{ label: __('Reference'), value: 'Reference' },
+	{ label: __('Required'), value: 'Required' },
+	{ label: __('Template'), value: 'Template' },
+	{ label: __('Example'), value: 'Example' },
 ];
 
 type FormState = {
@@ -1823,7 +1923,7 @@ const groupResource = createResource({
 	},
 	onError: () => {
 		groups.value = [];
-		groupLoadError.value = 'Unable to load classes right now.';
+		groupLoadError.value = __('Unable to load classes right now.');
 	},
 });
 
@@ -1869,7 +1969,7 @@ const searchReusableTasksResource = createResource({
 		selectedReusableTaskDetails.value = null;
 		taskLibraryError.value = extractTaskActionErrorMessage(
 			err,
-			'Unable to load reusable tasks right now.'
+			__('Unable to load reusable tasks right now.')
 		);
 	},
 });
@@ -1889,7 +1989,7 @@ const getReusableTaskResource = createResource({
 		selectedReusableTaskDetails.value = null;
 		taskLibraryError.value = extractTaskActionErrorMessage(
 			err,
-			'Unable to load that task right now.'
+			__('Unable to load that task right now.')
 		);
 	},
 });
@@ -1909,7 +2009,7 @@ const listCourseAssessmentCriteriaResource = createResource({
 		criteriaLibraryLoadedForGroup.value = '';
 		criteriaLibraryError.value = extractTaskActionErrorMessage(
 			err,
-			'Unable to load course assessment criteria right now.'
+			__('Unable to load course assessment criteria right now.')
 		);
 	},
 });
@@ -1930,7 +2030,7 @@ const getAssessmentSetupResource = createResource({
 		assessmentSetupLoadedForGroup.value = '';
 		assessmentSetupError.value = extractTaskActionErrorMessage(
 			err,
-			'Unable to load assessment reporting setup right now.'
+			__('Unable to load assessment reporting setup right now.')
 		);
 		pruneAssessmentReportingFields();
 	},
@@ -1958,11 +2058,11 @@ const selectedGroupLabel = computed(() => {
 });
 
 const dialogTitle = computed(() => {
-	if (createdTask.value && canEditTaskMaterials.value) return 'Finish task setup';
-	return taskMode.value === 'reuse' ? 'Reuse task' : 'Create task';
+	if (createdTask.value && canEditTaskMaterials.value) return __('Finish task setup');
+	return taskMode.value === 'reuse' ? __('Reuse task') : __('Create task');
 });
 const submitLabel = computed(() =>
-	taskMode.value === 'reuse' ? 'Assign existing task' : 'Create'
+	taskMode.value === 'reuse' ? __('Assign existing task') : __('Create')
 );
 const selectedReusableTask = computed(
 	() => reusableTasks.value.find(row => row.name === selectedReusableTaskName.value) || null
@@ -2105,15 +2205,17 @@ const canSaveMaterialDraft = computed(() => {
 });
 const materialComposerButtonLabel = computed(() => {
 	if (materialSubmitting.value) {
-		return materialComposerMode.value === 'link' ? 'Adding…' : 'Uploading…';
+		return materialComposerMode.value === 'link' ? __('Adding...') : __('Uploading...');
 	}
 	if (createdTask.value) {
-		return materialComposerMode.value === 'link' ? 'Add link now' : 'Upload attachment now';
+		return materialComposerMode.value === 'link'
+			? __('Add link now')
+			: __('Upload attachment now');
 	}
-	return materialComposerMode.value === 'link' ? 'Queue link' : 'Queue attachment';
+	return materialComposerMode.value === 'link' ? __('Queue link') : __('Queue attachment');
 });
 const finishLabel = computed(() =>
-	hasQueuedTaskAttachments.value ? 'Retry attachments and finish' : 'Finish'
+	hasQueuedTaskAttachments.value ? __('Retry attachments and finish') : __('Finish')
 );
 
 watch(
@@ -2643,7 +2745,7 @@ function isTransportOnlyErrorMessage(value: string) {
 
 function extractTaskActionErrorMessage(
 	error: unknown,
-	fallback = 'Unable to save assigned work right now.'
+	fallback = __('Unable to save assigned work right now.')
 ) {
 	if (!error) return fallback;
 	if (typeof error === 'string' && error.trim()) return error.trim();
@@ -2702,20 +2804,22 @@ function normalizeTaskActionError(message: string) {
 	const cleanMessage = String(message || '').trim();
 	if (cleanMessage.includes(MISSING_ACTIVE_PLAN_MESSAGE)) {
 		return {
-			message:
-				'This class needs an active Class Teaching Plan before assigned work can be created. Open Class Planning for this class, create or activate the plan, then try again.',
+			message: __(
+				'This class needs an active Class Teaching Plan before assigned work can be created. Open Class Planning for this class, create or activate the plan, then try again.'
+			),
 			recovery: 'open-class-planning' as ErrorRecoveryAction,
 		};
 	}
 	if (cleanMessage.includes(SELECT_CLASS_PLAN_MESSAGE)) {
 		return {
-			message:
-				'This class has more than one active Class Teaching Plan. Open Class Planning for this class, choose the correct plan there, then create the task from that surface.',
+			message: __(
+				'This class has more than one active Class Teaching Plan. Open Class Planning for this class, choose the correct plan there, then create the task from that surface.'
+			),
 			recovery: 'open-class-planning' as ErrorRecoveryAction,
 		};
 	}
 	return {
-		message: cleanMessage || 'Unable to save assigned work right now.',
+		message: cleanMessage || __('Unable to save assigned work right now.'),
 		recovery: null as ErrorRecoveryAction,
 	};
 }
@@ -2757,7 +2861,7 @@ async function loadReusableTasks() {
 		reusableTasks.value = [];
 		selectedReusableTaskName.value = '';
 		selectedReusableTaskDetails.value = null;
-		taskLibraryError.value = 'Select a class first to load reusable tasks for its course.';
+		taskLibraryError.value = __('Select a class first to load reusable tasks for its course.');
 		return;
 	}
 
@@ -2801,7 +2905,7 @@ function resetMaterialComposer() {
 	taskMaterials.value = [];
 	removingPlacement.value = null;
 	materialUploadProgress.value = null;
-	currentMaterialUploadLabel.value = 'Uploading attachment';
+	currentMaterialUploadLabel.value = __('Uploading attachment');
 	resetMaterialDraftFields();
 }
 
@@ -2855,15 +2959,15 @@ function buildTaskMaterialDraft(): TaskMaterialDraft {
 
 function queuedTaskAttachmentMeta(draft: TaskMaterialDraft) {
 	const source =
-		draft.mode === 'file' ? draft.file?.name || 'Selected attachment' : draft.reference_url;
+		draft.mode === 'file' ? draft.file?.name || __('Selected attachment') : draft.reference_url;
 	return [draft.usage_role, draft.modality, source].filter(Boolean).join(' · ');
 }
 
 function queuedTaskAttachmentStatus(draft: TaskMaterialDraft) {
 	if (draft.error) return draft.error;
 	return createdTask.value
-		? 'This attachment still needs to be added to the task.'
-		: 'This attachment will be added when you create the task.';
+		? __('This attachment still needs to be added to the task.')
+		: __('This attachment will be added when you create the task.');
 }
 
 function removeQueuedTaskAttachment(draftId: string) {
@@ -2877,8 +2981,8 @@ function queueTaskMaterialDraft() {
 	if (!canSaveMaterialDraft.value) {
 		materialError.value =
 			materialComposerMode.value === 'link'
-				? 'Please provide a title and link.'
-				: 'Please provide a title and choose a PDF or image attachment.';
+				? __('Please provide a title and link.')
+				: __('Please provide a title and choose a PDF or image attachment.');
 		return;
 	}
 
@@ -2887,7 +2991,9 @@ function queueTaskMaterialDraft() {
 	resetMaterialDraftFields();
 	materialError.value = '';
 	materialNotice.value =
-		draft.mode === 'link' ? 'Link queued with this task.' : 'Attachment queued with this task.';
+		draft.mode === 'link'
+			? __('Link queued with this task.')
+			: __('Attachment queued with this task.');
 }
 
 async function uploadTaskMaterialFileRequest(
@@ -2895,7 +3001,7 @@ async function uploadTaskMaterialFileRequest(
 	draft: TaskMaterialDraft
 ): Promise<TaskMaterialRow> {
 	if (!draft.file) {
-		throw new Error('Please choose a file first.');
+		throw new Error(__('Please choose a file first.'));
 	}
 
 	const formData = new FormData();
@@ -2907,8 +3013,8 @@ async function uploadTaskMaterialFileRequest(
 	formData.append('usage_role', draft.usage_role);
 	formData.append('file', draft.file, draft.file.name);
 	currentMaterialUploadLabel.value = draft.file?.name
-		? `Uploading ${draft.file.name}`
-		: 'Uploading attachment';
+		? __('Uploading {0}', [draft.file.name])
+		: __('Uploading attachment');
 
 	return apiUpload<TaskMaterialRow>(
 		'ifitwala_ed.api.materials.upload_task_material_file',
@@ -2954,32 +3060,34 @@ async function persistQueuedTaskAttachments(task: string) {
 			);
 		} catch (error) {
 			const message =
-				error instanceof Error ? error.message : 'Unable to add this attachment right now.';
+				error instanceof Error ? error.message : __('Unable to add this attachment right now.');
 			failedDrafts.push({ ...draft, error: message });
 			queuedTaskAttachments.value = queuedTaskAttachments.value.map(entry =>
 				entry.id === draft.id ? { ...entry, error: message } : entry
 			);
 		} finally {
 			materialUploadProgress.value = null;
-			currentMaterialUploadLabel.value = 'Uploading attachment';
+			currentMaterialUploadLabel.value = __('Uploading attachment');
 		}
 	}
 
 	materialSubmitting.value = false;
 	if (failedDrafts.length) {
 		materialNotice.value =
-			failedDrafts.length < pendingDrafts.length ? 'Some queued attachments were added.' : '';
+			failedDrafts.length < pendingDrafts.length ? __('Some queued attachments were added.') : '';
 		materialError.value =
 			failedDrafts.length === 1
-				? 'The task was created, but 1 queued attachment still needs attention.'
-				: `The task was created, but ${failedDrafts.length} queued attachments still need attention.`;
+				? __('The task was created, but 1 queued attachment still needs attention.')
+				: __('The task was created, but {0} queued attachments still need attention.', [
+						failedDrafts.length,
+					]);
 		return false;
 	}
 
 	materialNotice.value =
 		pendingDrafts.length === 1
-			? 'Queued attachment added to this task.'
-			: `${pendingDrafts.length} queued attachments added to this task.`;
+			? __('Queued attachment added to this task.')
+			: __('{0} queued attachments added to this task.', [pendingDrafts.length]);
 	return true;
 }
 
@@ -2988,7 +3096,7 @@ async function retryQueuedTaskAttachments() {
 	const attachmentsReady = await persistQueuedTaskAttachments(createdTask.value.task);
 	await loadTaskMaterials();
 	if (attachmentsReady) {
-		materialNotice.value = 'All queued attachments have been added. You can finish now.';
+		materialNotice.value = __('All queued attachments have been added. You can finish now.');
 	}
 }
 
@@ -3000,8 +3108,8 @@ async function addMaterial() {
 	if (!canSaveMaterialDraft.value) {
 		materialError.value =
 			materialComposerMode.value === 'link'
-				? 'Please provide a title and link.'
-				: 'Please provide a title and choose a PDF or image attachment.';
+				? __('Please provide a title and link.')
+				: __('Please provide a title and choose a PDF or image attachment.');
 		return;
 	}
 
@@ -3015,10 +3123,12 @@ async function addMaterial() {
 		await loadTaskMaterials();
 		resetMaterialDraftFields();
 		materialNotice.value =
-			draft.mode === 'link' ? 'Link added to this task.' : 'Attachment added to this task.';
+			draft.mode === 'link'
+				? __('Link added to this task.')
+				: __('Attachment added to this task.');
 	} catch (error) {
 		const message =
-			error instanceof Error ? error.message : 'Unable to add the material right now.';
+			error instanceof Error ? error.message : __('Unable to add the material right now.');
 		materialError.value = message;
 	} finally {
 		materialUploadProgress.value = null;
@@ -3037,10 +3147,10 @@ async function removeMaterial(placement: string) {
 			placement,
 		});
 		await loadTaskMaterials();
-		materialNotice.value = 'Attachment removed from this task.';
+		materialNotice.value = __('Attachment removed from this task.');
 	} catch (error) {
 		const message =
-			error instanceof Error ? error.message : 'Unable to remove this material right now.';
+			error instanceof Error ? error.message : __('Unable to remove this material right now.');
 		materialError.value = message;
 	} finally {
 		removingPlacement.value = null;
@@ -3080,9 +3190,11 @@ function commitWorkflowSuccess(payload: CreateTaskDeliveryPayload) {
 async function requestClose(reason: CloseReason = 'programmatic') {
 	if (isWorkflowBusy.value) {
 		if (createdTask.value) {
-			materialError.value = 'Wait until the current attachment update finishes before closing.';
+			materialError.value = __(
+				'Wait until the current attachment update finishes before closing.'
+			);
 		} else {
-			errorMessage.value = 'Please wait while the task workflow finishes saving.';
+			errorMessage.value = __('Please wait while the task workflow finishes saving.');
 		}
 		return;
 	}
@@ -3100,31 +3212,31 @@ async function requestClose(reason: CloseReason = 'programmatic') {
 async function submit() {
 	if (!canSubmit.value) {
 		const missing: string[] = [];
-		if (!form.student_group) missing.push('Class');
+		if (!form.student_group) missing.push(__('Class'));
 		if (taskMode.value === 'reuse') {
-			if (!selectedReusableTaskDetails.value?.name) missing.push('Task to reuse');
+			if (!selectedReusableTaskDetails.value?.name) missing.push(__('Task to reuse'));
 		} else {
-			if (!form.title.trim()) missing.push('Title');
-			if (isQuizTask.value && !form.quiz_question_bank) missing.push('Quiz question bank');
+			if (!form.title.trim()) missing.push(__('Title'));
+			if (isQuizTask.value && !form.quiz_question_bank) missing.push(__('Quiz question bank'));
 		}
 		if (showGradingSection.value) {
 			if (!assessmentSetupReady.value || assessmentSetupLoading.value)
-				missing.push('Reporting setup');
-			if (!form.grading_mode) missing.push('Grading mode');
+				missing.push(__('Reporting setup'));
+			if (!form.grading_mode) missing.push(__('Grading mode'));
 			if (form.grading_mode === 'Points' && !String(form.max_points || '').trim())
-				missing.push('Max points');
+				missing.push(__('Max points'));
 			if (form.grading_mode === 'Criteria') {
-				if (!form.rubric_scoring_strategy) missing.push('Rubric strategy');
-				if (!activeCriteriaRows.value.length) missing.push('Task criteria');
+				if (!form.rubric_scoring_strategy) missing.push(__('Rubric strategy'));
+				if (!activeCriteriaRows.value.length) missing.push(__('Task criteria'));
 			}
 			if (assessmentCategoryRequired.value && !form.assessment_category)
-				missing.push('Assessment category');
-			if (!reportingWeightLooksValid.value) missing.push('Task weight');
+				missing.push(__('Assessment category'));
+			if (!reportingWeightLooksValid.value) missing.push(__('Task weight'));
 		}
 
 		const msg = missing.length
-			? `Please complete: ${missing.join(', ')}.`
-			: 'Please complete the required fields.';
+			? __('Please complete: {0}.', [missing.join(', ')])
+			: __('Please complete the required fields.');
 		errorMessage.value = msg;
 		errorRecovery.value = null;
 		return;
@@ -3212,7 +3324,7 @@ async function submit() {
 		}
 		const out = res as CreateTaskDeliveryPayload | undefined;
 
-		if (!out?.task || !out?.task_delivery) throw new Error('Unexpected server response.');
+		if (!out?.task || !out?.task_delivery) throw new Error(__('Unexpected server response.'));
 
 		if (taskMode.value === 'reuse') {
 			commitWorkflowSuccess(out);
