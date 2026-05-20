@@ -33,6 +33,9 @@ def _image_utils_module():
         f"?employee={kwargs.get('employee')}&file={kwargs.get('file_name')}"
         f"&derivative_role={kwargs.get('derivative_role')}"
     )
+    file_access.build_employee_user_avatar_url = lambda employee: (
+        f"/api/method/ifitwala_ed.api.file_access.open_employee_user_avatar?employee={employee}"
+    )
     file_access.resolve_guardian_file_open_url = lambda **kwargs: None
     file_access.resolve_academic_file_open_url = lambda **kwargs: None
     media_client = ModuleType("ifitwala_ed.integrations.drive.media_client")
@@ -106,6 +109,53 @@ class TestImageUtilsUnit(TestCase):
             captured["statuses"],
             image_utils.PROFILE_IMAGE_CURRENT_FILE_STATUSES,
         )
+
+    def test_get_employee_user_avatar_url_returns_stable_route_and_requests_thumb(self):
+        with _image_utils_module() as (image_utils, _frappe):
+            variant_calls = []
+            image_utils._get_current_governed_profile_file = lambda **kwargs: SimpleNamespace(
+                name="FILE-EMP-1",
+                file_url="/private/files/employee.png",
+            )
+            image_utils.get_employee_image_variants_map = lambda employee_names, **kwargs: (
+                variant_calls.append((employee_names, kwargs)) or {}
+            )
+
+            avatar_url = image_utils.get_employee_user_avatar_url(
+                "EMP-0001",
+                original_url="/private/files/employee.png",
+            )
+
+        self.assertEqual(
+            avatar_url,
+            "/api/method/ifitwala_ed.api.file_access.open_employee_user_avatar?employee=EMP-0001",
+        )
+        self.assertEqual(
+            variant_calls,
+            [
+                (
+                    ["EMP-0001"],
+                    {
+                        "slots": image_utils.EMPLOYEE_AVATAR_VARIANT_SLOTS,
+                        "request_missing_derivatives": True,
+                    },
+                )
+            ],
+        )
+
+    def test_get_employee_user_avatar_url_requires_current_governed_profile(self):
+        with _image_utils_module() as (image_utils, _frappe):
+            image_utils._get_current_governed_profile_file = lambda **kwargs: None
+            image_utils.get_employee_image_variants_map = lambda *args, **kwargs: self.fail(
+                "derivatives should not be requested without a current governed profile image"
+            )
+
+            avatar_url = image_utils.get_employee_user_avatar_url(
+                "EMP-0001",
+                original_url="/private/files/employee.png",
+            )
+
+        self.assertIsNone(avatar_url)
 
     def test_apply_preferred_student_images_requeues_missing_derivatives_without_current_version(self):
         with _image_utils_module() as (image_utils, frappe):

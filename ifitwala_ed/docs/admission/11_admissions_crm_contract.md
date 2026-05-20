@@ -280,6 +280,10 @@ Runtime rules:
 
 - The thank-you DTO is public-safe and may include only brand/copy/timeline/CTA data.
 - The DTO must not expose Inquiry name, email, phone, internal assignment state, or applicant status.
+- Public thank-you page copy and timeline steps are type-aware:
+  - `Admission` keeps admissions-specific review, family follow-up, and application/visit next-step language.
+  - `Current Family`, `General Inquiry`, `Partnership / Agent`, and `Other` use routing/follow-up language instead of admissions pipeline language.
+- Profile thank-you title/message/timeline-heading/footer/email-template overrides and admission CTAs apply only to `Admission` inquiries until a per-type acknowledgement profile schema is approved.
 - Email sending runs through `frappe.enqueue(..., queue="short", enqueue_after_commit=True)`.
 - Email template rendering receives `doc`, `inquiry`, `profile`, `acknowledgement`, `brand`, `timeline`, and `ctas`.
 - If no acknowledgement profile is configured, the system may send the generic transactional fallback email; school-specific copy requires a profile.

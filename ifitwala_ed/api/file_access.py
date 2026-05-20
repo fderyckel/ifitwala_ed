@@ -55,6 +55,7 @@ STUDENT_PROFILE_IMAGE_PURPOSE = "student_profile_display"
 GUARDIAN_PROFILE_IMAGE_PURPOSE = "guardian_profile_display"
 PROFILE_IMAGE_SLOT = "profile_image"
 EMPLOYEE_PROFILE_IMAGE_SLOT = PROFILE_IMAGE_SLOT
+EMPLOYEE_USER_AVATAR_DERIVATIVE_ROLES = ("thumb", "card", "viewer_preview")
 CARD_IMAGE_DERIVATIVE_ROLE = "viewer_preview"
 CARD_PDF_DERIVATIVE_ROLE = "pdf_card"
 PDF_MIME_TYPE = "application/pdf"
@@ -693,6 +694,16 @@ def build_employee_file_open_url(
     if (derivative_role or "").strip():
         params["derivative_role"] = derivative_role.strip()
     return f"/api/method/ifitwala_ed.api.file_access.download_employee_file?{urlencode(params)}"
+
+
+def build_employee_user_avatar_url(employee: str | None) -> str | None:
+    resolved_employee = str(employee or "").strip()
+    if not resolved_employee:
+        return None
+
+    return "/api/method/ifitwala_ed.api.file_access.open_employee_user_avatar?" + urlencode(
+        {"employee": resolved_employee}
+    )
 
 
 def resolve_employee_file_open_url(
@@ -4322,3 +4333,58 @@ def download_employee_file(
         return
 
     frappe.throw(_("Could not resolve the file content."), frappe.DoesNotExistError)
+
+
+@frappe.whitelist()
+def open_employee_user_avatar(employee: str | None = None):
+    user = _require_authenticated_user()
+    resolved_employee = str(employee or "").strip()
+    if not resolved_employee:
+        frappe.throw(_("Employee is required."), frappe.ValidationError)
+
+    drive_file_row = _resolve_current_employee_profile_drive_file(resolved_employee)
+    employee_image_context = _resolve_employee_profile_image_access_from_drive_file(
+        user=user,
+        drive_file_row=drive_file_row,
+        context_doctype=CONTEXT_EMPLOYEE,
+        context_name=resolved_employee,
+        strict=True,
+    )
+
+    file_row = employee_image_context.get("file_row") or {}
+    file_employee = employee_image_context["file_employee"]
+    drive_file_id = employee_image_context["drive_file_id"]
+    file_id = str(file_row.get("name") or (drive_file_row or {}).get("file") or "").strip()
+    if not file_id:
+        frappe.throw(_("Employee image access requires a governed file projection."), frappe.DoesNotExistError)
+
+    for derivative_role in EMPLOYEE_USER_AVATAR_DERIVATIVE_ROLES:
+        target_url = _resolve_employee_image_grant_target_url(
+            employee=file_employee,
+            file_id=file_id,
+            drive_file_id=drive_file_id,
+            prefer_preview=True,
+            derivative_role=derivative_role,
+            strict_derivative=True,
+        )
+        if _respond_with_delivery_target(target_url=target_url, cache_headers=True):
+            return
+
+    target_url = _resolve_employee_image_grant_target_url(
+        employee=file_employee,
+        file_id=file_id,
+        drive_file_id=drive_file_id,
+    )
+    if _respond_with_delivery_target(target_url=target_url, cache_headers=True):
+        return
+
+    file_url = str(file_row.get("file_url") or "").strip()
+    if _is_raw_private_redirect_target(file_url) and _respond_with_local_file_content(
+        file_url=file_url,
+        filename=file_row.get("file_name"),
+        is_private=file_row.get("is_private"),
+        cache_headers=True,
+    ):
+        return
+
+    frappe.throw(_("Could not resolve the employee avatar content."), frappe.DoesNotExistError)

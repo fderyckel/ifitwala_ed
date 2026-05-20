@@ -186,6 +186,12 @@
 		context = context || {};
 		var school = (context.school || '').trim();
 		var organization = (context.organization || '').trim();
+		var variant = buildInquiryAcknowledgementVariant(context);
+
+		if (variant && variant.message) {
+			return variant.message;
+		}
+
 		if (!school && !organization) {
 			return INQUIRY_SUCCESS_MESSAGE_DEFAULT;
 		}
@@ -202,6 +208,150 @@
 		);
 	}
 
+	function normalizeInquiryType(typeOfInquiry) {
+		var value = (typeOfInquiry || '').trim();
+		var allowedTypes = [
+			'Admission',
+			'Current Family',
+			'General Inquiry',
+			'Partnership / Agent',
+			'Other',
+		];
+		return allowedTypes.indexOf(value) === -1 ? 'General Inquiry' : value;
+	}
+
+	function buildInquiryAcknowledgementVariant(context) {
+		var typeOfInquiry = normalizeInquiryType(context && context.type_of_inquiry);
+		if (typeOfInquiry === 'Admission') {
+			return {
+				message:
+					'Thank you for contacting us. Our admissions team will review your inquiry and get back to you soon.',
+				timeline: [
+					{
+						label: 'Inquiry received',
+						description: 'Your message is now in the admissions inbox.',
+					},
+					{
+						label: 'Admissions review',
+						description:
+							'The team checks the school context, student details, and preferred contact channel.',
+					},
+					{
+						label: 'Family follow-up',
+						description: 'A staff member replies with the next practical action.',
+					},
+					{
+						label: 'Next step',
+						description:
+							'If the next step is an application, admissions staff will send the correct application path.',
+					},
+				],
+			};
+		}
+
+		if (typeOfInquiry === 'Current Family') {
+			return {
+				message:
+					'Thank you for contacting us. We will route your message to the appropriate school team and they will follow up through your preferred contact channel.',
+				timeline: [
+					{
+						label: 'Message received',
+						description: 'Your message has been received by the school team.',
+					},
+					{
+						label: 'School context checked',
+						description: 'The team checks the school context and any student details you shared.',
+					},
+					{
+						label: 'Routed to the right team',
+						description:
+							'Your message is forwarded to the staff member or office best placed to help.',
+					},
+					{
+						label: 'Team follow-up',
+						description: 'The appropriate team follows up through your preferred contact channel.',
+					},
+				],
+			};
+		}
+
+		if (typeOfInquiry === 'Partnership / Agent') {
+			return {
+				message:
+					'Thank you for contacting us. We will review the organization and partnership details, then route the inquiry to the appropriate person.',
+				timeline: [
+					{
+						label: 'Partnership inquiry received',
+						description: 'Your partnership or agent inquiry has been received.',
+					},
+					{
+						label: 'Context reviewed',
+						description:
+							'The team reviews the organization details and partnership context you shared.',
+					},
+					{
+						label: 'Routed to the right owner',
+						description:
+							'The inquiry is forwarded to the person best placed to assess the request.',
+					},
+					{
+						label: 'Next conversation',
+						description:
+							'The appropriate person follows up if there is a fit or a useful next discussion.',
+					},
+				],
+			};
+		}
+
+		if (typeOfInquiry === 'Other') {
+			return {
+				message:
+					'Thank you for contacting us. We will review your message and forward it to the appropriate team or person.',
+				timeline: [
+					{
+						label: 'Message received',
+						description: 'Your message has been received.',
+					},
+					{
+						label: 'Triage review',
+						description: 'The team reviews your message to understand who should handle it.',
+					},
+					{
+						label: 'Routed internally',
+						description: 'Your message is forwarded to the appropriate team or person.',
+					},
+					{
+						label: 'Appropriate follow-up',
+						description: 'The right team follows up if a response is needed.',
+					},
+				],
+			};
+		}
+
+		return {
+			message:
+				'Thank you for contacting us. We will review your question and forward it to the team best placed to respond.',
+			timeline: [
+				{
+					label: 'Inquiry received',
+					description: 'Your question has been received.',
+				},
+				{
+					label: 'Request reviewed',
+					description: 'The team reviews your question and the context you shared.',
+				},
+				{
+					label: 'Forwarded internally',
+					description: 'Your inquiry is forwarded to the team best placed to respond.',
+				},
+				{
+					label: 'Follow-up if needed',
+					description: 'The right team follows up when there is a useful next step or response.',
+				},
+			],
+		};
+	}
+
 	function clearNode(node) {
 		while (node.firstChild) {
 			node.removeChild(node.firstChild);
@@ -209,28 +359,18 @@
 	}
 
 	function buildDefaultAcknowledgementPayload(context) {
+		context = context || {};
+		var variant = buildInquiryAcknowledgementVariant(context || {});
 		return {
 			brand: {
 				name: context.school || context.organization || 'Ifitwala',
 				logo: '',
+				scope: context.school ? 'School' : context.organization ? 'Organization' : 'Site',
 			},
 			title: INQUIRY_SUCCESS_TITLE,
 			message: buildInquirySuccessMessage(context),
 			timeline_intro: 'What happens next',
-			timeline: [
-				{
-					label: 'Inquiry received',
-					description: 'Your message is now in the admissions inbox.',
-				},
-				{
-					label: 'Admissions review',
-					description: 'The team checks the school context and preferred contact channel.',
-				},
-				{
-					label: 'Family follow-up',
-					description: 'A staff member replies with the next practical action.',
-				},
-			],
+			timeline: variant.timeline,
 			footer_note: '',
 			ctas: [],
 		};
@@ -292,7 +432,9 @@
 			}
 			if (brand.name) {
 				var brandText = createElement('div', 'if-inquiry-confirmation__brand-copy');
-				brandText.appendChild(createElement('span', 'if-inquiry-confirmation__eyebrow', 'School'));
+				brandText.appendChild(
+					createElement('span', 'if-inquiry-confirmation__eyebrow', brand.scope || 'School')
+				);
 				brandText.appendChild(
 					createElement('strong', 'if-inquiry-confirmation__brand-name', brand.name)
 				);

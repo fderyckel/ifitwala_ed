@@ -27,6 +27,7 @@ def _governed_uploads_module():
     image_utils.EMPLOYEE_VARIANT_PRIORITY = []
     image_utils.file_url_is_accessible = lambda file_url, *, file_name=None, is_private=0: True
     image_utils.get_employee_image_variants_map = lambda employee_names, **kwargs: {}
+    image_utils.get_employee_user_avatar_url = lambda employee_name, original_url=None: original_url
     image_utils.get_preferred_employee_avatar_url = lambda employee_name, original_url=None: original_url
     image_utils.get_preferred_employee_image_url = lambda employee_name, original_url=None, slots=None: original_url
 
@@ -417,7 +418,7 @@ class TestGovernedUploadTaskFlows(TestCase):
 
         self.assertNotEqual(first, second)
 
-    def test_sync_linked_employee_user_image_uses_preferred_variant(self):
+    def test_sync_linked_employee_user_image_uses_stable_avatar_route(self):
         user_doc = _FakeDoc(user_image=None, flags=SimpleNamespace(ignore_permissions=False))
 
         with _governed_uploads_module() as governed_uploads:
@@ -425,9 +426,9 @@ class TestGovernedUploadTaskFlows(TestCase):
                 patch.object(governed_uploads.frappe.db, "get_value", return_value="staff@example.com"),
                 patch.object(
                     governed_uploads,
-                    "get_preferred_employee_avatar_url",
-                    return_value="/files/thumb_employee.webp",
-                ) as get_preferred,
+                    "get_employee_user_avatar_url",
+                    return_value="/api/method/ifitwala_ed.api.file_access.open_employee_user_avatar?employee=EMP-0001",
+                ) as get_avatar_url,
                 patch.object(governed_uploads.frappe, "get_doc", return_value=user_doc) as get_doc,
             ):
                 governed_uploads._sync_linked_employee_user_image(
@@ -435,13 +436,16 @@ class TestGovernedUploadTaskFlows(TestCase):
                     original_url="/private/files/employee-photo.png",
                 )
 
-        get_preferred.assert_called_once_with(
+        get_avatar_url.assert_called_once_with(
             "EMP-0001",
             original_url="/private/files/employee-photo.png",
         )
         get_doc.assert_called_once_with("User", "staff@example.com")
         self.assertTrue(user_doc.flags.ignore_permissions)
-        self.assertEqual(user_doc.user_image, "/files/thumb_employee.webp")
+        self.assertEqual(
+            user_doc.user_image,
+            "/api/method/ifitwala_ed.api.file_access.open_employee_user_avatar?employee=EMP-0001",
+        )
         self.assertEqual(user_doc.saved, 1)
 
     def test_get_employee_image_display_map_uses_derivative_only_avatar_helper(self):

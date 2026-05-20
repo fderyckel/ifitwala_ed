@@ -3,7 +3,7 @@ title: "Inquiry: Managing Website Visitor Intake"
 slug: inquiry
 category: Admission
 doc_order: 2
-version: "1.7.3"
+version: "1.7.4"
 last_change_date: "2026-05-20"
 summary: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
 seo_title: "Inquiry: Managing Website Visitor Intake"
@@ -26,7 +26,7 @@ seo_description: "Capture, assign, and track incoming website inquiries with SLA
 - Assigns ownership to scoped staff users when operational follow-up is needed.
 - Gives staff a lightweight `Next Action Note` for the next planned follow-up without changing the original inquiry message.
 - Tracks first-contact and follow-up deadlines with SLA status.
-- Gives families an immediate branded thank-you page and acknowledgement email after public website submission.
+- Gives visitors an immediate branded, inquiry-type-aware thank-you page and acknowledgement email after public website submission.
 - Supports optional conversion to [**Student Applicant**](/docs/en/student-applicant/) only when the inquiry is admissions-related.
 
 <Callout type="tip" title="Outcome">
@@ -83,7 +83,9 @@ Allowed transitions are strictly server-validated:
   - the public `School` picker is filtered to schools with `Show in Inquiry` enabled under inquiry-enabled organizations; website publication is a separate setting.
   - public web submissions default `Source` to `Website`.
   - public submissions with an email address queue a transactional family acknowledgement email after commit.
-  - school-specific thank-you copy, email template, visit CTA, and optional public application CTA are configured through `Admission Acknowledgement Profile`.
+  - the thank-you page and fallback acknowledgement email use `Type of Inquiry` to keep admissions steps only on admission inquiries; current-family, general, partnership/agent, and other inquiries use routing and appropriate-team follow-up language.
+  - school-specific admission thank-you copy, email template, visit CTA, and optional public application CTA are configured through `Admission Acknowledgement Profile`.
+  - visit and public application CTAs are shown only for `Admission` inquiries.
   - the authenticated `/admissions` portal is not shown as an anonymous application-start CTA.
   - `Type of Inquiry` supports `Admission`, `Current Family`, `General Inquiry`, `Partnership / Agent`, and `Other`.
   - admission inquiries show student name, intended academic year, grade-level interest, and program-interest fields.
@@ -192,6 +194,7 @@ Action-level guard in server code: assignment/reassignment require admissions pe
 - **Archive reason contract**: `archive(reason)` requires and stores `archive_reason`; legacy or bypassed archived rows without a reason surface in the Zero Lost Lead command center.
 - **Assignment contract**: `assigned_to` is retained as the latest assignee across workflow states (including `Contacted`) and changes only through assignment/reassignment actions.
 - **Inquiry type contract**: `type_of_inquiry` options are `Admission`, `Current Family`, `General Inquiry`, `Partnership / Agent`, and `Other`; type-specific fields are optional triage context only.
+- **Public acknowledgement contract**: `Admission` uses admissions-specific thank-you steps and may show configured visit/application CTAs; non-admission inquiry types use type-specific routing/follow-up copy and suppress admission CTAs.
 - **Source contract**: public web-form inserts default missing `source` to `Website`; staff-created inquiries may set the appropriate manual lead source.
 - **Completion permission contract**: `mark_contacted` can be executed by Admissions/System users and by the current assigned user.
 - **Record visibility contract**: non-privileged users are query-scoped to assigned Inquiry rows (`assigned_to = session user`) through hooks.
@@ -209,7 +212,7 @@ Action-level guard in server code: assignment/reassignment require admissions pe
   - route `apply/inquiry` (public form)
   - `organization` and `school` remain visible and optional; hidden `source` defaults to `Website`
   - `school` uses public-safe `inquiry_school_link_query`, scoped by selected organization where present and filtered by `School.show_in_inquiry`
-  - thank-you page copy and CTAs are loaded from `get_inquiry_acknowledgement_context`
+  - thank-you page copy, type-specific timeline steps, and eligible CTAs are loaded from `get_inquiry_acknowledgement_context`
   - conditional fields are shown from `type_of_inquiry` for admission, current-family, and partnership/agent context
   - scoped shell assets via `hooks.py` `webform_include_css/js` for `Inquiry`, using app public paths: `public/css/admissions_webform_shell.css` and `public/js/admissions_webform_shell.js`
 - **Staff analytics (SPA)**:
