@@ -3,8 +3,8 @@ title: "Applicant Interview: Interview Event Record"
 slug: applicant-interview
 category: Admission
 doc_order: 8
-version: "1.8.0"
-last_change_date: "2026-04-30"
+version: "1.8.1"
+last_change_date: "2026-05-20"
 summary: "Record the scheduled interview event, participants, room, calendar projection, and operational context while keeping interviewer opinion only in Applicant Interview Feedback."
 seo_title: "Applicant Interview: Interview Event Record"
 seo_description: "Record the interview event, participants, calendar projection, and operational context while keeping interviewer opinion only in Applicant Interview Feedback."
@@ -105,10 +105,9 @@ Runtime controller rule:
 ## Related Docs
 
 <RelatedDocs
-  slugs="student-applicant,applicant-health-profile,applicant-document"
+  slugs="student-applicant,applicant-interview-feedback,applicant-health-profile,applicant-document"
   title="Related Docs"
 />
-- `Applicant Interview Feedback` - per-interviewer structured notes and recommendations
 
 ## Technical Notes (IT)
 

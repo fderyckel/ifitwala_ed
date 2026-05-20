@@ -3,8 +3,8 @@ title: "Inquiry: Managing Website Visitor Intake"
 slug: inquiry
 category: Admission
 doc_order: 2
-version: "1.7.1"
-last_change_date: "2026-04-28"
+version: "1.7.2"
+last_change_date: "2026-05-20"
 summary: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
 seo_title: "Inquiry: Managing Website Visitor Intake"
 seo_description: "Capture, assign, and track incoming website inquiries with SLA visibility and optional conversion to Student Applicant when relevant."
@@ -177,14 +177,14 @@ Action-level guard in server code: assignment/reassignment require admissions pe
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-04-28)
+### Latest Technical Snapshot (2026-05-20)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/inquiry/inquiry.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/inquiry/inquiry.py`
 - **Acknowledgement config**: `Admission Acknowledgement Profile` (`ifitwala_ed/admission/doctype/admission_acknowledgement_profile/`)
 - **Acknowledgement service**: `ifitwala_ed/admission/inquiry_acknowledgement.py`
 - **Required fields (`reqd=1`)**: none at schema level; controller/workflow rules enforce operational completeness where applicable.
-- **Manual lead fields**: `source` (`Website`, `WhatsApp`, `Line`, `Facebook`, `Open Day`, `Referral`, `Agent`, `Other`), contact preferences, dynamic inquiry-type fields, `next_action_note`, and `archive_reason`.
+- **Manual lead fields**: `source` (`Website`, `Email`, `Phone`, `WhatsApp`, `Line`, `Facebook`, `Instagram`, `Open Day`, `Walk-in`, `Community Fair`, `Referral`, `Agent`, `Other`), contact preferences, dynamic inquiry-type fields, `next_action_note`, and `archive_reason`.
 - **Indexed lookup fields**: `email`, `phone_number`, `source`, `workflow_state`, `first_contact_due_on`, `followup_due_on`.
 - **Lifecycle hooks in controller**: `validate`, `before_insert`, `after_insert`, `before_save`
 - **Operational/public methods**: `mark_assigned`, `mark_qualified`, `archive`, `set_contact_metrics`, `create_contact_from_inquiry`, `mark_contacted`

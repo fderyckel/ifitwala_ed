@@ -3,8 +3,8 @@ title: "Applicant Document: Authoritative Owner of Admissions Files"
 slug: applicant-document
 category: Admission
 doc_order: 6
-version: "1.7.2"
-last_change_date: "2026-04-25"
+version: "1.7.3"
+last_change_date: "2026-05-20"
 summary: "Define Applicant Document as the applicant/type bucket and Applicant Document Item as per-file slot rows for review, readiness, and promotion."
 seo_title: "Applicant Document: Authoritative Owner of Admissions Files"
 seo_description: "Define Applicant Document parent buckets and Applicant Document Item per-file slots for admissions upload, review, readiness, and promotion."
@@ -60,6 +60,7 @@ All admissions evidence files must attach to `Applicant Document Item` (scoped u
 | Actor | Allowed | Forbidden |
 |---|---|---|
 | `Admissions Applicant` (portal) | list types, list documents, upload document file | approve/reject, edit review fields, change `document_type`, delete rows |
+| `Admissions Family` (family workspace) | list and upload for explicitly linked applicants | approve/reject, edit review fields, change `document_type`, delete rows |
 | `Admission Officer` | create/manage rows, review submitted files from applicant context, promotion routing | set requirement waivers/exceptions, bypass immutable field rules |
 | `Admission Manager` | create/manage rows, review submitted files from applicant context, promotion routing, requirement waivers/exceptions | bypassing immutable field rules |
 | `Academic Admin` / `System Manager` | review submitted files from applicant context, promotion routing, requirement waivers/exceptions | bypassing immutable field rules |
@@ -194,6 +195,7 @@ Staff review surface rule:
 | `Academic Admin` | Yes | Yes | Yes | Yes | Scoped to applicant visibility; reviewer authority |
 | `System Manager` | Yes | Yes | Yes | Yes | Reviewer authority + delete override with attached files |
 | `Admissions Applicant` | Yes | Yes | Yes | No | Own applicant rows only (self-link enforced) |
+| `Admissions Family` | Yes | Yes | Yes | No | Family workspace only; explicit guardian linkage required |
 | `Curriculum Coordinator` | No | No | No | No | Not in runtime admissions-file access contract |
 | `Academic Assistant` | No | No | No | No | Not in runtime admissions-file access contract |
 
@@ -208,7 +210,7 @@ Runtime controller rules are authoritative over DocType matrix permissions.
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-03-12)
+### Latest Technical Snapshot (2026-05-20)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/applicant_document/applicant_document.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/applicant_document/applicant_document.py`
@@ -243,11 +245,12 @@ Runtime controller rules are authoritative over DocType matrix permissions.
   - focus review action endpoint: `ifitwala_ed/api/focus.py::submit_applicant_review_assignment`
   - SPA page: `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantDocuments.vue`
 - **Runtime role guards (controller)**:
-  - upload/manage roles: admissions roles + `Academic Admin` + `System Manager` + `Admissions Applicant`
+  - upload/manage roles: admissions roles + `Academic Admin` + `System Manager` + `Admissions Applicant` + `Admissions Family`
   - reviewer roles: `Admission Officer`, `Admission Manager`, `Academic Admin`, `System Manager`
   - override roles: `Admission Manager`, `Academic Admin`, `System Manager`
   - staff operations are applicant-scope gated (organization/school visibility with transfer-aware student-school matching)
   - `Admissions Applicant` can operate only on own linked applicant rows
+  - `Admissions Family` can operate only through explicit family-workspace applicant linkage
   - aggregate review-field mutation is blocked because it is server-derived
 - **Readiness and promotion integration**:
   - required-document readiness check in `Student Applicant.has_required_documents()`

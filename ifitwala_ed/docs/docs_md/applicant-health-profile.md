@@ -3,8 +3,8 @@ title: "Applicant Health Profile: Health Disclosure and Clearance"
 slug: applicant-health-profile
 category: Admission
 doc_order: 7
-version: "2.4.3"
-last_change_date: "2026-04-25"
+version: "2.4.4"
+last_change_date: "2026-05-20"
 summary: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
 seo_title: "Applicant Health Profile: Health Disclosure and Clearance"
 seo_description: "Capture health details, control family/staff editing by applicant status, and feed readiness for admissions decisions."
@@ -56,7 +56,7 @@ Families can provide health details in portal phases where edits are allowed, th
   <Do>Keep reviewer outcomes explicit (`Pending`, `Needs Follow-Up`, `Cleared`) and let reviewer metadata stamp automatically.</Do>
   <Do>Use governed vaccination-proof uploads and canonical file URLs.</Do>
   <Dont>Approve applicant decisions while health review is unresolved when health is configured as required for that school.</Dont>
-  <Dont>Allow family-side edits after terminal applicant states (`Rejected`, `Promoted`).</Dont>
+  <Dont>Allow family-side edits after locked applicant states (`Rejected`, `Promoted`).</Dont>
 </DoDont>
 
 ## Lifecycle and Linked Documents
@@ -102,11 +102,12 @@ When school policy requires health clearance, do not move applicants to final ap
 | `Admission Manager` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
 | `Admission Officer` | Yes | Yes | Yes | Yes | Scoped to applicant visibility |
 | `Nurse` | Yes | Yes | Yes | Yes | Staff review role |
-| `Guardian` | Yes | Yes | Yes | No | Linked-guardian rows only |
+| `Guardian` | Yes | Yes | Yes | No | Legacy role permission; linked-guardian rows only |
 | `Admissions Applicant` | Yes | Yes | Yes | No | Own applicant rows only |
+| `Admissions Family` | Yes | Yes | Yes | No | Family workspace only; explicit guardian linkage required |
 
 Runtime controller rules:
-- Family/applicant editing is allowed only when user linkage to the applicant is valid and status is non-terminal (`Draft` through `Withdrawn`, excluding `Rejected`).
+- Family/applicant editing is allowed only when user linkage to the applicant is valid and the health controller permits the current applicant status (`Draft` through `Withdrawn`, excluding `Rejected` and `Promoted`).
 - Admissions/academic staff are scoped by applicant organization/school visibility; `System Manager` remains global.
 - An assigned reviewer with an open `Applicant Review Assignment` for the applicant gets read-only access to this profile and the applicant folder, but does not get direct write permission outside the review workflow.
 - Review fields are staff-only (`Admission Officer`, `Admission Manager`, `Academic Admin`, `System Manager`, `Nurse`).
@@ -121,7 +122,7 @@ Runtime controller rules:
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-03-05)
+### Latest Technical Snapshot (2026-05-20)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/applicant_health_profile/applicant_health_profile.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/applicant_health_profile/applicant_health_profile.py`
@@ -144,3 +145,4 @@ Runtime controller rules:
   - permission gating by role and applicant status
   - reviewer metadata stamping (`reviewed_by`, `reviewed_on`)
   - promotion handoff consumed by `Student Applicant.promote_to_student`
+  - family workspace access is resolved through `Admissions Family` plus explicit applicant guardian linkage

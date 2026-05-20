@@ -3,8 +3,8 @@ title: "Applicant Interview Feedback: Per-Interviewer Notes"
 slug: applicant-interview-feedback
 category: Admission
 doc_order: 9
-version: "1.3.0"
-last_change_date: "2026-04-30"
+version: "1.3.1"
+last_change_date: "2026-05-20"
 summary: "Store the only canonical interviewer-opinion record per interviewer per admissions interview, avoiding collisions on any shared event note."
 seo_title: "Applicant Interview Feedback"
 seo_description: "Per-interviewer admissions interview feedback linked to Applicant Interview with Draft/Submitted status and row-level access control."
@@ -49,6 +49,17 @@ On Desk, selected interviewers can use `Open My Feedback` from the parent `Appli
 Workspace APIs:
 - `get_interview_workspace(interview=...)`
 - `save_my_interview_feedback(...)`
+
+## Permission Matrix
+
+| Role / Actor | Read | Write | Create | Delete | Notes |
+|---|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes | Scoped administrative access |
+| `Academic Admin` | Yes | Yes | Yes | Yes | Scoped to applicant organization/school visibility |
+| `Admission Manager` | Yes | Yes | Yes | Yes | Scoped to applicant organization/school visibility |
+| `Admission Officer` | Yes | Yes | Yes | Yes | Scoped to applicant organization/school visibility |
+| Listed interviewer | Yes | Yes | Yes | No | Own feedback row only; must be listed on the interview |
+| `Curriculum Coordinator` / `Counselor` | No broad access | No broad access | No broad access | No | Can act only when they are the listed interviewer for their own row |
 
 ## Related Docs
 

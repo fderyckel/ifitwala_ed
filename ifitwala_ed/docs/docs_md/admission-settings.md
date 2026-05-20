@@ -3,11 +3,11 @@ title: "Admission Settings: Admissions SLA and Assignment Policy"
 slug: admission-settings
 category: Admission
 doc_order: 1
-version: "1.5.2"
-last_change_date: "2026-04-25"
-summary: "Define admissions SLA windows, assignment task color defaults, admissions-portal family/access toggles, and the admissions-to-enrollment auto-hydration policy."
+version: "1.5.3"
+last_change_date: "2026-05-20"
+summary: "Define admissions SLA windows, assignment task color defaults, admissions-portal family/access toggles, and admissions-to-enrollment hydration and deposit policy."
 seo_title: "Admission Settings: Admissions SLA and Assignment Policy"
-seo_description: "Define admissions SLA windows, assignment task color defaults, and admissions-portal guardian section visibility."
+seo_description: "Define admissions SLA windows, assignment task color defaults, admissions-portal access mode, and admissions-to-enrollment deposit and hydration policy."
 ---
 
 ## Before You Start (Prerequisites)
@@ -16,13 +16,13 @@ seo_description: "Define admissions SLA windows, assignment task color defaults,
 - Confirm your admissions intake flow is using [**Inquiry**](/docs/en/inquiry/), because these settings are consumed from Inquiry services.
 - Align SLA day windows and assignment color conventions with operations leadership before changing values in production.
 
-`Admission Settings` is a Single DocType that stores operational defaults for admissions SLA deadlines, assignment ToDo styling, admissions portal surface toggles, family-workspace access mode, and the admissions-to-enrollment auto-hydration policy.
+`Admission Settings` is a Single DocType that stores operational defaults for admissions SLA deadlines, assignment ToDo styling, admissions portal surface toggles, family-workspace access mode, and the admissions-to-enrollment hydration and deposit policy.
 
 ## Authoritative Contract
 
 [[fig:fig-1 size=auto]]
 
-This doctype owns eight configuration fields:
+This doctype owns ten operational configuration fields:
 
 - `first_contact_sla_days`: days from inquiry submission to first-contact due date.
 - `followup_sla_days`: days from assignment to follow-up due date.
@@ -32,6 +32,8 @@ This doctype owns eight configuration fields:
 - `show_guardians_in_admissions_profile`: boolean toggle to show/hide guardian intake rows in `/admissions/profile`.
 - `admissions_access_mode`: select setting controlling whether `/admissions` runs as `Single Applicant Workspace` or `Family Workspace`.
 - `auto_hydrate_enrollment_request_after_promotion`: boolean toggle controlling whether promotion auto-creates a draft `Program Enrollment Request` from an accepted `Applicant Enrollment Plan`.
+- `deposit_defaults`: school-approved deposit defaults used by accepted applicant offers.
+- `require_deposit_before_promotion`: boolean toggle controlling whether promotion is blocked until a required admissions deposit is paid.
 
 ## How to Read the Two SLAs
 
@@ -65,6 +67,7 @@ This shows why `followup_sla_days` does not need to be less than `first_contact_
    - `Single Applicant Workspace`: login requires `Admissions Applicant` + exactly one `Student Applicant.applicant_user`.
    - `Family Workspace`: login can use `Admissions Family` + explicit consenting applicant guardian linkage to one or more applicants.
 7. Enrollment-request hydration remains request-only and post-student; this setting controls timing, not contract shape.
+8. Deposit settings control the admissions deposit bridge only. They do not create full payment plans, collect payment, or create committed enrollment.
 
 ## Where It Is Used Across the ERP
 
@@ -76,6 +79,8 @@ This shows why `followup_sla_days` does not need to be less than `first_contact_
   - `promote_to_student()` reads `auto_hydrate_enrollment_request_after_promotion` to decide whether to auto-hydrate a draft request from the accepted applicant plan.
 - [**Applicant Enrollment Plan**](/docs/en/applicant-enrollment-plan/):
   - accepted plans can stay staff-reviewed/manual or auto-hydrate immediately after promotion based on this setting.
+  - accepted plans can receive school-default deposit terms from `deposit_defaults`.
+  - promotion can be blocked until the linked required deposit invoice is paid when `require_deposit_before_promotion` is enabled.
 - Scheduler:
   - `ifitwala_ed.admission.scheduled_jobs.run_hourly_sla_sweep` is registered in `hooks.py` hourly events.
   - Sweep logic in `check_sla_breaches` is column-aware, recomputes SLA status, and caches run summary at `admissions:sla_sweep:last_run`.
@@ -111,13 +116,13 @@ Treat SLA value updates as policy changes. Mid-cycle edits can shift operational
 ## Related Docs
 
 <RelatedDocs
-  slugs="inquiry,student-applicant,applicant-review-assignment"
+  slugs="inquiry,student-applicant,applicant-enrollment-plan,applicant-review-assignment"
   title="Related Admissions Operations Docs"
 />
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-04-23)
+### Latest Technical Snapshot (2026-05-20)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/admission_settings/admission_settings.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/admission_settings/admission_settings.py`
@@ -133,9 +138,11 @@ Treat SLA value updates as policy changes. Mid-cycle edits can shift operational
   - `todo_color` (`Color`)
   - `sla_enabled` (`Check`, default `0`)
   - `sla_check_interval_hours` (`Int`)
-- `show_guardians_in_admissions_profile` (`Check`, default `0`)
-- `admissions_access_mode` (`Select`, default `Single Applicant Workspace`)
-- `auto_hydrate_enrollment_request_after_promotion` (`Check`, default `1`)
+  - `show_guardians_in_admissions_profile` (`Check`, default `0`)
+  - `admissions_access_mode` (`Select`, default `Single Applicant Workspace`)
+  - `auto_hydrate_enrollment_request_after_promotion` (`Check`, default `1`)
+  - `deposit_defaults` (`Table` -> `Admission Deposit Default`)
+  - `require_deposit_before_promotion` (`Check`, default `0`)
 - **Runtime consumers**:
   - `ifitwala_ed/admission/admission_utils.py`
     - `_get_first_contact_sla_days_default`
@@ -153,6 +160,9 @@ Treat SLA value updates as policy changes. Mid-cycle edits can shift operational
     - `update_applicant_profile` applies guardian rows only when the setting is enabled
   - `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
     - `_maybe_auto_hydrate_enrollment_request_after_promotion` gates draft request hydration from accepted applicant plans
+    - promotion checks `require_deposit_before_promotion` when the accepted applicant plan requires a deposit
+  - `ifitwala_ed/admission/doctype/applicant_enrollment_plan/applicant_enrollment_plan.py`
+    - applies `deposit_defaults` to accepted plans and exposes deposit invoice generation
   - `ifitwala_ed/hooks.py`
     - hourly scheduler entrypoint: `ifitwala_ed.admission.scheduled_jobs.run_hourly_sla_sweep`
 - **Operational nuance**:

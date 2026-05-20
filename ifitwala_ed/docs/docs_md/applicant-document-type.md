@@ -3,8 +3,8 @@ title: "Applicant Document Type: Authoritative Admissions Evidence Catalog"
 slug: applicant-document-type
 category: Admission
 doc_order: 5
-version: "1.3.6"
-last_change_date: "2026-04-25"
+version: "1.3.7"
+last_change_date: "2026-05-20"
 summary: "Define canonical admissions document types and codes that drive portal options, readiness checks, and deterministic file-classification slots."
 seo_title: "Applicant Document Type: Authoritative Admissions Evidence Catalog"
 seo_description: "Define canonical admissions document types and codes that drive portal options, readiness checks, and deterministic file-classification slots."
@@ -24,7 +24,7 @@ seo_description: "Define canonical admissions document types and codes that driv
 
 - semantic fields (`code`, `document_type_name`, `belongs_to`, `description`)
 - scope fields (`organization`, `school`)
-- gating fields (`is_required`, `is_active`)
+- gating fields (`is_required`, `is_repeatable`, `min_items_required`, `is_active`)
 - classification fields (`classification_slot`, `classification_data_class`, `classification_purpose`, `classification_retention_policy`)
 
 `belongs_to` is semantic only (`student | guardian | family`) and does not change the rule that admissions files are owned by `Applicant Document`.
@@ -33,9 +33,10 @@ seo_description: "Define canonical admissions document types and codes that driv
 
 1. `code` is unique and acts as the canonical identity for the type.
 2. Required-readiness contract is driven by active types where `is_required = 1` and scope matches applicant organization/school ancestors.
-3. Portal upload options must be limited to active, in-scope types.
-4. Upload classification must resolve to slot/data-class/purpose/retention-policy for every active type, either from explicit fields or deterministic code mapping.
-5. Type deactivation (`is_active = 0`) retires future use without rewriting historical applicant evidence.
+3. Repeatable requirements use `min_items_required` to decide how many approved submitted files are needed.
+4. Portal upload options must be limited to active, in-scope types.
+5. Upload classification must resolve to slot/data-class/purpose/retention-policy for every active type, either from explicit fields or deterministic code mapping.
+6. Type deactivation (`is_active = 0`) retires future use without rewriting historical applicant evidence.
 
 ## Where It Is Used Across the ERP
 
@@ -105,7 +106,7 @@ Changing `code`, scope anchors, or classification fields is not cosmetic. It aff
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-03-09)
+### Latest Technical Snapshot (2026-05-20)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/applicant_document_type/applicant_document_type.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/applicant_document_type/applicant_document_type.py`
@@ -120,6 +121,8 @@ Changing `code`, scope anchors, or classification fields is not cosmetic. It aff
 - **Core field contract**:
   - `belongs_to` options: `student`, `guardian`, `family`
   - `is_required` default `0`
+  - `is_repeatable` default `0`
+  - `min_items_required` default `1`; non-repeatable types are normalized back to `1`
   - `is_active` default `1`
   - optional scope: `organization`, `school`
   - classification: `classification_slot`, `classification_data_class`, `classification_purpose`, `classification_retention_policy`

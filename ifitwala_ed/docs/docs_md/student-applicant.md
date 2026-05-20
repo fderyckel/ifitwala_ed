@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.20.6"
-last_change_date: "2026-04-27"
+version: "1.20.7"
+last_change_date: "2026-05-20"
 summary: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Manage applicant lifecycle from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, school-scoped health gating, and the admissions-to-enrollment bridge."
@@ -93,6 +93,7 @@ Current runtime split:
 - [**Applicant Enrollment Plan**](/docs/en/applicant-enrollment-plan/) owns placement planning, `Offer Sent`, `Offer Accepted`, and `Offer Declined`.
 - The applicant user on `Student Applicant` is reserved for the future student identity, not for guardians.
 - If a latest Applicant Enrollment Plan exists, promotion is blocked until that latest plan is `Offer Accepted` or already `Hydrated`.
+- If the accepted plan requires a deposit and Admission Settings requires deposit before promotion, promotion is blocked until the deposit invoice is paid.
 - Identity upgrade remains separate from promotion and can auto-run when the first active [**Program Enrollment**](/docs/en/program-enrollment/) is created or reactivated for the promoted student.
 
 ## Operational Guardrails
@@ -116,6 +117,7 @@ Current runtime split:
 | `Missing Info` | Returned for corrections |
 | `Approved` | Decision approved |
 | `Rejected` | Terminal rejected |
+| `Withdrawn` | Terminal withdrawn |
 | `Promoted` | Converted to Student |
 
 ## What `Invited` Means in Practice
@@ -265,12 +267,13 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
   - [**Applicant Interview**](/docs/en/applicant-interview/)
 - **Portal surfaces**:
   - website entry `/admissions` (`ifitwala_ed/www/admissions/index.py`)
-  - SPA pages: overview, profile, documents, health, policies, submit, status
+  - SPA pages: overview, profile, documents, health, policies, messages, course choices, submit, status
   - API service: `ifitwala_ed.api.admissions_portal.*`
   - next-actions contract: document upload is blocking only when required docs are missing; uploaded docs pending review are surfaced as under-review (non-blocking) for applicants, and Submit page shows an explicit "Awaiting admissions review" banner while still allowing submission
 - **Promotion linkage**:
   - `Student.student_applicant` link
   - `promote_to_student` creates/links `Student`
+  - `account_holder` is copied to the promoted `Student` when present and not already set to another payer
 - **File governance**:
   - direct attachments blocked except `applicant_image`
   - governed upload endpoint: `ifitwala_ed.utilities.governed_uploads.upload_applicant_image`
@@ -307,13 +310,6 @@ No standalone child-doc page is required; behavior is owned by the parent lifecy
   - non-admissions reviewers handle `Applicant Document Item` assignments in Focus
   - desk shows completed Health and Overall Application assignment decisions in `review_assignments_summary`
   - staff morning brief surface (`ui-spa/src/pages/staff/morning_brief/MorningBriefing.vue`) renders applicant status breakdown
-- **Schedule module touchpoint**:
-  - Program Enrollment Tool offers `Student Applicant` as a source option in UI.
-
-<Callout type="warning" title="Current tool behavior">
-Program Enrollment Tool currently implements fetch logic for `Cohort` and `Program Enrollment` sources. The `Student Applicant` source appears in UI options but is not yet handled in `_fetch_students`.
-</Callout>
-
 ## Inquiry Carry-Over (Speed)
 
 When admissions triggers invite-to-apply from an inquiry, the applicant is prefilled with:
@@ -359,6 +355,7 @@ For a brand-new site or a newly onboarded school, this is what must exist before
 
 1. Media consent policy chain (`policy_key = media_consent` + active version + acknowledgement), if you expect applicant image publish behavior during promotion.
 2. Applicant portal invite flow (`invite_applicant`) so families can acknowledge policies in `/admissions`.
+3. Account holder and accepted-offer deposit setup, if your school requires an admissions deposit before promotion.
 
 ## Lifecycle and Linked Documents
 
@@ -462,7 +459,7 @@ Runtime controller rules (server):
 - Admissions and academic-admin reads are scope-gated by organization/school visibility; visibility can follow linked student school context during school transfers.
 - Status changes must use lifecycle methods (direct writes are blocked).
 - Family/applicant editability depends on current status (`Invited/In Progress/Missing Info`).
-- Terminal states (`Rejected`, `Promoted`) are locked except explicit System Manager override flow.
+- Terminal states (`Rejected`, `Withdrawn`, `Promoted`) are locked except explicit System Manager override flow.
 - `inquiry`, `student`, `applicant_user`, `applicant_contact`, and `portal_account_email` are immutable and only set through named flows.
 - Direct `File` clutter is blocked on this doctype except `applicant_image`; admissions evidence belongs on [**Applicant Document**](/docs/en/applicant-document/).
 
@@ -475,7 +472,7 @@ Runtime controller rules (server):
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-03-10)
+### Latest Technical Snapshot (2026-05-20)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
@@ -504,6 +501,8 @@ Runtime controller rules (server):
     - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantProfile.vue` (includes optional guardian intake section controlled by Admission Settings)
     - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantDocuments.vue`
     - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantPolicies.vue`
+    - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantMessages.vue`
+    - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantEnrollmentChoices.vue`
     - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantSubmit.vue`
     - `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantStatus.vue`
   - service layer `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsService.ts`
@@ -539,7 +538,9 @@ Runtime controller rules (server):
 - **Promotion side-effects (`promote_to_student`)**:
   - preconditions: applicant status must be `Approved` and `student_joining_date` is required
   - if a latest `Applicant Enrollment Plan` exists, that latest plan must already be `Offer Accepted` or `Hydrated`
+  - if `Admission Settings.require_deposit_before_promotion = 1`, a required deposit on the latest accepted plan must be paid
   - creates/links `Student`, writes `Student.student_applicant`, then sets applicant status to `Promoted`
+  - syncs applicant `account_holder` to the promoted `Student` when present
   - copies applicant `cohort` and `student_house` links into the promoted `Student` when those applicant fields are populated
   - creates/syncs `Student Patient` from Applicant Health Profile data
   - copies approved admissions documents into Student-owned governed files; current runtime excludes only rows whose `promotion_target` is explicitly non-`Student`

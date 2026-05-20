@@ -3,8 +3,8 @@ title: "Applicant Review Assignment: Materialized Review Work Item"
 slug: applicant-review-assignment
 category: Admission
 doc_order: 9
-version: "1.2.2"
-last_change_date: "2026-03-19"
+version: "1.2.3"
+last_change_date: "2026-05-20"
 summary: "System-generated admissions review work items for evidence submissions, health, and overall application decisions."
 seo_title: "Applicant Review Assignment: Materialized Review Work Item"
 seo_description: "System-generated admissions review work items for evidence submissions, health, and overall application decisions."
@@ -79,6 +79,24 @@ Current surface split:
 - admissions cockpit applicant workspace and Desk `Student Applicant.documents_summary` are the canonical admissions-staff evidence review surfaces
 - Desk `Student Applicant.review_assignments_summary` renders completed Health and Overall Application decisions
 - document reviewer truth is rendered in `Student Applicant.documents_summary`, not in the assignment summary table
+
+## Permission Matrix
+
+| Role / Actor | Read | Write | Create | Delete | Notes |
+|---|---|---|---|---|---|
+| `System Manager` | Yes | Yes | Yes | Yes | Scoped administrative access |
+| `Academic Admin` | Yes | Yes | Yes | Yes | Can manage assignments in authorized applicant scope |
+| `Admission Manager` | Yes | Yes | Yes | Yes | Can manage assignments in authorized applicant scope |
+| Assigned reviewer | Yes | No | No | No | Can read own open or historical assignment in authorized applicant scope |
+| Assigned role reviewer | Yes | No | No | No | Can read assignments for one of their roles in authorized applicant scope |
+| `Admission Officer` | Conditional | No | No | No | Reads only assignments where they are the user or role assignee |
+
+## Related Docs
+
+<RelatedDocs
+  slugs="applicant-review-rule,student-applicant,applicant-document,applicant-health-profile"
+  title="Related Applicant Review Docs"
+/>
 
 ## Technical Notes (IT)
 
