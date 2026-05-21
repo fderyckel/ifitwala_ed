@@ -131,8 +131,10 @@ Code refs:
 - `ifitwala_ed/api/calendar_staff_feed.py`
 - `ifitwala_ed/api/calendar_core.py`
 - `ifitwala_ed/api/calendar_details.py`
+- `ifitwala_ed/admission/doctype/admission_visit/admission_visit.py`
 Test refs:
 - `ifitwala_ed/api/test_portal_calendar.py`
+- `ifitwala_ed/admission/doctype/admission_visit/test_admission_visit.py`
 
 `get_staff_calendar(...)` is the canonical merged feed for logged-in staff users.
 
@@ -190,7 +192,7 @@ School Events are included when:
   also reaches that user through employee-facing school-event audiences such as
   `All Students, Guardians, and Employees`, `All Employees`, or a matching
   `Employees in Team` row
-- applicant-interview school events remain participant-only even when the effective school ancestry matches
+- applicant-interview and admission-visit school events remain participant-only even when the effective school ancestry matches
 
 These visibility rules are source-owned and must not be flattened into one generic “calendar access” check.
 

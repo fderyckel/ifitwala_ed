@@ -34,6 +34,8 @@ from ifitwala_ed.school_settings.doctype.school_event.school_event import get_us
 from ifitwala_ed.school_settings.school_settings_utils import resolve_school_calendars_for_window
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
+PARTICIPANT_ONLY_SCHOOL_EVENT_REFERENCE_TYPES = {"Applicant Interview", "Admission Visit"}
+
 
 def get_staff_calendar(
     from_datetime: Optional[str] = None,
@@ -525,8 +527,9 @@ def _collect_school_events(
     visibility_clauses = ["sep.participant IS NOT NULL"]
     if allowed_schools:
         params["schools"] = allowed_schools
+        params["participant_only_refs"] = tuple(sorted(PARTICIPANT_ONLY_SCHOOL_EVENT_REFERENCE_TYPES))
         visibility_clauses.append(
-            "(COALESCE(se.reference_type, '') != 'Applicant Interview' AND se.school IN %(schools)s)"
+            "(COALESCE(se.reference_type, '') NOT IN %(participant_only_refs)s AND se.school IN %(schools)s)"
         )
     visibility_sql = " OR ".join(visibility_clauses)
 
@@ -591,7 +594,7 @@ def _collect_school_events(
         explicit_participant = bool((row.get("participant_name") or "").strip())
 
         if not explicit_participant:
-            if (row.get("reference_type") or "").strip() == "Applicant Interview":
+            if (row.get("reference_type") or "").strip() in PARTICIPANT_ONLY_SCHOOL_EVENT_REFERENCE_TYPES:
                 continue
 
             event_school = str(row.get("school") or "").strip()

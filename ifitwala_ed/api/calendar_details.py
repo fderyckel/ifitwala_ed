@@ -31,6 +31,8 @@ from ifitwala_ed.curriculum import planning
 from ifitwala_ed.school_settings.doctype.school_event.school_event import get_user_membership
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
+PARTICIPANT_ONLY_SCHOOL_EVENT_REFERENCE_TYPES = {"Applicant Interview", "Admission Visit"}
+
 
 def _format_detail_datetime_label(value) -> str | None:
     if not value:
@@ -524,7 +526,7 @@ def _school_event_access_allowed(event_doc, user: str) -> bool:
         {"System Manager", "Academic Admin", "Academic Assistant"} & user_roles
     )
 
-    if (event_doc.reference_type or "").strip() == "Applicant Interview":
+    if (event_doc.reference_type or "").strip() in PARTICIPANT_ONLY_SCHOOL_EVENT_REFERENCE_TYPES:
         if is_admin_like:
             return True
 

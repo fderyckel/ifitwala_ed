@@ -1,0 +1,322 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "ADM-VISIT-.YY.-.MM.-.###",
+ "creation": "2026-05-21 21:28:15.000000",
+ "description": "Admissions campus visits, tours, open-day follow-ups, and college/school visit appointments linked to CRM context and projected into staff calendars.",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "visit_title",
+  "organization",
+  "school",
+  "status",
+  "context_section",
+  "conversation",
+  "inquiry",
+  "student_applicant",
+  "visit_section",
+  "visit_type",
+  "visit_mode",
+  "starts_on",
+  "ends_on",
+  "building",
+  "location",
+  "party_size",
+  "visitor_column",
+  "visitor_name",
+  "visitor_email",
+  "visitor_phone",
+  "relationship_to_student",
+  "requested_grade_level",
+  "program_interest",
+  "staff_section",
+  "lead_user",
+  "staff",
+  "informed_users",
+  "notes_section",
+  "internal_notes",
+  "projection_section",
+  "school_event",
+  "booked_crm_activity",
+  "attended_crm_activity"
+ ],
+ "fields": [
+  {
+   "fieldname": "visit_title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Visit Title"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Organization",
+   "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "default": "Scheduled",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Scheduled\nCompleted\nNo Show"
+  },
+  {
+   "fieldname": "context_section",
+   "fieldtype": "Section Break",
+   "label": "Admissions Context"
+  },
+  {
+   "fieldname": "conversation",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Admission Conversation",
+   "options": "Admission Conversation"
+  },
+  {
+   "fieldname": "inquiry",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Inquiry",
+   "options": "Inquiry"
+  },
+  {
+   "fieldname": "student_applicant",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Student Applicant",
+   "options": "Student Applicant"
+  },
+  {
+   "fieldname": "visit_section",
+   "fieldtype": "Section Break",
+   "label": "Visit"
+  },
+  {
+   "default": "Family Tour",
+   "fieldname": "visit_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Visit Type",
+   "options": "Family Tour\nStudent Tour\nOpen Day\nSchool Visit\nCollege Visit\nShadow Day\nOther"
+  },
+  {
+   "default": "In Person",
+   "fieldname": "visit_mode",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Visit Mode",
+   "options": "In Person\nOnline\nPhone"
+  },
+  {
+   "fieldname": "starts_on",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Starts On",
+   "reqd": 1
+  },
+  {
+   "fieldname": "ends_on",
+   "fieldtype": "Datetime",
+   "label": "Ends On",
+   "reqd": 1
+  },
+  {
+   "fieldname": "building",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Building / Area",
+   "options": "Location"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Meeting Room",
+   "options": "Location"
+  },
+  {
+   "fieldname": "party_size",
+   "fieldtype": "Int",
+   "label": "Party Size"
+  },
+  {
+   "fieldname": "visitor_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "visitor_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Visitor Name"
+  },
+  {
+   "fieldname": "visitor_email",
+   "fieldtype": "Data",
+   "label": "Visitor Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "visitor_phone",
+   "fieldtype": "Data",
+   "label": "Visitor Phone",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "relationship_to_student",
+   "fieldtype": "Data",
+   "label": "Relationship to Student"
+  },
+  {
+   "fieldname": "requested_grade_level",
+   "fieldtype": "Data",
+   "label": "Requested Grade Level"
+  },
+  {
+   "fieldname": "program_interest",
+   "fieldtype": "Link",
+   "label": "Program Interest",
+   "options": "Program"
+  },
+  {
+   "fieldname": "staff_section",
+   "fieldtype": "Section Break",
+   "label": "Staff"
+  },
+  {
+   "fieldname": "lead_user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Visit Lead",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "staff",
+   "fieldtype": "Table",
+   "label": "Additional Visit Staff",
+   "options": "Admission Visit Staff"
+  },
+  {
+   "fieldname": "informed_users",
+   "fieldtype": "Table",
+   "label": "Users To Inform",
+   "options": "Admission Visit Informed User"
+  },
+  {
+   "fieldname": "notes_section",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "description": "Internal preparation notes for admissions staff. Avoid storing sensitive assessment feedback here.",
+   "fieldname": "internal_notes",
+   "fieldtype": "Text Editor",
+   "label": "Internal Notes"
+  },
+  {
+   "fieldname": "projection_section",
+   "fieldtype": "Section Break",
+   "label": "Calendar and CRM Projection"
+  },
+  {
+   "fieldname": "school_event",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "School Event",
+   "options": "School Event",
+   "read_only": 1
+  },
+  {
+   "fieldname": "booked_crm_activity",
+   "fieldtype": "Link",
+   "label": "Booked CRM Activity",
+   "options": "Admission CRM Activity",
+   "read_only": 1
+  },
+  {
+   "fieldname": "attended_crm_activity",
+   "fieldtype": "Link",
+   "label": "Attended CRM Activity",
+   "options": "Admission CRM Activity",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-05-21 21:28:15.000000",
+ "modified_by": "Administrator",
+ "module": "Admission",
+ "name": "Admission Visit",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "visit_title, visitor_name, inquiry, student_applicant, school_event",
+ "sort_field": "starts_on",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "visit_title"
+}
