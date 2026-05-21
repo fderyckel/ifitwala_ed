@@ -7,25 +7,32 @@
 					class="inline-flex items-center gap-2 type-caption text-ink/70 transition hover:text-ink"
 				>
 					<span>←</span>
-					<span>Back to Class Hub</span>
+					<span>{{ __('Back to Class Hub') }}</span>
 				</RouterLink>
 				<div class="page-header">
 					<div class="page-header__intro">
-						<p class="type-overline text-ink/60">Class Delivery</p>
+						<p class="type-overline text-ink/60">{{ __('Class Delivery') }}</p>
 						<h1 class="mt-2 type-h1 text-canopy">
-							{{ surface?.group.title || studentGroup || 'Class Delivery' }}
+							{{ surface?.group.title || studentGroup || __('Class Delivery') }}
 						</h1>
 						<p class="mt-2 max-w-3xl type-meta text-slate-token/80">
-							Keep the shared unit backbone intact while adapting pacing, session design, and
-							student-visible delivery for this class.
+							{{
+								__(
+									'Keep the shared unit backbone intact while adapting pacing, session design, and student-visible delivery for this class.'
+								)
+							}}
 						</p>
 					</div>
 					<div class="page-header__actions">
-						<span class="chip">{{ surface?.group.course || 'Course pending' }}</span>
-						<span class="chip">{{ surface?.curriculum.units.length || 0 }} units</span>
-						<span class="chip">{{ surface?.curriculum.session_count || 0 }} sessions</span>
+						<span class="chip">{{ surface?.group.course || __('Course pending') }}</span>
+						<span class="chip">{{ __('{0} units', [surface?.curriculum.units.length || 0]) }}</span>
+						<span class="chip">{{
+							__('{0} sessions', [surface?.curriculum.session_count || 0])
+						}}</span>
 						<span class="chip"
-							>{{ surface?.curriculum.assigned_work_count || 0 }} assigned work</span
+							>{{
+								__('{0} assigned work', [surface?.curriculum.assigned_work_count || 0])
+							}}</span
 						>
 						<span v-if="surface?.teaching_plan?.planning_status" class="chip">
 							{{ surface.teaching_plan.planning_status }}
@@ -39,7 +46,7 @@
 			v-if="errorMessage"
 			class="rounded-2xl border border-flame/30 bg-[var(--flame)]/5 px-5 py-4"
 		>
-			<p class="type-body-strong text-flame">Could not load Class Delivery.</p>
+			<p class="type-body-strong text-flame">{{ __('Could not load Class Delivery.') }}</p>
 			<p class="mt-1 type-caption text-ink/70">{{ errorMessage }}</p>
 		</section>
 
@@ -47,7 +54,7 @@
 			v-else-if="loading && !surface"
 			class="rounded-2xl border border-line-soft bg-white px-5 py-8"
 		>
-			<p class="type-body text-ink/70">Loading Class Delivery...</p>
+			<p class="type-body text-ink/70">{{ __('Loading Class Delivery...') }}</p>
 		</section>
 
 		<template v-else-if="surface">
@@ -56,11 +63,14 @@
 				class="grid gap-6 rounded-[2rem] border border-line-soft bg-white p-6 xl:grid-cols-[minmax(0,18rem),minmax(0,1fr)]"
 			>
 				<div class="space-y-3">
-					<p class="type-overline text-ink/60">Step 1</p>
-					<h2 class="type-h2 text-ink">Create Class Delivery</h2>
+					<p class="type-overline text-ink/60">{{ __('Step 1') }}</p>
+					<h2 class="type-h2 text-ink">{{ __('Create Class Delivery') }}</h2>
 					<p class="type-body text-ink/80">
-						Select the Course Plan this class will use. The shared unit backbone stays intact,
-						while pacing, sessions, assigned work, and class resources become class-owned.
+						{{
+							__(
+								'Select the Course Plan this class will use. The shared unit backbone stays intact, while pacing, sessions, assigned work, and class resources become class-owned.'
+							)
+						}}
 					</p>
 				</div>
 
@@ -69,17 +79,21 @@
 						v-if="!surface.course_plans.length"
 						class="rounded-2xl border border-dashed border-line-soft p-5"
 					>
-						<p class="type-body-strong text-ink">No course plans are available yet.</p>
+						<p class="type-body-strong text-ink">
+							{{ __('No course plans are available yet.') }}
+						</p>
 						<p class="mt-2 type-caption text-ink/70">
-							Create the shared course plan and unit backbone before creating Class Delivery.
+							{{
+								__('Create the shared course plan and unit backbone before creating Class Delivery.')
+							}}
 						</p>
 					</div>
 
 					<template v-else>
 						<label class="block space-y-2">
-							<span class="type-caption text-ink/70">Governing Course Plan</span>
+							<span class="type-caption text-ink/70">{{ __('Governing Course Plan') }}</span>
 							<select v-model="draftCoursePlan" class="if-input w-full">
-								<option value="">Select a course plan</option>
+								<option value="">{{ __('Select a course plan') }}</option>
 								<option
 									v-for="plan in surface.course_plans"
 									:key="plan.course_plan"
@@ -100,11 +114,11 @@
 									<div>
 										<p class="type-body-strong text-ink">{{ plan.title }}</p>
 										<p class="mt-1 type-caption text-ink/70">
-											{{ plan.academic_year || 'No academic year' }}
+											{{ plan.academic_year || __('No academic year') }}
 											<span v-if="plan.cycle_label">· {{ plan.cycle_label }}</span>
 										</p>
 									</div>
-									<span class="chip">{{ plan.plan_status || 'Draft' }}</span>
+									<span class="chip">{{ plan.plan_status || __('Draft') }}</span>
 								</div>
 							</article>
 						</div>
@@ -116,10 +130,10 @@
 								:disabled="!draftCoursePlan || createPending"
 								@click="handleCreatePlan"
 							>
-								{{ createPending ? 'Creating...' : 'Create Class Delivery' }}
+								{{ createPending ? __('Creating...') : __('Create Class Delivery') }}
 							</button>
 							<p class="type-caption text-ink/70">
-								Students see shared resources once Class Delivery is active.
+								{{ __('Students see shared resources once Class Delivery is active.') }}
 							</p>
 						</div>
 					</template>
@@ -135,14 +149,14 @@
 						<div class="space-y-4">
 							<div class="flex items-center justify-between gap-3">
 								<div>
-									<p class="type-overline text-ink/60">Class Delivery</p>
+									<p class="type-overline text-ink/60">{{ __('Class Delivery') }}</p>
 									<h2 class="mt-1 type-h3 text-ink">{{ surface.teaching_plan.title }}</h2>
 								</div>
-								<span class="chip">{{ surface.teaching_plan.planning_status || 'Draft' }}</span>
+								<span class="chip">{{ surface.teaching_plan.planning_status || __('Draft') }}</span>
 							</div>
 
 							<label v-if="surface.class_teaching_plans.length > 1" class="block space-y-2">
-								<span class="type-caption text-ink/70">Switch plan</span>
+								<span class="type-caption text-ink/70">{{ __('Switch plan') }}</span>
 								<select
 									:value="surface.resolved.class_teaching_plan || ''"
 									class="if-input w-full"
@@ -159,21 +173,21 @@
 							</label>
 
 							<label class="block space-y-2">
-								<span class="type-caption text-ink/70">Student portal status</span>
+								<span class="type-caption text-ink/70">{{ __('Student portal status') }}</span>
 								<select v-model="planForm.planning_status" class="if-input w-full">
-									<option value="Draft">Draft</option>
-									<option value="Active">Active</option>
-									<option value="Archived">Archived</option>
+									<option value="Draft">{{ __('Draft') }}</option>
+									<option value="Active">{{ __('Active') }}</option>
+									<option value="Archived">{{ __('Archived') }}</option>
 								</select>
 							</label>
 
 							<label class="block space-y-2">
-								<span class="type-caption text-ink/70">Teaching team note</span>
+								<span class="type-caption text-ink/70">{{ __('Teaching team note') }}</span>
 								<textarea
 									v-model="planForm.team_note"
 									rows="5"
 									class="if-input min-h-[8rem] w-full resize-y"
-									placeholder="Shared planning note for the teaching team"
+									:placeholder="__('Shared planning note for the teaching team')"
 								/>
 							</label>
 
@@ -183,7 +197,7 @@
 								:disabled="planPending"
 								@click="handleSavePlan"
 							>
-								{{ planPending ? 'Saving...' : 'Save Delivery Overview' }}
+								{{ planPending ? __('Saving...') : __('Save Delivery Overview') }}
 							</button>
 
 							<RouterLink
@@ -198,7 +212,7 @@
 								}"
 								class="if-action"
 							>
-								Open Shared Course Plan
+								{{ __('Open Shared Course Plan') }}
 							</RouterLink>
 						</div>
 					</section>
@@ -206,10 +220,10 @@
 					<section class="rounded-[2rem] border border-line-soft bg-white p-5 shadow-soft">
 						<div class="mb-4 flex items-center justify-between gap-3">
 							<div>
-								<p class="type-overline text-ink/60">Unit Backbone</p>
-								<h2 class="mt-1 type-h3 text-ink">Class-owned pacing</h2>
+								<p class="type-overline text-ink/60">{{ __('Unit Backbone') }}</p>
+								<h2 class="mt-1 type-h3 text-ink">{{ __('Class-owned pacing') }}</h2>
 							</div>
-							<span class="chip">{{ surface.curriculum.units.length }} units</span>
+							<span class="chip">{{ __('{0} units', [surface.curriculum.units.length]) }}</span>
 						</div>
 
 						<div
@@ -217,7 +231,7 @@
 							class="rounded-2xl border border-dashed border-line-soft p-4"
 						>
 							<p class="type-caption text-ink/70">
-								This course plan does not have any governed units yet.
+								{{ __('This course plan does not have any governed units yet.') }}
 							</p>
 						</div>
 
@@ -236,14 +250,16 @@
 							>
 								<div class="flex items-start justify-between gap-3">
 									<div class="min-w-0">
-										<p class="type-overline text-ink/60">Unit {{ unit.unit_order || '—' }}</p>
+										<p class="type-overline text-ink/60">
+											{{ __('Unit {0}', [unit.unit_order || '—']) }}
+										</p>
 										<p class="mt-1 type-body-strong text-ink">{{ unit.title }}</p>
 										<p class="mt-1 type-caption text-ink/70">
-											{{ unit.sessions.length }} sessions
+											{{ __('{0} sessions', [unit.sessions.length]) }}
 										</p>
 									</div>
 									<span class="chip">{{
-										unit.resolved_pacing_status || unit.pacing_status || 'Not Started'
+										unit.resolved_pacing_status || unit.pacing_status || __('Not Started')
 									}}</span>
 								</div>
 							</button>
