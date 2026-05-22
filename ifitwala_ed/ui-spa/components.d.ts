@@ -14,6 +14,7 @@ declare module 'vue' {
     ActivityCommunicationPanel: typeof import('./src/components/activity/ActivityCommunicationPanel.vue')['default']
     ActivityOfferingCard: typeof import('./src/components/activity/ActivityOfferingCard.vue')['default']
     ActivityStatusBadge: typeof import('./src/components/activity/ActivityStatusBadge.vue')['default']
+    AdmissionsTimelinePanel: typeof import('./src/components/admissions/AdmissionsTimelinePanel.vue')['default']
     AnalyticsCard: typeof import('./src/components/analytics/AnalyticsCard.vue')['default']
     AnalyticsChart: typeof import('./src/components/analytics/AnalyticsChart.vue')['default']
     AnalyticsTextPreview: typeof import('./src/components/analytics/AnalyticsTextPreview.vue')['default']
