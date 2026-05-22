@@ -7,14 +7,14 @@ This file translates the completed Phase 1 audit into execution order and implem
 ## 2. Source Summary
 
 - Current audit path used: `.i18n-audit/current.json`
-- Current audit generated at: `2026-05-20T10:37:50.753247+00:00`
-- Files scanned: 2100
-- Findings: 10097
-- Warning findings: 1952
+- Current audit generated at: `2026-05-21T15:07:43.136606+00:00`
+- Files scanned: 2109
+- Findings: 10089
+- Warning findings: 1863
 - Critical findings: 0
-- Normalization-first findings: 328
-- Review-needed findings: 1782
-- Safe-mechanical findings: 7987
+- Normalization-first findings: 333
+- Review-needed findings: 1795
+- Safe-mechanical findings: 7961
 - Current exit decision: `READY FOR CONTROLLED PHASE 2F NON-ADMISSIONS SPA FOLLOW-UP WITH RISKS`
 
 Historical note:
@@ -25,6 +25,7 @@ Historical note:
 - The Admissions Workspace overlay follow-up is complete: `ifitwala_ed/ui-spa/src/overlays/admissions/AdmissionsWorkspaceOverlay.vue` has zero current warning findings.
 - The Admissions Cockpit follow-up is complete: `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue` has zero current warning findings.
 - The Task Delivery overlay follow-up is complete: `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue` has zero current warning findings.
+- The Class Planning follow-up is complete: `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue` has zero current warning findings.
 
 ## 3. Triage Model
 
@@ -67,11 +68,11 @@ Notes:
 
 | Surface | Bucket A | Bucket B | Bucket C | Bucket D | Notes |
 | ------- | -------- | -------- | -------- | -------- | ----- |
-| Python backend | 0 warning / 1 safe warning before cleanup | 0 warning | 42 info | 1741 info | Warning-level backend raw-message debt is cleared; remaining backend findings are dynamic/raw review or wrapped-literal review and need human triage before changes. |
+| Python backend | 0 warning / 1 safe warning before cleanup | 0 warning | 42 info | 1754 info | Warning-level backend raw-message debt is cleared; remaining backend findings are dynamic/raw review or wrapped-literal review and need human triage before changes. |
 | Desk JS / classic client scripts | 0 warning | 0 warning | 54 info | 14 info | Existing wrapped literals need normalization/review, not broad mechanical wrapping. |
-| Vue SPA | 1793 warning | 0 warning | 223 info | 13 info | Largest current warning surface; mostly raw template text and component attributes. |
+| Vue SPA | 1704 warning | 0 warning | 228 info | 13 info | Largest current warning surface; mostly raw template text and component attributes. |
 | templates / website / print markup | 159 warning | 0 warning | 9 info | 14 info | Smaller than SPA but public/print-facing and should follow the SPA pilot rather than mix into it. |
-| metadata DocTypes/workspaces/reports/json | 5981 info | 0 warning | 0 | 0 | Catalog extraction should cover these through the Frappe gettext pipeline; do not hand-edit metadata solely for translation convenience. |
+| metadata DocTypes/workspaces/reports/json | 6098 info | 0 warning | 0 | 0 | Catalog extraction should cover these through the Frappe gettext pipeline; do not hand-edit metadata solely for translation convenience. |
 
 ## 5. Batch Strategy
 
@@ -190,7 +191,7 @@ Current status:
 
 - Complete. Current audit reports zero warning findings in `ifitwala_ed/ui-spa/src/components/tasks/CreateTaskDeliveryOverlay.vue`.
 
-## 6.5 Current Recommended Execution Batch
+## 6.5 Completed Vue Follow-Up Batch
 
 ## Batch 6 Scope
 
@@ -204,6 +205,25 @@ Current status:
 | File / Surface | Current Warning Count | Reason Included | Exclusions / Risks |
 | -------------- | --------------------- | --------------- | ------------------ |
 | `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue` | 89 | Largest current Vue warning file after the task delivery overlay batch. | Read the class planning and curriculum task-delivery contracts first; exclude workflow statuses, payload keys, route names, and server-owned labels. |
+
+Current status:
+
+- Complete. Current audit reports zero warning findings in `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`.
+
+## 6.6 Current Recommended Execution Batch
+
+## Batch 7 Scope
+
+- Vue SPA non-admissions follow-up only
+- warning-level `safe_mechanical` findings only
+- raw visible template text and display-only attributes only
+- no normalization-first findings
+- no review-needed findings
+- no backend, Desk JS, metadata, templates, website, report, or print markup in the same batch
+
+| File / Surface | Current Warning Count | Reason Included | Exclusions / Risks |
+| -------------- | --------------------- | --------------- | ------------------ |
+| `ifitwala_ed/ui-spa/src/components/planning/course-plan-workspace/CoursePlanUnitEditor.vue` | 86 | Largest current Vue warning file after the Class Planning batch. | Read the course-plan workspace and curriculum contracts first; exclude workflow statuses, payload keys, route names, and server-owned labels. |
 
 ## 7. Explicit Exclusions from Batch 1
 
@@ -226,7 +246,7 @@ Current status:
 2. Phase 2c — one Vue admissions pilot page: complete.
 3. Phase 2d — remaining admissions SPA surfaces after pilot review: complete for the workspace overlay.
 4. Phase 2e — remaining admissions cockpit SPA page: complete.
-5. Phase 2f — remaining Vue/shared components by product surface: in progress; next target is `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue`.
+5. Phase 2f — remaining Vue/shared components by product surface: in progress; next target is `ifitwala_ed/ui-spa/src/components/planning/course-plan-workspace/CoursePlanUnitEditor.vue`.
 6. Phase 2g — templates / website / report / print markup surfaces.
 7. Phase 2h — review-needed and normalization-first triage.
 8. Phase 2i — extraction/catalog generation.
@@ -246,4 +266,4 @@ PHASE 2F READY WITH RISKS
 
 ## Next Agent Task Recommendation
 
-Phase 2f — Batch 6: wrap warning-level safe-mechanical strings in `ifitwala_ed/ui-spa/src/pages/staff/ClassPlanning.vue` only, after reading the relevant class planning and curriculum contracts.
+Phase 2f — Batch 7: wrap warning-level safe-mechanical strings in `ifitwala_ed/ui-spa/src/components/planning/course-plan-workspace/CoursePlanUnitEditor.vue` only, after reading the relevant course-plan workspace and curriculum contracts.

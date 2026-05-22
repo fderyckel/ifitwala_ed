@@ -1,7 +1,7 @@
 # Contact Data Governance - No Universal Address Book
 
 Status: Locked target architecture with current-runtime gap register
-Last updated: 2026-05-19
+Last updated: 2026-05-22
 Code refs:
 - `ifitwala_ed/setup/setup.py`
 - `ifitwala_ed/hooks.py`
@@ -53,6 +53,7 @@ Rules:
 5. Supplier, partner, and external relationship contact data must stay owned by their domain records when those workflows are implemented.
 6. Native Frappe `Contact` is not the target canonical registry for education people data.
 7. New work must not add another "everything becomes Contact" path.
+8. Planned Education Relationship CRM work must store or resolve contact data through relationship-owned records or an approved contact-point service, not by widening native `Contact` access.
 
 ## 2. Product Rule
 
@@ -65,6 +66,7 @@ Allowed product patterns:
 - email admissions applicants missing documents
 - notify employees assigned to a supervised activity
 - contact a payer from a scoped finance workflow
+- record a purpose-bound touchpoint with a sponsor, partner, feeder school, employer, alumni, foundation, or current family through an approved Education Relationship CRM workflow
 
 Rejected product patterns:
 
@@ -73,8 +75,16 @@ Rejected product patterns:
 - report-builder access over all personal contact values
 - client-side filtering of broad person/contact payloads
 - raw email or phone lists when a server-side recipient resolver can perform the action
+- generic partner, sponsor, alumni, or family contact browsing outside a named relationship workflow
 
 Blocked actions must explain why the action is blocked and what the user can do next.
+
+Planned Education Relationship CRM authority:
+
+- `../relationship_crm/01_education_relationship_crm_contract.md`
+- `../relationship_crm/03_relationship_scope_and_visibility_contract.md`
+
+Those planned contracts do not weaken this contact governance rule.
 
 ## 3. Target Contact Point Layer
 

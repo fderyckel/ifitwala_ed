@@ -1,12 +1,12 @@
 # Admissions Inbox SPA Contract
 
-Status: Backend context endpoint, Phase 3B staff SPA queue route, Phase 3C controlled action drawer, Phase 3D ownership/triage workflows, Phase 3D.5 CRM intake, and Phase 3E applicant-stage message aggregation implemented; provider and media workflows planned
-Code refs: `ifitwala_ed/api/admissions_inbox.py`, `ifitwala_ed/api/admissions_crm.py`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsInbox.vue`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsInboxService.ts`, `ifitwala_ed/ui-spa/src/types/contracts/admissions_inbox/get_admissions_inbox_context.ts`, CRM DocTypes under `ifitwala_ed/admission/doctype/admission_*`
-Test refs: `ifitwala_ed/api/test_admissions_inbox.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsInbox.test.ts`, `ifitwala_ed/ui-spa/src/lib/services/admissions/__tests__/admissionsInboxService.test.ts`, `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`, `ifitwala_ed/admission/doctype/admission_visit/test_admission_visit.py`
+Status: Backend context endpoint, Phase 3B staff SPA queue route, Phase 3C controlled action drawer, Phase 3D ownership/triage workflows, Phase 3D.5 CRM intake, Phase 3E applicant-stage message aggregation, and backend contextual Admissions Timeline endpoint implemented; provider, media, and SPA timeline-panel workflows planned
+Code refs: `ifitwala_ed/api/admissions_inbox.py`, `ifitwala_ed/api/admissions_crm.py`, `ifitwala_ed/api/admissions_timeline.py`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsInbox.vue`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsInboxService.ts`, `ifitwala_ed/ui-spa/src/types/contracts/admissions_inbox/get_admissions_inbox_context.ts`, CRM DocTypes under `ifitwala_ed/admission/doctype/admission_*`
+Test refs: `ifitwala_ed/api/test_admissions_inbox.py`, `ifitwala_ed/api/test_admissions_timeline.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsInbox.test.ts`, `ifitwala_ed/ui-spa/src/lib/services/admissions/__tests__/admissionsInboxService.test.ts`, `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`, `ifitwala_ed/admission/doctype/admission_visit/test_admission_visit.py`
 
 This note defines the staff-side Admissions Inbox surface.
 
-Current runtime behavior includes the backend context endpoint, staff SPA queue route, controlled action drawer, ownership/triage actions for Admission Conversation and Inquiry records, manual CRM intake, and applicant-stage case message aggregation. Provider replies, contact creation, and governed media conversion are still planned.
+Current runtime behavior includes the backend context endpoint, staff SPA queue route, controlled action drawer, ownership/triage actions for Admission Conversation and Inquiry records, manual CRM intake, applicant-stage case message aggregation, and the backend contextual timeline endpoint. Provider replies, contact creation, governed media conversion, and SPA timeline panels are still planned.
 
 ## 1. Authority
 
@@ -21,6 +21,7 @@ This contract inherits:
 - `../admission/01_governance.md`
 - `../admission/05_admission_portal.md`
 - `../admission/11_admissions_crm_contract.md`
+- `../relationship_crm/02_contextual_timeline_contract.md`
 - `../files_and_policies/README.md`
 
 If a UI design conflicts with server-side admissions governance, the server contract wins.
@@ -38,6 +39,12 @@ It is not:
 - a raw provider console
 
 It must turn every parent/inquirer message into an owned admissions next action.
+
+Planned direction:
+
+- the Inbox action drawer should converge with the contextual admissions timeline pattern described in `../relationship_crm/02_contextual_timeline_contract.md`
+- users should see education-context actions, not backend ledger names
+- broader school relationship work belongs in the future Relationship Center, not by stretching Admissions Inbox into a generic CRM
 
 ## 3. Route
 
@@ -78,6 +85,8 @@ Implemented Phase 3A backend context includes:
 - applicant-stage case message summaries from `Org Communication` when a linked applicant thread exists
 
 Phase 3E aggregates applicant-stage `Org Communication` read state and portal-message needs-reply state through the admissions communication summary helper.
+
+The backend contextual timeline endpoint projects more admissions milestones into one bounded DTO, including Admission Visit, Applicant Enrollment Plan, deposit, Program Enrollment Request, and Program Enrollment state. Admissions Inbox integration is still planned. That projection must preserve each source ledger as the source of truth and must remain bounded by the endpoint contract.
 
 ## 5. Endpoint Shape
 

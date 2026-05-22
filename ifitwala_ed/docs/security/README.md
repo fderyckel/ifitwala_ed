@@ -16,3 +16,6 @@ Canonical docs:
   Code refs: Listed in the document.
   Test refs: Listed in the document.
 
+Related planned product contracts:
+
+- `../relationship_crm/README.md` - planned education-native Relationship CRM contracts. These do not weaken contact governance or approve broad native `Contact` access.

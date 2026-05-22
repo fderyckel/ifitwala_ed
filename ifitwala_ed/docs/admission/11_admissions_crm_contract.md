@@ -1,12 +1,12 @@
 # Admissions CRM Contract
 
 Status: Partial implementation
-Code refs: `ifitwala_ed/admission/doctype/inquiry/inquiry.json`, `ifitwala_ed/admission/web_form/inquiry/inquiry.json`, `ifitwala_ed/admission/web_form/inquiry/inquiry.js`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/admission_acknowledgement_profile.json`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/admission_acknowledgement_profile.js`, `ifitwala_ed/admission/inquiry_acknowledgement.py`, `ifitwala_ed/admission/doctype/admission_channel_account/*`, `ifitwala_ed/admission/doctype/admission_external_identity/*`, `ifitwala_ed/admission/doctype/admission_conversation/*`, `ifitwala_ed/admission/doctype/admission_message/*`, `ifitwala_ed/admission/doctype/admission_crm_activity/*`, `ifitwala_ed/admission/doctype/admission_visit/*`, `ifitwala_ed/api/admissions_crm.py`, `ifitwala_ed/api/admissions_inbox.py`
-Test refs: `ifitwala_ed/admission/doctype/inquiry/test_inquiry.py`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/test_admission_acknowledgement_profile.py`, `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`, `ifitwala_ed/admission/doctype/admission_visit/test_admission_visit.py`, `ifitwala_ed/api/test_admissions_inbox.py`
+Code refs: `ifitwala_ed/admission/doctype/inquiry/inquiry.json`, `ifitwala_ed/admission/web_form/inquiry/inquiry.json`, `ifitwala_ed/admission/web_form/inquiry/inquiry.js`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/admission_acknowledgement_profile.json`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/admission_acknowledgement_profile.js`, `ifitwala_ed/admission/inquiry_acknowledgement.py`, `ifitwala_ed/admission/doctype/admission_channel_account/*`, `ifitwala_ed/admission/doctype/admission_external_identity/*`, `ifitwala_ed/admission/doctype/admission_conversation/*`, `ifitwala_ed/admission/doctype/admission_message/*`, `ifitwala_ed/admission/doctype/admission_crm_activity/*`, `ifitwala_ed/admission/doctype/admission_visit/*`, `ifitwala_ed/api/admissions_crm.py`, `ifitwala_ed/api/admissions_inbox.py`, `ifitwala_ed/api/admissions_timeline.py`
+Test refs: `ifitwala_ed/admission/doctype/inquiry/test_inquiry.py`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/test_admission_acknowledgement_profile.py`, `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`, `ifitwala_ed/admission/doctype/admission_visit/test_admission_visit.py`, `ifitwala_ed/api/test_admissions_inbox.py`, `ifitwala_ed/api/test_admissions_timeline.py`
 
-This note defines the planned admissions CRM model for Inquiry-stage lead handling and external-channel messaging.
+This note defines the current and planned admissions CRM model for Inquiry-stage lead handling and external-channel messaging.
 
-Phase 1 Inquiry dynamic capture, public family acknowledgement, Phase 2A CRM core manual mode, Phase 3A Admissions Inbox backend context endpoint, Phase 3B/3C staff Inbox route and action drawer, Phase 3D ownership/triage workflows, Phase 3D.5 CRM intake, Phase 3E applicant-stage message aggregation, and the backend Admission Visit workflow are implemented.
+Phase 1 Inquiry dynamic capture, public family acknowledgement, Phase 2A CRM core manual mode, Phase 3A Admissions Inbox backend context endpoint, Phase 3B/3C staff Inbox route and action drawer, Phase 3D ownership/triage workflows, Phase 3D.5 CRM intake, Phase 3E applicant-stage message aggregation, the backend Admission Visit workflow, and the backend contextual Admissions Timeline endpoint are implemented.
 
 Provider adapters, governed media conversion, and lead-scoring/read-model work remain planned until their referenced SPA surfaces, APIs, and tests are implemented.
 
@@ -24,8 +24,11 @@ This contract must remain consistent with:
 - `../files_and_policies/files_07_education_file_semantics_and_cross_app_contract.md`
 - `../spa/07_org_communication_messaging_contract.md`
 - `../spa/17_admissions_inbox_contract.md`
+- `../relationship_crm/README.md`
+- `../relationship_crm/01_education_relationship_crm_contract.md`
+- `../relationship_crm/02_contextual_timeline_contract.md`
 
-If this planned CRM contract conflicts with the locked admissions pipeline or governed-file contracts, those existing contracts win.
+If this CRM contract conflicts with the locked admissions pipeline or governed-file contracts, those existing contracts win.
 
 ## 2. Pipeline Boundary
 
@@ -43,6 +46,52 @@ Responsibilities:
 - `Org Communication` remains the current applicant-stage case communication container for authenticated applicant portal messages.
 
 No CRM work may create a parallel applicant container or bypass `Student Applicant`.
+
+### 2.1 Contextual Timeline Direction
+
+Status: Backend endpoint implemented; SPA and Desk timeline entry points planned.
+Code refs: `ifitwala_ed/api/admissions_timeline.py`; current source ledgers are listed in this document and `../spa/17_admissions_inbox_contract.md`
+Test refs: `ifitwala_ed/api/test_admissions_timeline.py`
+
+Admissions users should not need to know which backend ledger stores a visible item.
+
+The implemented backend timeline is available for Inquiry, Student Applicant, and Admission Conversation contexts. The planned product direction is to reuse that pattern from Inquiry, Student Applicant, Admissions Inbox, and Admissions Cockpit. The timeline may project existing ledgers together, but it must not merge their storage models:
+
+- Inquiry remains intake and triage.
+- Admission Conversation, Admission Message, and Admission CRM Activity remain pre-applicant CRM support records.
+- Admission Visit remains the visit workflow truth.
+- Org Communication remains applicant-stage case communication truth.
+- Applicant Enrollment Plan remains offer, family response, deposit, and enrollment-handoff truth.
+
+`Student Applicant.application_status` must not be overloaded to mean "admissions complete." The admissions completion ladder is a derived read-model projection unless a later approved contract defines persistent fields:
+
+```text
+Lead -> Applicant -> Submitted -> Approved -> Offer Sent -> Offer Accepted -> Deposit Ready -> Promoted -> Enrollment Request -> Enrolled -> Identity Upgraded
+```
+
+Contextual actions such as Log Activity, Log Message, Schedule Visit, Message Family, Manage Offer, Check Deposit, and Promote must be server-owned workflows that preserve the current ledger boundaries.
+
+### 2.2 Education Relationship CRM Boundary
+
+Status: Planned target behavior; no Relationship CRM schema is implemented yet.
+Code refs: None for planned Relationship CRM DocTypes.
+Test refs: None.
+
+The broader institutional CRM direction lives in `../relationship_crm/01_education_relationship_crm_contract.md`.
+
+Admissions CRM must not become the whole-school CRM.
+
+The future Relationship CRM may receive explicit handoffs from:
+
+- non-admission inquiries
+- partnership or agent inquiries
+- sponsorship discussions
+- current-family relationship work
+- feeder-school, employer, university, alumni, or community-partner work
+
+Those handoffs must be explicit staff actions. A public Inquiry submission must not automatically create an Education Relationship or Relationship Case.
+
+Until the Relationship CRM schema and workflow endpoints are approved, `Inquiry.type_of_inquiry = Partnership / Agent` remains triage context only and must not create a supplier, agent, partner, sponsor, or relationship record by itself.
 
 ## 3. Inquiry Schema Rule
 
