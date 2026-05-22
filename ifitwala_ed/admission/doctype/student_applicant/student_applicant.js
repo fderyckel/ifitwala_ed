@@ -22,33 +22,67 @@ function admissions_timeline_desk() {
 	return window.ifitwala_ed && window.ifitwala_ed.admissionsTimeline;
 }
 
-function run_admissions_context_action(frm, action_id) {
+function with_admissions_timeline_desk(callback, unavailable_message) {
 	const helper = admissions_timeline_desk();
-	if (!helper || typeof helper.loadContextThenRun !== "function") {
-		frappe.msgprint(__("Admissions timeline actions are not available. Please refresh Desk and try again."));
+	if (helper) {
+		callback(helper);
 		return;
 	}
-	helper.loadContextThenRun(
-		{
-			contextDoctype: "Student Applicant",
-			contextName: frm.doc.name,
-			sourceFrm: frm,
+
+	if (!frappe.require) {
+		frappe.msgprint(unavailable_message);
+		return;
+	}
+
+	frappe.show_alert({
+		message: __("Loading admissions timeline actions..."),
+		indicator: "blue",
+	});
+	frappe.require("/assets/ifitwala_ed/js/admissions_timeline_desk.js", () => {
+		const loaded_helper = admissions_timeline_desk();
+		if (!loaded_helper) {
+			frappe.msgprint(unavailable_message);
+			return;
+		}
+		callback(loaded_helper);
+	});
+}
+
+function run_admissions_context_action(frm, action_id) {
+	with_admissions_timeline_desk(
+		(helper) => {
+			if (typeof helper.loadContextThenRun !== "function") {
+				frappe.msgprint(__("Admissions timeline actions are not available. Please refresh Desk and try again."));
+				return;
+			}
+			helper.loadContextThenRun(
+				{
+					contextDoctype: "Student Applicant",
+					contextName: frm.doc.name,
+					sourceFrm: frm,
+				},
+				action_id
+			);
 		},
-		action_id
+		__("Admissions timeline actions are not available. Please refresh Desk and try again.")
 	);
 }
 
 function open_admissions_timeline(frm) {
-	const helper = admissions_timeline_desk();
-	if (!helper || typeof helper.openTimelineDialog !== "function") {
-		frappe.msgprint(__("Admissions timeline is not available. Please refresh Desk and try again."));
-		return;
-	}
-	helper.openTimelineDialog({
-		contextDoctype: "Student Applicant",
-		contextName: frm.doc.name,
-		sourceFrm: frm,
-	});
+	with_admissions_timeline_desk(
+		(helper) => {
+			if (typeof helper.openTimelineDialog !== "function") {
+				frappe.msgprint(__("Admissions timeline is not available. Please refresh Desk and try again."));
+				return;
+			}
+			helper.openTimelineDialog({
+				contextDoctype: "Student Applicant",
+				contextName: frm.doc.name,
+				sourceFrm: frm,
+			});
+		},
+		__("Admissions timeline is not available. Please refresh Desk and try again.")
+	);
 }
 
 function add_admissions_context_actions(frm) {
