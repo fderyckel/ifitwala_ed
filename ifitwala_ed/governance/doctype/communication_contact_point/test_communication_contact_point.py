@@ -129,7 +129,7 @@ class TestCommunicationContactPointController(TestCase):
         )
         self.assertEqual(
             primary_index.kwargs["fields"],
-            ["owner_doctype", "owner_name", "organization", "school", "purpose", "channel_type", "is_primary", "disabled"],
+            ["owner_doctype", "owner_name", "school", "purpose", "channel_type", "is_primary", "disabled"],
         )
 
 

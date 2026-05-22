@@ -6,6 +6,15 @@ from frappe import _
 from frappe.model.document import Document
 
 COMMUNICATION_CONTACT_POINT_DOCTYPE = "Communication Contact Point"
+PRIMARY_SELECTION_INDEX_FIELDS = [
+    "owner_doctype",
+    "owner_name",
+    "school",
+    "purpose",
+    "channel_type",
+    "is_primary",
+    "disabled",
+]
 
 ALLOWED_OWNER_SUBJECT_DOCTYPES = frozenset({"Guardian", "Student", "Student Applicant", "Inquiry", "Employee"})
 SCHOOL_REQUIRED_DOCTYPES = frozenset({"Guardian", "Student", "Student Applicant"})
@@ -150,6 +159,6 @@ def on_doctype_update():
     )
     frappe.db.add_index(
         COMMUNICATION_CONTACT_POINT_DOCTYPE,
-        fields=["owner_doctype", "owner_name", "organization", "school", "purpose", "channel_type", "is_primary", "disabled"],
+        fields=PRIMARY_SELECTION_INDEX_FIELDS,
         index_name="idx_ccp_owner_primary",
     )

@@ -200,11 +200,13 @@ The implementation should add indexes for these read paths:
 | Subject lookup | `subject_doctype`, `subject_name`, `channel_type`, `disabled` |
 | Scoped recipient resolution | `organization`, `school`, `purpose`, `channel_type`, `disabled` |
 | Deduplication hint | `normalized_hash`, `organization`, `school`, `channel_type`, `disabled` |
-| Primary selection | `owner_doctype`, `owner_name`, `organization`, `school`, `purpose`, `channel_type`, `is_primary`, `disabled` |
+| Primary selection | `owner_doctype`, `owner_name`, `school`, `purpose`, `channel_type`, `is_primary`, `disabled` |
 
 Selecting a parent organization or school includes descendants only through server-side scope helpers. Sibling isolation remains mandatory.
 
 Exact-match school filtering is allowed only for workflows whose domain contract explicitly rejects descendant inheritance.
+
+The primary-selection index intentionally excludes `organization` so the physical MariaDB index stays within the 3072-byte key limit for utf8mb4 text columns. Runtime primary uniqueness remains enforced by the controller/service filters across `owner_doctype`, `owner_name`, `organization`, `school`, `purpose`, `channel_type`, `is_primary`, and `disabled`.
 
 ## 9. Validation Rules
 
