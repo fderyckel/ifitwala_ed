@@ -6,7 +6,7 @@ Test refs: None
 
 `ifitwala_ed/docs/relationship_crm/` is the canonical home for the education-native relationship CRM direction and contextual timeline projection rules.
 
-The contracts in this folder define target behavior before Relationship CRM schema and runtime implementation. The admissions backend timeline endpoint, Inbox/Cockpit SPA timeline drawers, and Inquiry/Student Applicant Desk entry points are implemented; the planned Relationship CRM DocTypes, Relationship Timeline endpoint, and Relationship CRM SPA routes do not exist today.
+The contracts in this folder define target behavior before Relationship CRM schema and runtime implementation. The admissions backend timeline endpoint, Inbox/Cockpit SPA timeline drawers, Cockpit applicant-stage offer/deposit/promotion drawer actions, Inbox/Cockpit schedule-visit drawer actions, and Inquiry/Student Applicant Desk entry points are implemented; the planned Relationship CRM DocTypes, Relationship Timeline endpoint, and Relationship CRM SPA routes do not exist today.
 
 Read in this order:
 

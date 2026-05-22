@@ -10,11 +10,15 @@ export const ADMISSION_API = {
 	dashboard: 'ifitwala_ed.api.inquiry.get_dashboard_data',
 	zeroLostLeadContext: 'ifitwala_ed.api.inquiry.get_zero_lost_lead_context',
 	admissionsCockpit: 'ifitwala_ed.api.admission_cockpit.get_admissions_cockpit_data',
+	admissionsCockpitGetOrCreateOfferPlan:
+		'ifitwala_ed.api.admission_cockpit.get_or_create_admissions_cockpit_offer_plan',
 	admissionsCockpitSendOffer: 'ifitwala_ed.api.admission_cockpit.send_admissions_cockpit_offer',
 	admissionsCockpitHydrateRequest:
 		'ifitwala_ed.api.admission_cockpit.hydrate_admissions_cockpit_request',
 	admissionsCockpitGenerateDepositInvoice:
 		'ifitwala_ed.api.admission_cockpit.generate_admissions_cockpit_deposit_invoice',
+	admissionsCockpitPromoteApplicant:
+		'ifitwala_ed.api.admission_cockpit.promote_admissions_cockpit_applicant',
 	admissionsCaseThread: 'ifitwala_ed.api.admissions_communication.get_admissions_case_thread',
 	admissionsCaseMessageSend:
 		'ifitwala_ed.api.admissions_communication.send_admissions_case_message',
@@ -69,6 +73,10 @@ export type AdmissionsCockpitAepActionRequest = {
 	applicant_enrollment_plan: string;
 };
 
+export type AdmissionsCockpitApplicantActionRequest = {
+	student_applicant: string;
+};
+
 export type AdmissionsCockpitAepActionResponse = {
 	ok: boolean;
 	applicant_enrollment_plan: string;
@@ -80,6 +88,28 @@ export type AdmissionsCockpitAepActionResponse = {
 	deposit?: Record<string, unknown>;
 	invoice?: Record<string, unknown>;
 };
+
+export type AdmissionsCockpitOfferPlanResponse = AdmissionsCockpitAepActionResponse & {
+	student_applicant: string;
+	created?: boolean;
+};
+
+export type AdmissionsCockpitPromoteApplicantResponse = {
+	ok: boolean;
+	student_applicant: string;
+	student?: string | null;
+	status?: string;
+	open_url?: string | null;
+};
+
+export function getOrCreateAdmissionsCockpitOfferPlan(
+	payload: AdmissionsCockpitApplicantActionRequest
+) {
+	return api(
+		ADMISSION_API.admissionsCockpitGetOrCreateOfferPlan,
+		payload
+	) as Promise<AdmissionsCockpitOfferPlanResponse>;
+}
 
 export function sendAdmissionsCockpitOffer(payload: AdmissionsCockpitAepActionRequest) {
 	return api(
@@ -100,6 +130,13 @@ export function generateAdmissionsCockpitDepositInvoice(payload: AdmissionsCockp
 		ADMISSION_API.admissionsCockpitGenerateDepositInvoice,
 		payload
 	) as Promise<AdmissionsCockpitAepActionResponse>;
+}
+
+export function promoteAdmissionsCockpitApplicant(payload: AdmissionsCockpitApplicantActionRequest) {
+	return api(
+		ADMISSION_API.admissionsCockpitPromoteApplicant,
+		payload
+	) as Promise<AdmissionsCockpitPromoteApplicantResponse>;
 }
 
 export type AdmissionsCaseThreadRequest = {

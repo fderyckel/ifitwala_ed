@@ -138,9 +138,19 @@
 						</dl>
 
 						<footer class="inbox-row-card__footer">
-							<div class="inbox-row-card__footer-actions">
-								<button
-									v-if="hasRowActions(row)"
+								<div class="inbox-row-card__footer-actions">
+									<button
+										v-if="canScheduleVisit(row)"
+										type="button"
+										:data-testid="`inbox-schedule-visit-${row.id}`"
+										class="if-button if-button--quiet"
+										@click="openScheduleVisit(row)"
+									>
+										<FeatherIcon name="calendar" class="h-4 w-4" />
+										<span>{{ __('Schedule Visit') }}</span>
+									</button>
+									<button
+										v-if="hasRowActions(row)"
 									type="button"
 									:data-testid="`inbox-actions-${row.id}`"
 									class="if-button if-button--quiet"
@@ -710,11 +720,12 @@
 	</div>
 </template>
 
-<script setup lang="ts">
+	<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { FeatherIcon } from 'frappe-ui';
 
 import AdmissionsTimelinePanel from '@/components/admissions/AdmissionsTimelinePanel.vue';
+import { useOverlayStack } from '@/composables/useOverlayStack';
 import {
 	archiveInquiryFromInbox,
 	assignAdmissionConversation,
@@ -972,7 +983,8 @@ const activityChannels: AdmissionCrmActivityChannel[] = [
 	'Other',
 ];
 
-const context = ref<AdmissionsInboxContext | null>(null);
+	const context = ref<AdmissionsInboxContext | null>(null);
+	const overlay = useOverlayStack();
 const loading = ref(false);
 const error = ref<string | null>(null);
 const activeQueueId = ref('needs_reply');
@@ -1105,9 +1117,29 @@ function createIntakeForm(): IntakeForm {
 	};
 }
 
-function hasRowActions(row: AdmissionsInboxRow) {
-	return row.actions.length > 0;
-}
+	function hasRowActions(row: AdmissionsInboxRow) {
+		return row.actions.length > 0;
+	}
+
+	function canScheduleVisit(row: AdmissionsInboxRow) {
+		return Boolean(row.conversation || row.inquiry || row.student_applicant || row.organization);
+	}
+
+	function openScheduleVisit(row: AdmissionsInboxRow) {
+		if (!canScheduleVisit(row)) {
+			error.value = __('A conversation, inquiry, applicant, or organization is required before scheduling a visit.');
+			return;
+		}
+
+		overlay.open('admissions-visit-schedule', {
+			conversation: row.conversation || null,
+			inquiry: row.inquiry || null,
+			studentApplicant: row.student_applicant || null,
+			organization: row.organization || null,
+			school: row.school || null,
+			visitorName: row.title || null,
+		});
+	}
 
 function isSupportedActionId(actionId: string): actionId is SupportedActionId {
 	return SUPPORTED_ACTION_IDS.includes(actionId as SupportedActionId);
@@ -1289,6 +1321,17 @@ function timelineActionToInboxAction(action: AdmissionsTimelineAction): Supporte
 function handleTimelineAction(action: AdmissionsTimelineAction) {
 	if (!action.enabled) {
 		actionError.value = action.disabled_reason || __('The server did not allow this action.');
+		return;
+	}
+
+	if (action.id === 'schedule_visit') {
+		const row = selectedRow.value;
+		if (!row) {
+			actionError.value = __('Select an Inbox item before scheduling a visit.');
+			return;
+		}
+		actionError.value = null;
+		openScheduleVisit(row);
 		return;
 	}
 

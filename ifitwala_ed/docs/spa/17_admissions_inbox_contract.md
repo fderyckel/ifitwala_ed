@@ -1,12 +1,12 @@
 # Admissions Inbox SPA Contract
 
-Status: Backend context endpoint, Phase 3B staff SPA queue route, Phase 3C controlled action drawer, Phase 3D ownership/triage workflows, Phase 3D.5 CRM intake, Phase 3E applicant-stage message aggregation, backend contextual Admissions Timeline endpoint, and Inbox/Cockpit SPA timeline drawers implemented; provider and media workflows planned
-Code refs: `ifitwala_ed/api/admissions_inbox.py`, `ifitwala_ed/api/admissions_crm.py`, `ifitwala_ed/api/admissions_timeline.py`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsInbox.vue`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`, `ifitwala_ed/ui-spa/src/components/admissions/AdmissionsTimelinePanel.vue`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsInboxService.ts`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsTimelineService.ts`, `ifitwala_ed/ui-spa/src/types/contracts/admissions_inbox/get_admissions_inbox_context.ts`, `ifitwala_ed/ui-spa/src/types/contracts/admissions_timeline/get_admissions_timeline_context.ts`, CRM DocTypes under `ifitwala_ed/admission/doctype/admission_*`
+Status: Backend context endpoint, Phase 3B staff SPA queue route, Phase 3C controlled action drawer, Phase 3D ownership/triage workflows, Phase 3D.5 CRM intake, Phase 3E applicant-stage message aggregation, backend contextual Admissions Timeline endpoint, Inbox/Cockpit SPA timeline drawers, and Inbox/Cockpit schedule-visit drawer actions implemented; provider and media workflows planned
+Code refs: `ifitwala_ed/api/admissions_inbox.py`, `ifitwala_ed/api/admissions_crm.py`, `ifitwala_ed/api/admissions_timeline.py`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsInbox.vue`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`, `ifitwala_ed/ui-spa/src/components/admissions/AdmissionsTimelinePanel.vue`, `ifitwala_ed/ui-spa/src/overlays/admissions/AdmissionsVisitScheduleOverlay.vue`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsInboxService.ts`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsTimelineService.ts`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsWorkspaceService.ts`, `ifitwala_ed/ui-spa/src/types/contracts/admissions_inbox/get_admissions_inbox_context.ts`, `ifitwala_ed/ui-spa/src/types/contracts/admissions_timeline/get_admissions_timeline_context.ts`, `ifitwala_ed/ui-spa/src/types/contracts/admissions/admission_visit_schedule.ts`, CRM DocTypes under `ifitwala_ed/admission/doctype/admission_*`
 Test refs: `ifitwala_ed/api/test_admissions_inbox.py`, `ifitwala_ed/api/test_admissions_timeline.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsInbox.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsCockpit.test.ts`, `ifitwala_ed/ui-spa/src/lib/services/admissions/__tests__/admissionsInboxService.test.ts`, `ifitwala_ed/ui-spa/src/lib/services/admissions/__tests__/admissionsTimelineService.test.ts`, `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`, `ifitwala_ed/admission/doctype/admission_visit/test_admission_visit.py`
 
 This note defines the staff-side Admissions Inbox surface.
 
-Current runtime behavior includes the backend context endpoint, staff SPA queue route, controlled action drawer, ownership/triage actions for Admission Conversation and Inquiry records, manual CRM intake, applicant-stage case message aggregation, the backend contextual timeline endpoint, and contextual timeline drawers in Admissions Inbox and Admissions Cockpit. Provider replies, contact creation, and governed media conversion are still planned.
+Current runtime behavior includes the backend context endpoint, staff SPA queue route, controlled action drawer, ownership/triage actions for Admission Conversation and Inquiry records, manual CRM intake, applicant-stage case message aggregation, the backend contextual timeline endpoint, contextual timeline drawers in Admissions Inbox and Admissions Cockpit, and schedule-visit actions that open the Admission Visit overlay from the selected education context. Provider replies, contact creation, and governed media conversion are still planned.
 
 ## 1. Authority
 
@@ -295,6 +295,10 @@ get_admission_visit_schedule_options
   organization optional
   school optional
 
+get_admission_visit_detail
+  admission_visit required
+  returns visit, can_write, and schedule options
+
 suggest_admission_visit_slots
   conversation optional
   inquiry optional
@@ -329,7 +333,28 @@ schedule_admission_visit
   staff_users optional
   informed_users optional
   visitor/contact/context fields optional
+
+reschedule_admission_visit
+  admission_visit required
+  same scheduling payload shape as schedule_admission_visit
+  returns conflict payload instead of writing when staff or room is unavailable
+
+cancel_admission_visit
+  admission_visit required
+  reason required by SPA before submit
+
+mark_admission_visit_completed
+  admission_visit required
+
+mark_admission_visit_no_show
+  admission_visit required
+
+notify_admission_visit_informed_users
+  admission_visit required
+  message optional
 ```
+
+Admissions Inbox exposes `Schedule Visit` directly on rows that already carry conversation, inquiry, applicant, or organization context. The overlay, not the row card, owns the complete workflow and uses the endpoints above. This keeps pre-application family tours in the CRM workflow without forcing staff to create a Student Applicant first.
 
 Planned Inbox-specific mutation endpoints must continue to be named workflow endpoints, for example:
 
@@ -440,6 +465,7 @@ Implemented contextual timeline UI behavior:
 - load the selected Inquiry, Student Applicant, or Admission Conversation timeline from the bounded timeline endpoint when the drawer opens
 - render product-language timeline items without making backend source ledgers primary UI labels
 - map timeline actions to existing executable drawer actions when the selected row already exposes the matching server-owned workflow
+- open the Admission Visit scheduling overlay for `schedule_visit` from the selected row context
 - show an inline explanation for timeline actions that are not executable in the current drawer phase
 
 Planned mutation actions:

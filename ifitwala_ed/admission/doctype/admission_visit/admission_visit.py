@@ -6,7 +6,7 @@ from typing import Sequence
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import format_datetime, getdate, nowdate
+from frappe.utils import format_datetime, getdate, now_datetime, nowdate
 
 from ifitwala_ed.admission.admission_utils import READ_LIKE_PERMISSION_TYPES, get_admissions_file_staff_scope
 from ifitwala_ed.admission.admissions_crm_domain import (
@@ -37,6 +37,8 @@ from ifitwala_ed.admission.doctype.applicant_interview.applicant_interview impor
     _to_datetime_or_throw,
     _to_positive_int,
 )
+from ifitwala_ed.stock.doctype.location_booking.location_booking import delete_location_bookings_for_source
+from ifitwala_ed.utilities.employee_booking import delete_employee_bookings_for_source
 from ifitwala_ed.utilities.location_utils import get_visible_location_rows_for_school, is_schedulable_location
 
 ADMISSION_VISIT_REFERENCE_TYPE = "Admission Visit"
@@ -54,6 +56,7 @@ VISIT_PROJECTION_FIELDS = {
     "party_size",
     "visit_type",
     "visit_mode",
+    "status",
 }
 
 
@@ -77,11 +80,19 @@ class AdmissionVisit(Document):
         if not previous:
             return
 
+        if self.status == "Cancelled":
+            self._remove_school_event_projection()
+            if previous.status != "Cancelled":
+                self._record_cancelled_activity_if_needed()
+            return
+
         if self._school_event_projection_changed(previous):
             self._sync_school_event_projection()
 
         if self.status == "Completed" and previous.status != "Completed":
             self._record_attended_activity_if_needed()
+        elif self.status == "No Show" and previous.status != "No Show":
+            self._record_no_show_activity_if_needed()
 
     def _apply_context_scope(self) -> None:
         context = _resolve_visit_context(
@@ -178,6 +189,10 @@ class AdmissionVisit(Document):
         )
 
     def _sync_school_event_projection(self):
+        if self.status == "Cancelled":
+            self._remove_school_event_projection()
+            return None
+
         participant_users = _visit_staff_users_from_doc(self)
         if not participant_users:
             frappe.throw(_("At least one visit staff user is required."), title=_("Missing Visit Staff"))
@@ -215,6 +230,19 @@ class AdmissionVisit(Document):
 
         return school_event
 
+    def _remove_school_event_projection(self) -> None:
+        event_name = clean(self.school_event)
+        if not event_name:
+            return
+
+        if self.school_event:
+            self.db_set("school_event", None, update_modified=False)
+
+        delete_employee_bookings_for_source("School Event", event_name)
+        delete_location_bookings_for_source(source_doctype="School Event", source_name=event_name)
+        if frappe.db.exists("School Event", event_name):
+            frappe.delete_doc("School Event", event_name, ignore_permissions=True, force=True)
+
     def _record_booked_activity_if_needed(self) -> None:
         if self.booked_crm_activity or not self.conversation:
             return
@@ -241,6 +269,37 @@ class AdmissionVisit(Document):
         )
         self.db_set("attended_crm_activity", activity.name, update_modified=False)
 
+    def _record_no_show_activity_if_needed(self) -> None:
+        if self.no_show_crm_activity or not self.conversation:
+            return
+
+        activity = _create_visit_crm_activity(
+            conversation=self.conversation,
+            activity_type="Note",
+            activity_channel=_activity_channel_for_visit(self.visit_mode),
+            outcome="No Show",
+            note=_("Visit marked no-show for {window}.").format(window=_format_visit_window(self.starts_on, self.ends_on)),
+        )
+        self.db_set("no_show_crm_activity", activity.name, update_modified=False)
+
+    def _record_cancelled_activity_if_needed(self) -> None:
+        if self.cancelled_crm_activity or not self.conversation:
+            return
+
+        reason = clean(self.cancellation_reason)
+        note = _("Visit cancelled for {window}.").format(window=_format_visit_window(self.starts_on, self.ends_on))
+        if reason:
+            note = _("{note} Reason: {reason}").format(note=note, reason=reason)
+
+        activity = _create_visit_crm_activity(
+            conversation=self.conversation,
+            activity_type="Note",
+            activity_channel=_activity_channel_for_visit(self.visit_mode),
+            outcome="Cancelled",
+            note=note,
+        )
+        self.db_set("cancelled_crm_activity", activity.name, update_modified=False)
+
 
 @frappe.whitelist()
 def get_admission_visit_schedule_options(
@@ -260,74 +319,38 @@ def get_admission_visit_schedule_options(
         school=school,
     )
     _assert_visit_manage_permission(user=user, context=context)
+    return _build_visit_schedule_options_payload(context=context)
 
-    school_name = context.get("school")
-    room_rows = []
-    building_rows = []
-    if school_name:
-        room_rows = get_visible_location_rows_for_school(
-            school_name,
-            include_groups=False,
-            only_schedulable=True,
-            fields=[
-                "name",
-                "location_name",
-                "school",
-                "parent_location",
-                "location_type",
-                "is_group",
-                "maximum_capacity",
-            ],
-            limit=200,
-        )
-        building_rows = [
-            row
-            for row in get_visible_location_rows_for_school(
-                school_name,
-                include_groups=True,
-                only_schedulable=False,
-                fields=[
-                    "name",
-                    "location_name",
-                    "school",
-                    "parent_location",
-                    "location_type",
-                    "is_group",
-                    "maximum_capacity",
-                ],
-                limit=200,
-            )
-            if int(row.get("is_group") or 0)
-        ]
 
+@frappe.whitelist()
+def get_admission_visit_detail(*, admission_visit: str):
+    visit_name = clean(admission_visit)
+    if not visit_name:
+        frappe.throw(_("Admission visit is required."), title=_("Missing Admission Visit"))
+
+    visit_doc = frappe.get_doc("Admission Visit", visit_name)
+    if not has_permission(visit_doc, ptype="read", user=frappe.session.user):
+        frappe.throw(_("You do not have permission to view this admission visit."), frappe.PermissionError)
+
+    can_write = has_permission(visit_doc, ptype="write", user=frappe.session.user)
+    context = {
+        "conversation": visit_doc.conversation,
+        "inquiry": visit_doc.inquiry,
+        "student_applicant": visit_doc.student_applicant,
+        "organization": visit_doc.organization,
+        "school": visit_doc.school,
+        "visitor_name": visit_doc.visitor_name,
+        "visitor_email": visit_doc.visitor_email,
+        "visitor_phone": visit_doc.visitor_phone,
+        "requested_grade_level": visit_doc.requested_grade_level,
+        "program_interest": visit_doc.program_interest,
+    }
+    options = _build_visit_schedule_options_payload(context=context)
     return {
         "ok": True,
-        "context": {
-            "conversation": context.get("conversation"),
-            "inquiry": context.get("inquiry"),
-            "student_applicant": context.get("student_applicant"),
-            "organization": context.get("organization"),
-            "school": context.get("school"),
-            "visitor_name": context.get("visitor_name"),
-            "visitor_email": context.get("visitor_email"),
-            "visitor_phone": context.get("visitor_phone"),
-            "requested_grade_level": context.get("requested_grade_level"),
-            "program_interest": context.get("program_interest"),
-        },
-        "defaults": {
-            "date": nowdate(),
-            "start_time": "09:00:00",
-            "duration_minutes": DEFAULT_VISIT_DURATION_MINUTES,
-            "window_start_time": DEFAULT_SUGGESTION_WINDOW_START,
-            "window_end_time": DEFAULT_SUGGESTION_WINDOW_END,
-            "lead_user": frappe.session.user,
-            "visit_type": "Family Tour",
-            "visit_mode": "In Person",
-        },
-        "rooms": [_serialize_location_option(row) for row in room_rows],
-        "buildings": [_serialize_location_option(row) for row in building_rows],
-        "visit_types": ["Family Tour", "Student Tour", "Open Day", "School Visit", "College Visit", "Shadow Day", "Other"],
-        "visit_modes": ["In Person", "Online", "Phone"],
+        "can_write": bool(can_write),
+        "visit": _serialize_admission_visit(visit_doc, include_internal=can_write),
+        "options": options,
     }
 
 
@@ -604,6 +627,222 @@ def schedule_admission_visit(
     }
 
 
+@frappe.whitelist()
+def reschedule_admission_visit(
+    *,
+    admission_visit: str,
+    starts_on: str,
+    ends_on: str | None = None,
+    duration_minutes: int | str | None = None,
+    visit_type: str | None = None,
+    visit_mode: str | None = None,
+    building: str | None = None,
+    location: str | None = None,
+    lead_user: str | None = None,
+    staff_users: Sequence[str] | str | None = None,
+    informed_users: Sequence[str] | str | None = None,
+    visitor_name: str | None = None,
+    visitor_email: str | None = None,
+    visitor_phone: str | None = None,
+    relationship_to_student: str | None = None,
+    requested_grade_level: str | None = None,
+    program_interest: str | None = None,
+    party_size: int | str | None = None,
+    internal_notes: str | None = None,
+    suggestion_window_start_time=None,
+    suggestion_window_end_time=None,
+    suggestion_limit: int | str | None = None,
+):
+    visit_doc = _get_admission_visit_for_write(admission_visit)
+    context = _resolve_visit_context(
+        conversation=visit_doc.conversation,
+        inquiry=visit_doc.inquiry,
+        student_applicant=visit_doc.student_applicant,
+        organization=visit_doc.organization,
+        school=visit_doc.school,
+    )
+
+    visit_mode_value = clean(visit_mode) or clean(visit_doc.visit_mode) or "In Person"
+    location_value, building_value = _resolve_visit_locations(
+        location=location if location is not None else visit_doc.location,
+        building=building if building is not None else visit_doc.building,
+        mode=visit_mode_value,
+        school=context.get("school"),
+        require_for_in_person=True,
+    )
+    selected_users = _normalize_visit_staff_users(lead_user=lead_user, staff_users=staff_users)
+    if not selected_users:
+        selected_users = _visit_staff_users_from_doc(visit_doc)
+    _assert_visit_users_exist_and_enabled(selected_users, label=_("visit staff"))
+    employee_rows = _resolve_employee_rows_for_users(selected_users)
+
+    informed_user_rows = _normalize_user_sequence(informed_users)
+    if informed_user_rows:
+        _assert_visit_users_exist_and_enabled(informed_user_rows, label=_("informed users"))
+
+    start_dt = _to_datetime_or_throw(starts_on, fieldname="starts_on")
+    if ends_on:
+        end_dt = _to_datetime_or_throw(ends_on, fieldname="ends_on")
+    else:
+        minutes = _to_positive_int(value=duration_minutes, default=DEFAULT_VISIT_DURATION_MINUTES, fieldname="duration_minutes")
+        end_dt = start_dt + timedelta(minutes=minutes)
+    if end_dt <= start_dt:
+        frappe.throw(_("Visit end must be after visit start."), title=_("Invalid Time Window"))
+
+    exclude_source = _visit_projection_exclude_source(visit_doc)
+    employee_conflict_rows = _collect_employee_conflicts(
+        employee_rows=employee_rows,
+        start_dt=start_dt,
+        end_dt=end_dt,
+        exclude_source=exclude_source,
+    )
+    room_conflict_rows = _collect_room_conflicts(
+        location=location_value,
+        start_dt=start_dt,
+        end_dt=end_dt,
+        exclude_source=exclude_source,
+    )
+    conflict_rows = _combine_conflict_rows(
+        employee_conflict_rows=employee_conflict_rows,
+        room_conflict_rows=room_conflict_rows,
+    )
+    if conflict_rows:
+        return _visit_conflict_response(
+            employee_rows=employee_rows,
+            location=location_value,
+            start_dt=start_dt,
+            end_dt=end_dt,
+            employee_conflict_rows=employee_conflict_rows,
+            room_conflict_rows=room_conflict_rows,
+            suggestion_window_start_time=suggestion_window_start_time,
+            suggestion_window_end_time=suggestion_window_end_time,
+            suggestion_limit=suggestion_limit,
+        )
+
+    savepoint = "reschedule_admission_visit"
+    frappe.db.savepoint(savepoint)
+    try:
+        visit_doc.status = "Scheduled"
+        visit_doc.visit_type = clean(visit_type) or visit_doc.visit_type or "Family Tour"
+        visit_doc.visit_mode = visit_mode_value
+        visit_doc.starts_on = start_dt
+        visit_doc.ends_on = end_dt
+        visit_doc.building = building_value
+        visit_doc.location = location_value
+        visit_doc.lead_user = selected_users[0]
+        visit_doc.visitor_name = clean(visitor_name) or visit_doc.visitor_name
+        visit_doc.visitor_email = clean(visitor_email) or visit_doc.visitor_email
+        visit_doc.visitor_phone = clean(visitor_phone) or visit_doc.visitor_phone
+        visit_doc.relationship_to_student = clean(relationship_to_student)
+        visit_doc.requested_grade_level = clean(requested_grade_level) or visit_doc.requested_grade_level
+        visit_doc.program_interest = clean(program_interest) or visit_doc.program_interest
+        visit_doc.party_size = (
+            _to_non_negative_int_or_none(party_size, fieldname="party_size")
+            if party_size is not None
+            else visit_doc.party_size
+        )
+        visit_doc.internal_notes = internal_notes if internal_notes is not None else visit_doc.internal_notes
+        visit_doc.cancelled_at = None
+        visit_doc.cancelled_by = None
+        visit_doc.cancellation_reason = None
+        visit_doc.set("staff", [])
+        for staff_user in selected_users[1:]:
+            visit_doc.append("staff", {"user": staff_user, "role": "Co-host"})
+        visit_doc.set("informed_users", [])
+        for informed_user in _dedupe_keep_order(informed_user_rows):
+            if informed_user not in selected_users:
+                visit_doc.append("informed_users", {"user": informed_user})
+        visit_doc.save(ignore_permissions=True)
+    except Exception:
+        frappe.db.rollback(save_point=savepoint)
+        raise
+
+    return {
+        "ok": True,
+        "admission_visit": visit_doc.name,
+        "school_event": visit_doc.school_event,
+        "window": {
+            "start": start_dt.isoformat(),
+            "end": end_dt.isoformat(),
+            "location": location_value,
+            "building": building_value,
+        },
+    }
+
+
+@frappe.whitelist()
+def cancel_admission_visit(*, admission_visit: str, reason: str | None = None):
+    visit_doc = _get_admission_visit_for_write(admission_visit)
+    if visit_doc.status == "Cancelled":
+        return {"ok": True, "admission_visit": visit_doc.name, "status": visit_doc.status}
+
+    savepoint = "cancel_admission_visit"
+    frappe.db.savepoint(savepoint)
+    try:
+        visit_doc.status = "Cancelled"
+        visit_doc.cancellation_reason = clean(reason)
+        visit_doc.cancelled_at = now_datetime()
+        visit_doc.cancelled_by = frappe.session.user
+        visit_doc.save(ignore_permissions=True)
+    except Exception:
+        frappe.db.rollback(save_point=savepoint)
+        raise
+
+    return {"ok": True, "admission_visit": visit_doc.name, "status": visit_doc.status}
+
+
+@frappe.whitelist()
+def mark_admission_visit_completed(*, admission_visit: str):
+    visit_doc = _get_admission_visit_for_write(admission_visit)
+    if visit_doc.status != "Completed":
+        visit_doc.status = "Completed"
+        visit_doc.save(ignore_permissions=True)
+    return {"ok": True, "admission_visit": visit_doc.name, "status": visit_doc.status}
+
+
+@frappe.whitelist()
+def mark_admission_visit_no_show(*, admission_visit: str):
+    visit_doc = _get_admission_visit_for_write(admission_visit)
+    if visit_doc.status != "No Show":
+        visit_doc.status = "No Show"
+        visit_doc.save(ignore_permissions=True)
+    return {"ok": True, "admission_visit": visit_doc.name, "status": visit_doc.status}
+
+
+@frappe.whitelist()
+def notify_admission_visit_informed_users(*, admission_visit: str, message: str | None = None):
+    visit_doc = _get_admission_visit_for_write(admission_visit)
+    users = _visit_informed_users_from_doc(visit_doc)
+    if not users:
+        return {"ok": True, "admission_visit": visit_doc.name, "notified_users": []}
+
+    notice = clean(message) or _("Admission visit scheduled: {title}").format(
+        title=clean(visit_doc.visit_title) or visit_doc.name
+    )
+    payload = {
+        "type": "Alert",
+        "subject": _("Admission Visit"),
+        "message": notice,
+        "reference_doctype": "Admission Visit",
+        "reference_name": visit_doc.name,
+        "starts_on": str(visit_doc.starts_on or ""),
+        "school": visit_doc.school,
+    }
+    for user in users:
+        frappe.publish_realtime(event="inbox_notification", message=payload, user=user, after_commit=True)
+
+    if visit_doc.conversation:
+        _create_visit_crm_activity(
+            conversation=visit_doc.conversation,
+            activity_type="Note",
+            activity_channel="Other",
+            outcome="Informed Staff",
+            note=_("Admission visit heads-up sent to: {users}.").format(users=", ".join(users)),
+        )
+
+    return {"ok": True, "admission_visit": visit_doc.name, "notified_users": users}
+
+
 def get_permission_query_conditions(user: str | None = None) -> str | None:
     resolved_user = clean(user or frappe.session.user)
     if not resolved_user or resolved_user == "Guest":
@@ -826,6 +1065,189 @@ def _assert_visit_manage_permission(*, user: str, context: dict) -> None:
         frappe.throw(_("You do not have permission for this admission visit scope."), frappe.PermissionError)
     if context.get("conversation") and not conversation_has_permission(context.get("conversation"), ptype="write", user=user):
         frappe.throw(_("You do not have permission to schedule visits for this conversation."), frappe.PermissionError)
+
+
+def _get_admission_visit_for_write(admission_visit: str):
+    user = ensure_admissions_crm_permission()
+    visit_name = clean(admission_visit)
+    if not visit_name:
+        frappe.throw(_("Admission visit is required."), title=_("Missing Admission Visit"))
+    visit_doc = frappe.get_doc("Admission Visit", visit_name)
+    if not has_permission(visit_doc, ptype="write", user=user):
+        frappe.throw(_("You do not have permission to update this admission visit."), frappe.PermissionError)
+    return visit_doc
+
+
+def _build_visit_schedule_options_payload(*, context: dict) -> dict:
+    school_name = context.get("school")
+    room_rows = []
+    building_rows = []
+    if school_name:
+        room_rows = get_visible_location_rows_for_school(
+            school_name,
+            include_groups=False,
+            only_schedulable=True,
+            fields=[
+                "name",
+                "location_name",
+                "school",
+                "parent_location",
+                "location_type",
+                "is_group",
+                "maximum_capacity",
+            ],
+            limit=200,
+        )
+        building_rows = [
+            row
+            for row in get_visible_location_rows_for_school(
+                school_name,
+                include_groups=True,
+                only_schedulable=False,
+                fields=[
+                    "name",
+                    "location_name",
+                    "school",
+                    "parent_location",
+                    "location_type",
+                    "is_group",
+                    "maximum_capacity",
+                ],
+                limit=200,
+            )
+            if int(row.get("is_group") or 0)
+        ]
+
+    return {
+        "ok": True,
+        "context": {
+            "conversation": context.get("conversation"),
+            "inquiry": context.get("inquiry"),
+            "student_applicant": context.get("student_applicant"),
+            "organization": context.get("organization"),
+            "school": context.get("school"),
+            "visitor_name": context.get("visitor_name"),
+            "visitor_email": context.get("visitor_email"),
+            "visitor_phone": context.get("visitor_phone"),
+            "requested_grade_level": context.get("requested_grade_level"),
+            "program_interest": context.get("program_interest"),
+        },
+        "defaults": {
+            "date": nowdate(),
+            "start_time": "09:00:00",
+            "duration_minutes": DEFAULT_VISIT_DURATION_MINUTES,
+            "window_start_time": DEFAULT_SUGGESTION_WINDOW_START,
+            "window_end_time": DEFAULT_SUGGESTION_WINDOW_END,
+            "lead_user": frappe.session.user,
+            "visit_type": "Family Tour",
+            "visit_mode": "In Person",
+        },
+        "rooms": [_serialize_location_option(row) for row in room_rows],
+        "buildings": [_serialize_location_option(row) for row in building_rows],
+        "visit_types": ["Family Tour", "Student Tour", "Open Day", "School Visit", "College Visit", "Shadow Day", "Other"],
+        "visit_modes": ["In Person", "Online", "Phone"],
+    }
+
+
+def _serialize_admission_visit(doc, *, include_internal: bool) -> dict:
+    staff_users = _visit_staff_users_from_doc(doc)
+    informed_users = _visit_informed_users_from_doc(doc)
+    return {
+        "name": doc.name,
+        "visit_title": doc.visit_title,
+        "organization": doc.organization,
+        "school": doc.school,
+        "status": doc.status,
+        "conversation": doc.conversation,
+        "inquiry": doc.inquiry,
+        "student_applicant": doc.student_applicant,
+        "visit_type": doc.visit_type,
+        "visit_mode": doc.visit_mode,
+        "starts_on": doc.starts_on.isoformat() if hasattr(doc.starts_on, "isoformat") else doc.starts_on,
+        "ends_on": doc.ends_on.isoformat() if hasattr(doc.ends_on, "isoformat") else doc.ends_on,
+        "building": doc.building,
+        "location": doc.location,
+        "party_size": doc.party_size,
+        "visitor_name": doc.visitor_name,
+        "visitor_email": doc.visitor_email,
+        "visitor_phone": doc.visitor_phone,
+        "relationship_to_student": doc.relationship_to_student,
+        "requested_grade_level": doc.requested_grade_level,
+        "program_interest": doc.program_interest,
+        "lead_user": doc.lead_user,
+        "staff_users": staff_users,
+        "informed_users": informed_users,
+        "internal_notes": doc.internal_notes if include_internal else None,
+        "school_event": doc.school_event,
+        "cancelled_at": doc.cancelled_at.isoformat() if hasattr(doc.cancelled_at, "isoformat") else doc.cancelled_at,
+        "cancelled_by": doc.cancelled_by,
+        "cancellation_reason": doc.cancellation_reason if include_internal else None,
+    }
+
+
+def _visit_projection_exclude_source(doc) -> dict | None:
+    event_name = clean(doc.school_event)
+    if not event_name:
+        return None
+    return {"source_doctype": "School Event", "source_name": event_name}
+
+
+def _visit_conflict_response(
+    *,
+    employee_rows: Sequence[frappe._dict],
+    location: str | None,
+    start_dt,
+    end_dt,
+    employee_conflict_rows: list[dict],
+    room_conflict_rows: list[dict],
+    suggestion_window_start_time,
+    suggestion_window_end_time,
+    suggestion_limit: int | str | None,
+) -> dict:
+    conflict_rows = _combine_conflict_rows(
+        employee_conflict_rows=employee_conflict_rows,
+        room_conflict_rows=room_conflict_rows,
+    )
+    window_start_time = _coerce_time(
+        suggestion_window_start_time or DEFAULT_SUGGESTION_WINDOW_START,
+        fieldname="suggestion_window_start_time",
+    )
+    window_end_time = _coerce_time(
+        suggestion_window_end_time or DEFAULT_SUGGESTION_WINDOW_END,
+        fieldname="suggestion_window_end_time",
+    )
+    suggestion_window_start, suggestion_window_end = _build_window_datetimes_for_date(
+        target_date=getdate(start_dt),
+        start_time=window_start_time,
+        end_time=window_end_time,
+    )
+    suggestion_rows = _suggest_common_free_slots(
+        employees=[row["name"] for row in employee_rows],
+        location=location,
+        window_start=suggestion_window_start,
+        window_end=suggestion_window_end,
+        duration_minutes=int((end_dt - start_dt).total_seconds() // 60),
+        step_minutes=DEFAULT_SUGGESTION_STEP_MINUTES,
+        limit=_to_positive_int(value=suggestion_limit, default=DEFAULT_SUGGESTION_LIMIT, fieldname="suggestion_limit"),
+    )
+    conflict_code = _schedule_conflict_code(
+        employee_conflict_rows=employee_conflict_rows,
+        room_conflict_rows=room_conflict_rows,
+    )
+    return {
+        "ok": False,
+        "code": conflict_code,
+        "message": _visit_schedule_conflict_message(conflict_code),
+        "conflicts": conflict_rows,
+        "employee_conflicts": employee_conflict_rows,
+        "room_conflicts": room_conflict_rows,
+        "suggestions": suggestion_rows,
+        "window": {
+            "start": suggestion_window_start.isoformat(),
+            "end": suggestion_window_end.isoformat(),
+            "location": location,
+        },
+    }
 
 
 def _ensure_visit_conversation(*, user: str, context: dict) -> str | None:

@@ -11,7 +11,9 @@ from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.api.admission_cockpit import (
     get_admissions_cockpit_data,
+    get_or_create_admissions_cockpit_offer_plan,
     hydrate_admissions_cockpit_request,
+    promote_admissions_cockpit_applicant,
     send_admissions_cockpit_offer,
 )
 from ifitwala_ed.api.admissions_portal import upload_applicant_document
@@ -347,6 +349,38 @@ class TestAdmissionCockpit(FrappeTestCase):
         self.assertEqual(result.get("applicant_enrollment_plan"), context["plan"].name)
         self.assertEqual(result.get("status"), "Offer Sent")
         self.assertEqual(context["plan"].status, "Offer Sent")
+        invalidate_mock.assert_called_once()
+
+    def test_get_or_create_admissions_cockpit_offer_plan_returns_contextual_target(self):
+        context = self._create_offer_plan(status="Draft")
+
+        frappe.set_user(self.staff_user.name)
+        with patch("ifitwala_ed.api.admission_cockpit.invalidate_admissions_cockpit_cache") as invalidate_mock:
+            result = get_or_create_admissions_cockpit_offer_plan(self.applicant.name)
+
+        self.assertTrue(bool(result.get("ok")))
+        self.assertFalse(bool(result.get("created")))
+        self.assertEqual(result.get("student_applicant"), self.applicant.name)
+        self.assertEqual(result.get("applicant_enrollment_plan"), context["plan"].name)
+        self.assertIn("/desk/applicant-enrollment-plan/", result.get("open_url") or "")
+        invalidate_mock.assert_not_called()
+
+    def test_promote_admissions_cockpit_applicant_runs_applicant_promotion(self):
+        frappe.set_user(self.staff_user.name)
+        with (
+            patch(
+                "ifitwala_ed.admission.doctype.student_applicant.student_applicant.StudentApplicant.promote_to_student",
+                return_value="STU-COCKPIT-0001",
+            ) as promote_mock,
+            patch("ifitwala_ed.api.admission_cockpit.invalidate_admissions_cockpit_cache") as invalidate_mock,
+        ):
+            result = promote_admissions_cockpit_applicant(self.applicant.name)
+
+        self.assertTrue(bool(result.get("ok")))
+        self.assertEqual(result.get("student_applicant"), self.applicant.name)
+        self.assertEqual(result.get("student"), "STU-COCKPIT-0001")
+        self.assertIn("/desk/student/", result.get("open_url") or "")
+        promote_mock.assert_called_once()
         invalidate_mock.assert_called_once()
 
     def test_hydrate_admissions_cockpit_request_returns_request_link(self):

@@ -11,6 +11,8 @@
   "organization",
   "school",
   "status",
+  "cancelled_at",
+  "cancelled_by",
   "context_section",
   "conversation",
   "inquiry",
@@ -36,10 +38,13 @@
   "informed_users",
   "notes_section",
   "internal_notes",
+  "cancellation_reason",
   "projection_section",
   "school_event",
   "booked_crm_activity",
-  "attended_crm_activity"
+  "attended_crm_activity",
+  "no_show_crm_activity",
+  "cancelled_crm_activity"
  ],
  "fields": [
   {
@@ -72,7 +77,20 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Scheduled\nCompleted\nNo Show"
+   "options": "Scheduled\nCompleted\nNo Show\nCancelled"
+  },
+  {
+   "fieldname": "cancelled_at",
+   "fieldtype": "Datetime",
+   "label": "Cancelled At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cancelled_by",
+   "fieldtype": "Link",
+   "label": "Cancelled By",
+   "options": "User",
+   "read_only": 1
   },
   {
    "fieldname": "context_section",
@@ -232,6 +250,11 @@
    "label": "Internal Notes"
   },
   {
+   "fieldname": "cancellation_reason",
+   "fieldtype": "Small Text",
+   "label": "Cancellation Reason"
+  },
+  {
    "fieldname": "projection_section",
    "fieldtype": "Section Break",
    "label": "Calendar and CRM Projection"
@@ -257,11 +280,25 @@
    "label": "Attended CRM Activity",
    "options": "Admission CRM Activity",
    "read_only": 1
+  },
+  {
+   "fieldname": "no_show_crm_activity",
+   "fieldtype": "Link",
+   "label": "No Show CRM Activity",
+   "options": "Admission CRM Activity",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cancelled_crm_activity",
+   "fieldtype": "Link",
+   "label": "Cancelled CRM Activity",
+   "options": "Admission CRM Activity",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-21 21:28:15.000000",
+ "modified": "2026-05-22 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Admission Visit",

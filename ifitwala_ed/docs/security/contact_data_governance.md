@@ -21,6 +21,8 @@ Code refs:
 - `ifitwala_ed/governance/doctype/contact_access_log/contact_access_log.json`
 - `ifitwala_ed/governance/doctype/contact_export_request/contact_export_request.py`
 - `ifitwala_ed/governance/doctype/contact_export_request/contact_export_request.json`
+Decision refs:
+- `communication_contact_point_schema_decision.md`
 Test refs:
 - `ifitwala_ed/setup/test_contact_permissions.py`
 - `ifitwala_ed/students/doctype/student/test_student_unit.py`
@@ -90,14 +92,18 @@ Those planned contracts do not weaken this contact governance rule.
 
 If a cross-domain routing index is needed, it must be an internal governed layer, not a user-facing address book.
 
-Target concept:
+Approved schema decision:
+
+- `communication_contact_point_schema_decision.md`
+
+Approved concept:
 
 ```text
 Communication Contact Point
 - owner_doctype
 - owner_name
-- subject_type
-- subject_id
+- subject_doctype
+- subject_name
 - organization
 - school
 - channel_type
@@ -119,7 +125,7 @@ Rules:
 5. `masked_display` is the default UI value.
 6. Purpose is mandatory and must be specific enough to support audit and minimization.
 
-This target requires an approved schema decision before implementation. Do not invent the DocType or fields outside that approval.
+The schema decision is approved, but implementation has not started. Do not create or alter the DocType outside the implementation order in `communication_contact_point_schema_decision.md`.
 
 ## 4. Permission Stance
 
@@ -141,7 +147,7 @@ Current-runtime lockdown status:
 - Admissions and marketing roles no longer bypass Contact query scoping.
 - Native `Contact` create/write DocPerm rows still exist as transitional Frappe seed data, but document-level editor operations are blocked by the permission hook while domain-owned contact-point services are future work.
 
-Remaining gaps require approved implementation slices: full export execution with per-row logging, and eventual Contact Point schema/migration.
+Remaining gaps require approved implementation slices: full export execution with per-row logging, Guardian contact-point bridging/migration, and later domain-by-domain Contact Point migration.
 
 API hardening status:
 
@@ -155,10 +161,12 @@ Contact privacy service boundary status:
 
 - `ifitwala_ed/contacts/contact_privacy.py` is the approved current-runtime boundary for the first contact-sensitive workflows.
 - Covered workflows are applicant contact prefill/invite email options, Student CRM contact summaries, Student guardian summaries, family-consent profile contact write-back, and Inquiry protected-contact reuse checks.
-- The service still reads legacy native `Contact`, `Contact Email`, and `Contact Phone` internally because the Contact Point schema is not implemented.
+- Existing workflow functions still read legacy native `Contact`, `Contact Email`, and `Contact Phone` internally until they are bridged to Contact Point data.
 - Callers must provide a non-empty `purpose`; masked DTOs are the default for Student/Guardian summaries.
 - Raw values are still allowed only through explicitly named current workflows such as applicant invite/prefill and family-consent write-back.
 - Legacy Contact creation/update code in Student, Guardian, Inquiry, and admissions profile flows remains a migration gap, not an approved pattern for new surfaces.
+- `Communication Contact Point` service helpers now exist for service-owned upsert, disable, masked owner DTOs, raw reads, recipient resolution, and explicit Guardian sync with a verified school context.
+- Guardian controller write-through is not enabled yet because `Guardian` has no canonical `school` field; callers must prove school context before creating Guardian contact points.
 
 Contact access logging status:
 
@@ -254,7 +262,7 @@ Direct deletion is not a normal contact-management action.
 
 Target rules:
 
-1. Native `Contact`, future `Communication Contact Point`, and sensitive person DocTypes must not be deleted through ordinary Desk buttons.
+1. Native `Contact`, `Communication Contact Point`, and sensitive person DocTypes must not be deleted through ordinary Desk buttons.
 2. Deactivation, archival, erasure, and pseudonymization require named workflows.
 3. Applicant erasure and Student pseudonymization are different data-subject states.
 4. Destructive workflows require approval, scope proof, audit output, and retention checks.

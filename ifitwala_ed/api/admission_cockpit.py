@@ -13,6 +13,7 @@ from frappe.utils import cint, flt, get_datetime, getdate, nowdate
 
 from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
+    has_scoped_staff_access_to_student_applicant,
 )
 from ifitwala_ed.admission.applicant_document_readiness import build_document_review_payload_batch
 from ifitwala_ed.admission.doctype.student_applicant.student_applicant import STUDENT_PROFILE_REQUIRED_FIELD_LABELS
@@ -1445,10 +1446,82 @@ def _require_applicant_enrollment_plan_name(applicant_enrollment_plan: str) -> s
     return plan_name
 
 
+def _require_cockpit_student_applicant_name(student_applicant: str, *, user: str | None = None) -> str:
+    applicant_name = _to_text(student_applicant)
+    if not applicant_name:
+        frappe.throw(_("Student Applicant is required."))
+
+    resolved_user = user or _ensure_cockpit_access()
+    if has_scoped_staff_access_to_student_applicant(
+        user=resolved_user,
+        student_applicant=applicant_name,
+    ):
+        return applicant_name
+
+    frappe.throw(_("You do not have permission to access this applicant."), frappe.PermissionError)
+    return applicant_name
+
+
+def _require_cockpit_applicant_enrollment_plan_name(applicant_enrollment_plan: str) -> str:
+    user = _ensure_cockpit_access()
+    plan_name = _require_applicant_enrollment_plan_name(applicant_enrollment_plan)
+    applicant_name = _to_text(
+        frappe.db.get_value("Applicant Enrollment Plan", plan_name, "student_applicant")
+    )
+    if not applicant_name:
+        frappe.throw(_("Applicant Enrollment Plan was not found."))
+    _require_cockpit_student_applicant_name(applicant_name, user=user)
+    return plan_name
+
+
+@frappe.whitelist()
+def get_or_create_admissions_cockpit_offer_plan(student_applicant: str):
+    user = _ensure_cockpit_access()
+    applicant_name = _require_cockpit_student_applicant_name(student_applicant, user=user)
+    from ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan import (
+        ensure_applicant_enrollment_plan,
+        get_active_applicant_enrollment_plan_name,
+    )
+
+    existing_name = _to_text(get_active_applicant_enrollment_plan_name(applicant_name))
+    plan = ensure_applicant_enrollment_plan(applicant_name)
+    created = not bool(existing_name)
+    if created:
+        invalidate_admissions_cockpit_cache()
+
+    return {
+        "ok": True,
+        "created": created,
+        "student_applicant": applicant_name,
+        "applicant_enrollment_plan": plan.name,
+        "status": _to_text(plan.status) or "Draft",
+        "open_url": _doc_url("Applicant Enrollment Plan", plan.name),
+    }
+
+
+@frappe.whitelist()
+def promote_admissions_cockpit_applicant(student_applicant: str):
+    user = _ensure_cockpit_access()
+    applicant_name = _require_cockpit_student_applicant_name(student_applicant, user=user)
+    applicant = frappe.get_doc("Student Applicant", applicant_name)
+
+    student_name = _to_text(applicant.promote_to_student())
+    applicant.reload()
+    student_name = student_name or _to_text(applicant.student)
+    invalidate_admissions_cockpit_cache()
+
+    return {
+        "ok": True,
+        "student_applicant": applicant.name,
+        "student": student_name or None,
+        "status": _to_text(applicant.application_status),
+        "open_url": _doc_url("Student", student_name) if student_name else None,
+    }
+
+
 @frappe.whitelist()
 def send_admissions_cockpit_offer(applicant_enrollment_plan: str):
-    _ensure_cockpit_access()
-    plan_name = _require_applicant_enrollment_plan_name(applicant_enrollment_plan)
+    plan_name = _require_cockpit_applicant_enrollment_plan_name(applicant_enrollment_plan)
     plan = frappe.get_doc("Applicant Enrollment Plan", plan_name)
     result = plan.send_offer() or {}
     invalidate_admissions_cockpit_cache()
@@ -1462,8 +1535,7 @@ def send_admissions_cockpit_offer(applicant_enrollment_plan: str):
 
 @frappe.whitelist()
 def hydrate_admissions_cockpit_request(applicant_enrollment_plan: str):
-    _ensure_cockpit_access()
-    plan_name = _require_applicant_enrollment_plan_name(applicant_enrollment_plan)
+    plan_name = _require_cockpit_applicant_enrollment_plan_name(applicant_enrollment_plan)
     from ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan import (
         hydrate_program_enrollment_request_from_applicant_plan,
     )
@@ -1486,8 +1558,7 @@ def hydrate_admissions_cockpit_request(applicant_enrollment_plan: str):
 
 @frappe.whitelist()
 def generate_admissions_cockpit_deposit_invoice(applicant_enrollment_plan: str):
-    _ensure_cockpit_access()
-    plan_name = _require_applicant_enrollment_plan_name(applicant_enrollment_plan)
+    plan_name = _require_cockpit_applicant_enrollment_plan_name(applicant_enrollment_plan)
     from ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan import (
         generate_deposit_invoice_from_offer,
     )

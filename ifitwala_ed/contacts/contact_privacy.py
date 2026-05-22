@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import hmac
 from typing import Any
 
 import frappe
@@ -18,7 +20,25 @@ from ifitwala_ed.contacts.contact_audit import (
     log_contact_access,
 )
 
+COMMUNICATION_CONTACT_POINT_DOCTYPE = "Communication Contact Point"
 PROTECTED_CONTACT_LINK_DOCTYPES = frozenset({"Student", "Guardian", "Employee", "Student Applicant"})
+CONTACT_POINT_ALLOWED_OWNER_SUBJECT_DOCTYPES = frozenset(
+    {"Guardian", "Student", "Student Applicant", "Inquiry", "Employee"}
+)
+CONTACT_POINT_SCHOOL_REQUIRED_DOCTYPES = frozenset({"Guardian", "Student", "Student Applicant"})
+CONTACT_POINT_ALLOWED_CHANNEL_TYPES = frozenset({"email", "phone", "address"})
+CONTACT_POINT_ALLOWED_PURPOSES = frozenset(
+    {
+        "emergency",
+        "billing",
+        "admissions_followup",
+        "family_consent",
+        "school_communication",
+        "hr",
+        "relationship_crm",
+        "export",
+    }
+)
 
 
 def _clean_data(value: Any) -> str:
@@ -31,6 +51,13 @@ def _row_get(row: Any, fieldname: str, default: Any = None) -> Any:
     if hasattr(row, "get"):
         return row.get(fieldname, default)
     return getattr(row, fieldname, default)
+
+
+def _doc_set(doc: Any, fieldname: str, value: Any) -> None:
+    if isinstance(doc, dict):
+        doc[fieldname] = value
+    else:
+        setattr(doc, fieldname, value)
 
 
 def _as_int(value: Any) -> int:
@@ -78,6 +105,505 @@ def mask_phone(value: str | None) -> str:
         prefix = f"+{prefix_digits}" if prefix_digits else "+"
         return f"{prefix} *** *** {suffix}"
     return f"*** *** {suffix}"
+
+
+def _site_secret() -> str:
+    local = getattr(frappe, "local", None)
+    conf = getattr(local, "conf", None) or {}
+    if hasattr(conf, "get"):
+        secret = conf.get("encryption_key") or conf.get("secret")
+    else:
+        secret = None
+    secret = secret or getattr(local, "site", None)
+    resolved_secret = _clean_data(secret)
+    if not resolved_secret:
+        frappe.throw(_("Contact point hashing requires a site secret."), frappe.PermissionError)
+    return resolved_secret
+
+
+def _normalize_phone_value(value: Any) -> str:
+    phone = _clean_data(value)
+    if not phone:
+        return ""
+
+    digits = "".join(char for char in phone if char.isdigit())
+    if not digits:
+        return ""
+    if phone.startswith("+"):
+        return f"+{digits}"
+    return digits
+
+
+def _normalize_contact_point_value(channel_type: str, value: Any) -> str:
+    if channel_type == "email":
+        return _normalize_email_value(value)
+    if channel_type == "phone":
+        return _normalize_phone_value(value)
+    if channel_type == "address":
+        return _clean_data(value)
+    return ""
+
+
+def _masked_contact_point_value(channel_type: str, value: str) -> str:
+    if channel_type == "email":
+        return mask_email(value)
+    if channel_type == "phone":
+        return mask_phone(value)
+    if channel_type == "address":
+        return "***"
+    return ""
+
+
+def _contact_point_hash(*, channel_type: str, normalized_value: str) -> str:
+    message = f"{channel_type}|{normalized_value}".encode("utf-8")
+    return hmac.new(_site_secret().encode("utf-8"), message, hashlib.sha256).hexdigest()
+
+
+def _encrypt_contact_point_value(value: str) -> str:
+    try:
+        from frappe.utils.password import encrypt
+    except Exception:
+        frappe.throw(_("Contact point encryption is unavailable."), frappe.PermissionError)
+    return encrypt(value)
+
+
+def _decrypt_contact_point_value(value: str) -> str:
+    try:
+        from frappe.utils.password import decrypt
+    except Exception:
+        frappe.throw(_("Contact point decryption is unavailable."), frappe.PermissionError)
+    return decrypt(value)
+
+
+def _set_contact_point_service_flag(doc: Any) -> None:
+    flags = getattr(doc, "flags", None)
+    if flags is None:
+        try:
+            flags = frappe._dict()
+        except Exception:
+            flags = {}
+        doc.flags = flags
+    if isinstance(flags, dict):
+        flags["from_contact_point_service"] = True
+    else:
+        flags.from_contact_point_service = True
+
+
+def _validate_contact_point_identity(
+    *,
+    owner_doctype: str,
+    owner_name: str,
+    subject_doctype: str,
+    subject_name: str,
+    organization: str,
+    school: str | None,
+    channel_type: str,
+    purpose: str,
+) -> None:
+    if owner_doctype not in CONTACT_POINT_ALLOWED_OWNER_SUBJECT_DOCTYPES:
+        frappe.throw(_("Communication Contact Point owner DocType is not approved."))
+    if subject_doctype not in CONTACT_POINT_ALLOWED_OWNER_SUBJECT_DOCTYPES:
+        frappe.throw(_("Communication Contact Point subject DocType is not approved."))
+    if not owner_name or not subject_name:
+        frappe.throw(_("Communication Contact Point requires an owner and subject."))
+    if not organization:
+        frappe.throw(_("Communication Contact Point requires an Organization."))
+    if ({owner_doctype, subject_doctype} & CONTACT_POINT_SCHOOL_REQUIRED_DOCTYPES) and not _clean_data(school):
+        frappe.throw(_("Communication Contact Point requires a School for this education record."))
+    if channel_type not in CONTACT_POINT_ALLOWED_CHANNEL_TYPES:
+        frappe.throw(_("Communication Contact Point channel type is not approved."))
+    if purpose not in CONTACT_POINT_ALLOWED_PURPOSES:
+        frappe.throw(_("Communication Contact Point purpose is not approved."))
+
+
+def _find_contact_point_name(
+    *,
+    owner_doctype: str,
+    owner_name: str,
+    channel_type: str,
+    purpose: str,
+    normalized_hash: str,
+) -> str | None:
+    rows = frappe.get_all(
+        COMMUNICATION_CONTACT_POINT_DOCTYPE,
+        filters={
+            "owner_doctype": owner_doctype,
+            "owner_name": owner_name,
+            "channel_type": channel_type,
+            "purpose": purpose,
+            "normalized_hash": normalized_hash,
+        },
+        fields=["name"],
+        limit=1,
+        ignore_permissions=True,
+    )
+    if not rows:
+        return None
+    return _clean_data(_row_get(rows[0], "name")) or None
+
+
+def _clear_existing_primary_contact_points(
+    *,
+    owner_doctype: str,
+    owner_name: str,
+    channel_type: str,
+    purpose: str,
+    except_name: str | None = None,
+) -> None:
+    rows = frappe.get_all(
+        COMMUNICATION_CONTACT_POINT_DOCTYPE,
+        filters={
+            "owner_doctype": owner_doctype,
+            "owner_name": owner_name,
+            "channel_type": channel_type,
+            "purpose": purpose,
+            "is_primary": 1,
+            "disabled": 0,
+        },
+        fields=["name"],
+        limit=0,
+        ignore_permissions=True,
+    )
+    for row in rows or []:
+        contact_point_name = _clean_data(_row_get(row, "name"))
+        if not contact_point_name or contact_point_name == _clean_data(except_name):
+            continue
+        doc = frappe.get_doc(COMMUNICATION_CONTACT_POINT_DOCTYPE, contact_point_name)
+        _doc_set(doc, "is_primary", 0)
+        _set_contact_point_service_flag(doc)
+        doc.save(ignore_permissions=True)
+
+
+def upsert_contact_point(
+    *,
+    owner_doctype: str,
+    owner_name: str,
+    subject_doctype: str,
+    subject_name: str,
+    organization: str,
+    school: str | None,
+    channel_type: str,
+    purpose: str,
+    value: str,
+    is_primary: bool = False,
+    verified_on: str | None = None,
+    workflow: str | None = None,
+    user: str | None = None,
+) -> str | None:
+    resolved_owner_doctype = _clean_data(owner_doctype)
+    resolved_owner_name = _clean_data(owner_name)
+    resolved_subject_doctype = _clean_data(subject_doctype)
+    resolved_subject_name = _clean_data(subject_name)
+    resolved_organization = _clean_data(organization)
+    resolved_school = _clean_data(school) or None
+    resolved_channel_type = _clean_data(channel_type)
+    resolved_purpose = require_purpose(purpose)
+    raw_value = _clean_data(value)
+    if not raw_value:
+        return None
+
+    _validate_contact_point_identity(
+        owner_doctype=resolved_owner_doctype,
+        owner_name=resolved_owner_name,
+        subject_doctype=resolved_subject_doctype,
+        subject_name=resolved_subject_name,
+        organization=resolved_organization,
+        school=resolved_school,
+        channel_type=resolved_channel_type,
+        purpose=resolved_purpose,
+    )
+    normalized_value = _normalize_contact_point_value(resolved_channel_type, raw_value)
+    if not normalized_value:
+        return None
+
+    log_contact_access(
+        access_type=ACCESS_TYPE_RAW_WRITE,
+        purpose=resolved_purpose,
+        workflow=workflow or "communication_contact_point_upsert",
+        subject_doctype=resolved_subject_doctype,
+        subject_name=resolved_subject_name,
+        owner_doctype=resolved_owner_doctype,
+        owner_name=resolved_owner_name,
+        organization=resolved_organization,
+        school=resolved_school,
+        channel_type=resolved_channel_type,
+        result=RESULT_ALLOWED,
+        user=user,
+        require_success=True,
+    )
+
+    normalized_hash = _contact_point_hash(channel_type=resolved_channel_type, normalized_value=normalized_value)
+    contact_point_name = _find_contact_point_name(
+        owner_doctype=resolved_owner_doctype,
+        owner_name=resolved_owner_name,
+        channel_type=resolved_channel_type,
+        purpose=resolved_purpose,
+        normalized_hash=normalized_hash,
+    )
+    doc = (
+        frappe.get_doc(COMMUNICATION_CONTACT_POINT_DOCTYPE, contact_point_name)
+        if contact_point_name
+        else frappe.get_doc({"doctype": COMMUNICATION_CONTACT_POINT_DOCTYPE})
+    )
+    _doc_set(doc, "owner_doctype", resolved_owner_doctype)
+    _doc_set(doc, "owner_name", resolved_owner_name)
+    _doc_set(doc, "subject_doctype", resolved_subject_doctype)
+    _doc_set(doc, "subject_name", resolved_subject_name)
+    _doc_set(doc, "organization", resolved_organization)
+    _doc_set(doc, "school", resolved_school)
+    _doc_set(doc, "channel_type", resolved_channel_type)
+    _doc_set(doc, "purpose", resolved_purpose)
+    _doc_set(doc, "value_encrypted", _encrypt_contact_point_value(normalized_value))
+    _doc_set(doc, "normalized_hash", normalized_hash)
+    _doc_set(doc, "masked_display", _masked_contact_point_value(resolved_channel_type, normalized_value))
+    _doc_set(doc, "is_primary", 1 if is_primary else 0)
+    _doc_set(doc, "verified_on", verified_on)
+    _doc_set(doc, "disabled", 0)
+
+    if is_primary:
+        _clear_existing_primary_contact_points(
+            owner_doctype=resolved_owner_doctype,
+            owner_name=resolved_owner_name,
+            channel_type=resolved_channel_type,
+            purpose=resolved_purpose,
+            except_name=contact_point_name,
+        )
+
+    _set_contact_point_service_flag(doc)
+    if contact_point_name:
+        doc.save(ignore_permissions=True)
+    else:
+        doc.insert(ignore_permissions=True)
+    return _clean_data(getattr(doc, "name", "")) or None
+
+
+def disable_contact_points_for_owner(
+    *,
+    owner_doctype: str,
+    owner_name: str,
+    purpose: str | None = None,
+    channel_type: str | None = None,
+) -> int:
+    filters: dict[str, Any] = {
+        "owner_doctype": _clean_data(owner_doctype),
+        "owner_name": _clean_data(owner_name),
+        "disabled": 0,
+    }
+    if purpose:
+        filters["purpose"] = require_purpose(purpose)
+    if channel_type:
+        filters["channel_type"] = _clean_data(channel_type)
+
+    rows = frappe.get_all(
+        COMMUNICATION_CONTACT_POINT_DOCTYPE,
+        filters=filters,
+        fields=["name"],
+        limit=0,
+        ignore_permissions=True,
+    )
+    disabled_count = 0
+    for row in rows or []:
+        contact_point_name = _clean_data(_row_get(row, "name"))
+        if not contact_point_name:
+            continue
+        doc = frappe.get_doc(COMMUNICATION_CONTACT_POINT_DOCTYPE, contact_point_name)
+        _doc_set(doc, "disabled", 1)
+        _set_contact_point_service_flag(doc)
+        doc.save(ignore_permissions=True)
+        disabled_count += 1
+    return disabled_count
+
+
+def get_masked_contact_points_for_owner(
+    *,
+    owner_doctype: str,
+    owner_name: str,
+    purpose: str | None = None,
+    channel_type: str | None = None,
+) -> list[dict[str, Any]]:
+    filters: dict[str, Any] = {
+        "owner_doctype": _clean_data(owner_doctype),
+        "owner_name": _clean_data(owner_name),
+        "disabled": 0,
+    }
+    if purpose:
+        filters["purpose"] = require_purpose(purpose)
+    if channel_type:
+        filters["channel_type"] = _clean_data(channel_type)
+
+    rows = frappe.get_all(
+        COMMUNICATION_CONTACT_POINT_DOCTYPE,
+        filters=filters,
+        fields=["name", "subject_doctype", "subject_name", "channel_type", "purpose", "masked_display", "is_primary"],
+        order_by="is_primary desc, modified desc",
+        limit=0,
+        ignore_permissions=True,
+    )
+    return [
+        {
+            "name": _clean_data(_row_get(row, "name")),
+            "subject_doctype": _clean_data(_row_get(row, "subject_doctype")),
+            "subject_name": _clean_data(_row_get(row, "subject_name")),
+            "channel_type": _clean_data(_row_get(row, "channel_type")),
+            "purpose": _clean_data(_row_get(row, "purpose")),
+            "masked_display": _clean_data(_row_get(row, "masked_display")),
+            "is_primary": _as_int(_row_get(row, "is_primary")),
+        }
+        for row in rows or []
+    ]
+
+
+def get_raw_contact_point_value(
+    *,
+    contact_point: str,
+    purpose: str,
+    workflow: str | None = None,
+    user: str | None = None,
+) -> str:
+    resolved_purpose = require_purpose(purpose)
+    contact_point_name = _clean_data(contact_point)
+    if not contact_point_name:
+        frappe.throw(_("Communication Contact Point is required."))
+
+    doc = frappe.get_doc(COMMUNICATION_CONTACT_POINT_DOCTYPE, contact_point_name)
+    if _clean_data(doc.get("purpose")) != resolved_purpose or _as_int(doc.get("disabled")):
+        frappe.throw(_("Communication Contact Point is not available for this purpose."), frappe.PermissionError)
+
+    log_contact_access(
+        access_type=ACCESS_TYPE_RAW_READ,
+        purpose=resolved_purpose,
+        workflow=workflow or "communication_contact_point_raw_read",
+        subject_doctype=doc.get("subject_doctype"),
+        subject_name=doc.get("subject_name"),
+        owner_doctype=doc.get("owner_doctype"),
+        owner_name=doc.get("owner_name"),
+        organization=doc.get("organization"),
+        school=doc.get("school"),
+        channel_type=doc.get("channel_type"),
+        result=RESULT_ALLOWED,
+        user=user,
+        require_success=True,
+    )
+    return _decrypt_contact_point_value(_clean_data(doc.get("value_encrypted")))
+
+
+def resolve_contact_point_recipients(
+    *,
+    organization: str,
+    school: str | None,
+    purpose: str,
+    channel_type: str,
+) -> list[dict[str, Any]]:
+    resolved_purpose = require_purpose(purpose)
+    resolved_channel_type = _clean_data(channel_type)
+    if resolved_channel_type not in CONTACT_POINT_ALLOWED_CHANNEL_TYPES:
+        frappe.throw(_("Communication Contact Point channel type is not approved."))
+
+    filters: dict[str, Any] = {
+        "organization": _clean_data(organization),
+        "purpose": resolved_purpose,
+        "channel_type": resolved_channel_type,
+        "disabled": 0,
+    }
+    if not filters["organization"]:
+        frappe.throw(_("Communication Contact Point requires an Organization."))
+    if school:
+        filters["school"] = _clean_data(school)
+
+    log_contact_access(
+        access_type=ACCESS_TYPE_RECIPIENT_RESOLUTION,
+        purpose=resolved_purpose,
+        workflow="communication_contact_point_recipient_resolution",
+        organization=filters["organization"],
+        school=filters.get("school"),
+        channel_type=resolved_channel_type,
+        result=RESULT_ALLOWED,
+        require_success=True,
+    )
+
+    rows = frappe.get_all(
+        COMMUNICATION_CONTACT_POINT_DOCTYPE,
+        filters=filters,
+        fields=["name", "subject_doctype", "subject_name", "masked_display", "is_primary"],
+        order_by="subject_doctype asc, subject_name asc, is_primary desc",
+        limit=0,
+        ignore_permissions=True,
+    )
+    return [
+        {
+            "name": _clean_data(_row_get(row, "name")),
+            "subject_doctype": _clean_data(_row_get(row, "subject_doctype")),
+            "subject_name": _clean_data(_row_get(row, "subject_name")),
+            "masked_display": _clean_data(_row_get(row, "masked_display")),
+            "is_primary": _as_int(_row_get(row, "is_primary")),
+        }
+        for row in rows or []
+    ]
+
+
+def sync_guardian_contact_points(
+    guardian_doc: Any,
+    *,
+    school: str,
+    purpose: str = "school_communication",
+    workflow: str | None = None,
+    user: str | None = None,
+) -> list[str]:
+    guardian_name = _clean_data(_row_get(guardian_doc, "name"))
+    organization = _clean_data(_row_get(guardian_doc, "organization"))
+    resolved_school = _clean_data(school)
+    if not organization and resolved_school:
+        from ifitwala_ed.accounting.account_holder_utils import get_school_organization
+
+        organization = _clean_data(get_school_organization(resolved_school))
+
+    if not guardian_name:
+        frappe.throw(_("Guardian is required for contact point sync."))
+    if not resolved_school:
+        frappe.throw(_("School is required for Guardian contact point sync."))
+    if not organization:
+        frappe.throw(_("Organization is required for Guardian contact point sync."))
+
+    synced: list[str] = []
+    guardian_email = _normalize_email_value(_row_get(guardian_doc, "guardian_email"))
+    if guardian_email:
+        contact_point_name = upsert_contact_point(
+            owner_doctype="Guardian",
+            owner_name=guardian_name,
+            subject_doctype="Guardian",
+            subject_name=guardian_name,
+            organization=organization,
+            school=resolved_school,
+            channel_type="email",
+            purpose=purpose,
+            value=guardian_email,
+            is_primary=True,
+            workflow=workflow or "guardian_contact_point_sync",
+            user=user,
+        )
+        if contact_point_name:
+            synced.append(contact_point_name)
+
+    guardian_phone = _clean_data(_row_get(guardian_doc, "guardian_mobile_phone"))
+    if guardian_phone:
+        contact_point_name = upsert_contact_point(
+            owner_doctype="Guardian",
+            owner_name=guardian_name,
+            subject_doctype="Guardian",
+            subject_name=guardian_name,
+            organization=organization,
+            school=resolved_school,
+            channel_type="phone",
+            purpose=purpose,
+            value=guardian_phone,
+            is_primary=True,
+            workflow=workflow or "guardian_contact_point_sync",
+            user=user,
+        )
+        if contact_point_name:
+            synced.append(contact_point_name)
+
+    return synced
 
 
 def _mask_email_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:

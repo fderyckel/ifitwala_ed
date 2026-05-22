@@ -58,6 +58,12 @@
 		>
 			{{ error }}
 		</div>
+		<div
+			v-if="notice"
+			class="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+		>
+			{{ notice }}
+		</div>
 
 		<div v-if="loading" class="py-10 text-center text-slate-500">
 			{{ __('Loading cockpit...') }}
@@ -139,14 +145,21 @@
 										>
 											{{ __('Timeline') }}
 										</button>
-										<button
-											type="button"
-											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
-											@click="openScheduleInterview(item)"
-										>
-											{{ __('Schedule Interview') }}
-										</button>
-										<button
+											<button
+												type="button"
+												class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
+												@click="openScheduleInterview(item)"
+											>
+												{{ __('Schedule Interview') }}
+											</button>
+											<button
+												type="button"
+												class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
+												@click="openScheduleVisit(item)"
+											>
+												{{ __('Schedule Visit') }}
+											</button>
+											<button
 											type="button"
 											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
 											@click="openThread(item)"
@@ -626,9 +639,11 @@ import { getAdmissionsTimelineContext } from '@/lib/services/admissions/admissio
 import {
 	getAdmissionsCaseThread,
 	getAdmissionsCockpitData,
+	getOrCreateAdmissionsCockpitOfferPlan,
 	generateAdmissionsCockpitDepositInvoice,
 	hydrateAdmissionsCockpitRequest,
 	markAdmissionsCaseRead,
+	promoteAdmissionsCockpitApplicant,
 	sendAdmissionsCockpitOffer,
 	sendAdmissionsCaseMessage,
 	type AdmissionsCaseMessage,
@@ -786,6 +801,7 @@ type CockpitPayload = {
 
 const loading = ref(false);
 const error = ref('');
+const notice = ref('');
 const data = ref<CockpitPayload | null>(null);
 const overlay = useOverlayStack();
 const activeBlocker = ref('');
@@ -802,6 +818,7 @@ const threadInternalNote = ref(false);
 const threadSending = ref(false);
 const threadSendError = ref('');
 const pendingAepActionKey = ref('');
+const pendingApplicantActionKey = ref('');
 
 const filters = ref({
 	organization: '',
@@ -972,6 +989,7 @@ function formatDateOnly(value?: string | null) {
 }
 
 type AepAction = 'send_offer' | 'hydrate_request' | 'generate_deposit';
+type ApplicantAction = 'manage_offer' | 'promote';
 
 function aepActionKey(planName?: string | null, action: AepAction = 'send_offer') {
 	return `${String(planName || '').trim()}:${action}`;
@@ -979,6 +997,10 @@ function aepActionKey(planName?: string | null, action: AepAction = 'send_offer'
 
 function isAepActionPending(planName?: string | null, action: AepAction = 'send_offer') {
 	return pendingAepActionKey.value === aepActionKey(planName, action);
+}
+
+function applicantActionKey(applicantName?: string | null, action: ApplicantAction = 'manage_offer') {
+	return `${String(applicantName || '').trim()}:${action}`;
 }
 
 function formatAmount(value?: number | string | null) {
@@ -1105,6 +1127,20 @@ function openScheduleInterview(card: CockpitCard) {
 	});
 }
 
+function openScheduleVisit(card: CockpitCard) {
+	const applicantName = String(card?.name || '').trim();
+	if (!applicantName) {
+		error.value = 'Applicant reference is missing for visit scheduling.';
+		return;
+	}
+
+	overlay.open('admissions-visit-schedule', {
+		studentApplicant: applicantName,
+		visitorName: String(card?.display_name || '').trim() || applicantName,
+		school: String(card?.school || '').trim() || null,
+	});
+}
+
 function openTimeline(card: CockpitCard) {
 	const applicantName = String(card?.name || '').trim();
 	if (!applicantName) {
@@ -1182,6 +1218,35 @@ function handleTimelineAction(action: AdmissionsTimelineAction) {
 		return;
 	}
 
+	if (action.id === 'schedule_visit') {
+		openScheduleVisit(card);
+		closeTimeline();
+		return;
+	}
+
+	if (action.id === 'open_timeline') {
+		reloadTimeline();
+		return;
+	}
+
+	if (action.id === 'manage_offer') {
+		closeTimeline();
+		void manageOfferPlan(card);
+		return;
+	}
+
+	if (action.id === 'check_deposit') {
+		closeTimeline();
+		void checkDeposit(card);
+		return;
+	}
+
+	if (action.id === 'promote') {
+		closeTimeline();
+		void promoteApplicant(card);
+		return;
+	}
+
 	timelineError.value = __('This timeline action is not available in the Cockpit drawer yet.');
 }
 
@@ -1194,6 +1259,94 @@ function openTimelineItem(item: AdmissionsTimelineItem) {
 	window.open(url, '_blank', 'noopener,noreferrer');
 }
 
+async function manageOfferPlan(card: CockpitCard) {
+	const applicantName = String(card?.name || '').trim();
+	if (!applicantName) {
+		error.value = __('Applicant reference is missing for offer management.');
+		return;
+	}
+
+	if (card?.aep?.can_send_offer) {
+		await sendEnrollmentOffer(card);
+		return;
+	}
+	if (card?.aep?.can_hydrate_request) {
+		await hydrateEnrollmentRequest(card);
+		return;
+	}
+	if (card?.aep?.has_plan) {
+		notice.value = __('Offer plan is already available on the applicant card.');
+		await refreshNow();
+		return;
+	}
+
+	const key = applicantActionKey(applicantName, 'manage_offer');
+	pendingApplicantActionKey.value = key;
+	error.value = '';
+	notice.value = '';
+
+	try {
+		await getOrCreateAdmissionsCockpitOfferPlan({
+			student_applicant: applicantName,
+		});
+		await refreshNow();
+		notice.value = __('Offer plan is ready on the applicant card.');
+	} catch (err: any) {
+		error.value = err?.message || __('Could not open the enrollment offer plan.');
+	} finally {
+		if (pendingApplicantActionKey.value === key) {
+			pendingApplicantActionKey.value = '';
+		}
+	}
+}
+
+async function checkDeposit(card: CockpitCard) {
+	const deposit = card?.aep?.deposit || null;
+	const invoice = String(deposit?.invoice || '').trim();
+	if (deposit?.can_generate_invoice) {
+		await generateDepositInvoice(card);
+		return;
+	}
+	if (invoice) {
+		notice.value = __('Deposit invoice is already available on the applicant card.');
+		await refreshNow();
+		return;
+	}
+	if (deposit?.deposit_required || card?.aep?.has_plan) {
+		notice.value = __('Deposit status refreshed on the applicant card.');
+		await refreshNow();
+		return;
+	}
+	error.value = __('No deposit action is available for this applicant yet.');
+}
+
+async function promoteApplicant(card: CockpitCard) {
+	const applicantName = String(card?.name || '').trim();
+	if (!applicantName) {
+		error.value = __('Applicant reference is missing for promotion.');
+		return;
+	}
+
+	const key = applicantActionKey(applicantName, 'promote');
+	pendingApplicantActionKey.value = key;
+	error.value = '';
+	notice.value = '';
+
+	try {
+		await promoteAdmissionsCockpitApplicant({
+			student_applicant: applicantName,
+		});
+		await refreshNow();
+		notice.value = __('Applicant promoted. Cockpit refreshed.');
+	} catch (err: any) {
+		error.value = err?.message || __('Could not promote this applicant.');
+	} finally {
+		if (pendingApplicantActionKey.value === key) {
+			pendingApplicantActionKey.value = '';
+		}
+	}
+}
+
 async function sendEnrollmentOffer(card: CockpitCard) {
 	const planName = String(card?.aep?.name || '').trim();
 	if (!planName) {
@@ -1204,10 +1357,12 @@ async function sendEnrollmentOffer(card: CockpitCard) {
 	const key = aepActionKey(planName, 'send_offer');
 	pendingAepActionKey.value = key;
 	error.value = '';
+	notice.value = '';
 
 	try {
 		await sendAdmissionsCockpitOffer({ applicant_enrollment_plan: planName });
 		await refreshNow();
+		notice.value = __('Enrollment offer sent. Cockpit refreshed.');
 	} catch (err: any) {
 		error.value = err?.message || 'Could not send the enrollment offer.';
 	} finally {
@@ -1227,10 +1382,12 @@ async function hydrateEnrollmentRequest(card: CockpitCard) {
 	const key = aepActionKey(planName, 'hydrate_request');
 	pendingAepActionKey.value = key;
 	error.value = '';
+	notice.value = '';
 
 	try {
 		await hydrateAdmissionsCockpitRequest({ applicant_enrollment_plan: planName });
 		await refreshNow();
+		notice.value = __('Enrollment request hydrated. Cockpit refreshed.');
 	} catch (err: any) {
 		error.value = err?.message || 'Could not hydrate the enrollment request.';
 	} finally {
@@ -1250,10 +1407,12 @@ async function generateDepositInvoice(card: CockpitCard) {
 	const key = aepActionKey(planName, 'generate_deposit');
 	pendingAepActionKey.value = key;
 	error.value = '';
+	notice.value = '';
 
 	try {
 		await generateAdmissionsCockpitDepositInvoice({ applicant_enrollment_plan: planName });
 		await refreshNow();
+		notice.value = __('Deposit invoice generated. Cockpit refreshed.');
 	} catch (err: any) {
 		error.value = err?.message || 'Could not generate the deposit invoice.';
 	} finally {

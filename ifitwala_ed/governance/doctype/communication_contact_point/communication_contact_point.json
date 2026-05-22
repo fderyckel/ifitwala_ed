@@ -1,0 +1,179 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "CCP-.YY.-.MM.-.#####",
+ "creation": "2026-05-22 12:43:03.000000",
+ "description": "Internal service-owned routing index for purpose-bound contact values. Not a user-facing address book.",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "owner_section",
+  "owner_doctype",
+  "owner_name",
+  "subject_doctype",
+  "subject_name",
+  "scope_section",
+  "organization",
+  "school",
+  "routing_section",
+  "channel_type",
+  "purpose",
+  "masked_display",
+  "is_primary",
+  "verified_on",
+  "disabled",
+  "protected_storage_section",
+  "value_encrypted",
+  "normalized_hash"
+ ],
+ "fields": [
+  {
+   "fieldname": "owner_section",
+   "fieldtype": "Section Break",
+   "label": "Owner"
+  },
+  {
+   "fieldname": "owner_doctype",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Owner DocType",
+   "options": "DocType",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "owner_name",
+   "fieldtype": "Dynamic Link",
+   "in_standard_filter": 1,
+   "label": "Owner Name",
+   "options": "owner_doctype",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "subject_doctype",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Subject DocType",
+   "options": "DocType",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "subject_name",
+   "fieldtype": "Dynamic Link",
+   "in_standard_filter": 1,
+   "label": "Subject Name",
+   "options": "subject_doctype",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "scope_section",
+   "fieldtype": "Section Break",
+   "label": "Scope"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Organization",
+   "options": "Organization",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School",
+   "read_only": 1
+  },
+  {
+   "fieldname": "routing_section",
+   "fieldtype": "Section Break",
+   "label": "Routing"
+  },
+  {
+   "fieldname": "channel_type",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Channel Type",
+   "options": "email\nphone\naddress",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "purpose",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Purpose",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "masked_display",
+   "fieldtype": "Data",
+   "label": "Masked Display",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_primary",
+   "fieldtype": "Check",
+   "in_standard_filter": 1,
+   "label": "Is Primary",
+   "read_only": 1
+  },
+  {
+   "fieldname": "verified_on",
+   "fieldtype": "Datetime",
+   "label": "Verified On",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "disabled",
+   "fieldtype": "Check",
+   "in_standard_filter": 1,
+   "label": "Disabled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "protected_storage_section",
+   "fieldtype": "Section Break",
+   "label": "Protected Storage"
+  },
+  {
+   "fieldname": "value_encrypted",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Encrypted Value",
+   "read_only": 1,
+   "reqd": 1,
+   "report_hide": 1
+  },
+  {
+   "fieldname": "normalized_hash",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Normalized Hash",
+   "read_only": 1,
+   "reqd": 1,
+   "report_hide": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-05-22 12:43:03.000000",
+ "modified_by": "Administrator",
+ "module": "Governance",
+ "name": "Communication Contact Point",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

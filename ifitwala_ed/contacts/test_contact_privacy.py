@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import ast
+import hmac
+import hashlib
 from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
@@ -311,6 +313,220 @@ class TestContactPrivacyService(TestCase):
         self.assertEqual(created_logs[0]["access_type"], "denied_attempt")
         self.assertEqual(created_logs[0]["subject_name"], "APP-OTHER")
         self.assertEqual(created_logs[0]["owner_name"], "CONTACT-OTHER")
+
+
+class _FakeContactPointDoc:
+    def __init__(self, **values):
+        self.__dict__.update(values)
+        self.name = values.get("name") or "CCP-1"
+        self.flags = values.get("flags") or {}
+        self.inserted = False
+        self.saved = False
+
+    def get(self, fieldname, default=None):
+        return getattr(self, fieldname, default)
+
+    def insert(self, ignore_permissions=True):
+        self.inserted = True
+        return self
+
+    def save(self, ignore_permissions=True):
+        self.saved = True
+        return self
+
+
+class TestCommunicationContactPointService(TestCase):
+    def _install_contact_point_get_doc(self, frappe, *, existing_doc=None):
+        created_docs: list[_FakeContactPointDoc] = []
+        logs: list[dict] = []
+
+        class _FakeLogDoc:
+            def __init__(self, payload):
+                self.payload = payload
+                self.name = "CAL-1"
+                self.flags = {}
+
+            def insert(self, ignore_permissions=True):
+                logs.append(self.payload)
+                return self
+
+        def get_doc(*args, **kwargs):
+            if args and isinstance(args[0], dict):
+                payload = args[0]
+                if payload.get("doctype") == "Contact Access Log":
+                    return _FakeLogDoc(payload)
+                if payload.get("doctype") == "Communication Contact Point":
+                    doc = _FakeContactPointDoc(name=f"CCP-{len(created_docs) + 1}")
+                    created_docs.append(doc)
+                    return doc
+            if len(args) == 2 and args[0] == "Communication Contact Point" and existing_doc is not None:
+                return existing_doc
+            raise AssertionError(f"Unexpected get_doc call: {args!r} {kwargs!r}")
+
+        frappe.get_doc = get_doc
+        return created_docs, logs
+
+    def test_upsert_contact_point_encrypts_hashes_masks_and_logs_without_raw_value(self):
+        with _module() as (contact_privacy, frappe):
+            frappe.local = SimpleNamespace(conf={"encryption_key": "unit-secret"}, site="unit-site")
+            created_docs, logs = self._install_contact_point_get_doc(frappe)
+            frappe.get_all = Mock(return_value=[])
+            contact_privacy._encrypt_contact_point_value = lambda value: f"enc:{value}"
+
+            name = contact_privacy.upsert_contact_point(
+                owner_doctype="Guardian",
+                owner_name="GRD-1",
+                subject_doctype="Guardian",
+                subject_name="GRD-1",
+                organization="ORG-1",
+                school="SCHOOL-1",
+                channel_type="email",
+                purpose="school_communication",
+                value="Guardian@Example.com",
+                is_primary=True,
+                workflow="unit_test",
+            )
+
+        expected_hash = hmac.new(
+            b"unit-secret",
+            b"email|guardian@example.com",
+            hashlib.sha256,
+        ).hexdigest()
+        self.assertEqual(name, "CCP-1")
+        self.assertEqual(created_docs[0].value_encrypted, "enc:guardian@example.com")
+        self.assertEqual(created_docs[0].normalized_hash, expected_hash)
+        self.assertEqual(created_docs[0].masked_display, "g****@example.com")
+        self.assertEqual(created_docs[0].flags["from_contact_point_service"], True)
+        self.assertTrue(created_docs[0].inserted)
+        self.assertEqual(logs[0]["access_type"], "raw_write")
+        self.assertNotIn("Guardian@Example.com", str(logs[0]))
+        self.assertNotIn("guardian@example.com", str(logs[0]))
+
+    def test_upsert_guardian_contact_point_requires_school(self):
+        with _module() as (contact_privacy, frappe):
+            frappe.local = SimpleNamespace(conf={"encryption_key": "unit-secret"}, site="unit-site")
+
+            with self.assertRaises(frappe.ValidationError):
+                contact_privacy.upsert_contact_point(
+                    owner_doctype="Guardian",
+                    owner_name="GRD-1",
+                    subject_doctype="Guardian",
+                    subject_name="GRD-1",
+                    organization="ORG-1",
+                    school="",
+                    channel_type="email",
+                    purpose="school_communication",
+                    value="guardian@example.com",
+                )
+
+    def test_get_masked_contact_points_for_owner_returns_minimal_dtos(self):
+        with _module() as (contact_privacy, frappe):
+            frappe.get_all = Mock(
+                return_value=[
+                    {
+                        "name": "CCP-1",
+                        "subject_doctype": "Guardian",
+                        "subject_name": "GRD-1",
+                        "channel_type": "email",
+                        "purpose": "school_communication",
+                        "masked_display": "g****@example.com",
+                        "is_primary": 1,
+                    }
+                ]
+            )
+
+            payload = contact_privacy.get_masked_contact_points_for_owner(
+                owner_doctype="Guardian",
+                owner_name="GRD-1",
+                purpose="school_communication",
+            )
+
+        self.assertEqual(
+            payload,
+            [
+                {
+                    "name": "CCP-1",
+                    "subject_doctype": "Guardian",
+                    "subject_name": "GRD-1",
+                    "channel_type": "email",
+                    "purpose": "school_communication",
+                    "masked_display": "g****@example.com",
+                    "is_primary": 1,
+                }
+            ],
+        )
+        self.assertNotIn("value_encrypted", payload[0])
+        self.assertNotIn("normalized_hash", payload[0])
+        self.assertNotIn("guardian@example.com", str(payload))
+
+    def test_raw_contact_point_read_decrypts_and_logs(self):
+        with _module() as (contact_privacy, frappe):
+            existing_doc = _FakeContactPointDoc(
+                name="CCP-1",
+                owner_doctype="Guardian",
+                owner_name="GRD-1",
+                subject_doctype="Guardian",
+                subject_name="GRD-1",
+                organization="ORG-1",
+                school="SCHOOL-1",
+                channel_type="email",
+                purpose="school_communication",
+                value_encrypted="enc:guardian@example.com",
+                disabled=0,
+            )
+            _created_docs, logs = self._install_contact_point_get_doc(frappe, existing_doc=existing_doc)
+            contact_privacy._decrypt_contact_point_value = lambda value: value.removeprefix("enc:")
+
+            raw_value = contact_privacy.get_raw_contact_point_value(
+                contact_point="CCP-1",
+                purpose="school_communication",
+                workflow="unit_test_raw_read",
+            )
+
+        self.assertEqual(raw_value, "guardian@example.com")
+        self.assertEqual(logs[0]["access_type"], "raw_read")
+        self.assertEqual(logs[0]["owner_name"], "GRD-1")
+
+    def test_guardian_contact_point_sync_requires_explicit_school_context(self):
+        with _module() as (contact_privacy, frappe):
+            guardian_doc = SimpleNamespace(
+                name="GRD-1",
+                organization="ORG-1",
+                guardian_email="guardian@example.com",
+                guardian_mobile_phone="+66812345678",
+            )
+
+            with self.assertRaises(frappe.ValidationError):
+                contact_privacy.sync_guardian_contact_points(guardian_doc, school="")
+
+    def test_guardian_contact_point_sync_writes_email_and_phone_for_school_context(self):
+        with _module() as (contact_privacy, frappe):
+            guardian_doc = SimpleNamespace(
+                name="GRD-1",
+                organization="ORG-1",
+                guardian_email="Guardian@Example.com",
+                guardian_mobile_phone="+66 81 234 5678",
+            )
+            calls = []
+
+            def fake_upsert(**kwargs):
+                calls.append(kwargs)
+                return f"CCP-{len(calls)}"
+
+            with patch.object(contact_privacy, "upsert_contact_point", side_effect=fake_upsert):
+                synced = contact_privacy.sync_guardian_contact_points(
+                    guardian_doc,
+                    school="SCHOOL-1",
+                    purpose="school_communication",
+                    workflow="unit_guardian_sync",
+                )
+
+        self.assertEqual(synced, ["CCP-1", "CCP-2"])
+        self.assertEqual(calls[0]["channel_type"], "email")
+        self.assertEqual(calls[0]["value"], "guardian@example.com")
+        self.assertEqual(calls[0]["school"], "SCHOOL-1")
+        self.assertEqual(calls[1]["channel_type"], "phone")
+        self.assertEqual(calls[1]["value"], "+66 81 234 5678")
 
 
 class TestContactAuditHelper(TestCase):

@@ -25,6 +25,7 @@ const {
 	inviteInquiryToApplyFromInboxMock,
 	createAdmissionsIntakeMock,
 	sendAdmissionsCaseMessageFromInboxMock,
+	overlayOpenMock,
 } = vi.hoisted(() => ({
 	getAdmissionsInboxContextMock: vi.fn(),
 	getAdmissionsTimelineContextMock: vi.fn(),
@@ -42,6 +43,7 @@ const {
 	inviteInquiryToApplyFromInboxMock: vi.fn(),
 	createAdmissionsIntakeMock: vi.fn(),
 	sendAdmissionsCaseMessageFromInboxMock: vi.fn(),
+	overlayOpenMock: vi.fn(),
 }));
 
 vi.mock('frappe-ui', () => ({
@@ -76,6 +78,12 @@ vi.mock('@/lib/services/admissions/admissionsInboxService', () => ({
 
 vi.mock('@/lib/services/admissions/admissionsTimelineService', () => ({
 	getAdmissionsTimelineContext: getAdmissionsTimelineContextMock,
+}));
+
+vi.mock('@/composables/useOverlayStack', () => ({
+	useOverlayStack: () => ({
+		open: overlayOpenMock,
+	}),
 }));
 
 import { SIGNAL_ADMISSIONS_INBOX_INVALIDATE, uiSignals } from '@/lib/uiSignals';
@@ -296,6 +304,7 @@ afterEach(() => {
 	inviteInquiryToApplyFromInboxMock.mockReset();
 	createAdmissionsIntakeMock.mockReset();
 	sendAdmissionsCaseMessageFromInboxMock.mockReset();
+	overlayOpenMock.mockReset();
 	uiSignals._clearAllForTests();
 	while (cleanupFns.length) {
 		cleanupFns.pop()?.();
@@ -398,6 +407,32 @@ describe('AdmissionsInbox', () => {
 		await flushUi();
 
 		expect(document.querySelector('[data-testid="action-invite-school"]')).toBeTruthy();
+	});
+
+	it('opens the admissions visit overlay from a contextual timeline action', async () => {
+		getAdmissionsInboxContextMock.mockResolvedValue(context());
+		getAdmissionsTimelineContextMock.mockResolvedValue(
+			timelineContext({
+				actions: [{ id: 'schedule_visit', label: 'Schedule Visit', enabled: true }],
+			})
+		);
+
+		mountAdmissionsInbox();
+		await flushUi();
+
+		clickByTestId('inbox-actions-conversation:AC-0001');
+		await flushUi();
+		clickByTestId('admissions-timeline-action-schedule_visit');
+		await flushUi();
+
+		expect(overlayOpenMock).toHaveBeenCalledWith('admissions-visit-schedule', {
+			conversation: 'AC-0001',
+			inquiry: null,
+			studentApplicant: null,
+			organization: 'ORG-1',
+			school: 'SCH-1',
+			visitorName: 'Ada Parent',
+		});
 	});
 
 	it('refreshes from the page-owned refresh button', async () => {

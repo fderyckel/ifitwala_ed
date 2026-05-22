@@ -4,7 +4,13 @@ from unittest.mock import patch
 
 import frappe
 
-from ifitwala_ed.admission.doctype.admission_visit.admission_visit import schedule_admission_visit
+from ifitwala_ed.admission.doctype.admission_visit.admission_visit import (
+    cancel_admission_visit,
+    mark_admission_visit_no_show,
+    notify_admission_visit_informed_users,
+    reschedule_admission_visit,
+    schedule_admission_visit,
+)
 from ifitwala_ed.api.calendar_staff_feed import PARTICIPANT_ONLY_SCHOOL_EVENT_REFERENCE_TYPES
 from ifitwala_ed.tests.base import IfitwalaEdTestSuite
 from ifitwala_ed.tests.factories.users import make_user
@@ -121,6 +127,103 @@ class TestAdmissionVisit(IfitwalaEdTestSuite):
 
     def test_admission_visit_school_events_are_participant_only_calendar_references(self):
         self.assertIn("Admission Visit", PARTICIPANT_ONLY_SCHOOL_EVENT_REFERENCE_TYPES)
+
+    def test_reschedule_admission_visit_updates_projection_and_ignores_own_booking(self):
+        lead_user = make_user()
+        self._make_employee(lead_user.name, first_name="Visit", last_name="Lead")
+        room = self._make_location("Tour Room")
+        inquiry = self._make_inquiry()
+        payload = schedule_admission_visit(
+            inquiry=inquiry.name,
+            starts_on="2030-05-09 09:00:00",
+            duration_minutes=60,
+            visit_mode="In Person",
+            location=room.name,
+            lead_user=lead_user.name,
+        )
+        self.assertTrue(payload.get("ok"))
+        visit_name = payload.get("admission_visit")
+        school_event = payload.get("school_event")
+
+        update_payload = reschedule_admission_visit(
+            admission_visit=visit_name,
+            starts_on="2030-05-09 10:00:00",
+            duration_minutes=45,
+            visit_mode="In Person",
+            location=room.name,
+            lead_user=lead_user.name,
+        )
+
+        self.assertTrue(update_payload.get("ok"))
+        visit = frappe.get_doc("Admission Visit", visit_name)
+        self.assertEqual(visit.school_event, school_event)
+        event = frappe.get_doc("School Event", school_event)
+        self.assertEqual(str(event.starts_on), "2030-05-09 10:00:00")
+        self.assertEqual(str(event.ends_on), "2030-05-09 10:45:00")
+
+    def test_cancel_admission_visit_removes_calendar_projection_and_records_crm_note(self):
+        lead_user = make_user()
+        self._make_employee(lead_user.name, first_name="Cancel", last_name="Lead")
+        room = self._make_location("Cancel Room")
+        inquiry = self._make_inquiry()
+        payload = schedule_admission_visit(
+            inquiry=inquiry.name,
+            starts_on="2030-05-10 09:00:00",
+            duration_minutes=60,
+            visit_mode="In Person",
+            location=room.name,
+            lead_user=lead_user.name,
+        )
+        school_event = payload.get("school_event")
+        self.assertTrue(frappe.db.exists("School Event", school_event))
+
+        cancel_payload = cancel_admission_visit(admission_visit=payload.get("admission_visit"), reason="Family unavailable")
+
+        self.assertTrue(cancel_payload.get("ok"))
+        visit = frappe.get_doc("Admission Visit", payload.get("admission_visit"))
+        self.assertEqual(visit.status, "Cancelled")
+        self.assertFalse(visit.school_event)
+        self.assertTrue(visit.cancelled_crm_activity)
+        self.assertFalse(frappe.db.exists("School Event", school_event))
+        self.assertFalse(
+            frappe.db.exists(
+                "Employee Booking",
+                {"source_doctype": "School Event", "source_name": school_event},
+            )
+        )
+        self.assertFalse(
+            frappe.db.exists(
+                "Location Booking",
+                {"source_doctype": "School Event", "source_name": school_event},
+            )
+        )
+
+    def test_no_show_and_informed_notice_are_crm_bound_without_booking_informed_user(self):
+        lead_user = make_user()
+        self._make_employee(lead_user.name, first_name="Visit", last_name="Lead")
+        informed_user = make_user()
+        inquiry = self._make_inquiry()
+        payload = schedule_admission_visit(
+            inquiry=inquiry.name,
+            starts_on="2030-05-11 09:00:00",
+            duration_minutes=60,
+            visit_mode="Online",
+            lead_user=lead_user.name,
+            informed_users=[informed_user.name],
+        )
+
+        with patch("ifitwala_ed.admission.doctype.admission_visit.admission_visit.frappe.publish_realtime") as realtime:
+            notify_payload = notify_admission_visit_informed_users(admission_visit=payload.get("admission_visit"))
+
+        self.assertTrue(notify_payload.get("ok"))
+        realtime.assert_called_once()
+        self.assertEqual(realtime.call_args.kwargs.get("user"), informed_user.name)
+
+        status_payload = mark_admission_visit_no_show(admission_visit=payload.get("admission_visit"))
+        self.assertTrue(status_payload.get("ok"))
+        visit = frappe.get_doc("Admission Visit", payload.get("admission_visit"))
+        self.assertEqual(visit.status, "No Show")
+        self.assertTrue(visit.no_show_crm_activity)
 
     def _make_inquiry(self):
         with (
