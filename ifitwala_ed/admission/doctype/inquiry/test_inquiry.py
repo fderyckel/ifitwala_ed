@@ -13,6 +13,7 @@ from ifitwala_ed.admission.admission_utils import (
     _validate_inquiry_assignee_scope,
     from_inquiry_invite,
     get_inquiry_assignees,
+    is_school_available_for_public_inquiry,
 )
 from ifitwala_ed.api.inquiry import get_zero_lost_lead_context, inquiry_school_link_query
 from ifitwala_ed.tests.factories.users import make_user
@@ -74,6 +75,9 @@ class TestInquiry(FrappeTestCase):
 
         self.assertEqual(frappe.db.get_value("Inquiry", doc.name, "source"), "Website")
         mocked_queue.assert_called_once()
+
+    def test_public_inquiry_school_availability_helper_is_importable(self):
+        self.assertFalse(is_school_available_for_public_inquiry(None))
 
     def test_web_form_inquiry_rejects_school_hidden_from_inquiry_picker(self):
         organization = self._make_organization("Web Form Inquiry")
