@@ -1,12 +1,12 @@
 # Admissions CRM Contract
 
 Status: Partial implementation
-Code refs: `ifitwala_ed/admission/doctype/inquiry/inquiry.json`, `ifitwala_ed/admission/web_form/inquiry/inquiry.json`, `ifitwala_ed/admission/web_form/inquiry/inquiry.js`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/admission_acknowledgement_profile.json`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/admission_acknowledgement_profile.js`, `ifitwala_ed/admission/inquiry_acknowledgement.py`, `ifitwala_ed/admission/doctype/admission_channel_account/*`, `ifitwala_ed/admission/doctype/admission_external_identity/*`, `ifitwala_ed/admission/doctype/admission_conversation/*`, `ifitwala_ed/admission/doctype/admission_message/*`, `ifitwala_ed/admission/doctype/admission_crm_activity/*`, `ifitwala_ed/admission/doctype/admission_visit/*`, `ifitwala_ed/api/admissions_crm.py`, `ifitwala_ed/api/admissions_inbox.py`, `ifitwala_ed/api/admissions_timeline.py`
-Test refs: `ifitwala_ed/admission/doctype/inquiry/test_inquiry.py`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/test_admission_acknowledgement_profile.py`, `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`, `ifitwala_ed/admission/doctype/admission_visit/test_admission_visit.py`, `ifitwala_ed/api/test_admissions_inbox.py`, `ifitwala_ed/api/test_admissions_timeline.py`
+Code refs: `ifitwala_ed/admission/doctype/inquiry/inquiry.json`, `ifitwala_ed/admission/web_form/inquiry/inquiry.json`, `ifitwala_ed/admission/web_form/inquiry/inquiry.js`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/admission_acknowledgement_profile.json`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/admission_acknowledgement_profile.js`, `ifitwala_ed/admission/inquiry_acknowledgement.py`, `ifitwala_ed/admission/doctype/admission_channel_account/*`, `ifitwala_ed/admission/doctype/admission_external_identity/*`, `ifitwala_ed/admission/doctype/admission_conversation/*`, `ifitwala_ed/admission/doctype/admission_message/*`, `ifitwala_ed/admission/doctype/admission_crm_activity/*`, `ifitwala_ed/admission/doctype/admission_visit/*`, `ifitwala_ed/api/admissions_crm.py`, `ifitwala_ed/api/admissions_inbox.py`, `ifitwala_ed/api/admissions_timeline.py`, `ifitwala_ed/ui-spa/src/components/admissions/AdmissionsTimelinePanel.vue`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsTimelineService.ts`
+Test refs: `ifitwala_ed/admission/doctype/inquiry/test_inquiry.py`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/test_admission_acknowledgement_profile.py`, `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`, `ifitwala_ed/admission/doctype/admission_visit/test_admission_visit.py`, `ifitwala_ed/api/test_admissions_inbox.py`, `ifitwala_ed/api/test_admissions_timeline.py`, `ifitwala_ed/ui-spa/src/lib/services/admissions/__tests__/admissionsTimelineService.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsInbox.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsCockpit.test.ts`
 
 This note defines the current and planned admissions CRM model for Inquiry-stage lead handling and external-channel messaging.
 
-Phase 1 Inquiry dynamic capture, public family acknowledgement, Phase 2A CRM core manual mode, Phase 3A Admissions Inbox backend context endpoint, Phase 3B/3C staff Inbox route and action drawer, Phase 3D ownership/triage workflows, Phase 3D.5 CRM intake, Phase 3E applicant-stage message aggregation, the backend Admission Visit workflow, and the backend contextual Admissions Timeline endpoint are implemented.
+Phase 1 Inquiry dynamic capture, public family acknowledgement, Phase 2A CRM core manual mode, Phase 3A Admissions Inbox backend context endpoint, Phase 3B/3C staff Inbox route and action drawer, Phase 3D ownership/triage workflows, Phase 3D.5 CRM intake, Phase 3E applicant-stage message aggregation, the backend Admission Visit workflow, the backend contextual Admissions Timeline endpoint, and Inbox/Cockpit SPA timeline drawers are implemented.
 
 Provider adapters, governed media conversion, and lead-scoring/read-model work remain planned until their referenced SPA surfaces, APIs, and tests are implemented.
 
@@ -49,13 +49,13 @@ No CRM work may create a parallel applicant container or bypass `Student Applica
 
 ### 2.1 Contextual Timeline Direction
 
-Status: Backend endpoint implemented; SPA and Desk timeline entry points planned.
-Code refs: `ifitwala_ed/api/admissions_timeline.py`; current source ledgers are listed in this document and `../spa/17_admissions_inbox_contract.md`
-Test refs: `ifitwala_ed/api/test_admissions_timeline.py`
+Status: Backend endpoint and Inbox/Cockpit SPA drawers implemented; Desk timeline entry points planned.
+Code refs: `ifitwala_ed/api/admissions_timeline.py`, `ifitwala_ed/ui-spa/src/components/admissions/AdmissionsTimelinePanel.vue`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsTimelineService.ts`; current source ledgers are listed in this document and `../spa/17_admissions_inbox_contract.md`
+Test refs: `ifitwala_ed/api/test_admissions_timeline.py`, `ifitwala_ed/ui-spa/src/lib/services/admissions/__tests__/admissionsTimelineService.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsInbox.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsCockpit.test.ts`
 
 Admissions users should not need to know which backend ledger stores a visible item.
 
-The implemented backend timeline is available for Inquiry, Student Applicant, and Admission Conversation contexts. The planned product direction is to reuse that pattern from Inquiry, Student Applicant, Admissions Inbox, and Admissions Cockpit. The timeline may project existing ledgers together, but it must not merge their storage models:
+The implemented backend timeline is available for Inquiry, Student Applicant, and Admission Conversation contexts. Admissions Inbox and Admissions Cockpit now reuse that pattern contextually from their existing drawers. Desk entry points from Inquiry and Student Applicant remain planned. The timeline may project existing ledgers together, but it must not merge their storage models:
 
 - Inquiry remains intake and triage.
 - Admission Conversation, Admission Message, and Admission CRM Activity remain pre-applicant CRM support records.
