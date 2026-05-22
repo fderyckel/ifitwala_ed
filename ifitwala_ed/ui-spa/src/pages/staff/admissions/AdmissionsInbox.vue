@@ -451,6 +451,15 @@
 			</header>
 
 			<div class="action-drawer__body">
+				<AdmissionsTimelinePanel
+					:timeline="selectedTimeline"
+					:loading="timelineLoading"
+					:error="timelineError"
+					@refresh="reloadSelectedTimeline"
+					@action="handleTimelineAction"
+					@open="openTimelineItem"
+				/>
+
 				<section class="action-choice-list" :aria-label="__('Available inbox actions')">
 					<button
 						v-for="action in selectedRowActionStates"
@@ -705,6 +714,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { FeatherIcon } from 'frappe-ui';
 
+import AdmissionsTimelinePanel from '@/components/admissions/AdmissionsTimelinePanel.vue';
 import {
 	archiveInquiryFromInbox,
 	assignAdmissionConversation,
@@ -722,6 +732,7 @@ import {
 	sendAdmissionsCaseMessageFromInbox,
 	updateAdmissionConversationStatus,
 } from '@/lib/services/admissions/admissionsInboxService';
+import { getAdmissionsTimelineContext } from '@/lib/services/admissions/admissionsTimelineService';
 import { __ } from '@/lib/i18n';
 import { SIGNAL_ADMISSIONS_INBOX_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 import type {
@@ -732,6 +743,12 @@ import type {
 	AdmissionsInboxQueue,
 	AdmissionsInboxRow,
 } from '@/types/contracts/admissions_inbox/get_admissions_inbox_context';
+import type {
+	AdmissionsTimelineAction,
+	AdmissionsTimelineContext,
+	AdmissionsTimelineItem,
+	AdmissionsTimelineRequest,
+} from '@/types/contracts/admissions_timeline/get_admissions_timeline_context';
 
 const DEFAULT_LIMIT = 40;
 const SUPPORTED_ACTION_IDS = [
@@ -970,8 +987,12 @@ const actionSuccess = ref<string | null>(null);
 const intakeSaving = ref(false);
 const intakeError = ref<string | null>(null);
 const intakeSuccess = ref<string | null>(null);
+const selectedTimeline = ref<AdmissionsTimelineContext | null>(null);
+const timelineLoading = ref(false);
+const timelineError = ref<string | null>(null);
 
 let refreshSequence = 0;
+let timelineSequence = 0;
 let disposeInboxInvalidate: (() => void) | null = null;
 
 const queues = computed<AdmissionsInboxQueue[]>(() => context.value?.queues || []);
@@ -1148,14 +1169,19 @@ function openActionDrawer(row: AdmissionsInboxRow) {
 	actionError.value = null;
 	actionSuccess.value = null;
 	activeActionId.value = rowActionStates(row).find(action => action.enabled)?.id || '';
+	void loadTimelineForRow(row);
 }
 
 function closeActionDrawer() {
+	timelineSequence += 1;
 	selectedRow.value = null;
 	activeActionId.value = '';
 	actionError.value = null;
 	actionSuccess.value = null;
 	actionSaving.value = false;
+	selectedTimeline.value = null;
+	timelineError.value = null;
+	timelineLoading.value = false;
 }
 
 function openIntakeDrawer() {
@@ -1178,6 +1204,120 @@ function selectAction(actionId: SupportedActionId) {
 	activeActionId.value = actionId;
 	actionError.value = null;
 	actionSuccess.value = null;
+}
+
+function timelineRequestForRow(row: AdmissionsInboxRow): AdmissionsTimelineRequest | null {
+	const studentApplicant = blankToNull(String(row.student_applicant || ''));
+	if (studentApplicant) {
+		return {
+			context_doctype: 'Student Applicant',
+			context_name: studentApplicant,
+			limit: 30,
+		};
+	}
+
+	const inquiry = blankToNull(String(row.inquiry || ''));
+	if (inquiry) {
+		return {
+			context_doctype: 'Inquiry',
+			context_name: inquiry,
+			limit: 30,
+		};
+	}
+
+	const conversation = blankToNull(String(row.conversation || ''));
+	if (conversation) {
+		return {
+			context_doctype: 'Admission Conversation',
+			context_name: conversation,
+			limit: 30,
+		};
+	}
+
+	return null;
+}
+
+async function loadTimelineForRow(row: AdmissionsInboxRow) {
+	const payload = timelineRequestForRow(row);
+	const sequence = ++timelineSequence;
+	selectedTimeline.value = null;
+	timelineError.value = null;
+
+	if (!payload) {
+		timelineError.value = __('Timeline unavailable: this Inbox item has no admissions context.');
+		timelineLoading.value = false;
+		return;
+	}
+
+	timelineLoading.value = true;
+	try {
+		const response = await getAdmissionsTimelineContext(payload);
+		if (sequence !== timelineSequence) return;
+		selectedTimeline.value = response;
+	} catch (err) {
+		if (sequence !== timelineSequence) return;
+		timelineError.value =
+			err instanceof Error ? err.message : String(err || __('Could not load admissions timeline.'));
+	} finally {
+		if (sequence === timelineSequence) {
+			timelineLoading.value = false;
+		}
+	}
+}
+
+function reloadSelectedTimeline() {
+	const row = selectedRow.value;
+	if (!row) return;
+	void loadTimelineForRow(row);
+}
+
+function timelineActionToInboxAction(action: AdmissionsTimelineAction): SupportedActionId | '' {
+	const row = selectedRow.value;
+	if (!row) return '';
+
+	if (action.id === 'log_activity') return 'record_activity';
+	if (action.id === 'log_message') return 'log_message';
+	if (action.id === 'message_family') return 'reply_applicant_case';
+	if (action.id === 'invite_to_apply') return 'invite_to_apply';
+	if (action.id === 'archive') {
+		return row.conversation ? 'archive_conversation' : row.inquiry ? 'archive_inquiry' : '';
+	}
+
+	return '';
+}
+
+function handleTimelineAction(action: AdmissionsTimelineAction) {
+	if (!action.enabled) {
+		actionError.value = action.disabled_reason || __('The server did not allow this action.');
+		return;
+	}
+
+	const mappedAction = timelineActionToInboxAction(action);
+	if (!mappedAction) {
+		actionError.value = __(
+			'This contextual action is not available in the Inbox drawer yet. Open the source record to continue.'
+		);
+		return;
+	}
+
+	const state = selectedRowActionStates.value.find(rowAction => rowAction.id === mappedAction);
+	if (!state?.enabled) {
+		actionError.value =
+			state?.disabledReason ||
+			__('This action is blocked for the current admissions context. Refresh the Inbox and try again.');
+		return;
+	}
+
+	selectAction(mappedAction);
+}
+
+function openTimelineItem(item: AdmissionsTimelineItem) {
+	const url = String(item.open_url || '').trim();
+	if (!url || url.startsWith('/private/')) {
+		actionError.value = __('Open unavailable: no permitted destination returned.');
+		return;
+	}
+	window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 function isLogAction(actionId: SupportedActionId | '') {
@@ -1654,6 +1794,7 @@ async function submitInviteInquiry(row: AdmissionsInboxRow) {
 
 function onInboxInvalidated() {
 	refreshInbox('signal');
+	reloadSelectedTimeline();
 }
 
 onMounted(() => {

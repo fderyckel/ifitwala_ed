@@ -135,6 +135,13 @@
 										<button
 											type="button"
 											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
+											@click="openTimeline(item)"
+										>
+											{{ __('Timeline') }}
+										</button>
+										<button
+											type="button"
+											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
 											@click="openScheduleInterview(item)"
 										>
 											{{ __('Schedule Interview') }}
@@ -472,6 +479,42 @@
 		</template>
 
 		<div
+			v-if="activeTimelineCard"
+			class="fixed inset-0 z-50 flex items-stretch justify-end bg-slate-900/35"
+			@click.self="closeTimeline"
+		>
+			<section class="flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl">
+				<header class="border-b border-slate-200 px-5 py-4">
+					<div class="flex items-start justify-between gap-3">
+						<div class="min-w-0">
+							<p class="type-label text-canopy">{{ __('Admissions Timeline') }}</p>
+							<p class="type-body-strong text-ink">{{ activeTimelineCard.display_name }}</p>
+							<p class="type-caption text-slate-token/70">{{ activeTimelineCard.name }}</p>
+						</div>
+						<button
+							type="button"
+							class="rounded-full border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-token hover:border-slate-400"
+							@click="closeTimeline"
+						>
+							{{ __('Close') }}
+						</button>
+					</div>
+				</header>
+
+				<div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+					<AdmissionsTimelinePanel
+						:timeline="timelineContext"
+						:loading="timelineLoading"
+						:error="timelineError"
+						@refresh="reloadTimeline"
+						@action="handleTimelineAction"
+						@open="openTimelineItem"
+					/>
+				</div>
+			</section>
+		</div>
+
+		<div
 			v-if="activeThreadCard"
 			class="fixed inset-0 z-50 flex items-stretch justify-end bg-slate-900/35"
 			@click.self="closeThread"
@@ -574,10 +617,12 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import AdmissionsTimelinePanel from '@/components/admissions/AdmissionsTimelinePanel.vue';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
 import { __ } from '@/lib/i18n';
 import { SIGNAL_ADMISSIONS_COCKPIT_INVALIDATE, uiSignals } from '@/lib/uiSignals';
+import { getAdmissionsTimelineContext } from '@/lib/services/admissions/admissionsTimelineService';
 import {
 	getAdmissionsCaseThread,
 	getAdmissionsCockpitData,
@@ -588,6 +633,11 @@ import {
 	sendAdmissionsCaseMessage,
 	type AdmissionsCaseMessage,
 } from '@/lib/admission';
+import type {
+	AdmissionsTimelineAction,
+	AdmissionsTimelineContext,
+	AdmissionsTimelineItem,
+} from '@/types/contracts/admissions_timeline/get_admissions_timeline_context';
 
 type CockpitCounts = {
 	active_applications: number;
@@ -740,6 +790,10 @@ const data = ref<CockpitPayload | null>(null);
 const overlay = useOverlayStack();
 const activeBlocker = ref('');
 const activeThreadCard = ref<CockpitCard | null>(null);
+const activeTimelineCard = ref<CockpitCard | null>(null);
+const timelineContext = ref<AdmissionsTimelineContext | null>(null);
+const timelineLoading = ref(false);
+const timelineError = ref('');
 const threadLoading = ref(false);
 const threadError = ref('');
 const threadMessages = ref<AdmissionsCaseMessage[]>([]);
@@ -757,6 +811,7 @@ const filters = ref({
 
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 let requestToken = 0;
+let timelineRequestToken = 0;
 let unsubscribeCockpitInvalidate: (() => void) | null = null;
 
 const organizations = computed(() => data.value?.config?.organizations || []);
@@ -1050,6 +1105,95 @@ function openScheduleInterview(card: CockpitCard) {
 	});
 }
 
+function openTimeline(card: CockpitCard) {
+	const applicantName = String(card?.name || '').trim();
+	if (!applicantName) {
+		error.value = __('Applicant reference is missing for timeline open.');
+		return;
+	}
+
+	activeTimelineCard.value = card;
+	void loadTimeline(card);
+}
+
+function closeTimeline() {
+	timelineRequestToken += 1;
+	activeTimelineCard.value = null;
+	timelineContext.value = null;
+	timelineError.value = '';
+	timelineLoading.value = false;
+}
+
+async function loadTimeline(card: CockpitCard) {
+	const applicantName = String(card?.name || '').trim();
+	if (!applicantName) {
+		timelineError.value = __('Applicant reference is missing for timeline load.');
+		return;
+	}
+
+	const token = ++timelineRequestToken;
+	timelineLoading.value = true;
+	timelineError.value = '';
+	timelineContext.value = null;
+
+	try {
+		const payload = await getAdmissionsTimelineContext({
+			context_doctype: 'Student Applicant',
+			context_name: applicantName,
+			limit: 40,
+		});
+		if (token !== timelineRequestToken) {
+			return;
+		}
+		timelineContext.value = payload;
+	} catch (err: any) {
+		if (token !== timelineRequestToken) {
+			return;
+		}
+		timelineError.value = err?.message || __('Could not load admissions timeline.');
+	} finally {
+		if (token === timelineRequestToken) {
+			timelineLoading.value = false;
+		}
+	}
+}
+
+function reloadTimeline() {
+	const card = activeTimelineCard.value;
+	if (!card) return;
+	void loadTimeline(card);
+}
+
+function handleTimelineAction(action: AdmissionsTimelineAction) {
+	if (!action.enabled) {
+		timelineError.value = action.disabled_reason || __('This timeline action is blocked.');
+		return;
+	}
+
+	const card = activeTimelineCard.value;
+	if (!card) {
+		timelineError.value = __('Applicant reference is missing for this timeline action.');
+		return;
+	}
+
+	if (action.id === 'message_family') {
+		openThread(card);
+		closeTimeline();
+		return;
+	}
+
+	timelineError.value = __('This timeline action is not available in the Cockpit drawer yet.');
+}
+
+function openTimelineItem(item: AdmissionsTimelineItem) {
+	const url = String(item.open_url || '').trim();
+	if (!url || url.startsWith('/private/')) {
+		timelineError.value = __('Open unavailable: no permitted destination returned.');
+		return;
+	}
+	window.open(url, '_blank', 'noopener,noreferrer');
+}
+
 async function sendEnrollmentOffer(card: CockpitCard) {
 	const planName = String(card?.aep?.name || '').trim();
 	if (!planName) {
@@ -1234,6 +1378,7 @@ watch(
 onMounted(() => {
 	unsubscribeCockpitInvalidate = uiSignals.subscribe(SIGNAL_ADMISSIONS_COCKPIT_INVALIDATE, () => {
 		queueRefresh();
+		reloadTimeline();
 	});
 	void refreshNow();
 });

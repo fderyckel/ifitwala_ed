@@ -1,13 +1,14 @@
 # Contextual Timeline Contract
 
-Status: Admissions backend timeline endpoint implemented; SPA timeline panels and broader Relationship CRM timeline remain planned.
+Status: Admissions backend timeline endpoint and Inbox/Cockpit SPA timeline drawers implemented; Desk entry points and broader Relationship CRM timeline remain planned.
 Code refs:
 - Admissions contextual timeline endpoint: `ifitwala_ed/api/admissions_timeline.py`
+- Current admissions timeline UI: `ifitwala_ed/ui-spa/src/components/admissions/AdmissionsTimelinePanel.vue`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsTimelineService.ts`, `ifitwala_ed/ui-spa/src/types/contracts/admissions_timeline/get_admissions_timeline_context.ts`
 - Current admissions inbox aggregation: `ifitwala_ed/api/admissions_inbox.py`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsInbox.vue`
 - Current admissions CRM mutations: `ifitwala_ed/api/admissions_crm.py`
 - Current applicant communication wrappers: `ifitwala_ed/api/admissions_communication.py`
 - Current admissions cockpit read model: `ifitwala_ed/api/admission_cockpit.py`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`
-Test refs: `ifitwala_ed/api/test_admissions_timeline.py`; related current tests are listed in the admissions and SPA contracts.
+Test refs: `ifitwala_ed/api/test_admissions_timeline.py`, `ifitwala_ed/ui-spa/src/lib/services/admissions/__tests__/admissionsTimelineService.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsInbox.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsCockpit.test.ts`; related current tests are listed in the admissions and SPA contracts.
 
 This contract defines the contextual timeline projection for admissions and the planned broader Education Relationship CRM work.
 
@@ -66,12 +67,15 @@ Implemented backend contexts:
 - Student Applicant
 - Admission Conversation
 
-Planned UI entry points:
+Implemented SPA entry points:
+
+- Admissions Inbox selected-row drawer
+- Admissions Cockpit applicant-card drawer
+
+Planned Desk entry points:
 
 - Inquiry
 - Student Applicant
-- Admissions Inbox
-- Admissions Cockpit
 
 The endpoint projects:
 
@@ -214,7 +218,7 @@ Rules:
 Implementation sequence:
 
 1. Admissions timeline endpoint over existing admissions and applicant ledgers. Implemented.
-2. Shared timeline panel in Admissions Inbox and Admissions Cockpit. Planned.
+2. Shared timeline panel in Admissions Inbox and Admissions Cockpit. Implemented.
 3. Desk contextual buttons on Inquiry and Student Applicant that open the same timeline/action pattern. Planned.
 4. Relationship timeline only after Relationship CRM schema is approved. Planned.
 

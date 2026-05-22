@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, type App } from 'vue';
 
 import type {
@@ -6,9 +6,11 @@ import type {
 	AdmissionsInboxQueue,
 	AdmissionsInboxRow,
 } from '@/types/contracts/admissions_inbox/get_admissions_inbox_context';
+import type { AdmissionsTimelineContext } from '@/types/contracts/admissions_timeline/get_admissions_timeline_context';
 
 const {
 	getAdmissionsInboxContextMock,
+	getAdmissionsTimelineContextMock,
 	logAdmissionMessageMock,
 	recordAdmissionCrmActivityMock,
 	linkAdmissionConversationMock,
@@ -25,6 +27,7 @@ const {
 	sendAdmissionsCaseMessageFromInboxMock,
 } = vi.hoisted(() => ({
 	getAdmissionsInboxContextMock: vi.fn(),
+	getAdmissionsTimelineContextMock: vi.fn(),
 	logAdmissionMessageMock: vi.fn(),
 	recordAdmissionCrmActivityMock: vi.fn(),
 	linkAdmissionConversationMock: vi.fn(),
@@ -69,6 +72,10 @@ vi.mock('@/lib/services/admissions/admissionsInboxService', () => ({
 	inviteInquiryToApplyFromInbox: inviteInquiryToApplyFromInboxMock,
 	createAdmissionsIntake: createAdmissionsIntakeMock,
 	sendAdmissionsCaseMessageFromInbox: sendAdmissionsCaseMessageFromInboxMock,
+}));
+
+vi.mock('@/lib/services/admissions/admissionsTimelineService', () => ({
+	getAdmissionsTimelineContext: getAdmissionsTimelineContextMock,
 }));
 
 import { SIGNAL_ADMISSIONS_INBOX_INVALIDATE, uiSignals } from '@/lib/uiSignals';
@@ -176,6 +183,53 @@ function context(overrides: Partial<AdmissionsInboxContext> = {}): AdmissionsInb
 	};
 }
 
+function timelineContext(overrides: Partial<AdmissionsTimelineContext> = {}): AdmissionsTimelineContext {
+	return {
+		ok: true,
+		generated_at: '2026-04-28T08:16:00',
+		context: {
+			doctype: 'Admission Conversation',
+			name: 'AC-0001',
+			label: 'Ada Parent',
+			organization: 'ORG-1',
+			school: 'SCH-1',
+			inquiry: null,
+			student_applicant: null,
+			conversation: 'AC-0001',
+			limit: 30,
+		},
+		summary: {
+			headline: 'Ada Parent',
+			latest_at: '2026-04-28T08:10:00',
+			needs_reply: true,
+			counts: { message: 1 },
+			completion_ladder: [
+				{ id: 'lead', label: 'Lead', state: 'current', source: 'Admission Conversation' },
+			],
+		},
+		items: [
+			{
+				id: 'message:ACM-0001',
+				kind: 'message',
+				source_doctype: 'Admission Message',
+				source_name: 'ACM-0001',
+				occurred_at: '2026-04-28T08:10:00',
+				title: 'Family message received',
+				summary: 'Family asked about Grade 4 admission.',
+				actor: 'Inbound',
+				visibility: 'staff',
+				context_labels: {},
+				open_url: '/desk/admission-conversation/AC-0001',
+				actions: [],
+			},
+		],
+		actions: [{ id: 'log_activity', label: 'Log Activity', enabled: true }],
+		has_more: false,
+		sources: { admission_messages: 1 },
+		...overrides,
+	};
+}
+
 async function flushUi() {
 	await Promise.resolve();
 	await nextTick();
@@ -221,8 +275,13 @@ function setControlValue(testId: string, value: string) {
 	element.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
+beforeEach(() => {
+	getAdmissionsTimelineContextMock.mockResolvedValue(timelineContext());
+});
+
 afterEach(() => {
 	getAdmissionsInboxContextMock.mockReset();
+	getAdmissionsTimelineContextMock.mockReset();
 	logAdmissionMessageMock.mockReset();
 	recordAdmissionCrmActivityMock.mockReset();
 	linkAdmissionConversationMock.mockReset();
@@ -275,6 +334,70 @@ describe('AdmissionsInbox', () => {
 		expect(document.body.textContent || '').toContain('Bea Lead');
 		expect(document.body.textContent || '').not.toContain('Ada Parent');
 		expect(getAdmissionsInboxContextMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('loads a contextual Inquiry timeline inside the action drawer', async () => {
+		getAdmissionsInboxContextMock.mockResolvedValue(context());
+		getAdmissionsTimelineContextMock.mockResolvedValue(
+			timelineContext({
+				context: {
+					doctype: 'Inquiry',
+					name: 'INQ-0001',
+					label: 'Bea Lead',
+					organization: 'ORG-1',
+					school: 'SCH-1',
+					inquiry: 'INQ-0001',
+					student_applicant: null,
+					conversation: null,
+					limit: 30,
+				},
+				summary: {
+					headline: 'Bea Lead',
+					latest_at: '2026-04-28T08:12:00',
+					needs_reply: false,
+					counts: { touchpoint: 1 },
+					completion_ladder: [{ id: 'lead', label: 'Lead', state: 'current', source: 'Inquiry' }],
+				},
+				items: [
+					{
+						id: 'activity:ACT-0001',
+						kind: 'touchpoint',
+						source_doctype: 'Admission CRM Activity',
+						source_name: 'ACT-0001',
+						occurred_at: '2026-04-28T08:12:00',
+						title: 'Campus tour discussed',
+						summary: 'Family asked about Grade 4 admission.',
+						actor: 'Staff',
+						visibility: 'staff',
+						context_labels: {},
+						open_url: '/desk/inquiry/INQ-0001',
+						actions: [],
+					},
+				],
+				actions: [{ id: 'invite_to_apply', label: 'Invite to Apply', enabled: true }],
+				sources: { crm_activities: 1 },
+			})
+		);
+
+		mountAdmissionsInbox();
+		await flushUi();
+		clickByTestId('queue-unassigned');
+		await flushUi();
+		clickByTestId('inbox-actions-inquiry:INQ-0001');
+		await flushUi();
+
+		expect(getAdmissionsTimelineContextMock).toHaveBeenCalledWith({
+			context_doctype: 'Inquiry',
+			context_name: 'INQ-0001',
+			limit: 30,
+		});
+		expect(document.body.textContent || '').toContain('Family asked about Grade 4 admission.');
+		expect(document.body.textContent || '').not.toContain('Admission CRM Activity');
+
+		clickByTestId('admissions-timeline-action-invite_to_apply');
+		await flushUi();
+
+		expect(document.querySelector('[data-testid="action-invite-school"]')).toBeTruthy();
 	});
 
 	it('refreshes from the page-owned refresh button', async () => {

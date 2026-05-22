@@ -1,12 +1,12 @@
 # Admissions Inbox SPA Contract
 
-Status: Backend context endpoint, Phase 3B staff SPA queue route, Phase 3C controlled action drawer, Phase 3D ownership/triage workflows, Phase 3D.5 CRM intake, Phase 3E applicant-stage message aggregation, and backend contextual Admissions Timeline endpoint implemented; provider, media, and SPA timeline-panel workflows planned
-Code refs: `ifitwala_ed/api/admissions_inbox.py`, `ifitwala_ed/api/admissions_crm.py`, `ifitwala_ed/api/admissions_timeline.py`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsInbox.vue`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsInboxService.ts`, `ifitwala_ed/ui-spa/src/types/contracts/admissions_inbox/get_admissions_inbox_context.ts`, CRM DocTypes under `ifitwala_ed/admission/doctype/admission_*`
-Test refs: `ifitwala_ed/api/test_admissions_inbox.py`, `ifitwala_ed/api/test_admissions_timeline.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsInbox.test.ts`, `ifitwala_ed/ui-spa/src/lib/services/admissions/__tests__/admissionsInboxService.test.ts`, `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`, `ifitwala_ed/admission/doctype/admission_visit/test_admission_visit.py`
+Status: Backend context endpoint, Phase 3B staff SPA queue route, Phase 3C controlled action drawer, Phase 3D ownership/triage workflows, Phase 3D.5 CRM intake, Phase 3E applicant-stage message aggregation, backend contextual Admissions Timeline endpoint, and Inbox/Cockpit SPA timeline drawers implemented; provider and media workflows planned
+Code refs: `ifitwala_ed/api/admissions_inbox.py`, `ifitwala_ed/api/admissions_crm.py`, `ifitwala_ed/api/admissions_timeline.py`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsInbox.vue`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`, `ifitwala_ed/ui-spa/src/components/admissions/AdmissionsTimelinePanel.vue`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsInboxService.ts`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsTimelineService.ts`, `ifitwala_ed/ui-spa/src/types/contracts/admissions_inbox/get_admissions_inbox_context.ts`, `ifitwala_ed/ui-spa/src/types/contracts/admissions_timeline/get_admissions_timeline_context.ts`, CRM DocTypes under `ifitwala_ed/admission/doctype/admission_*`
+Test refs: `ifitwala_ed/api/test_admissions_inbox.py`, `ifitwala_ed/api/test_admissions_timeline.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsInbox.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsCockpit.test.ts`, `ifitwala_ed/ui-spa/src/lib/services/admissions/__tests__/admissionsInboxService.test.ts`, `ifitwala_ed/ui-spa/src/lib/services/admissions/__tests__/admissionsTimelineService.test.ts`, `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`, `ifitwala_ed/admission/doctype/admission_visit/test_admission_visit.py`
 
 This note defines the staff-side Admissions Inbox surface.
 
-Current runtime behavior includes the backend context endpoint, staff SPA queue route, controlled action drawer, ownership/triage actions for Admission Conversation and Inquiry records, manual CRM intake, applicant-stage case message aggregation, and the backend contextual timeline endpoint. Provider replies, contact creation, governed media conversion, and SPA timeline panels are still planned.
+Current runtime behavior includes the backend context endpoint, staff SPA queue route, controlled action drawer, ownership/triage actions for Admission Conversation and Inquiry records, manual CRM intake, applicant-stage case message aggregation, the backend contextual timeline endpoint, and contextual timeline drawers in Admissions Inbox and Admissions Cockpit. Provider replies, contact creation, and governed media conversion are still planned.
 
 ## 1. Authority
 
@@ -86,7 +86,7 @@ Implemented Phase 3A backend context includes:
 
 Phase 3E aggregates applicant-stage `Org Communication` read state and portal-message needs-reply state through the admissions communication summary helper.
 
-The backend contextual timeline endpoint projects more admissions milestones into one bounded DTO, including Admission Visit, Applicant Enrollment Plan, deposit, Program Enrollment Request, and Program Enrollment state. Admissions Inbox integration is still planned. That projection must preserve each source ledger as the source of truth and must remain bounded by the endpoint contract.
+The backend contextual timeline endpoint projects more admissions milestones into one bounded DTO, including Admission Visit, Applicant Enrollment Plan, deposit, Program Enrollment Request, and Program Enrollment state. Admissions Inbox and Admissions Cockpit load that projection only when a staff user opens the contextual drawer; queue and cockpit page-init payloads remain bounded. The projection must preserve each source ledger as the source of truth and must remain bounded by the endpoint contract.
 
 ## 5. Endpoint Shape
 
@@ -124,6 +124,22 @@ filters
 queues
 sources
 ```
+
+Implemented contextual timeline endpoint:
+
+```text
+ifitwala_ed.api.admissions_timeline.get_admissions_timeline_context
+```
+
+Implemented request parameters:
+
+```text
+context_doctype required: Inquiry | Student Applicant | Admission Conversation
+context_name required
+limit optional, bounded to 1..100
+```
+
+The SPA service calls this endpoint only for the selected context drawer. The page must not waterfall timeline requests for every queue row.
 
 Implemented Phase 2A backend mutation endpoints:
 
@@ -419,6 +435,13 @@ Implemented Phase 3E UI action:
 
 - reply to applicant-stage case messages through `send_admissions_case_message`
 
+Implemented contextual timeline UI behavior:
+
+- load the selected Inquiry, Student Applicant, or Admission Conversation timeline from the bounded timeline endpoint when the drawer opens
+- render product-language timeline items without making backend source ledgers primary UI labels
+- map timeline actions to existing executable drawer actions when the selected row already exposes the matching server-owned workflow
+- show an inline explanation for timeline actions that are not executable in the current drawer phase
+
 Planned mutation actions:
 
 - send provider reply
@@ -479,7 +502,7 @@ Rules:
 
 Mutations that affect queues, counts, or timelines must emit a SPA invalidation signal.
 
-Planned signal:
+Implemented signal:
 
 ```text
 SIGNAL_ADMISSIONS_INBOX_INVALIDATE
@@ -530,4 +553,6 @@ SPA tests must cover:
 - mutation payload shape
 - inline mutation failure
 - signal-driven refresh after successful mutation
+- contextual timeline load from the selected drawer context
+- timeline actions mapping only to executable server-owned drawer workflows
 - no raw media URL rendering

@@ -1,8 +1,11 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, type App } from 'vue';
+
+import type { AdmissionsTimelineContext } from '@/types/contracts/admissions_timeline/get_admissions_timeline_context';
 
 const {
 	getAdmissionsCockpitDataMock,
+	getAdmissionsTimelineContextMock,
 	sendAdmissionsCockpitOfferMock,
 	hydrateAdmissionsCockpitRequestMock,
 	generateAdmissionsCockpitDepositInvoiceMock,
@@ -12,6 +15,7 @@ const {
 	overlayOpenMock,
 } = vi.hoisted(() => ({
 	getAdmissionsCockpitDataMock: vi.fn(),
+	getAdmissionsTimelineContextMock: vi.fn(),
 	sendAdmissionsCockpitOfferMock: vi.fn(),
 	hydrateAdmissionsCockpitRequestMock: vi.fn(),
 	generateAdmissionsCockpitDepositInvoiceMock: vi.fn(),
@@ -53,6 +57,10 @@ vi.mock('@/lib/admission', () => ({
 	getAdmissionsCaseThread: getAdmissionsCaseThreadMock,
 	markAdmissionsCaseRead: markAdmissionsCaseReadMock,
 	sendAdmissionsCaseMessage: sendAdmissionsCaseMessageMock,
+}));
+
+vi.mock('@/lib/services/admissions/admissionsTimelineService', () => ({
+	getAdmissionsTimelineContext: getAdmissionsTimelineContextMock,
 }));
 
 import AdmissionsCockpit from '@/pages/staff/admissions/AdmissionsCockpit.vue';
@@ -144,6 +152,54 @@ function buildPayload(
 	};
 }
 
+function timelineContext(overrides: Partial<AdmissionsTimelineContext> = {}): AdmissionsTimelineContext {
+	return {
+		ok: true,
+		generated_at: '2026-04-28T08:16:00',
+		context: {
+			doctype: 'Student Applicant',
+			name: 'APP-0001',
+			label: 'Ada Applicant',
+			organization: 'ORG-1',
+			school: 'SCH-1',
+			inquiry: 'INQ-0001',
+			student_applicant: 'APP-0001',
+			conversation: null,
+			limit: 40,
+		},
+		summary: {
+			headline: 'Ada Applicant',
+			latest_at: '2026-04-28T08:10:00',
+			needs_reply: false,
+			counts: { applicant: 1 },
+			completion_ladder: [
+				{ id: 'applicant', label: 'Applicant', state: 'done', source: 'Student Applicant' },
+				{ id: 'offer_sent', label: 'Offer Sent', state: 'current', source: 'Applicant Enrollment Plan' },
+			],
+		},
+		items: [
+			{
+				id: 'applicant:APP-0001',
+				kind: 'applicant',
+				source_doctype: 'Student Applicant',
+				source_name: 'APP-0001',
+				occurred_at: '2026-04-28T08:10:00',
+				title: 'Application in review',
+				summary: 'Admissions team is preparing the offer.',
+				actor: 'System',
+				visibility: 'staff',
+				context_labels: {},
+				open_url: '/desk/student-applicant/APP-0001',
+				actions: [],
+			},
+		],
+		actions: [{ id: 'message_family', label: 'Message Family', enabled: true }],
+		has_more: false,
+		sources: { student_applicants: 1 },
+		...overrides,
+	};
+}
+
 async function flushUi() {
 	await Promise.resolve();
 	await nextTick();
@@ -170,8 +226,13 @@ function mountAdmissionsCockpit() {
 	});
 }
 
+beforeEach(() => {
+	getAdmissionsTimelineContextMock.mockResolvedValue(timelineContext());
+});
+
 afterEach(() => {
 	getAdmissionsCockpitDataMock.mockReset();
+	getAdmissionsTimelineContextMock.mockReset();
 	sendAdmissionsCockpitOfferMock.mockReset();
 	hydrateAdmissionsCockpitRequestMock.mockReset();
 	generateAdmissionsCockpitDepositInvoiceMock.mockReset();
@@ -303,5 +364,30 @@ describe('AdmissionsCockpit', () => {
 			school: 'SCH-1',
 		});
 		expect(document.body.textContent || '').not.toContain('Create Interview');
+	});
+
+	it('opens the applicant timeline drawer from the card without exposing source ledger names', async () => {
+		getAdmissionsCockpitDataMock.mockResolvedValue(buildPayload('Committee Approved'));
+		getAdmissionsTimelineContextMock.mockResolvedValue(timelineContext());
+
+		mountAdmissionsCockpit();
+		await flushUi();
+
+		const timelineButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').trim().includes('Timeline')
+		);
+		expect(timelineButton).toBeTruthy();
+
+		timelineButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(getAdmissionsTimelineContextMock).toHaveBeenCalledWith({
+			context_doctype: 'Student Applicant',
+			context_name: 'APP-0001',
+			limit: 40,
+		});
+		expect(document.body.textContent || '').toContain('Admissions Timeline');
+		expect(document.body.textContent || '').toContain('Admissions team is preparing the offer.');
+		expect(document.body.textContent || '').not.toContain('Student Applicant');
 	});
 });
