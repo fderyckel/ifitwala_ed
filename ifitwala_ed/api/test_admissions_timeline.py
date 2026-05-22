@@ -140,6 +140,8 @@ class TestAdmissionsTimeline(FrappeTestCase):
         action_by_id = {action["id"]: action for action in context["actions"]}
         self.assertTrue(action_by_id["message_family"]["enabled"])
         self.assertTrue(action_by_id["manage_offer"]["enabled"])
+        self.assertFalse(action_by_id["log_activity"]["enabled"])
+        self.assertIn("Log a message first", action_by_id["log_activity"]["disabled_reason"])
         self.assertFalse(action_by_id["check_deposit"]["enabled"])
 
     def _make_organization(self, prefix: str) -> str:

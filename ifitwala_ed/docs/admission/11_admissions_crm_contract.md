@@ -6,7 +6,7 @@ Test refs: `ifitwala_ed/admission/doctype/inquiry/test_inquiry.py`, `ifitwala_ed
 
 This note defines the current and planned admissions CRM model for Inquiry-stage lead handling and external-channel messaging.
 
-Phase 1 Inquiry dynamic capture, public family acknowledgement, Phase 2A CRM core manual mode, Phase 3A Admissions Inbox backend context endpoint, Phase 3B/3C staff Inbox route and action drawer, Phase 3D ownership/triage workflows, Phase 3D.5 CRM intake, Phase 3E applicant-stage message aggregation, the backend Admission Visit workflow, the backend contextual Admissions Timeline endpoint, and Inbox/Cockpit SPA timeline drawers are implemented.
+Phase 1 Inquiry dynamic capture, public family acknowledgement, Phase 2A CRM core manual mode, Phase 3A Admissions Inbox backend context endpoint, Phase 3B/3C staff Inbox route and action drawer, Phase 3D ownership/triage workflows, Phase 3D.5 CRM intake, Phase 3E applicant-stage message aggregation, the backend Admission Visit workflow, the backend contextual Admissions Timeline endpoint, Inbox/Cockpit SPA timeline drawers, and Inquiry/Student Applicant Desk entry points are implemented.
 
 Provider adapters, governed media conversion, and lead-scoring/read-model work remain planned until their referenced SPA surfaces, APIs, and tests are implemented.
 
@@ -49,13 +49,13 @@ No CRM work may create a parallel applicant container or bypass `Student Applica
 
 ### 2.1 Contextual Timeline Direction
 
-Status: Backend endpoint and Inbox/Cockpit SPA drawers implemented; Desk timeline entry points planned.
-Code refs: `ifitwala_ed/api/admissions_timeline.py`, `ifitwala_ed/ui-spa/src/components/admissions/AdmissionsTimelinePanel.vue`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsTimelineService.ts`; current source ledgers are listed in this document and `../spa/17_admissions_inbox_contract.md`
+Status: Backend endpoint, Inbox/Cockpit SPA drawers, and Inquiry/Student Applicant Desk entry points implemented.
+Code refs: `ifitwala_ed/api/admissions_timeline.py`, `ifitwala_ed/public/js/admissions_timeline_desk.js`, `ifitwala_ed/admission/doctype/inquiry/inquiry.js`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.js`, `ifitwala_ed/ui-spa/src/components/admissions/AdmissionsTimelinePanel.vue`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsTimelineService.ts`; current source ledgers are listed in this document and `../spa/17_admissions_inbox_contract.md`
 Test refs: `ifitwala_ed/api/test_admissions_timeline.py`, `ifitwala_ed/ui-spa/src/lib/services/admissions/__tests__/admissionsTimelineService.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsInbox.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsCockpit.test.ts`
 
 Admissions users should not need to know which backend ledger stores a visible item.
 
-The implemented backend timeline is available for Inquiry, Student Applicant, and Admission Conversation contexts. Admissions Inbox and Admissions Cockpit now reuse that pattern contextually from their existing drawers. Desk entry points from Inquiry and Student Applicant remain planned. The timeline may project existing ledgers together, but it must not merge their storage models:
+The implemented backend timeline is available for Inquiry, Student Applicant, and Admission Conversation contexts. Admissions Inbox, Admissions Cockpit, Inquiry Desk forms, and Student Applicant Desk forms now reuse that pattern contextually from their existing work surfaces. The timeline may project existing ledgers together, but it must not merge their storage models:
 
 - Inquiry remains intake and triage.
 - Admission Conversation, Admission Message, and Admission CRM Activity remain pre-applicant CRM support records.

@@ -1,9 +1,10 @@
 # Contextual Timeline Contract
 
-Status: Admissions backend timeline endpoint and Inbox/Cockpit SPA timeline drawers implemented; Desk entry points and broader Relationship CRM timeline remain planned.
+Status: Admissions backend timeline endpoint, Inbox/Cockpit SPA timeline drawers, and Inquiry/Student Applicant Desk entry points implemented; broader Relationship CRM timeline remains planned.
 Code refs:
 - Admissions contextual timeline endpoint: `ifitwala_ed/api/admissions_timeline.py`
 - Current admissions timeline UI: `ifitwala_ed/ui-spa/src/components/admissions/AdmissionsTimelinePanel.vue`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsTimelineService.ts`, `ifitwala_ed/ui-spa/src/types/contracts/admissions_timeline/get_admissions_timeline_context.ts`
+- Current Desk timeline entry points: `ifitwala_ed/public/js/admissions_timeline_desk.js`, `ifitwala_ed/admission/doctype/inquiry/inquiry.js`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.js`
 - Current admissions inbox aggregation: `ifitwala_ed/api/admissions_inbox.py`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsInbox.vue`
 - Current admissions CRM mutations: `ifitwala_ed/api/admissions_crm.py`
 - Current applicant communication wrappers: `ifitwala_ed/api/admissions_communication.py`
@@ -67,13 +68,10 @@ Implemented backend contexts:
 - Student Applicant
 - Admission Conversation
 
-Implemented SPA entry points:
+Implemented entry points:
 
 - Admissions Inbox selected-row drawer
 - Admissions Cockpit applicant-card drawer
-
-Planned Desk entry points:
-
 - Inquiry
 - Student Applicant
 
@@ -219,7 +217,7 @@ Implementation sequence:
 
 1. Admissions timeline endpoint over existing admissions and applicant ledgers. Implemented.
 2. Shared timeline panel in Admissions Inbox and Admissions Cockpit. Implemented.
-3. Desk contextual buttons on Inquiry and Student Applicant that open the same timeline/action pattern. Planned.
+3. Desk contextual buttons on Inquiry and Student Applicant that open the same timeline/action pattern. Implemented.
 4. Relationship timeline only after Relationship CRM schema is approved. Planned.
 
 ## 9. Test Expectations

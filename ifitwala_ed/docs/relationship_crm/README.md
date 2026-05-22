@@ -6,7 +6,7 @@ Test refs: None
 
 `ifitwala_ed/docs/relationship_crm/` is the canonical home for the education-native relationship CRM direction and contextual timeline projection rules.
 
-The contracts in this folder define target behavior before Relationship CRM schema and runtime implementation. The admissions backend timeline endpoint and Inbox/Cockpit SPA timeline drawers are implemented; the planned Relationship CRM DocTypes, Relationship Timeline endpoint, and Relationship CRM SPA routes do not exist today.
+The contracts in this folder define target behavior before Relationship CRM schema and runtime implementation. The admissions backend timeline endpoint, Inbox/Cockpit SPA timeline drawers, and Inquiry/Student Applicant Desk entry points are implemented; the planned Relationship CRM DocTypes, Relationship Timeline endpoint, and Relationship CRM SPA routes do not exist today.
 
 Read in this order:
 
@@ -23,7 +23,7 @@ Canonical docs:
   Code refs: None for the planned Relationship CRM schema; related current refs are listed in the document.
   Test refs: None.
 - `02_contextual_timeline_contract.md` - contract for admissions and relationship timeline projections over existing and future ledgers.
-  Code refs: `ifitwala_ed/api/admissions_timeline.py`, `ifitwala_ed/ui-spa/src/components/admissions/AdmissionsTimelinePanel.vue`; related current refs are listed in the document.
+  Code refs: `ifitwala_ed/api/admissions_timeline.py`, `ifitwala_ed/public/js/admissions_timeline_desk.js`, `ifitwala_ed/ui-spa/src/components/admissions/AdmissionsTimelinePanel.vue`; related current refs are listed in the document.
   Test refs: `ifitwala_ed/api/test_admissions_timeline.py`, `ifitwala_ed/ui-spa/src/lib/services/admissions/__tests__/admissionsTimelineService.test.ts`.
 - `03_relationship_scope_and_visibility_contract.md` - planned target contract for team ownership, tenant scope, contact governance, and role-limited visibility.
   Code refs: None for the planned Relationship CRM schema; related current refs are listed in the document.

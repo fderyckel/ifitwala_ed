@@ -14,6 +14,73 @@ function blurActiveModalFocus() {
 }
 
 const EMPLOYEE_USER_QUERY = "ifitwala_ed.api.users.get_users_with_role";
+const TERMINAL_PORTAL_INVITE_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);
+const TERMINAL_INTERVIEW_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);
+const TERMINAL_ACCOUNT_HOLDER_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);
+
+function admissions_timeline_desk() {
+	return window.ifitwala_ed && window.ifitwala_ed.admissionsTimeline;
+}
+
+function run_admissions_context_action(frm, action_id) {
+	const helper = admissions_timeline_desk();
+	if (!helper || typeof helper.loadContextThenRun !== "function") {
+		frappe.msgprint(__("Admissions timeline actions are not available. Please refresh Desk and try again."));
+		return;
+	}
+	helper.loadContextThenRun(
+		{
+			contextDoctype: "Student Applicant",
+			contextName: frm.doc.name,
+			sourceFrm: frm,
+		},
+		action_id
+	);
+}
+
+function open_admissions_timeline(frm) {
+	const helper = admissions_timeline_desk();
+	if (!helper || typeof helper.openTimelineDialog !== "function") {
+		frappe.msgprint(__("Admissions timeline is not available. Please refresh Desk and try again."));
+		return;
+	}
+	helper.openTimelineDialog({
+		contextDoctype: "Student Applicant",
+		contextName: frm.doc.name,
+		sourceFrm: frm,
+	});
+}
+
+function add_admissions_context_actions(frm) {
+	[
+		__("Open Timeline"),
+		__("Message Family"),
+		__("Log Activity"),
+		__("Schedule Visit"),
+		__("Manage Offer"),
+		__("Check Deposit"),
+	].forEach((label) => {
+		frm.remove_custom_button(label, __("Admissions"));
+		frm.remove_custom_button(label);
+	});
+
+	if (!frm.doc || frm.is_new()) {
+		return;
+	}
+
+	const status = String(frm.doc.application_status || "").trim();
+	frm.add_custom_button(__("Open Timeline"), () => open_admissions_timeline(frm), __("Admissions"));
+
+	if (TERMINAL_PORTAL_INVITE_STATUSES.has(status)) {
+		return;
+	}
+
+	frm.add_custom_button(__("Message Family"), () => run_admissions_context_action(frm, "message_family"), __("Admissions"));
+	frm.add_custom_button(__("Log Activity"), () => run_admissions_context_action(frm, "log_activity"), __("Admissions"));
+	frm.add_custom_button(__("Schedule Visit"), () => run_admissions_context_action(frm, "schedule_visit"), __("Admissions"));
+	frm.add_custom_button(__("Manage Offer"), () => run_admissions_context_action(frm, "manage_offer"), __("Admissions"));
+	frm.add_custom_button(__("Check Deposit"), () => run_admissions_context_action(frm, "check_deposit"), __("Admissions"));
+}
 
 function get_employee_user_query() {
 	return {
@@ -68,6 +135,7 @@ frappe.ui.form.on("Student Applicant", {
 		add_account_holder_action(frm);
 		add_recommendation_actions(frm);
 		add_schedule_interview_action(frm);
+		add_admissions_context_actions(frm);
 	},
 
 	setup_governed_image_upload(frm) {
@@ -163,10 +231,6 @@ frappe.ui.form.on("Student Applicant", {
 		});
 	},
 });
-
-const TERMINAL_PORTAL_INVITE_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);
-const TERMINAL_INTERVIEW_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);
-const TERMINAL_ACCOUNT_HOLDER_STATUSES = new Set(["Rejected", "Withdrawn", "Promoted"]);
 
 function add_enrollment_plan_action(frm) {
 	frm.remove_custom_button(__("Manage Enrollment Plan"), __("Actions"));
@@ -2488,9 +2552,10 @@ function map_health_status(status) {
 
 function add_decision_actions(frm) {
 	const status = frm.doc.application_status;
-	[__("Start Review"), __("Approve"), __("Reject"), __("Promote"), __("Upgrade Identity")].forEach((label) =>
-		frm.remove_custom_button(label)
-	);
+	[__("Start Review"), __("Approve"), __("Reject"), __("Promote"), __("Upgrade Identity")].forEach((label) => {
+		frm.remove_custom_button(label, __("Admissions"));
+		frm.remove_custom_button(label);
+	});
 
 	if (status === "Submitted") {
 		frm.add_custom_button(__("Start Review"), () => {
@@ -2549,7 +2614,7 @@ function add_decision_actions(frm) {
 						frappe.msgprint(err.message || __("Unable to promote applicant."));
 					});
 			});
-		});
+		}, __("Admissions"));
 	}
 
 	if (status === "Promoted") {

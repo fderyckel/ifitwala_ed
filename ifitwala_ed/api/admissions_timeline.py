@@ -986,6 +986,9 @@ def _top_level_actions(context: dict, conversations: list[dict], plans: list[dic
                 "label": _("Log Activity"),
                 "enabled": bool(conversation_name),
                 "target": conversation_name,
+                "disabled_reason": None
+                if conversation_name
+                else _("Log a message first so an admissions conversation exists for this activity."),
             },
             {"id": "log_message", "label": _("Log Message"), "enabled": True, "target": inquiry.get("name")},
             {"id": "schedule_visit", "label": _("Schedule Visit"), "enabled": True, "target": inquiry.get("name")},
@@ -1017,6 +1020,9 @@ def _top_level_actions(context: dict, conversations: list[dict], plans: list[dic
                 "label": _("Log Activity"),
                 "enabled": bool(conversation_name),
                 "target": conversation_name,
+                "disabled_reason": None
+                if conversation_name
+                else _("Log a message first so an admissions conversation exists for this activity."),
             },
             {"id": "schedule_visit", "label": _("Schedule Visit"), "enabled": True, "target": applicant.get("name")},
             {"id": "manage_offer", "label": _("Manage Offer"), "enabled": True, "target": applicant.get("name")},
@@ -1044,12 +1050,18 @@ def _top_level_actions(context: dict, conversations: list[dict], plans: list[dic
             "label": _("Log Activity"),
             "enabled": bool(conversation_name),
             "target": conversation_name,
+            "disabled_reason": None
+            if conversation_name
+            else _("Log a message first so an admissions conversation exists for this activity."),
         },
         {
             "id": "log_message",
             "label": _("Log Message"),
             "enabled": bool(conversation_name),
             "target": conversation_name,
+            "disabled_reason": None
+            if conversation_name
+            else _("A conversation is required before logging this message from the conversation context."),
         },
         {"id": "schedule_visit", "label": _("Schedule Visit"), "enabled": True, "target": conversation_name},
         {
