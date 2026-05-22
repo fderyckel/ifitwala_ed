@@ -217,10 +217,25 @@ def _validate_contact_point_identity(
         frappe.throw(_("Communication Contact Point purpose is not approved."))
 
 
+def _get_school_organization_for_contact_point(school: str | None) -> str:
+    resolved_school = _clean_data(school)
+    if not resolved_school:
+        return ""
+
+    try:
+        from ifitwala_ed.accounting.account_holder_utils import get_school_organization
+    except Exception:
+        return ""
+
+    return _clean_data(get_school_organization(resolved_school))
+
+
 def _find_contact_point_name(
     *,
     owner_doctype: str,
     owner_name: str,
+    organization: str,
+    school: str | None,
     channel_type: str,
     purpose: str,
     normalized_hash: str,
@@ -230,6 +245,8 @@ def _find_contact_point_name(
         filters={
             "owner_doctype": owner_doctype,
             "owner_name": owner_name,
+            "organization": organization,
+            "school": _clean_data(school) or ["is", "not set"],
             "channel_type": channel_type,
             "purpose": purpose,
             "normalized_hash": normalized_hash,
@@ -247,6 +264,8 @@ def _clear_existing_primary_contact_points(
     *,
     owner_doctype: str,
     owner_name: str,
+    organization: str,
+    school: str | None,
     channel_type: str,
     purpose: str,
     except_name: str | None = None,
@@ -256,6 +275,8 @@ def _clear_existing_primary_contact_points(
         filters={
             "owner_doctype": owner_doctype,
             "owner_name": owner_name,
+            "organization": organization,
+            "school": _clean_data(school) or ["is", "not set"],
             "channel_type": channel_type,
             "purpose": purpose,
             "is_primary": 1,
@@ -337,6 +358,8 @@ def upsert_contact_point(
     contact_point_name = _find_contact_point_name(
         owner_doctype=resolved_owner_doctype,
         owner_name=resolved_owner_name,
+        organization=resolved_organization,
+        school=resolved_school,
         channel_type=resolved_channel_type,
         purpose=resolved_purpose,
         normalized_hash=normalized_hash,
@@ -365,6 +388,8 @@ def upsert_contact_point(
         _clear_existing_primary_contact_points(
             owner_doctype=resolved_owner_doctype,
             owner_name=resolved_owner_name,
+            organization=resolved_organization,
+            school=resolved_school,
             channel_type=resolved_channel_type,
             purpose=resolved_purpose,
             except_name=contact_point_name,
@@ -554,12 +579,12 @@ def sync_guardian_contact_points(
     user: str | None = None,
 ) -> list[str]:
     guardian_name = _clean_data(_row_get(guardian_doc, "name"))
-    organization = _clean_data(_row_get(guardian_doc, "organization"))
+    explicit_organization = _clean_data(_row_get(guardian_doc, "organization"))
     resolved_school = _clean_data(school)
-    if not organization and resolved_school:
-        from ifitwala_ed.accounting.account_holder_utils import get_school_organization
-
-        organization = _clean_data(get_school_organization(resolved_school))
+    school_organization = _get_school_organization_for_contact_point(resolved_school)
+    if explicit_organization and school_organization and explicit_organization != school_organization:
+        frappe.throw(_("Guardian organization does not match the School organization for contact point sync."))
+    organization = school_organization or explicit_organization
 
     if not guardian_name:
         frappe.throw(_("Guardian is required for contact point sync."))

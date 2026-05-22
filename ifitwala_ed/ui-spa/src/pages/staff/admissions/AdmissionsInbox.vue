@@ -470,6 +470,21 @@
 					@open="openTimelineItem"
 				/>
 
+				<p
+					v-if="actionError && !activeActionId"
+					data-testid="admissions-inbox-action-error"
+					class="action-error"
+				>
+					{{ actionError }}
+				</p>
+				<p
+					v-if="actionSuccess && !activeActionId"
+					data-testid="admissions-inbox-action-success"
+					class="action-success"
+				>
+					{{ actionSuccess }}
+				</p>
+
 				<section class="action-choice-list" :aria-label="__('Available inbox actions')">
 					<button
 						v-for="action in selectedRowActionStates"
@@ -744,6 +759,11 @@ import {
 	updateAdmissionConversationStatus,
 } from '@/lib/services/admissions/admissionsInboxService';
 import { getAdmissionsTimelineContext } from '@/lib/services/admissions/admissionsTimelineService';
+import {
+	generateAdmissionsCockpitDepositInvoice,
+	getOrCreateAdmissionsCockpitOfferPlan,
+	promoteAdmissionsCockpitApplicant,
+} from '@/lib/admission';
 import { __ } from '@/lib/i18n';
 import { SIGNAL_ADMISSIONS_INBOX_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 import type {
@@ -1318,6 +1338,18 @@ function timelineActionToInboxAction(action: AdmissionsTimelineAction): Supporte
 	return '';
 }
 
+function timelineActionStudentApplicant(action: AdmissionsTimelineAction) {
+	const row = selectedRow.value;
+	const context = selectedTimeline.value?.context || null;
+	return blankToNull(
+		String(action.target || context?.student_applicant || row?.student_applicant || '')
+	);
+}
+
+function timelineActionEnrollmentPlan(action: AdmissionsTimelineAction) {
+	return blankToNull(String(action.target || ''));
+}
+
 function handleTimelineAction(action: AdmissionsTimelineAction) {
 	if (!action.enabled) {
 		actionError.value = action.disabled_reason || __('The server did not allow this action.');
@@ -1332,6 +1364,11 @@ function handleTimelineAction(action: AdmissionsTimelineAction) {
 		}
 		actionError.value = null;
 		openScheduleVisit(row);
+		return;
+	}
+
+	if (action.id === 'manage_offer' || action.id === 'check_deposit' || action.id === 'promote') {
+		void submitApplicantTimelineAction(action);
 		return;
 	}
 
@@ -1352,6 +1389,62 @@ function handleTimelineAction(action: AdmissionsTimelineAction) {
 	}
 
 	selectAction(mappedAction);
+}
+
+async function submitApplicantTimelineAction(action: AdmissionsTimelineAction) {
+	const row = selectedRow.value;
+	if (!row || actionSaving.value) {
+		return;
+	}
+
+	activeActionId.value = '';
+	actionForm.value = createActionForm(row);
+	actionError.value = null;
+	actionSuccess.value = null;
+	actionSaving.value = true;
+
+	try {
+		if (action.id === 'manage_offer') {
+			const studentApplicant = timelineActionStudentApplicant(action);
+			if (!studentApplicant) {
+				actionError.value = __('This action requires a linked Student Applicant.');
+				return;
+			}
+			await getOrCreateAdmissionsCockpitOfferPlan({
+				student_applicant: studentApplicant,
+			});
+			actionSuccess.value = __('Offer plan is ready. Refreshing drawer.');
+		} else if (action.id === 'check_deposit') {
+			const applicantEnrollmentPlan = timelineActionEnrollmentPlan(action);
+			if (!applicantEnrollmentPlan) {
+				actionError.value = __('This action requires an applicant enrollment plan.');
+				return;
+			}
+			await generateAdmissionsCockpitDepositInvoice({
+				applicant_enrollment_plan: applicantEnrollmentPlan,
+			});
+			actionSuccess.value = __('Deposit status updated. Refreshing drawer.');
+		} else if (action.id === 'promote') {
+			const studentApplicant = timelineActionStudentApplicant(action);
+			if (!studentApplicant) {
+				actionError.value = __('This action requires a linked Student Applicant.');
+				return;
+			}
+			await promoteAdmissionsCockpitApplicant({
+				student_applicant: studentApplicant,
+			});
+			actionSuccess.value = __('Applicant promoted. Refreshing drawer.');
+		}
+
+		if (!actionError.value) {
+			await refreshInbox('timeline action');
+			await loadTimelineForRow(row);
+		}
+	} catch (err) {
+		actionError.value = err instanceof Error ? err.message : String(err || __('Action failed.'));
+	} finally {
+		actionSaving.value = false;
+	}
 }
 
 function openTimelineItem(item: AdmissionsTimelineItem) {

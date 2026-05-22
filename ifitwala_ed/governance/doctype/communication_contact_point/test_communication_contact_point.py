@@ -90,6 +90,20 @@ class TestCommunicationContactPointController(TestCase):
                 doc.validate()
 
         frappe.db.exists.assert_called_once()
+        filters = frappe.db.exists.call_args.args[1]
+        self.assertEqual(filters["organization"], "ORG-1")
+        self.assertEqual(filters["school"], "SCHOOL-1")
+
+    def test_primary_duplicate_check_is_school_scoped(self):
+        with stubbed_frappe() as frappe:
+            module = import_fresh("ifitwala_ed.governance.doctype.communication_contact_point.communication_contact_point")
+            frappe.db.exists = Mock(return_value=None)
+            doc = _new_contact_point(module, is_primary=1, school="SCHOOL-2")
+
+            doc.validate()
+
+        filters = frappe.db.exists.call_args.args[1]
+        self.assertEqual(filters["school"], "SCHOOL-2")
 
     def test_on_doctype_update_adds_expected_indexes(self):
         with stubbed_frappe() as frappe:
@@ -109,6 +123,13 @@ class TestCommunicationContactPointController(TestCase):
                 "idx_ccp_hash_scope",
                 "idx_ccp_owner_primary",
             },
+        )
+        primary_index = next(
+            call for call in frappe.db.add_index.call_args_list if call.kwargs["index_name"] == "idx_ccp_owner_primary"
+        )
+        self.assertEqual(
+            primary_index.kwargs["fields"],
+            ["owner_doctype", "owner_name", "organization", "school", "purpose", "channel_type", "is_primary", "disabled"],
         )
 
 

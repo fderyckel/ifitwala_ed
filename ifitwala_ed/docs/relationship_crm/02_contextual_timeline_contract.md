@@ -1,6 +1,6 @@
 # Contextual Timeline Contract
 
-Status: Admissions backend timeline endpoint, Inbox/Cockpit SPA timeline drawers, Cockpit CRM log activity/message drawer actions, Cockpit applicant-stage offer/deposit/promotion drawer actions, Inbox/Cockpit schedule-visit drawer actions, and Inquiry/Student Applicant Desk entry points implemented; broader Relationship CRM timeline remains planned.
+Status: Admissions backend timeline endpoint, Inbox/Cockpit SPA timeline drawers, Cockpit CRM log activity/message drawer actions, Inbox/Cockpit applicant-stage offer/deposit/promotion drawer actions, Inbox/Cockpit schedule-visit drawer actions, and Inquiry/Student Applicant Desk entry points implemented; broader Relationship CRM timeline remains planned.
 Code refs:
 - Admissions contextual timeline endpoint: `ifitwala_ed/api/admissions_timeline.py`
 - Current admissions timeline UI: `ifitwala_ed/ui-spa/src/components/admissions/AdmissionsTimelinePanel.vue`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsTimelineService.ts`, `ifitwala_ed/ui-spa/src/types/contracts/admissions_timeline/get_admissions_timeline_context.ts`
@@ -218,7 +218,7 @@ Implementation sequence:
 1. Admissions timeline endpoint over existing admissions and applicant ledgers. Implemented.
 2. Shared timeline panel in Admissions Inbox and Admissions Cockpit. Implemented.
 3. Desk contextual buttons on Inquiry and Student Applicant that open the same timeline/action pattern. Implemented.
-4. Cockpit contextual drawer actions for Log Activity, Log Message, Message Family, Manage Offer, Check Deposit, and Promote. Implemented.
+4. Inbox/Cockpit contextual drawer actions for Log Activity, Log Message, Message Family, Manage Offer, Check Deposit, and Promote. Implemented.
 5. Native SPA Admission Visit scheduling from the Cockpit/Inbox timeline drawer. Implemented.
 6. Relationship timeline only after Relationship CRM schema is approved. Planned.
 

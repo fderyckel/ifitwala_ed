@@ -23,6 +23,7 @@ Code refs:
 - `ifitwala_ed/governance/doctype/contact_export_request/contact_export_request.json`
 - `ifitwala_ed/governance/doctype/communication_contact_point/communication_contact_point.py`
 - `ifitwala_ed/governance/doctype/communication_contact_point/communication_contact_point.json`
+- `ifitwala_ed/patches/backfill_guardian_contact_points.py`
 Decision refs:
 - `communication_contact_point_schema_decision.md`
 Test refs:
@@ -38,6 +39,7 @@ Test refs:
 - `ifitwala_ed/governance/doctype/contact_access_log/test_contact_access_log.py`
 - `ifitwala_ed/governance/doctype/communication_contact_point/test_communication_contact_point.py`
 - `ifitwala_ed/contacts/test_contact_export.py`
+- `ifitwala_ed/patches/test_backfill_guardian_contact_points.py`
 
 This document defines the target security posture for personal contact data across Ifitwala Ed.
 
@@ -128,7 +130,7 @@ Rules:
 5. `masked_display` is the default UI value.
 6. Purpose is mandatory and must be specific enough to support audit and minimization.
 
-The schema decision is approved and implementation is proceeding through locked slices. The internal DocType, service helpers, and first Guardian read bridge exist. Do not create or alter Contact Point behavior outside the implementation order in `communication_contact_point_schema_decision.md`.
+The schema decision is approved and implementation is proceeding through locked slices. The internal DocType, service helpers, first Guardian read bridge, and school-scoped Guardian backfill exist. Do not create or alter Contact Point behavior outside the implementation order in `communication_contact_point_schema_decision.md`.
 
 ## 4. Permission Stance
 
@@ -150,7 +152,7 @@ Current-runtime lockdown status:
 - Admissions and marketing roles no longer bypass Contact query scoping.
 - Native `Contact` create/write DocPerm rows still exist as transitional Frappe seed data, but document-level editor operations are blocked by the permission hook while domain-owned contact-point services are future work.
 
-Remaining gaps require approved implementation slices: full export execution with per-row logging, Guardian contact-point one-shot migration and write-path retirement, and later domain-by-domain Contact Point migration.
+Remaining gaps require approved implementation slices: full export execution with per-row logging, Guardian contact-point write-path retirement, and later domain-by-domain Contact Point migration.
 
 API hardening status:
 
@@ -171,6 +173,7 @@ Contact privacy service boundary status:
 - Legacy Contact creation/update code in Student, Guardian, Inquiry, and admissions profile flows remains a migration gap, not an approved pattern for new surfaces.
 - `Communication Contact Point` service helpers now exist for service-owned upsert, disable, masked owner DTOs, raw reads, recipient resolution, and explicit Guardian sync with a verified school context.
 - Guardian controller write-through is not enabled yet because `Guardian` has no canonical `school` field; callers must prove school context before creating Guardian contact points.
+- A post-model-sync one-shot patch backfills Guardian Contact Points for each school resolved from linked students. Multi-school Guardians get duplicate school-scoped Contact Points; `organization` and `school` are part of Contact Point identity and primary uniqueness.
 
 Contact access logging status:
 

@@ -5,7 +5,7 @@ import hmac
 import hashlib
 from contextlib import contextmanager
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
@@ -14,7 +14,12 @@ from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
 
 @contextmanager
 def _module():
-    with stubbed_frappe() as frappe:
+    account_holder_utils = ModuleType("ifitwala_ed.accounting.account_holder_utils")
+    account_holder_utils.get_school_organization = lambda school_name: (
+        "ORG-1" if str(school_name or "").strip() == "SCHOOL-1" else ""
+    )
+
+    with stubbed_frappe(extra_modules={"ifitwala_ed.accounting.account_holder_utils": account_holder_utils}) as frappe:
         import_fresh("ifitwala_ed.contacts.contact_audit")
         module = import_fresh("ifitwala_ed.contacts.contact_privacy")
         module._normalize_email_value = lambda value: str(value or "").strip().lower()
@@ -489,6 +494,68 @@ class TestCommunicationContactPointService(TestCase):
         self.assertEqual(logs[0]["access_type"], "raw_write")
         self.assertNotIn("Guardian@Example.com", str(logs[0]))
         self.assertNotIn("guardian@example.com", str(logs[0]))
+        find_filters = frappe.get_all.call_args_list[0].kwargs["filters"]
+        clear_primary_filters = frappe.get_all.call_args_list[1].kwargs["filters"]
+        self.assertEqual(find_filters["organization"], "ORG-1")
+        self.assertEqual(find_filters["school"], "SCHOOL-1")
+        self.assertEqual(clear_primary_filters["organization"], "ORG-1")
+        self.assertEqual(clear_primary_filters["school"], "SCHOOL-1")
+
+    def test_upsert_contact_point_identity_is_school_scoped(self):
+        with _module() as (contact_privacy, frappe):
+            frappe.local = SimpleNamespace(conf={"encryption_key": "unit-secret"}, site="unit-site")
+            created_docs, _logs = self._install_contact_point_get_doc(frappe)
+            contact_privacy._encrypt_contact_point_value = lambda value: f"enc:{value}"
+
+            def get_all(doctype, **kwargs):
+                filters = kwargs.get("filters") or {}
+                if filters.get("school") == "SCHOOL-1":
+                    return [{"name": "CCP-EXISTING"}]
+                return []
+
+            existing_doc = _FakeContactPointDoc(name="CCP-EXISTING")
+
+            def get_doc(*args, **kwargs):
+                if len(args) == 2 and args[0] == "Communication Contact Point" and args[1] == "CCP-EXISTING":
+                    return existing_doc
+                if args and isinstance(args[0], dict) and args[0].get("doctype") == "Contact Access Log":
+                    return SimpleNamespace(name="CAL-1", flags={}, insert=lambda ignore_permissions=True: None)
+                if args and isinstance(args[0], dict) and args[0].get("doctype") == "Communication Contact Point":
+                    doc = _FakeContactPointDoc(name=f"CCP-{len(created_docs) + 1}")
+                    created_docs.append(doc)
+                    return doc
+                raise AssertionError(f"Unexpected get_doc call: {args!r} {kwargs!r}")
+
+            frappe.get_all = get_all
+            frappe.get_doc = get_doc
+
+            existing_name = contact_privacy.upsert_contact_point(
+                owner_doctype="Guardian",
+                owner_name="GRD-1",
+                subject_doctype="Guardian",
+                subject_name="GRD-1",
+                organization="ORG-1",
+                school="SCHOOL-1",
+                channel_type="email",
+                purpose="school_communication",
+                value="guardian@example.com",
+            )
+            new_name = contact_privacy.upsert_contact_point(
+                owner_doctype="Guardian",
+                owner_name="GRD-1",
+                subject_doctype="Guardian",
+                subject_name="GRD-1",
+                organization="ORG-1",
+                school="SCHOOL-2",
+                channel_type="email",
+                purpose="school_communication",
+                value="guardian@example.com",
+            )
+
+        self.assertEqual(existing_name, "CCP-EXISTING")
+        self.assertTrue(existing_doc.saved)
+        self.assertEqual(new_name, "CCP-1")
+        self.assertEqual(created_docs[0].school, "SCHOOL-2")
 
     def test_upsert_guardian_contact_point_requires_school(self):
         with _module() as (contact_privacy, frappe):
@@ -615,6 +682,22 @@ class TestCommunicationContactPointService(TestCase):
         self.assertEqual(calls[0]["school"], "SCHOOL-1")
         self.assertEqual(calls[1]["channel_type"], "phone")
         self.assertEqual(calls[1]["value"], "+66 81 234 5678")
+
+    def test_guardian_contact_point_sync_rejects_cross_organization_school_context(self):
+        with _module() as (contact_privacy, frappe):
+            guardian_doc = SimpleNamespace(
+                name="GRD-1",
+                organization="ORG-OTHER",
+                guardian_email="guardian@example.com",
+                guardian_mobile_phone="+66812345678",
+            )
+
+            with self.assertRaises(frappe.ValidationError):
+                contact_privacy.sync_guardian_contact_points(
+                    guardian_doc,
+                    school="SCHOOL-1",
+                    purpose="school_communication",
+                )
 
 
 class TestContactAuditHelper(TestCase):

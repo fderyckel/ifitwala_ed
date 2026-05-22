@@ -16,9 +16,9 @@ Canonical docs:
 - `contact_data_governance.md` - locked target architecture and current gap register for person/contact data governance, native Frappe `Contact`, purpose-bound recipient resolution, exports, raw-value access, and deletion/erasure boundaries.
   Code refs: Listed in the document.
   Test refs: Listed in the document.
-- `communication_contact_point_schema_decision.md` - approved schema and runtime contract for the future internal `Communication Contact Point` DocType. This is a design decision only; implementation remains future work.
-  Code refs: Planned in the document.
-  Test refs: Planned in the document.
+- `communication_contact_point_schema_decision.md` - approved schema and runtime contract for the internal `Communication Contact Point` DocType, service boundary, Guardian read bridge, and Guardian school-scoped backfill sequence.
+  Code refs: Listed in the document.
+  Test refs: Listed in the document.
 
 Related planned product contracts:
 

@@ -25,6 +25,9 @@ const {
 	inviteInquiryToApplyFromInboxMock,
 	createAdmissionsIntakeMock,
 	sendAdmissionsCaseMessageFromInboxMock,
+	getOrCreateAdmissionsCockpitOfferPlanMock,
+	generateAdmissionsCockpitDepositInvoiceMock,
+	promoteAdmissionsCockpitApplicantMock,
 	overlayOpenMock,
 } = vi.hoisted(() => ({
 	getAdmissionsInboxContextMock: vi.fn(),
@@ -43,6 +46,9 @@ const {
 	inviteInquiryToApplyFromInboxMock: vi.fn(),
 	createAdmissionsIntakeMock: vi.fn(),
 	sendAdmissionsCaseMessageFromInboxMock: vi.fn(),
+	getOrCreateAdmissionsCockpitOfferPlanMock: vi.fn(),
+	generateAdmissionsCockpitDepositInvoiceMock: vi.fn(),
+	promoteAdmissionsCockpitApplicantMock: vi.fn(),
 	overlayOpenMock: vi.fn(),
 }));
 
@@ -78,6 +84,12 @@ vi.mock('@/lib/services/admissions/admissionsInboxService', () => ({
 
 vi.mock('@/lib/services/admissions/admissionsTimelineService', () => ({
 	getAdmissionsTimelineContext: getAdmissionsTimelineContextMock,
+}));
+
+vi.mock('@/lib/admission', () => ({
+	getOrCreateAdmissionsCockpitOfferPlan: getOrCreateAdmissionsCockpitOfferPlanMock,
+	generateAdmissionsCockpitDepositInvoice: generateAdmissionsCockpitDepositInvoiceMock,
+	promoteAdmissionsCockpitApplicant: promoteAdmissionsCockpitApplicantMock,
 }));
 
 vi.mock('@/composables/useOverlayStack', () => ({
@@ -191,6 +203,27 @@ function context(overrides: Partial<AdmissionsInboxContext> = {}): AdmissionsInb
 	};
 }
 
+function studentApplicantRow(overrides: Partial<AdmissionsInboxRow> = {}): AdmissionsInboxRow {
+	return row({
+		id: 'student_applicant:APP-0001',
+		kind: 'student_applicant',
+		stage: 'student_applicant',
+		title: 'Ada Applicant',
+		subtitle: 'Applicant',
+		inquiry: null,
+		student_applicant: 'APP-0001',
+		conversation: null,
+		open_url: '/desk/student-applicant/APP-0001',
+		external_identity: null,
+		channel_type: null,
+		owner: 'admissions@example.com',
+		last_message_preview: 'Application is ready for decision.',
+		needs_reply: false,
+		actions: [{ id: 'reply_applicant_case', enabled: true }],
+		...overrides,
+	});
+}
+
 function timelineContext(overrides: Partial<AdmissionsTimelineContext> = {}): AdmissionsTimelineContext {
 	return {
 		ok: true,
@@ -236,6 +269,49 @@ function timelineContext(overrides: Partial<AdmissionsTimelineContext> = {}): Ad
 		sources: { admission_messages: 1 },
 		...overrides,
 	};
+}
+
+function studentApplicantTimeline(
+	actions: AdmissionsTimelineContext['actions']
+): AdmissionsTimelineContext {
+	return timelineContext({
+		context: {
+			doctype: 'Student Applicant',
+			name: 'APP-0001',
+			label: 'Ada Applicant',
+			organization: 'ORG-1',
+			school: 'SCH-1',
+			inquiry: null,
+			student_applicant: 'APP-0001',
+			conversation: null,
+			limit: 30,
+		},
+		summary: {
+			headline: 'Ada Applicant',
+			latest_at: '2026-04-28T08:12:00',
+			needs_reply: false,
+			counts: { applicant: 1 },
+			completion_ladder: [{ id: 'applicant', label: 'Applicant', state: 'current' }],
+		},
+		items: [
+			{
+				id: 'applicant:APP-0001',
+				kind: 'applicant',
+				source_doctype: 'Student Applicant',
+				source_name: 'APP-0001',
+				occurred_at: '2026-04-28T08:12:00',
+				title: 'Application in review',
+				summary: 'Admissions team is preparing the next step.',
+				actor: 'System',
+				visibility: 'staff',
+				context_labels: {},
+				open_url: '/desk/student-applicant/APP-0001',
+				actions: [],
+			},
+		],
+		actions,
+		sources: { student_applicants: 1 },
+	});
 }
 
 async function flushUi() {
@@ -304,6 +380,9 @@ afterEach(() => {
 	inviteInquiryToApplyFromInboxMock.mockReset();
 	createAdmissionsIntakeMock.mockReset();
 	sendAdmissionsCaseMessageFromInboxMock.mockReset();
+	getOrCreateAdmissionsCockpitOfferPlanMock.mockReset();
+	generateAdmissionsCockpitDepositInvoiceMock.mockReset();
+	promoteAdmissionsCockpitApplicantMock.mockReset();
 	overlayOpenMock.mockReset();
 	uiSignals._clearAllForTests();
 	while (cleanupFns.length) {
@@ -433,6 +512,113 @@ describe('AdmissionsInbox', () => {
 			school: 'SCH-1',
 			visitorName: 'Ada Parent',
 		});
+	});
+
+	it('manages an applicant offer from the contextual timeline drawer', async () => {
+		getAdmissionsInboxContextMock.mockResolvedValue(
+			context({
+				queues: [queue({ rows: [studentApplicantRow()] })],
+				sources: { student_applicants: 1 },
+			})
+		);
+		getAdmissionsTimelineContextMock.mockResolvedValue(
+			studentApplicantTimeline([
+				{ id: 'manage_offer', label: 'Manage Offer', enabled: true, target: 'APP-0001' },
+			])
+		);
+		getOrCreateAdmissionsCockpitOfferPlanMock.mockResolvedValue({
+			ok: true,
+			student_applicant: 'APP-0001',
+			applicant_enrollment_plan: 'AEP-0001',
+			status: 'Draft',
+		});
+
+		mountAdmissionsInbox();
+		await flushUi();
+
+		clickByTestId('inbox-actions-student_applicant:APP-0001');
+		await flushUi();
+		clickByTestId('admissions-timeline-action-manage_offer');
+		await flushUi();
+		await flushUi();
+
+		expect(getOrCreateAdmissionsCockpitOfferPlanMock).toHaveBeenCalledWith({
+			student_applicant: 'APP-0001',
+		});
+		expect(getAdmissionsInboxContextMock).toHaveBeenCalledTimes(2);
+		expect(getAdmissionsTimelineContextMock).toHaveBeenCalledTimes(2);
+		expect(document.body.textContent || '').toContain('Offer plan is ready. Refreshing drawer.');
+	});
+
+	it('checks a deposit from the contextual timeline drawer', async () => {
+		getAdmissionsInboxContextMock.mockResolvedValue(
+			context({
+				queues: [queue({ rows: [studentApplicantRow()] })],
+				sources: { student_applicants: 1 },
+			})
+		);
+		getAdmissionsTimelineContextMock.mockResolvedValue(
+			studentApplicantTimeline([
+				{ id: 'check_deposit', label: 'Check Deposit', enabled: true, target: 'AEP-0001' },
+			])
+		);
+		generateAdmissionsCockpitDepositInvoiceMock.mockResolvedValue({
+			ok: true,
+			applicant_enrollment_plan: 'AEP-0001',
+			status: 'Offer Accepted',
+		});
+
+		mountAdmissionsInbox();
+		await flushUi();
+
+		clickByTestId('inbox-actions-student_applicant:APP-0001');
+		await flushUi();
+		clickByTestId('admissions-timeline-action-check_deposit');
+		await flushUi();
+		await flushUi();
+
+		expect(generateAdmissionsCockpitDepositInvoiceMock).toHaveBeenCalledWith({
+			applicant_enrollment_plan: 'AEP-0001',
+		});
+		expect(getAdmissionsInboxContextMock).toHaveBeenCalledTimes(2);
+		expect(getAdmissionsTimelineContextMock).toHaveBeenCalledTimes(2);
+		expect(document.body.textContent || '').toContain('Deposit status updated. Refreshing drawer.');
+	});
+
+	it('promotes an approved applicant from the contextual timeline drawer', async () => {
+		getAdmissionsInboxContextMock.mockResolvedValue(
+			context({
+				queues: [queue({ rows: [studentApplicantRow()] })],
+				sources: { student_applicants: 1 },
+			})
+		);
+		getAdmissionsTimelineContextMock.mockResolvedValue(
+			studentApplicantTimeline([
+				{ id: 'promote', label: 'Promote', enabled: true, target: 'APP-0001' },
+			])
+		);
+		promoteAdmissionsCockpitApplicantMock.mockResolvedValue({
+			ok: true,
+			student_applicant: 'APP-0001',
+			student: 'STU-0001',
+			status: 'Promoted',
+		});
+
+		mountAdmissionsInbox();
+		await flushUi();
+
+		clickByTestId('inbox-actions-student_applicant:APP-0001');
+		await flushUi();
+		clickByTestId('admissions-timeline-action-promote');
+		await flushUi();
+		await flushUi();
+
+		expect(promoteAdmissionsCockpitApplicantMock).toHaveBeenCalledWith({
+			student_applicant: 'APP-0001',
+		});
+		expect(getAdmissionsInboxContextMock).toHaveBeenCalledTimes(2);
+		expect(getAdmissionsTimelineContextMock).toHaveBeenCalledTimes(2);
+		expect(document.body.textContent || '').toContain('Applicant promoted. Refreshing drawer.');
 	});
 
 	it('refreshes from the page-owned refresh button', async () => {

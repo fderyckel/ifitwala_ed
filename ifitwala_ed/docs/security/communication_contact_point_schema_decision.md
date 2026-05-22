@@ -1,18 +1,20 @@
 # Communication Contact Point Schema Decision
 
-Status: Approved schema decision; DocType, service helpers, and first Guardian read bridge implemented
+Status: Approved schema decision; Guardian Contact Point implementation through multi-school backfill semantics
 Last updated: 2026-05-22
 Code refs:
 - `ifitwala_ed/governance/doctype/communication_contact_point/communication_contact_point.json`
 - `ifitwala_ed/governance/doctype/communication_contact_point/communication_contact_point.py`
 - `ifitwala_ed/contacts/contact_privacy.py`
+- `ifitwala_ed/patches/backfill_guardian_contact_points.py`
 Test refs:
 - `ifitwala_ed/governance/doctype/communication_contact_point/test_communication_contact_point.py`
 - `ifitwala_ed/contacts/test_contact_privacy.py`
+- `ifitwala_ed/patches/test_backfill_guardian_contact_points.py`
 
 This document approves the schema and runtime contract for `Communication Contact Point`.
 
-The DocType and first service helpers are implemented. Legacy native `Contact` reads/writes are not retired yet, and no migration patch has been added.
+The DocType, first service helpers, first Guardian read bridge, one-shot Guardian backfill patch, and multi-school Guardian semantics are implemented. Legacy native `Contact` write paths are not retired yet.
 
 ## 1. Decision
 
@@ -83,7 +85,7 @@ Approved field set:
 | `value_encrypted` | Long Text | Yes | Service-encrypted raw value. Never list-view, report, or DTO output. |
 | `normalized_hash` | Data | Yes | Deterministic keyed HMAC of normalized value and channel. Not a user-facing search key. |
 | `masked_display` | Data | Yes | Default UI/API display value. |
-| `is_primary` | Check | No | Service enforces at most one active primary per owner/channel/purpose scope. |
+| `is_primary` | Check | No | Service enforces at most one active primary per owner/organization/school/channel/purpose scope. |
 | `verified_on` | Datetime | No | Set only by explicit verification workflows. |
 | `disabled` | Check | No | Disabled rows are retained for audit/history but excluded from recipient resolution. |
 
@@ -198,7 +200,7 @@ The implementation should add indexes for these read paths:
 | Subject lookup | `subject_doctype`, `subject_name`, `channel_type`, `disabled` |
 | Scoped recipient resolution | `organization`, `school`, `purpose`, `channel_type`, `disabled` |
 | Deduplication hint | `normalized_hash`, `organization`, `school`, `channel_type`, `disabled` |
-| Primary selection | `owner_doctype`, `owner_name`, `purpose`, `channel_type`, `is_primary`, `disabled` |
+| Primary selection | `owner_doctype`, `owner_name`, `organization`, `school`, `purpose`, `channel_type`, `is_primary`, `disabled` |
 
 Selecting a parent organization or school includes descendants only through server-side scope helpers. Sibling isolation remains mandatory.
 
@@ -215,7 +217,7 @@ The controller/service must enforce:
 5. `purpose` is present and approved.
 6. `value_encrypted`, `normalized_hash`, and `masked_display` are present for active rows.
 7. `normalized_hash` is never computed client-side.
-8. Only one active primary row exists per owner/channel/purpose where the service contract says a primary is meaningful.
+8. Only one active primary row exists per owner/organization/school/channel/purpose where the service contract says a primary is meaningful.
 9. Disabled rows are never recipient-resolution candidates.
 
 ## 10. Approved Service Boundary
@@ -256,9 +258,10 @@ The implementation sequence is locked:
 3. Done: Add contact-point write/read helpers without changing existing domain workflows.
 4. Done: Add explicit Guardian contact-point sync helper requiring a verified school context.
 5. Done: Bridge Student Guardian summary reads to school-scoped Guardian contact points with scoped legacy cache fallback.
-6. Not started: Add a one-shot Guardian migration patch.
+6. Done: Add a one-shot Guardian migration patch.
 7. Not started: Retire Guardian native `Contact` write paths after tests and docs prove parity.
-8. Not started: Repeat by domain: Student, Student Applicant/Inquiry, Employee, then external relationship CRM surfaces.
+8. Done: Approve and implement semantics for guardians linked to students in multiple schools.
+9. Not started: Repeat by domain: Student, Student Applicant/Inquiry, Employee, then external relationship CRM surfaces.
 
 No permanent runtime repair or self-heal flow is approved.
 
@@ -268,13 +271,17 @@ Guardian controller note:
 - The service helper `sync_guardian_contact_points(...)` therefore requires an explicit `school` argument.
 - Do not call this helper from `Guardian.after_insert` or `Guardian.on_update` until the caller can prove school context from a Student/family relationship.
 - `get_masked_guardian_contacts_for_student(...)` may use `Student.anchor_school` as the verified school context for read-side Contact Point lookup. If that school context is missing or no matching Contact Point exists, it must fall back only to the already scoped `Student Guardian` cached email/phone values.
+- `backfill_guardian_contact_points` runs after model sync and calls `sync_guardian_contact_points(...)` once for each school resolved from linked Student rows.
+- A Guardian linked to students in multiple schools gets duplicate school-scoped Contact Points. The same normalized value may exist once per `organization + school + purpose + channel`.
+- `organization` and `school` are part of Contact Point identity and primary uniqueness. A primary email in one school must not clear or overwrite the Guardian's primary email in another school.
+- Guardian sync rejects a provided `Guardian.organization` that conflicts with the resolved School organization.
 
 ## 12. Non-Goals
 
 This decision does not implement:
 
 - CSV export generation.
-- Bulk migration from native `Contact`.
+- Bulk migration beyond the approved Guardian one-shot backfill.
 - New Desk UI.
 - Relationship CRM contact-point writes.
 - Supplier/external partner contact-point writes.
@@ -305,3 +312,26 @@ The implemented PR-8 slice satisfies:
 3. When no verified school context exists, the summary does not query Contact Points and falls back to masked values from the scoped `Student Guardian` child rows.
 4. The public DTO shape remains unchanged and masked by default.
 5. No Guardian controller write-through, bulk migration patch, native Contact retirement, CSV export, or new Desk UI is introduced.
+
+## 15. Acceptance For PR-9
+
+The implemented PR-9 slice satisfies:
+
+1. The one-shot patch lives at `ifitwala_ed/patches/backfill_guardian_contact_points.py` and is registered under `[post_model_sync]` because it depends on the `Communication Contact Point` DocType.
+2. The patch exits safely when required tables are missing.
+3. The patch reads `Student Guardian` links and `Student.anchor_school`, then backfills Guardian records for each linked school.
+4. Multi-school Guardian records create duplicate school-scoped Contact Points instead of global Guardian contact rows.
+5. Backfill uses `sync_guardian_contact_points(...)` instead of duplicating encryption, hashing, masking, or audit logic.
+6. Patch failure logs contain Guardian and school metadata only, never raw email or phone values.
+7. No Guardian controller write-through, native Contact write-path retirement, CSV export, or new Desk UI is introduced.
+
+## 16. Acceptance For PR-10
+
+The implemented PR-10 slice satisfies:
+
+1. Contact Point lookup identity includes `organization` and `school` in addition to owner, purpose, channel, and normalized hash.
+2. Primary uniqueness and primary clearing are scoped to `owner + organization + school + purpose + channel`.
+3. Guardian sync resolves and validates School organization before writing Contact Points.
+4. The Guardian backfill patch processes each linked school for multi-school Guardians rather than skipping them.
+5. Existing Student Guardian summary reads continue resolving only the Contact Points scoped to the Student's `anchor_school`.
+6. No Guardian controller write-through, native Contact write-path retirement, CSV export, or new Desk UI is introduced.

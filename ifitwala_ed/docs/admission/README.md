@@ -26,7 +26,7 @@ Read in this order for current runtime:
 Partial / planned target contracts:
 
 - `11_admissions_crm_contract.md`
-  Inquiry dynamic capture, public family acknowledgement, CRM DocTypes, manual intake, Admissions Inbox backend/actions, admission visits, the backend contextual Admissions Timeline endpoint, Inbox/Cockpit timeline drawers, Cockpit CRM log activity/message drawer actions, Cockpit applicant-stage offer/deposit/promotion drawer actions, Inbox/Cockpit schedule-visit drawer actions, and Inquiry/Student Applicant Desk entry points are partially implemented; provider adapters, governed media conversion, education-wide Relationship CRM, and lead-scoring/read-model work remain planned until implemented
+  Inquiry dynamic capture, public family acknowledgement, CRM DocTypes, manual intake, Admissions Inbox backend/actions, admission visits, the backend contextual Admissions Timeline endpoint, Inbox/Cockpit timeline drawers, Cockpit CRM log activity/message drawer actions, Inbox/Cockpit applicant-stage offer/deposit/promotion drawer actions, Inbox/Cockpit schedule-visit drawer actions, and Inquiry/Student Applicant Desk entry points are partially implemented; provider adapters, governed media conversion, education-wide Relationship CRM, and lead-scoring/read-model work remain planned until implemented
 - `12_admission_visit_contract.md`
   admissions visit workflow for pre-applicant and applicant-stage tours, including CRM linkage and participant-only calendar projection
 

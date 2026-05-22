@@ -113,6 +113,8 @@ class CommunicationContactPoint(Document):
         filters = {
             "owner_doctype": self.owner_doctype,
             "owner_name": self.owner_name,
+            "organization": self.organization,
+            "school": self.school,
             "purpose": self.purpose,
             "channel_type": self.channel_type,
             "is_primary": 1,
@@ -122,7 +124,7 @@ class CommunicationContactPoint(Document):
             filters["name"] = ["!=", self.name]
 
         if frappe.db.exists(COMMUNICATION_CONTACT_POINT_DOCTYPE, filters):
-            frappe.throw(_("Only one active primary Communication Contact Point is allowed for this owner, purpose, and channel."))
+            frappe.throw(_("Only one active primary Communication Contact Point is allowed for this owner, school, purpose, and channel."))
 
 
 def on_doctype_update():
@@ -148,6 +150,6 @@ def on_doctype_update():
     )
     frappe.db.add_index(
         COMMUNICATION_CONTACT_POINT_DOCTYPE,
-        fields=["owner_doctype", "owner_name", "purpose", "channel_type", "is_primary", "disabled"],
+        fields=["owner_doctype", "owner_name", "organization", "school", "purpose", "channel_type", "is_primary", "disabled"],
         index_name="idx_ccp_owner_primary",
     )
