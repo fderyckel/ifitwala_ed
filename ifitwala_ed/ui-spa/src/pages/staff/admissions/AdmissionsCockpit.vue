@@ -515,6 +515,121 @@
 				</header>
 
 				<div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+					<form
+						v-if="activeCrmAction"
+						data-testid="cockpit-crm-action-form"
+						class="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4"
+						@submit.prevent="submitCrmAction"
+					>
+						<div class="mb-3 flex items-start justify-between gap-3">
+							<div class="min-w-0">
+								<p class="type-overline text-slate-token/70">{{ __('Admissions CRM') }}</p>
+								<h3 class="type-body-strong text-ink">
+									{{
+										activeCrmAction.id === 'log_message'
+											? __('Log Message')
+											: __('Log Activity')
+									}}
+								</h3>
+							</div>
+							<button
+								type="button"
+								data-testid="cockpit-crm-action-cancel"
+								class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-token hover:border-slate-400"
+								@click="closeCrmActionForm"
+							>
+								{{ __('Cancel') }}
+							</button>
+						</div>
+
+						<template v-if="activeCrmAction.id === 'log_message'">
+							<label class="grid gap-1 text-sm font-semibold text-slate-700">
+								<span>{{ __('Message') }}</span>
+								<textarea
+									v-model="crmActionForm.body"
+									data-testid="cockpit-crm-message-body"
+									rows="4"
+									class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-800 focus:border-canopy focus:outline-none focus:ring-2 focus:ring-canopy/20"
+									:placeholder="__('Record the admissions reply or message outcome')"
+								/>
+							</label>
+						</template>
+
+						<template v-else>
+							<div class="grid gap-3 md:grid-cols-2">
+								<label class="grid gap-1 text-sm font-semibold text-slate-700">
+									<span>{{ __('Activity Type') }}</span>
+									<select
+										v-model="crmActionForm.activity_type"
+										data-testid="cockpit-crm-activity-type"
+										class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-normal text-slate-800 focus:border-canopy focus:outline-none focus:ring-2 focus:ring-canopy/20"
+									>
+										<option v-for="type in activityTypes" :key="type" :value="type">
+											{{ type }}
+										</option>
+									</select>
+								</label>
+								<label class="grid gap-1 text-sm font-semibold text-slate-700">
+									<span>{{ __('Next Action On') }}</span>
+									<input
+										v-model="crmActionForm.next_action_on"
+										data-testid="cockpit-crm-activity-next-action"
+										type="date"
+										class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-normal text-slate-800 focus:border-canopy focus:outline-none focus:ring-2 focus:ring-canopy/20"
+									/>
+								</label>
+							</div>
+							<label class="mt-3 grid gap-1 text-sm font-semibold text-slate-700">
+								<span>{{ __('Outcome') }}</span>
+								<input
+									v-model="crmActionForm.outcome"
+									data-testid="cockpit-crm-activity-outcome"
+									type="text"
+									class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-normal text-slate-800 focus:border-canopy focus:outline-none focus:ring-2 focus:ring-canopy/20"
+									:placeholder="__('Optional outcome')"
+								/>
+							</label>
+							<label class="mt-3 grid gap-1 text-sm font-semibold text-slate-700">
+								<span>{{ __('Note') }}</span>
+								<textarea
+									v-model="crmActionForm.note"
+									data-testid="cockpit-crm-activity-note"
+									rows="4"
+									class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-800 focus:border-canopy focus:outline-none focus:ring-2 focus:ring-canopy/20"
+									:placeholder="__('Structured CRM note')"
+								/>
+							</label>
+						</template>
+
+						<p v-if="crmActionError" data-testid="cockpit-crm-action-error" class="mt-3 text-sm text-rose-700">
+							{{ crmActionError }}
+						</p>
+						<p
+							v-if="crmActionSuccess"
+							data-testid="cockpit-crm-action-success"
+							class="mt-3 text-sm text-emerald-700"
+						>
+							{{ crmActionSuccess }}
+						</p>
+
+						<div class="mt-3 flex justify-end">
+							<button
+								type="submit"
+								data-testid="cockpit-crm-action-submit"
+								class="if-button if-button--primary"
+								:disabled="crmActionSaving"
+							>
+								{{
+									crmActionSaving
+										? __('Saving...')
+										: activeCrmAction.id === 'log_message'
+											? __('Log Message')
+											: __('Log Activity')
+								}}
+							</button>
+						</div>
+					</form>
+
 					<AdmissionsTimelinePanel
 						:timeline="timelineContext"
 						:loading="timelineLoading"
@@ -637,6 +752,10 @@ import { __ } from '@/lib/i18n';
 import { SIGNAL_ADMISSIONS_COCKPIT_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 import { getAdmissionsTimelineContext } from '@/lib/services/admissions/admissionsTimelineService';
 import {
+	logAdmissionMessage,
+	recordAdmissionCrmActivity,
+} from '@/lib/services/admissions/admissionsInboxService';
+import {
 	getAdmissionsCaseThread,
 	getAdmissionsCockpitData,
 	getOrCreateAdmissionsCockpitOfferPlan,
@@ -653,6 +772,7 @@ import type {
 	AdmissionsTimelineContext,
 	AdmissionsTimelineItem,
 } from '@/types/contracts/admissions_timeline/get_admissions_timeline_context';
+import type { AdmissionCrmActivityType } from '@/types/contracts/admissions_inbox/get_admissions_inbox_context';
 
 type CockpitCounts = {
 	active_applications: number;
@@ -799,6 +919,37 @@ type CockpitPayload = {
 	columns?: CockpitColumn[];
 };
 
+type CockpitCrmActionForm = {
+	body: string;
+	activity_type: AdmissionCrmActivityType;
+	outcome: string;
+	note: string;
+	next_action_on: string;
+};
+
+const activityTypes: AdmissionCrmActivityType[] = [
+	'Call Attempt',
+	'Reached',
+	'No Answer',
+	'Qualified',
+	'Not Interested',
+	'Booked Tour',
+	'Attended Tour',
+	'Follow-up Scheduled',
+	'Archived',
+	'Note',
+];
+
+function createCrmActionForm(): CockpitCrmActionForm {
+	return {
+		body: '',
+		activity_type: 'Reached',
+		outcome: '',
+		note: '',
+		next_action_on: '',
+	};
+}
+
 const loading = ref(false);
 const error = ref('');
 const notice = ref('');
@@ -810,6 +961,11 @@ const activeTimelineCard = ref<CockpitCard | null>(null);
 const timelineContext = ref<AdmissionsTimelineContext | null>(null);
 const timelineLoading = ref(false);
 const timelineError = ref('');
+const activeCrmAction = ref<AdmissionsTimelineAction | null>(null);
+const crmActionForm = ref<CockpitCrmActionForm>(createCrmActionForm());
+const crmActionSaving = ref(false);
+const crmActionError = ref('');
+const crmActionSuccess = ref('');
 const threadLoading = ref(false);
 const threadError = ref('');
 const threadMessages = ref<AdmissionsCaseMessage[]>([]);
@@ -988,6 +1144,11 @@ function formatDateOnly(value?: string | null) {
 	return date.toLocaleDateString();
 }
 
+function blankToNull(value?: string | null) {
+	const text = String(value || '').trim();
+	return text || null;
+}
+
 type AepAction = 'send_offer' | 'hydrate_request' | 'generate_deposit';
 type ApplicantAction = 'manage_offer' | 'promote';
 
@@ -1158,6 +1319,15 @@ function closeTimeline() {
 	timelineContext.value = null;
 	timelineError.value = '';
 	timelineLoading.value = false;
+	closeCrmActionForm();
+}
+
+function closeCrmActionForm() {
+	activeCrmAction.value = null;
+	crmActionForm.value = createCrmActionForm();
+	crmActionError.value = '';
+	crmActionSuccess.value = '';
+	crmActionSaving.value = false;
 }
 
 async function loadTimeline(card: CockpitCard) {
@@ -1200,6 +1370,101 @@ function reloadTimeline() {
 	void loadTimeline(card);
 }
 
+function openCrmActionForm(action: AdmissionsTimelineAction) {
+	const context = timelineContext.value?.context || null;
+	const conversation = blankToNull(String(action.target || context?.conversation || ''));
+
+	if (action.id === 'log_activity' && !conversation) {
+		timelineError.value = __(
+			'Log a message first so an admissions conversation exists for this activity.'
+		);
+		return;
+	}
+
+	activeCrmAction.value = action;
+	crmActionForm.value = createCrmActionForm();
+	crmActionError.value = '';
+	crmActionSuccess.value = '';
+}
+
+async function submitCrmAction() {
+	const action = activeCrmAction.value;
+	const card = activeTimelineCard.value;
+	if (!action || !card || crmActionSaving.value) {
+		return;
+	}
+
+	const context = timelineContext.value?.context || null;
+	const conversation = blankToNull(String(action.target || context?.conversation || ''));
+	const inquiry = blankToNull(String(context?.inquiry || ''));
+	const studentApplicant = blankToNull(String(context?.student_applicant || card.name || ''));
+	const organization = blankToNull(String(context?.organization || ''));
+	const school = blankToNull(String(context?.school || card.school || ''));
+
+	crmActionError.value = '';
+	crmActionSuccess.value = '';
+
+	if (action.id === 'log_message') {
+		const body = blankToNull(crmActionForm.value.body);
+		if (!body) {
+			crmActionError.value = __('Message is required.');
+			return;
+		}
+
+		crmActionSaving.value = true;
+		try {
+			await logAdmissionMessage({
+				conversation,
+				inquiry,
+				student_applicant: studentApplicant,
+				organization,
+				school,
+				direction: 'Outbound',
+				message_type: 'Text',
+				delivery_status: 'Logged',
+				body,
+			});
+			crmActionForm.value = createCrmActionForm();
+			crmActionSuccess.value = __('Message logged. Timeline refreshed.');
+			await loadTimeline(card);
+			await refreshNow();
+		} catch (err: any) {
+			crmActionError.value = err?.message || __('Unable to log message.');
+		} finally {
+			crmActionSaving.value = false;
+		}
+		return;
+	}
+
+	if (action.id === 'log_activity') {
+		if (!conversation) {
+			crmActionError.value = __(
+				'Log a message first so an admissions conversation exists for this activity.'
+			);
+			return;
+		}
+
+		crmActionSaving.value = true;
+		try {
+			await recordAdmissionCrmActivity({
+				conversation,
+				activity_type: crmActionForm.value.activity_type,
+				outcome: blankToNull(crmActionForm.value.outcome),
+				note: blankToNull(crmActionForm.value.note),
+				next_action_on: blankToNull(crmActionForm.value.next_action_on),
+			});
+			crmActionForm.value = createCrmActionForm();
+			crmActionSuccess.value = __('Activity logged. Timeline refreshed.');
+			await loadTimeline(card);
+			await refreshNow();
+		} catch (err: any) {
+			crmActionError.value = err?.message || __('Unable to log activity.');
+		} finally {
+			crmActionSaving.value = false;
+		}
+	}
+}
+
 function handleTimelineAction(action: AdmissionsTimelineAction) {
 	if (!action.enabled) {
 		timelineError.value = action.disabled_reason || __('This timeline action is blocked.');
@@ -1209,6 +1474,11 @@ function handleTimelineAction(action: AdmissionsTimelineAction) {
 	const card = activeTimelineCard.value;
 	if (!card) {
 		timelineError.value = __('Applicant reference is missing for this timeline action.');
+		return;
+	}
+
+	if (action.id === 'log_activity' || action.id === 'log_message') {
+		openCrmActionForm(action);
 		return;
 	}
 

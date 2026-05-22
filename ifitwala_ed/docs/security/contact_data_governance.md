@@ -21,6 +21,8 @@ Code refs:
 - `ifitwala_ed/governance/doctype/contact_access_log/contact_access_log.json`
 - `ifitwala_ed/governance/doctype/contact_export_request/contact_export_request.py`
 - `ifitwala_ed/governance/doctype/contact_export_request/contact_export_request.json`
+- `ifitwala_ed/governance/doctype/communication_contact_point/communication_contact_point.py`
+- `ifitwala_ed/governance/doctype/communication_contact_point/communication_contact_point.json`
 Decision refs:
 - `communication_contact_point_schema_decision.md`
 Test refs:
@@ -34,6 +36,7 @@ Test refs:
 - `ifitwala_ed/api/test_family_consent.py`
 - `ifitwala_ed/contacts/test_contact_privacy.py`
 - `ifitwala_ed/governance/doctype/contact_access_log/test_contact_access_log.py`
+- `ifitwala_ed/governance/doctype/communication_contact_point/test_communication_contact_point.py`
 - `ifitwala_ed/contacts/test_contact_export.py`
 
 This document defines the target security posture for personal contact data across Ifitwala Ed.
@@ -125,7 +128,7 @@ Rules:
 5. `masked_display` is the default UI value.
 6. Purpose is mandatory and must be specific enough to support audit and minimization.
 
-The schema decision is approved, but implementation has not started. Do not create or alter the DocType outside the implementation order in `communication_contact_point_schema_decision.md`.
+The schema decision is approved and implementation is proceeding through locked slices. The internal DocType, service helpers, and first Guardian read bridge exist. Do not create or alter Contact Point behavior outside the implementation order in `communication_contact_point_schema_decision.md`.
 
 ## 4. Permission Stance
 
@@ -147,7 +150,7 @@ Current-runtime lockdown status:
 - Admissions and marketing roles no longer bypass Contact query scoping.
 - Native `Contact` create/write DocPerm rows still exist as transitional Frappe seed data, but document-level editor operations are blocked by the permission hook while domain-owned contact-point services are future work.
 
-Remaining gaps require approved implementation slices: full export execution with per-row logging, Guardian contact-point bridging/migration, and later domain-by-domain Contact Point migration.
+Remaining gaps require approved implementation slices: full export execution with per-row logging, Guardian contact-point one-shot migration and write-path retirement, and later domain-by-domain Contact Point migration.
 
 API hardening status:
 
@@ -162,6 +165,7 @@ Contact privacy service boundary status:
 - `ifitwala_ed/contacts/contact_privacy.py` is the approved current-runtime boundary for the first contact-sensitive workflows.
 - Covered workflows are applicant contact prefill/invite email options, Student CRM contact summaries, Student guardian summaries, family-consent profile contact write-back, and Inquiry protected-contact reuse checks.
 - Existing workflow functions still read legacy native `Contact`, `Contact Email`, and `Contact Phone` internally until they are bridged to Contact Point data.
+- Student Guardian summaries now prefer school-scoped Guardian Contact Points when `Student.anchor_school` proves school context, then fall back to masked values from the already scoped `Student Guardian` child rows.
 - Callers must provide a non-empty `purpose`; masked DTOs are the default for Student/Guardian summaries.
 - Raw values are still allowed only through explicitly named current workflows such as applicant invite/prefill and family-consent write-back.
 - Legacy Contact creation/update code in Student, Guardian, Inquiry, and admissions profile flows remains a migration gap, not an approved pattern for new surfaces.

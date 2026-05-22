@@ -239,6 +239,94 @@ class TestContactPrivacyService(TestCase):
 
         frappe.get_all.assert_not_called()
 
+    def test_student_guardian_summary_prefers_school_scoped_contact_points(self):
+        with _module() as (contact_privacy, frappe):
+            student_doc = SimpleNamespace(name="STU-1", anchor_school="SCHOOL-1")
+            get_all_calls = []
+
+            frappe.db.exists = lambda doctype, name=None: doctype == "Student" and name == "STU-1"
+            frappe.get_doc = lambda doctype, name: student_doc
+            frappe.has_permission = lambda *args, **kwargs: True
+
+            def get_all(doctype, **kwargs):
+                get_all_calls.append((doctype, kwargs))
+                if doctype == "Student Guardian":
+                    return [
+                        {
+                            "guardian": "GRD-1",
+                            "guardian_name": "Marie D.",
+                            "relation": "Mother",
+                            "can_consent": 1,
+                            "email": "legacy@example.com",
+                            "phone": "+111122223333",
+                        }
+                    ]
+                if doctype == "Communication Contact Point":
+                    return [
+                        {
+                            "owner_name": "GRD-1",
+                            "channel_type": "email",
+                            "masked_display": "g****@example.com",
+                            "is_primary": 1,
+                        },
+                        {
+                            "owner_name": "GRD-1",
+                            "channel_type": "phone",
+                            "masked_display": "+66 *** *** 5678",
+                            "is_primary": 1,
+                        },
+                    ]
+                return []
+
+            frappe.get_all = get_all
+
+            payload = contact_privacy.get_masked_guardian_contacts_for_student(
+                "STU-1",
+                purpose="student_guardian_summary",
+            )
+
+        self.assertEqual(payload[0]["email"], "g****@example.com")
+        self.assertEqual(payload[0]["phone"], "+66 *** *** 5678")
+        contact_point_call = next(call for call in get_all_calls if call[0] == "Communication Contact Point")
+        self.assertEqual(contact_point_call[1]["filters"]["school"], "SCHOOL-1")
+        self.assertEqual(contact_point_call[1]["filters"]["purpose"], "school_communication")
+        self.assertEqual(contact_point_call[1]["filters"]["owner_name"], ["in", ["GRD-1"]])
+
+    def test_student_guardian_summary_uses_legacy_cache_without_verified_school(self):
+        with _module() as (contact_privacy, frappe):
+            student_doc = SimpleNamespace(name="STU-1", anchor_school="")
+            get_all_calls = []
+
+            frappe.db.exists = lambda doctype, name=None: doctype == "Student" and name == "STU-1"
+            frappe.get_doc = lambda doctype, name: student_doc
+            frappe.has_permission = lambda *args, **kwargs: True
+
+            def get_all(doctype, **kwargs):
+                get_all_calls.append((doctype, kwargs))
+                if doctype == "Student Guardian":
+                    return [
+                        {
+                            "guardian": "GRD-1",
+                            "guardian_name": "Marie D.",
+                            "relation": "Mother",
+                            "can_consent": 1,
+                            "email": "legacy@example.com",
+                            "phone": "+111122223333",
+                        }
+                    ]
+                raise AssertionError(f"Unexpected get_all call without school scope: {doctype}")
+
+            frappe.get_all = get_all
+
+            payload = contact_privacy.get_masked_guardian_contacts_for_student(
+                "STU-1",
+                purpose="student_guardian_summary",
+            )
+
+        self.assertEqual(payload[0]["email"], "l****@example.com")
+        self.assertEqual(payload[0]["phone"], "+11 *** *** 3333")
+        self.assertEqual([call[0] for call in get_all_calls], ["Student Guardian"])
+
     def test_family_writeback_rejects_unlinked_contact(self):
         with _module() as (contact_privacy, frappe):
             frappe.db.exists = lambda *args, **kwargs: False

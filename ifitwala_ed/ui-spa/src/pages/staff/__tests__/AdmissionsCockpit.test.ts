@@ -15,6 +15,8 @@ const {
 	markAdmissionsCaseReadMock,
 	sendAdmissionsCaseMessageMock,
 	overlayOpenMock,
+	logAdmissionMessageMock,
+	recordAdmissionCrmActivityMock,
 } = vi.hoisted(() => ({
 	getAdmissionsCockpitDataMock: vi.fn(),
 	getAdmissionsTimelineContextMock: vi.fn(),
@@ -27,6 +29,8 @@ const {
 	markAdmissionsCaseReadMock: vi.fn(),
 	sendAdmissionsCaseMessageMock: vi.fn(),
 	overlayOpenMock: vi.fn(),
+	logAdmissionMessageMock: vi.fn(),
+	recordAdmissionCrmActivityMock: vi.fn(),
 }));
 
 vi.mock('@/components/filters/FiltersBar.vue', () => ({
@@ -67,6 +71,11 @@ vi.mock('@/lib/admission', () => ({
 
 vi.mock('@/lib/services/admissions/admissionsTimelineService', () => ({
 	getAdmissionsTimelineContext: getAdmissionsTimelineContextMock,
+}));
+
+vi.mock('@/lib/services/admissions/admissionsInboxService', () => ({
+	logAdmissionMessage: logAdmissionMessageMock,
+	recordAdmissionCrmActivity: recordAdmissionCrmActivityMock,
 }));
 
 import AdmissionsCockpit from '@/pages/staff/admissions/AdmissionsCockpit.vue';
@@ -216,6 +225,19 @@ async function flushUi() {
 	await nextTick();
 }
 
+function setControlValue(testId: string, value: string) {
+	const control = document.querySelector(`[data-testid="${testId}"]`) as
+		| HTMLInputElement
+		| HTMLSelectElement
+		| HTMLTextAreaElement
+		| null;
+	expect(control).toBeTruthy();
+	if (!control) return;
+	control.value = value;
+	control.dispatchEvent(new Event('input', { bubbles: true }));
+	control.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
 function mountAdmissionsCockpit() {
 	const host = document.createElement('div');
 	document.body.appendChild(host);
@@ -253,6 +275,8 @@ afterEach(() => {
 	markAdmissionsCaseReadMock.mockReset();
 	sendAdmissionsCaseMessageMock.mockReset();
 	overlayOpenMock.mockReset();
+	logAdmissionMessageMock.mockReset();
+	recordAdmissionCrmActivityMock.mockReset();
 	window.open = originalWindowOpen;
 	while (cleanupFns.length) {
 		cleanupFns.pop()?.();
@@ -437,6 +461,114 @@ describe('AdmissionsCockpit', () => {
 			visitorName: 'Ada Applicant',
 			school: 'SCH-1',
 		});
+	});
+
+	it('logs a CRM activity from the timeline drawer without leaving the Cockpit context', async () => {
+		getAdmissionsCockpitDataMock.mockResolvedValue(buildPayload('Committee Approved'));
+		getAdmissionsTimelineContextMock.mockResolvedValue(
+			timelineContext({
+				context: {
+					doctype: 'Student Applicant',
+					name: 'APP-0001',
+					label: 'Ada Applicant',
+					organization: 'ORG-1',
+					school: 'SCH-1',
+					inquiry: 'INQ-0001',
+					student_applicant: 'APP-0001',
+					conversation: 'AC-0001',
+					limit: 40,
+				},
+				actions: [
+					{ id: 'log_activity', label: 'Log Activity', enabled: true, target: 'AC-0001' },
+				],
+			})
+		);
+		recordAdmissionCrmActivityMock.mockResolvedValue({ ok: true });
+
+		mountAdmissionsCockpit();
+		await flushUi();
+
+		const timelineButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').trim().includes('Timeline')
+		);
+		timelineButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		const activityButton = document.querySelector(
+			'[data-testid="admissions-timeline-action-log_activity"]'
+		);
+		expect(activityButton).toBeTruthy();
+		activityButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(document.querySelector('[data-testid="cockpit-crm-action-form"]')).toBeTruthy();
+		setControlValue('cockpit-crm-activity-outcome', 'Reached by phone');
+		setControlValue('cockpit-crm-activity-note', 'Family asked for tour dates.');
+		setControlValue('cockpit-crm-activity-next-action', '2026-05-05');
+		document
+			.querySelector('[data-testid="cockpit-crm-action-submit"]')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+		await flushUi();
+
+		expect(recordAdmissionCrmActivityMock).toHaveBeenCalledWith({
+			conversation: 'AC-0001',
+			activity_type: 'Reached',
+			outcome: 'Reached by phone',
+			note: 'Family asked for tour dates.',
+			next_action_on: '2026-05-05',
+		});
+		expect(getAdmissionsTimelineContextMock).toHaveBeenCalledTimes(2);
+		expect(getAdmissionsCockpitDataMock).toHaveBeenCalledTimes(2);
+		expect(document.body.textContent || '').toContain('Activity logged. Timeline refreshed.');
+	});
+
+	it('logs a CRM message from the timeline drawer with applicant context', async () => {
+		getAdmissionsCockpitDataMock.mockResolvedValue(buildPayload('Committee Approved'));
+		getAdmissionsTimelineContextMock.mockResolvedValue(
+			timelineContext({
+				actions: [{ id: 'log_message', label: 'Log Message', enabled: true }],
+			})
+		);
+		logAdmissionMessageMock.mockResolvedValue({ ok: true });
+
+		mountAdmissionsCockpit();
+		await flushUi();
+
+		const timelineButton = Array.from(document.querySelectorAll('button')).find(button =>
+			(button.textContent || '').trim().includes('Timeline')
+		);
+		timelineButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		const messageButton = document.querySelector(
+			'[data-testid="admissions-timeline-action-log_message"]'
+		);
+		expect(messageButton).toBeTruthy();
+		messageButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		setControlValue('cockpit-crm-message-body', 'Confirmed that the family wants a weekday tour.');
+		document
+			.querySelector('[data-testid="cockpit-crm-action-submit"]')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+		await flushUi();
+
+		expect(logAdmissionMessageMock).toHaveBeenCalledWith({
+			conversation: null,
+			inquiry: 'INQ-0001',
+			student_applicant: 'APP-0001',
+			organization: 'ORG-1',
+			school: 'SCH-1',
+			direction: 'Outbound',
+			message_type: 'Text',
+			delivery_status: 'Logged',
+			body: 'Confirmed that the family wants a weekday tour.',
+		});
+		expect(getAdmissionsTimelineContextMock).toHaveBeenCalledTimes(2);
+		expect(getAdmissionsCockpitDataMock).toHaveBeenCalledTimes(2);
+		expect(document.body.textContent || '').toContain('Message logged. Timeline refreshed.');
 	});
 
 	it('opens or creates the enrollment offer plan from the timeline drawer', async () => {

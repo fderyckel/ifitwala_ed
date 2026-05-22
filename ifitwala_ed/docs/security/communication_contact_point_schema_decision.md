@@ -1,6 +1,6 @@
 # Communication Contact Point Schema Decision
 
-Status: Approved schema decision; DocType and service helpers implemented
+Status: Approved schema decision; DocType, service helpers, and first Guardian read bridge implemented
 Last updated: 2026-05-22
 Code refs:
 - `ifitwala_ed/governance/doctype/communication_contact_point/communication_contact_point.json`
@@ -254,8 +254,8 @@ The implementation sequence is locked:
 1. Done: Create the `Communication Contact Point` DocType in `Governance`.
 2. Done: Add controller/service tests for service-only creation, mutation, no delete, package shape, and no `Contacts` module ownership.
 3. Done: Add contact-point write/read helpers without changing existing domain workflows.
-4. Partial: Add explicit Guardian contact-point sync helper requiring a verified school context.
-5. Not started: Bridge Guardian read paths to contact points with scoped legacy native `Contact` fallback.
+4. Done: Add explicit Guardian contact-point sync helper requiring a verified school context.
+5. Done: Bridge Student Guardian summary reads to school-scoped Guardian contact points with scoped legacy cache fallback.
 6. Not started: Add a one-shot Guardian migration patch.
 7. Not started: Retire Guardian native `Contact` write paths after tests and docs prove parity.
 8. Not started: Repeat by domain: Student, Student Applicant/Inquiry, Employee, then external relationship CRM surfaces.
@@ -267,6 +267,7 @@ Guardian controller note:
 - `Guardian` has `organization`, `guardian_email`, and `guardian_mobile_phone`, but no canonical `school` field.
 - The service helper `sync_guardian_contact_points(...)` therefore requires an explicit `school` argument.
 - Do not call this helper from `Guardian.after_insert` or `Guardian.on_update` until the caller can prove school context from a Student/family relationship.
+- `get_masked_guardian_contacts_for_student(...)` may use `Student.anchor_school` as the verified school context for read-side Contact Point lookup. If that school context is missing or no matching Contact Point exists, it must fall back only to the already scoped `Student Guardian` cached email/phone values.
 
 ## 12. Non-Goals
 
@@ -294,3 +295,13 @@ The implemented PR-7 slice satisfies:
 7. No raw values appear in list view, search fields, reports, logs, or DTOs.
 8. Tests prove package shape and no `Contacts` module collision.
 9. No existing workflow is migrated in the same PR unless explicitly approved.
+
+## 14. Acceptance For PR-8
+
+The implemented PR-8 slice satisfies:
+
+1. Student Guardian summary reads prefer `Communication Contact Point` rows for Guardian email/phone when the calling user can read the Student and `Student.anchor_school` proves school scope.
+2. Contact Point lookup is batched for the guardians on the Student and filtered by owner DocType, Guardian names, `school`, `purpose = school_communication`, and `disabled = 0`.
+3. When no verified school context exists, the summary does not query Contact Points and falls back to masked values from the scoped `Student Guardian` child rows.
+4. The public DTO shape remains unchanged and masked by default.
+5. No Guardian controller write-through, bulk migration patch, native Contact retirement, CSV export, or new Desk UI is introduced.

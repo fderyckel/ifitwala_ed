@@ -39,6 +39,7 @@ CONTACT_POINT_ALLOWED_PURPOSES = frozenset(
         "export",
     }
 )
+GUARDIAN_STUDENT_SUMMARY_CONTACT_POINT_PURPOSE = "school_communication"
 
 
 def _clean_data(value: Any) -> str:
@@ -420,6 +421,7 @@ def get_masked_contact_points_for_owner(
     owner_name: str,
     purpose: str | None = None,
     channel_type: str | None = None,
+    school: str | None = None,
 ) -> list[dict[str, Any]]:
     filters: dict[str, Any] = {
         "owner_doctype": _clean_data(owner_doctype),
@@ -430,6 +432,8 @@ def get_masked_contact_points_for_owner(
         filters["purpose"] = require_purpose(purpose)
     if channel_type:
         filters["channel_type"] = _clean_data(channel_type)
+    if school:
+        filters["school"] = _clean_data(school)
 
     rows = frappe.get_all(
         COMMUNICATION_CONTACT_POINT_DOCTYPE,
@@ -1068,6 +1072,47 @@ def _contact_linked_to_student(student_name: str) -> str | None:
     return _clean_data(contact_name) or None
 
 
+def _get_masked_guardian_contact_point_values_for_student(
+    *,
+    guardian_names: list[str],
+    school: str | None,
+) -> dict[str, dict[str, str]]:
+    resolved_school = _clean_data(school)
+    if not resolved_school:
+        return {}
+
+    scoped_guardians = sorted({_clean_data(guardian) for guardian in guardian_names if _clean_data(guardian)})
+    if not scoped_guardians:
+        return {}
+
+    rows = frappe.get_all(
+        COMMUNICATION_CONTACT_POINT_DOCTYPE,
+        filters={
+            "owner_doctype": "Guardian",
+            "owner_name": ["in", scoped_guardians],
+            "purpose": GUARDIAN_STUDENT_SUMMARY_CONTACT_POINT_PURPOSE,
+            "school": resolved_school,
+            "disabled": 0,
+        },
+        fields=["owner_name", "channel_type", "masked_display", "is_primary"],
+        order_by="owner_name asc, channel_type asc, is_primary desc, modified desc",
+        limit=0,
+        ignore_permissions=True,
+    )
+
+    contact_points_by_guardian: dict[str, dict[str, str]] = {}
+    for row in rows or []:
+        guardian_name = _clean_data(_row_get(row, "owner_name"))
+        channel_type = _clean_data(_row_get(row, "channel_type"))
+        masked_display = _clean_data(_row_get(row, "masked_display"))
+        if not guardian_name or not masked_display or channel_type not in {"email", "phone"}:
+            continue
+        guardian_payload = contact_points_by_guardian.setdefault(guardian_name, {})
+        guardian_payload.setdefault(channel_type, masked_display)
+
+    return contact_points_by_guardian
+
+
 def get_masked_student_contact_summary(
     student: str | None,
     *,
@@ -1147,14 +1192,20 @@ def get_masked_guardian_contacts_for_student(
         filters={"parent": student_doc.name, "parenttype": "Student", "parentfield": "guardians"},
         fields=["guardian", "guardian_name", "relation", "can_consent", "email", "phone"],
     )
+    contact_points_by_guardian = _get_masked_guardian_contact_point_values_for_student(
+        guardian_names=[_clean_data(_row_get(row, "guardian")) for row in rows or []],
+        school=_row_get(student_doc, "anchor_school"),
+    )
     return [
         {
             "guardian": _clean_data(_row_get(row, "guardian")),
             "guardian_name": _clean_data(_row_get(row, "guardian_name")),
             "relation": _clean_data(_row_get(row, "relation")),
             "can_consent": _as_int(_row_get(row, "can_consent")),
-            "email": mask_email(_row_get(row, "email")),
-            "phone": mask_phone(_row_get(row, "phone")),
+            "email": contact_points_by_guardian.get(_clean_data(_row_get(row, "guardian")), {}).get("email")
+            or mask_email(_row_get(row, "email")),
+            "phone": contact_points_by_guardian.get(_clean_data(_row_get(row, "guardian")), {}).get("phone")
+            or mask_phone(_row_get(row, "phone")),
         }
         for row in rows
     ]
