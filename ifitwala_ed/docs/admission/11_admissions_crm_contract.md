@@ -154,6 +154,8 @@ All Inquiry types may use the current baseline fields:
 
 `organization` and `school` remain triage context on Inquiry. They are informational and staff-correctable at this stage.
 
+For the public Inquiry web form, the School picker is derived from the selected Organization using Organization NestedSet inheritance: selecting a public-inquiry-enabled parent Organization exposes eligible schools in that Organization and its non-archived descendants. A School is eligible only when `School.show_in_inquiry = 1`; schools are never free-form public input, and the same eligibility rule is enforced again when the web form creates the Inquiry.
+
 Hard institutional anchoring happens at `Student Applicant`, where `organization` and `school` are required and immutable.
 
 ### 4.2 Admission Fields

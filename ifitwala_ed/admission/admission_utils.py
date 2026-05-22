@@ -570,6 +570,55 @@ def _get_organization_scope(organization: str | None) -> list[str]:
     return [organization, *[org for org in descendants if org and org != organization]]
 
 
+def get_public_inquiry_organization_scope(organization: str | None) -> list[str]:
+    organization = (organization or "").strip()
+    if not organization:
+        return []
+
+    org_row = frappe.db.get_value(
+        "Organization",
+        organization,
+        ["lft", "rgt", "get_inquiry", "archived"],
+        as_dict=True,
+    )
+    if not org_row or not cint(org_row.get("get_inquiry")) or cint(org_row.get("archived")):
+        return []
+
+    rows = frappe.get_all(
+        "Organization",
+        filters={
+            "lft": [">=", org_row.get("lft")],
+            "rgt": ["<=", org_row.get("rgt")],
+            "archived": 0,
+        },
+        pluck="name",
+        order_by="lft asc, name asc",
+        limit=0,
+    )
+    return _merge_scope_values(rows)
+
+
+def is_school_available_for_public_inquiry(school: str | None, organization: str | None = None) -> bool:
+    school = (school or "").strip()
+    organization = (organization or "").strip()
+    if not school:
+        return False
+
+    school_row = frappe.db.get_value(
+        "School",
+        school,
+        ["show_in_inquiry", "organization"],
+        as_dict=True,
+    )
+    if not school_row or not cint(school_row.get("show_in_inquiry")):
+        return False
+
+    school_org = (school_row.get("organization") or "").strip()
+    selected_organization = organization or school_org
+    organization_scope = get_public_inquiry_organization_scope(selected_organization)
+    return bool(school_org and school_org in organization_scope)
+
+
 def _merge_scope_values(*scopes: list[str]) -> list[str]:
     merged: list[str] = []
     seen: set[str] = set()

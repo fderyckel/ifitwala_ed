@@ -50,6 +50,7 @@ frappe.ready(function() {
 
 		frappe.web_form.set_query('school', function() {
 			return {
+				query: 'ifitwala_ed.api.inquiry.inquiry_school_link_query',
 				filters: {
 					organization: getFieldValue('organization')
 				}

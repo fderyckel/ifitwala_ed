@@ -15,6 +15,7 @@ from frappe.utils import cint, escape_html, get_datetime, now_datetime
 from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
     ensure_admissions_permission,
+    is_school_available_for_public_inquiry,
     notify_admission_manager,
     set_inquiry_deadlines,
     update_sla_status,
@@ -65,26 +66,7 @@ class Inquiry(Document):
         if not frappe.flags.in_web_form or not self.school:
             return
 
-        school_row = frappe.db.get_value(
-            "School",
-            self.school,
-            ["show_in_inquiry", "organization"],
-            as_dict=True,
-        )
-        if not school_row or not int(school_row.get("show_in_inquiry") or 0):
-            frappe.throw(_("Selected School is not available for public inquiries."))
-
-        organization_row = frappe.db.get_value(
-            "Organization",
-            school_row.get("organization"),
-            ["get_inquiry", "archived"],
-            as_dict=True,
-        )
-        if (
-            not organization_row
-            or not int(organization_row.get("get_inquiry") or 0)
-            or int(organization_row.get("archived") or 0)
-        ):
+        if not is_school_available_for_public_inquiry(self.school, self.organization):
             frappe.throw(_("Selected School is not available for public inquiries."))
 
     def _validate_state_change(self):
