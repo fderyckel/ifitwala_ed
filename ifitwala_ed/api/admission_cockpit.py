@@ -1465,9 +1465,7 @@ def _require_cockpit_student_applicant_name(student_applicant: str, *, user: str
 def _require_cockpit_applicant_enrollment_plan_name(applicant_enrollment_plan: str) -> str:
     user = _ensure_cockpit_access()
     plan_name = _require_applicant_enrollment_plan_name(applicant_enrollment_plan)
-    applicant_name = _to_text(
-        frappe.db.get_value("Applicant Enrollment Plan", plan_name, "student_applicant")
-    )
+    applicant_name = _to_text(frappe.db.get_value("Applicant Enrollment Plan", plan_name, "student_applicant"))
     if not applicant_name:
         frappe.throw(_("Applicant Enrollment Plan was not found."))
     _require_cockpit_student_applicant_name(applicant_name, user=user)

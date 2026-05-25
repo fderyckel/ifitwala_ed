@@ -21,7 +21,12 @@
 				>
 					{{ __('Needs reply') }}
 				</span>
-				<button type="button" class="if-button if-button--quiet" :disabled="loading" @click="emit('refresh')">
+				<button
+					type="button"
+					class="if-button if-button--quiet"
+					:disabled="loading"
+					@click="emit('refresh')"
+				>
 					{{ loading ? __('Loading') : __('Refresh') }}
 				</button>
 			</div>
@@ -57,17 +62,26 @@
 					class="admissions-timeline-action"
 					:class="{ 'admissions-timeline-action--disabled': !action.enabled }"
 					:disabled="!action.enabled"
-					:title="action.enabled ? actionLabel(action.id) : action.disabled_reason || actionLabel(action.id)"
+					:title="
+						action.enabled
+							? actionLabel(action.id)
+							: action.disabled_reason || actionLabel(action.id)
+					"
 					@click="emit('action', action)"
 				>
 					<span>{{ action.label || actionLabel(action.id) }}</span>
-					<small v-if="!action.enabled && action.disabled_reason">{{ action.disabled_reason }}</small>
+					<small v-if="!action.enabled && action.disabled_reason">{{
+						action.disabled_reason
+					}}</small>
 				</button>
 			</div>
 
 			<ol v-if="timeline.items?.length" class="admissions-timeline-items">
 				<li v-for="item in timeline.items" :key="item.id" class="admissions-timeline-item">
-					<div class="admissions-timeline-item__marker" :class="`admissions-timeline-item__marker--${item.kind}`" />
+					<div
+						class="admissions-timeline-item__marker"
+						:class="`admissions-timeline-item__marker--${item.kind}`"
+					/>
 					<div class="admissions-timeline-item__body">
 						<div class="admissions-timeline-item__heading">
 							<div class="min-w-0">
@@ -84,11 +98,11 @@
 								{{ actorLabel(item.actor) }}
 							</span>
 							<button
-							v-if="safeOpenUrl(item.open_url)"
-							type="button"
-							:data-testid="`admissions-timeline-open-${item.id}`"
-							class="admissions-timeline-item__open"
-							@click="emit('open', item)"
+								v-if="safeOpenUrl(item.open_url)"
+								type="button"
+								:data-testid="`admissions-timeline-open-${item.id}`"
+								class="admissions-timeline-item__open"
+								@click="emit('open', item)"
 							>
 								{{ __('Open') }}
 							</button>

@@ -2,7 +2,12 @@
 
 <template>
 	<TransitionRoot as="template" :show="open" @after-leave="emitAfterLeave">
-		<Dialog as="div" class="if-overlay if-overlay--admissions" :style="overlayStyle" @close="onDialogClose">
+		<Dialog
+			as="div"
+			class="if-overlay if-overlay--admissions"
+			:style="overlayStyle"
+			@close="onDialogClose"
+		>
 			<TransitionChild
 				as="template"
 				enter="if-overlay__fade-enter"
@@ -31,18 +36,32 @@
 								<DialogTitle class="type-h2 text-ink">{{ overlayTitle }}</DialogTitle>
 								<p class="mt-1 type-caption text-ink/60">{{ contextTitle }}</p>
 							</div>
-							<button type="button" class="if-overlay__close" aria-label="Close" @click="emitClose('programmatic')">
+							<button
+								type="button"
+								class="if-overlay__close"
+								aria-label="Close"
+								@click="emitClose('programmatic')"
+							>
 								<FeatherIcon name="x" class="h-5 w-5" />
 							</button>
 						</div>
 
 						<div class="if-overlay__body px-6 pb-6">
-							<div v-if="errorMessage" class="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3" role="alert">
+							<div
+								v-if="errorMessage"
+								class="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3"
+								role="alert"
+							>
 								<p class="type-body-strong text-rose-900">{{ __('Unable to save visit') }}</p>
-								<p class="mt-1 whitespace-pre-wrap type-caption text-rose-900/80">{{ errorMessage }}</p>
+								<p class="mt-1 whitespace-pre-wrap type-caption text-rose-900/80">
+									{{ errorMessage }}
+								</p>
 							</div>
 
-							<div v-if="successMessage" class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+							<div
+								v-if="successMessage"
+								class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3"
+							>
 								<p class="type-caption text-emerald-900">{{ successMessage }}</p>
 							</div>
 
@@ -56,29 +75,53 @@
 									<div class="grid gap-3 sm:grid-cols-3">
 										<label class="block">
 											<span class="type-caption text-ink/70">{{ __('Date') }}</span>
-											<input v-model="form.date" type="date" class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink" />
+											<input
+												v-model="form.date"
+												type="date"
+												class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink"
+											/>
 										</label>
 										<label class="block">
 											<span class="type-caption text-ink/70">{{ __('Start') }}</span>
-											<input v-model="form.startTime" type="time" class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink" />
+											<input
+												v-model="form.startTime"
+												type="time"
+												class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink"
+											/>
 										</label>
 										<label class="block">
 											<span class="type-caption text-ink/70">{{ __('Minutes') }}</span>
-											<input v-model.number="form.durationMinutes" type="number" min="5" step="5" class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink" />
+											<input
+												v-model.number="form.durationMinutes"
+												type="number"
+												min="5"
+												step="5"
+												class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink"
+											/>
 										</label>
 									</div>
 
 									<div class="grid gap-3 sm:grid-cols-2">
 										<label class="block">
 											<span class="type-caption text-ink/70">{{ __('Visit type') }}</span>
-											<select v-model="form.visitType" class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink">
-												<option v-for="item in visitTypes" :key="item" :value="item">{{ item }}</option>
+											<select
+												v-model="form.visitType"
+												class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink"
+											>
+												<option v-for="item in visitTypes" :key="item" :value="item">
+													{{ item }}
+												</option>
 											</select>
 										</label>
 										<label class="block">
 											<span class="type-caption text-ink/70">{{ __('Mode') }}</span>
-											<select v-model="form.visitMode" class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink">
-												<option v-for="item in visitModes" :key="item" :value="item">{{ item }}</option>
+											<select
+												v-model="form.visitMode"
+												class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink"
+											>
+												<option v-for="item in visitModes" :key="item" :value="item">
+													{{ item }}
+												</option>
 											</select>
 										</label>
 									</div>
@@ -86,18 +129,30 @@
 									<div v-if="isInPerson" class="grid gap-3 sm:grid-cols-2">
 										<label class="block">
 											<span class="type-caption text-ink/70">{{ __('Building / Area') }}</span>
-											<select v-model="form.building" class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink">
+											<select
+												v-model="form.building"
+												class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink"
+											>
 												<option value="">{{ __('Select building') }}</option>
-												<option v-for="building in buildings" :key="building.value" :value="building.value">
+												<option
+													v-for="building in buildings"
+													:key="building.value"
+													:value="building.value"
+												>
 													{{ building.label }}
 												</option>
 											</select>
 										</label>
 										<label class="block">
 											<span class="type-caption text-ink/70">{{ __('Meeting room') }}</span>
-											<select v-model="form.location" class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink">
+											<select
+												v-model="form.location"
+												class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink"
+											>
 												<option value="">{{ __('Select room') }}</option>
-												<option v-for="room in rooms" :key="room.value" :value="room.value">{{ room.label }}</option>
+												<option v-for="room in rooms" :key="room.value" :value="room.value">
+													{{ room.label }}
+												</option>
 											</select>
 										</label>
 									</div>
@@ -105,47 +160,86 @@
 									<div class="grid gap-3 sm:grid-cols-3">
 										<label class="block sm:col-span-2">
 											<span class="type-caption text-ink/70">{{ __('Visitor name') }}</span>
-											<input v-model="form.visitorName" type="text" class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink" />
+											<input
+												v-model="form.visitorName"
+												type="text"
+												class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink"
+											/>
 										</label>
 										<label class="block">
 											<span class="type-caption text-ink/70">{{ __('Party size') }}</span>
-											<input v-model.number="form.partySize" type="number" min="0" class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink" />
+											<input
+												v-model.number="form.partySize"
+												type="number"
+												min="0"
+												class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink"
+											/>
 										</label>
 										<label class="block">
 											<span class="type-caption text-ink/70">{{ __('Email') }}</span>
-											<input v-model="form.visitorEmail" type="email" class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink" />
+											<input
+												v-model="form.visitorEmail"
+												type="email"
+												class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink"
+											/>
 										</label>
 										<label class="block">
 											<span class="type-caption text-ink/70">{{ __('Phone') }}</span>
-											<input v-model="form.visitorPhone" type="tel" class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink" />
+											<input
+												v-model="form.visitorPhone"
+												type="tel"
+												class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink"
+											/>
 										</label>
 										<label class="block">
 											<span class="type-caption text-ink/70">{{ __('Relationship') }}</span>
-											<input v-model="form.relationshipToStudent" type="text" class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink" />
+											<input
+												v-model="form.relationshipToStudent"
+												type="text"
+												class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink"
+											/>
 										</label>
 									</div>
 
 									<div class="grid gap-3 sm:grid-cols-2">
 										<label class="block">
 											<span class="type-caption text-ink/70">{{ __('Requested grade') }}</span>
-											<input v-model="form.requestedGradeLevel" type="text" class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink" />
+											<input
+												v-model="form.requestedGradeLevel"
+												type="text"
+												class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink"
+											/>
 										</label>
 										<label class="block">
 											<span class="type-caption text-ink/70">{{ __('Program interest') }}</span>
-											<input v-model="form.programInterest" type="text" class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink" />
+											<input
+												v-model="form.programInterest"
+												type="text"
+												class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink"
+											/>
 										</label>
 									</div>
 
 									<label class="block">
 										<span class="type-caption text-ink/70">{{ __('Internal notes') }}</span>
-										<textarea v-model="form.internalNotes" rows="3" class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink" />
+										<textarea
+											v-model="form.internalNotes"
+											rows="3"
+											class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink"
+										/>
 									</label>
 								</section>
 
 								<section class="space-y-4">
 									<div class="rounded-lg border border-slate-200 bg-white p-4">
 										<p class="type-body-strong text-ink">{{ __('Visit staff') }}</p>
-										<p class="type-caption text-ink/60">{{ __('The first selected staff member leads the visit and receives the calendar event.') }}</p>
+										<p class="type-caption text-ink/60">
+											{{
+												__(
+													'The first selected staff member leads the visit and receives the calendar event.'
+												)
+											}}
+										</p>
 										<EmployeePicker
 											:query="staffQuery"
 											:loading="searchingEmployees"
@@ -155,12 +249,22 @@
 											@search="searchEmployees('staff')"
 											@add="addStaff"
 										/>
-										<UserChips :users="selectedStaff" empty-label="Select at least one visit lead." @remove="removeStaff" />
+										<UserChips
+											:users="selectedStaff"
+											empty-label="Select at least one visit lead."
+											@remove="removeStaff"
+										/>
 									</div>
 
 									<div class="rounded-lg border border-slate-200 bg-white p-4">
 										<p class="type-body-strong text-ink">{{ __('Inform only') }}</p>
-										<p class="type-caption text-ink/60">{{ __('These users receive a heads-up but are not booked or added to the calendar event.') }}</p>
+										<p class="type-caption text-ink/60">
+											{{
+												__(
+													'These users receive a heads-up but are not booked or added to the calendar event.'
+												)
+											}}
+										</p>
 										<EmployeePicker
 											:query="informedQuery"
 											:loading="searchingEmployees"
@@ -170,7 +274,11 @@
 											@search="searchEmployees('informed')"
 											@add="addInformed"
 										/>
-										<UserChips :users="selectedInformed" empty-label="No extra users will be informed." @remove="removeInformed" />
+										<UserChips
+											:users="selectedInformed"
+											empty-label="No extra users will be informed."
+											@remove="removeInformed"
+										/>
 									</div>
 
 									<div class="rounded-lg border border-slate-200 bg-white p-4">
@@ -178,29 +286,52 @@
 										<div class="mt-3 grid grid-cols-2 gap-3">
 											<label class="block">
 												<span class="type-caption text-ink/70">{{ __('From') }}</span>
-												<input v-model="form.windowStartTime" type="time" class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink" />
+												<input
+													v-model="form.windowStartTime"
+													type="time"
+													class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink"
+												/>
 											</label>
 											<label class="block">
 												<span class="type-caption text-ink/70">{{ __('To') }}</span>
-												<input v-model="form.windowEndTime" type="time" class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink" />
+												<input
+													v-model="form.windowEndTime"
+													type="time"
+													class="mt-1 block w-full rounded-lg border border-border/70 px-3 py-2 type-caption text-ink"
+												/>
 											</label>
 										</div>
-										<button type="button" class="if-button if-button--secondary mt-3 w-full justify-center" :disabled="submitting" @click="loadSuggestions">
+										<button
+											type="button"
+											class="if-button if-button--secondary mt-3 w-full justify-center"
+											:disabled="submitting"
+											@click="loadSuggestions"
+										>
 											{{ __('Suggest free times') }}
 										</button>
 										<ol v-if="suggestions.length" class="mt-3 space-y-2">
 											<li v-for="slot in suggestions" :key="slot.start">
-												<button type="button" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-left type-caption text-ink hover:border-canopy" @click="applySuggestion(slot.start)">
+												<button
+													type="button"
+													class="w-full rounded-lg border border-slate-200 px-3 py-2 text-left type-caption text-ink hover:border-canopy"
+													@click="applySuggestion(slot.start)"
+												>
 													{{ slot.label }}
 												</button>
 											</li>
 										</ol>
 									</div>
 
-									<div v-if="conflicts.length" class="rounded-lg border border-amber-200 bg-amber-50 p-4">
+									<div
+										v-if="conflicts.length"
+										class="rounded-lg border border-amber-200 bg-amber-50 p-4"
+									>
 										<p class="type-body-strong text-amber-900">{{ __('Conflict details') }}</p>
 										<ul class="mt-2 space-y-1 type-caption text-amber-900/80">
-											<li v-for="(conflict, index) in conflicts" :key="`${conflict.kind || 'conflict'}-${index}`">
+											<li
+												v-for="(conflict, index) in conflicts"
+												:key="`${conflict.kind || 'conflict'}-${index}`"
+											>
 												{{ conflictLabel(conflict) }}
 											</li>
 										</ul>
@@ -209,26 +340,61 @@
 							</div>
 						</div>
 
-						<div class="if-overlay__footer flex flex-wrap items-center justify-between gap-3 px-6 pb-6">
+						<div
+							class="if-overlay__footer flex flex-wrap items-center justify-between gap-3 px-6 pb-6"
+						>
 							<div class="flex flex-wrap items-center gap-2">
-								<button v-if="isEditMode && canWrite && visitStatus === 'Scheduled'" type="button" class="if-button if-button--quiet" :disabled="submitting" @click="completeVisit">
+								<button
+									v-if="isEditMode && canWrite && visitStatus === 'Scheduled'"
+									type="button"
+									class="if-button if-button--quiet"
+									:disabled="submitting"
+									@click="completeVisit"
+								>
 									{{ __('Mark completed') }}
 								</button>
-								<button v-if="isEditMode && canWrite && visitStatus === 'Scheduled'" type="button" class="if-button if-button--quiet" :disabled="submitting" @click="markNoShow">
+								<button
+									v-if="isEditMode && canWrite && visitStatus === 'Scheduled'"
+									type="button"
+									class="if-button if-button--quiet"
+									:disabled="submitting"
+									@click="markNoShow"
+								>
 									{{ __('No show') }}
 								</button>
-								<button v-if="isEditMode && canWrite && selectedInformed.length" type="button" class="if-button if-button--quiet" :disabled="submitting" @click="notifyInformed">
+								<button
+									v-if="isEditMode && canWrite && selectedInformed.length"
+									type="button"
+									class="if-button if-button--quiet"
+									:disabled="submitting"
+									@click="notifyInformed"
+								>
 									{{ __('Inform') }}
 								</button>
 							</div>
 							<div class="flex items-center gap-3">
-								<button v-if="isEditMode && canWrite && visitStatus !== 'Cancelled'" type="button" class="if-button if-button--secondary" :disabled="submitting" @click="cancelVisit">
+								<button
+									v-if="isEditMode && canWrite && visitStatus !== 'Cancelled'"
+									type="button"
+									class="if-button if-button--secondary"
+									:disabled="submitting"
+									@click="cancelVisit"
+								>
 									{{ __('Cancel Visit') }}
 								</button>
-								<button type="button" class="if-button if-button--secondary" @click="emitClose('programmatic')">
+								<button
+									type="button"
+									class="if-button if-button--secondary"
+									@click="emitClose('programmatic')"
+								>
 									{{ __('Close') }}
 								</button>
-								<button type="button" class="if-button if-button--primary" :disabled="loadingOptions || submitting || !canWrite" @click="submit">
+								<button
+									type="button"
+									class="if-button if-button--primary"
+									:disabled="loadingOptions || submitting || !canWrite"
+									@click="submit"
+								>
 									<span v-if="submitting" class="inline-flex items-center gap-2">
 										<Spinner class="h-4 w-4" /> {{ submitBusyLabel }}
 									</span>
@@ -245,7 +411,13 @@
 
 <script setup lang="ts">
 import { computed, defineComponent, h, onBeforeUnmount, reactive, ref, watch } from 'vue';
-import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue';
+import {
+	Dialog,
+	DialogPanel,
+	DialogTitle,
+	TransitionChild,
+	TransitionRoot,
+} from '@headlessui/vue';
 import { FeatherIcon, Spinner } from 'frappe-ui';
 
 import { useOverlayStack } from '@/composables/useOverlayStack';
@@ -290,9 +462,11 @@ const EmployeePicker = defineComponent({
 					h('input', {
 						value: props.query,
 						type: 'search',
-						class: 'min-w-0 flex-1 rounded-lg border border-border/70 px-3 py-2 type-caption text-ink',
+						class:
+							'min-w-0 flex-1 rounded-lg border border-border/70 px-3 py-2 type-caption text-ink',
 						placeholder: props.placeholder,
-						onInput: (event: Event) => emit('update:query', (event.target as HTMLInputElement).value),
+						onInput: (event: Event) =>
+							emit('update:query', (event.target as HTMLInputElement).value),
 						onKeydown: (event: KeyboardEvent) => {
 							if (event.key === 'Enter') {
 								event.preventDefault();
@@ -321,14 +495,19 @@ const EmployeePicker = defineComponent({
 									{
 										key: employee.value,
 										type: 'button',
-										class: 'flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-slate-50',
+										class:
+											'flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-slate-50',
 										onClick: () => emit('add', employee),
 									},
 									[
 										h('span', { class: 'min-w-0' }, [
 											h('span', { class: 'block truncate type-caption text-ink' }, employee.label),
 											employee.meta
-												? h('span', { class: 'block truncate text-[11px] text-slate-500' }, employee.meta)
+												? h(
+														'span',
+														{ class: 'block truncate text-[11px] text-slate-500' },
+														employee.meta
+													)
 												: null,
 										]),
 										h(FeatherIcon, { name: 'plus', class: 'h-4 w-4 text-canopy' }),
@@ -355,7 +534,8 @@ const UserChips = defineComponent({
 						'span',
 						{
 							key: user.user,
-							class: 'inline-flex max-w-full items-center gap-2 rounded-full border border-canopy/25 bg-canopy/5 px-3 py-1 text-xs font-semibold text-canopy',
+							class:
+								'inline-flex max-w-full items-center gap-2 rounded-full border border-canopy/25 bg-canopy/5 px-3 py-1 text-xs font-semibold text-canopy',
 						},
 						[
 							h('span', { class: 'truncate' }, user.label || user.user),
@@ -371,7 +551,9 @@ const UserChips = defineComponent({
 						]
 					)
 				),
-				!props.users.length ? h('span', { class: 'type-caption text-slate-token/70' }, props.emptyLabel) : null,
+				!props.users.length
+					? h('span', { class: 'type-caption text-slate-token/70' }, props.emptyLabel)
+					: null,
 			]);
 	},
 });
@@ -433,17 +615,44 @@ const overlayStyle = computed(() => ({ zIndex: props.zIndex || 0 }));
 const isEditMode = computed(() => Boolean(String(props.admissionVisit || '').trim()));
 const canWrite = computed(() => !isEditMode.value || Boolean(detailPayload.value?.can_write));
 const visitStatus = computed(() => detailPayload.value?.visit?.status || 'Scheduled');
-const overlayTitle = computed(() => (isEditMode.value ? __('Admission visit') : __('Schedule visit')));
+const overlayTitle = computed(() =>
+	isEditMode.value ? __('Admission visit') : __('Schedule visit')
+);
 const submitLabel = computed(() => (isEditMode.value ? __('Update Visit') : __('Schedule Visit')));
-const submitBusyLabel = computed(() => (isEditMode.value ? __('Updating...') : __('Scheduling...')));
+const submitBusyLabel = computed(() =>
+	isEditMode.value ? __('Updating...') : __('Scheduling...')
+);
 const contextTitle = computed(() => {
 	const context = optionsPayload.value?.context;
-	const label = form.visitorName || props.visitorName || context?.visitor_name || props.inquiry || props.studentApplicant || props.conversation || '';
+	const label =
+		form.visitorName ||
+		props.visitorName ||
+		context?.visitor_name ||
+		props.inquiry ||
+		props.studentApplicant ||
+		props.conversation ||
+		'';
 	const school = context?.school || props.school || '';
 	return [label, school].filter(Boolean).join(' - ') || __('Admissions visit');
 });
-const visitTypes = computed(() => optionsPayload.value?.visit_types?.length ? optionsPayload.value.visit_types : ['Family Tour', 'Student Tour', 'Open Day', 'School Visit', 'College Visit', 'Shadow Day', 'Other']);
-const visitModes = computed(() => optionsPayload.value?.visit_modes?.length ? optionsPayload.value.visit_modes : ['In Person', 'Online', 'Phone']);
+const visitTypes = computed(() =>
+	optionsPayload.value?.visit_types?.length
+		? optionsPayload.value.visit_types
+		: [
+				'Family Tour',
+				'Student Tour',
+				'Open Day',
+				'School Visit',
+				'College Visit',
+				'Shadow Day',
+				'Other',
+			]
+);
+const visitModes = computed(() =>
+	optionsPayload.value?.visit_modes?.length
+		? optionsPayload.value.visit_modes
+		: ['In Person', 'Online', 'Phone']
+);
 const rooms = computed(() => optionsPayload.value?.rooms || []);
 const buildings = computed(() => optionsPayload.value?.buildings || []);
 const isInPerson = computed(() => form.visitMode === 'In Person');
@@ -581,7 +790,10 @@ function applyVisit(detail: AdmissionVisitDetailResponse) {
 		form.startTime = start.slice(11, 16);
 	}
 	if (start && end) {
-		const minutes = Math.max(5, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000));
+		const minutes = Math.max(
+			5,
+			Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000)
+		);
 		form.durationMinutes = Number.isFinite(minutes) ? minutes : form.durationMinutes;
 	}
 	form.visitType = visit.visit_type || form.visitType;
@@ -611,9 +823,17 @@ async function searchEmployees(target: SearchTarget) {
 	searchingEmployees.value = true;
 	errorMessage.value = '';
 	try {
-		const payload = await searchMeetingAttendees({ query, attendee_kinds: ['employee'], limit: 8 });
-		const selected = new Set([...selectedStaff.value, ...selectedInformed.value].map(row => row.user));
-		const results = (payload.results || []).filter(row => row.kind === 'employee' && !selected.has(row.value));
+		const payload = await searchMeetingAttendees({
+			query,
+			attendee_kinds: ['employee'],
+			limit: 8,
+		});
+		const selected = new Set(
+			[...selectedStaff.value, ...selectedInformed.value].map(row => row.user)
+		);
+		const results = (payload.results || []).filter(
+			row => row.kind === 'employee' && !selected.has(row.value)
+		);
 		if (target === 'staff') staffSearchResults.value = results;
 		else informedSearchResults.value = results;
 	} catch (err: any) {
@@ -631,7 +851,9 @@ function addStaff(employee: MeetingAttendee) {
 function addInformed(employee: MeetingAttendee) {
 	if (selectedStaff.value.some(row => row.user === employee.value)) return;
 	addUserChip(selectedInformed, employee);
-	informedSearchResults.value = informedSearchResults.value.filter(row => row.value !== employee.value);
+	informedSearchResults.value = informedSearchResults.value.filter(
+		row => row.value !== employee.value
+	);
 }
 
 function addUserChip(target: typeof selectedStaff, employee: MeetingAttendee) {
@@ -649,11 +871,14 @@ function removeInformed(user: string) {
 }
 
 function validateScheduleForm(): string {
-	if (!canWrite.value) return __('You can view this visit, but you do not have permission to update it.');
+	if (!canWrite.value)
+		return __('You can view this visit, but you do not have permission to update it.');
 	if (!form.date || !form.startTime) return __('Date and start time are required.');
-	if (!form.durationMinutes || Number(form.durationMinutes) <= 0) return __('Duration must be greater than zero.');
+	if (!form.durationMinutes || Number(form.durationMinutes) <= 0)
+		return __('Duration must be greater than zero.');
 	if (!selectedStaff.value.length) return __('Select the staff member who will lead the visit.');
-	if (isInPerson.value && !form.location && !form.building) return __('Select a building or meeting room for an in-person visit.');
+	if (isInPerson.value && !form.location && !form.building)
+		return __('Select a building or meeting room for an in-person visit.');
 	return '';
 }
 
@@ -662,7 +887,8 @@ function baseSchedulePayload() {
 	return {
 		conversation: props.conversation || optionsPayload.value?.context?.conversation || null,
 		inquiry: props.inquiry || optionsPayload.value?.context?.inquiry || null,
-		student_applicant: props.studentApplicant || optionsPayload.value?.context?.student_applicant || null,
+		student_applicant:
+			props.studentApplicant || optionsPayload.value?.context?.student_applicant || null,
 		organization: props.organization || optionsPayload.value?.context?.organization || null,
 		school: props.school || optionsPayload.value?.context?.school || null,
 		starts_on: `${form.date} ${form.startTime}`,
@@ -699,7 +925,8 @@ async function loadSuggestions() {
 		const payload = await suggestAdmissionVisitSlots({
 			conversation: props.conversation || optionsPayload.value?.context?.conversation || null,
 			inquiry: props.inquiry || optionsPayload.value?.context?.inquiry || null,
-			student_applicant: props.studentApplicant || optionsPayload.value?.context?.student_applicant || null,
+			student_applicant:
+				props.studentApplicant || optionsPayload.value?.context?.student_applicant || null,
 			organization: props.organization || optionsPayload.value?.context?.organization || null,
 			school: props.school || optionsPayload.value?.context?.school || null,
 			visit_date: form.date,
@@ -760,15 +987,24 @@ async function submit() {
 }
 
 async function completeVisit() {
-	await runVisitAction(() => markAdmissionVisitCompleted(String(props.admissionVisit || '').trim()), __('Visit marked completed.'));
+	await runVisitAction(
+		() => markAdmissionVisitCompleted(String(props.admissionVisit || '').trim()),
+		__('Visit marked completed.')
+	);
 }
 
 async function markNoShow() {
-	await runVisitAction(() => markAdmissionVisitNoShow(String(props.admissionVisit || '').trim()), __('Visit marked no-show.'));
+	await runVisitAction(
+		() => markAdmissionVisitNoShow(String(props.admissionVisit || '').trim()),
+		__('Visit marked no-show.')
+	);
 }
 
 async function notifyInformed() {
-	await runVisitAction(() => notifyAdmissionVisitInformedUsers(String(props.admissionVisit || '').trim()), __('Heads-up sent.'));
+	await runVisitAction(
+		() => notifyAdmissionVisitInformedUsers(String(props.admissionVisit || '').trim()),
+		__('Heads-up sent.')
+	);
 }
 
 async function cancelVisit() {
@@ -777,7 +1013,10 @@ async function cancelVisit() {
 		errorMessage.value = __('Cancellation requires a reason.');
 		return;
 	}
-	await runVisitAction(() => cancelAdmissionVisit(String(props.admissionVisit || '').trim(), reason), __('Visit cancelled.'));
+	await runVisitAction(
+		() => cancelAdmissionVisit(String(props.admissionVisit || '').trim(), reason),
+		__('Visit cancelled.')
+	);
 }
 
 async function runVisitAction(action: () => Promise<{ ok: boolean }>, success: string) {
@@ -803,16 +1042,28 @@ function conflictLabel(conflict: AdmissionVisitScheduleConflict) {
 	const source = [conflict.source_doctype, conflict.source_name].filter(Boolean).join(' ');
 	const windowLabel = [conflict.start_label, conflict.end_label].filter(Boolean).join(' - ');
 	if (conflict.kind === 'room') {
-		return [conflict.location_label || conflict.location || __('Room'), conflict.occupancy_type, source, windowLabel]
+		return [
+			conflict.location_label || conflict.location || __('Room'),
+			conflict.occupancy_type,
+			source,
+			windowLabel,
+		]
 			.filter(Boolean)
 			.join(' - ');
 	}
-	return [conflict.employee_name || conflict.employee || __('Employee'), conflict.booking_type, source, windowLabel]
+	return [
+		conflict.employee_name || conflict.employee || __('Employee'),
+		conflict.booking_type,
+		source,
+		windowLabel,
+	]
 		.filter(Boolean)
 		.join(' - ');
 }
 
 function normalizeDateTime(value?: string | null) {
-	return String(value || '').replace('T', ' ').slice(0, 19);
+	return String(value || '')
+		.replace('T', ' ')
+		.slice(0, 19);
 }
 </script>

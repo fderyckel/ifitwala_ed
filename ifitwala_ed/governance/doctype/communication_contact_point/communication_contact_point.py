@@ -133,7 +133,11 @@ class CommunicationContactPoint(Document):
             filters["name"] = ["!=", self.name]
 
         if frappe.db.exists(COMMUNICATION_CONTACT_POINT_DOCTYPE, filters):
-            frappe.throw(_("Only one active primary Communication Contact Point is allowed for this owner, school, purpose, and channel."))
+            frappe.throw(
+                _(
+                    "Only one active primary Communication Contact Point is allowed for this owner, school, purpose, and channel."
+                )
+            )
 
 
 def on_doctype_update():

@@ -20,6 +20,7 @@ CONTACT_POINT_WORKFLOW = "guardian_contact_point_backfill"
 
 def execute():
     import frappe
+
     from ifitwala_ed.contacts.contact_privacy import sync_guardian_contact_points
 
     if not _required_tables_exist(frappe):
@@ -114,11 +115,7 @@ def _guardian_schools_by_student_link(frappe_module) -> dict[str, set[str]]:
         limit=0,
     )
     student_names = sorted(
-        {
-            _clean_data(_row_get(row, "parent"))
-            for row in relation_rows or []
-            if _clean_data(_row_get(row, "parent"))
-        }
+        {_clean_data(_row_get(row, "parent")) for row in relation_rows or [] if _clean_data(_row_get(row, "parent"))}
     )
     if not student_names:
         return {}

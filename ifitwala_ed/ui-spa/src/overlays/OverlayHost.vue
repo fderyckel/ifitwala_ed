@@ -246,11 +246,11 @@ function resolveComponent(type: OverlayType) {
 			return ApplicantSubmitOverlay;
 		case 'admissions-workspace':
 			return AdmissionsWorkspaceOverlay;
-			case 'admissions-interview-schedule':
-				return AdmissionsInterviewScheduleOverlay;
-			case 'admissions-visit-schedule':
-				return AdmissionsVisitScheduleOverlay;
-			case 'critical-incidents-list':
+		case 'admissions-interview-schedule':
+			return AdmissionsInterviewScheduleOverlay;
+		case 'admissions-visit-schedule':
+			return AdmissionsVisitScheduleOverlay;
+		case 'critical-incidents-list':
 			return CriticalIncidentsListOverlay;
 		case 'consent-profile-writeback':
 			return ConsentProfileWritebackOverlay;

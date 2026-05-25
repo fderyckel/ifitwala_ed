@@ -28,4 +28,3 @@ Canonical docs:
 - `contact_permission_contract.md` - active current-runtime contract for native Frappe Contact/Address permission seeding; transitional relative to `../security/contact_data_governance.md`.
   Code refs: listed in document.
   Test refs: listed in document.
-

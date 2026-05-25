@@ -138,19 +138,19 @@
 						</dl>
 
 						<footer class="inbox-row-card__footer">
-								<div class="inbox-row-card__footer-actions">
-									<button
-										v-if="canScheduleVisit(row)"
-										type="button"
-										:data-testid="`inbox-schedule-visit-${row.id}`"
-										class="if-button if-button--quiet"
-										@click="openScheduleVisit(row)"
-									>
-										<FeatherIcon name="calendar" class="h-4 w-4" />
-										<span>{{ __('Schedule Visit') }}</span>
-									</button>
-									<button
-										v-if="hasRowActions(row)"
+							<div class="inbox-row-card__footer-actions">
+								<button
+									v-if="canScheduleVisit(row)"
+									type="button"
+									:data-testid="`inbox-schedule-visit-${row.id}`"
+									class="if-button if-button--quiet"
+									@click="openScheduleVisit(row)"
+								>
+									<FeatherIcon name="calendar" class="h-4 w-4" />
+									<span>{{ __('Schedule Visit') }}</span>
+								</button>
+								<button
+									v-if="hasRowActions(row)"
 									type="button"
 									:data-testid="`inbox-actions-${row.id}`"
 									class="if-button if-button--quiet"
@@ -735,7 +735,7 @@
 	</div>
 </template>
 
-	<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { FeatherIcon } from 'frappe-ui';
 
@@ -1003,8 +1003,8 @@ const activityChannels: AdmissionCrmActivityChannel[] = [
 	'Other',
 ];
 
-	const context = ref<AdmissionsInboxContext | null>(null);
-	const overlay = useOverlayStack();
+const context = ref<AdmissionsInboxContext | null>(null);
+const overlay = useOverlayStack();
 const loading = ref(false);
 const error = ref<string | null>(null);
 const activeQueueId = ref('needs_reply');
@@ -1137,29 +1137,31 @@ function createIntakeForm(): IntakeForm {
 	};
 }
 
-	function hasRowActions(row: AdmissionsInboxRow) {
-		return row.actions.length > 0;
+function hasRowActions(row: AdmissionsInboxRow) {
+	return row.actions.length > 0;
+}
+
+function canScheduleVisit(row: AdmissionsInboxRow) {
+	return Boolean(row.conversation || row.inquiry || row.student_applicant || row.organization);
+}
+
+function openScheduleVisit(row: AdmissionsInboxRow) {
+	if (!canScheduleVisit(row)) {
+		error.value = __(
+			'A conversation, inquiry, applicant, or organization is required before scheduling a visit.'
+		);
+		return;
 	}
 
-	function canScheduleVisit(row: AdmissionsInboxRow) {
-		return Boolean(row.conversation || row.inquiry || row.student_applicant || row.organization);
-	}
-
-	function openScheduleVisit(row: AdmissionsInboxRow) {
-		if (!canScheduleVisit(row)) {
-			error.value = __('A conversation, inquiry, applicant, or organization is required before scheduling a visit.');
-			return;
-		}
-
-		overlay.open('admissions-visit-schedule', {
-			conversation: row.conversation || null,
-			inquiry: row.inquiry || null,
-			studentApplicant: row.student_applicant || null,
-			organization: row.organization || null,
-			school: row.school || null,
-			visitorName: row.title || null,
-		});
-	}
+	overlay.open('admissions-visit-schedule', {
+		conversation: row.conversation || null,
+		inquiry: row.inquiry || null,
+		studentApplicant: row.student_applicant || null,
+		organization: row.organization || null,
+		school: row.school || null,
+		visitorName: row.title || null,
+	});
+}
 
 function isSupportedActionId(actionId: string): actionId is SupportedActionId {
 	return SUPPORTED_ACTION_IDS.includes(actionId as SupportedActionId);
@@ -1309,7 +1311,9 @@ async function loadTimelineForRow(row: AdmissionsInboxRow) {
 	} catch (err) {
 		if (sequence !== timelineSequence) return;
 		timelineError.value =
-			err instanceof Error ? err.message : String(err || __('Could not load admissions timeline.'));
+			err instanceof Error
+				? err.message
+				: String(err || __('Could not load admissions timeline.'));
 	} finally {
 		if (sequence === timelineSequence) {
 			timelineLoading.value = false;
@@ -1384,7 +1388,9 @@ function handleTimelineAction(action: AdmissionsTimelineAction) {
 	if (!state?.enabled) {
 		actionError.value =
 			state?.disabledReason ||
-			__('This action is blocked for the current admissions context. Refresh the Inbox and try again.');
+			__(
+				'This action is blocked for the current admissions context. Refresh the Inbox and try again.'
+			);
 		return;
 	}
 

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import ast
-import hmac
 import hashlib
+import hmac
 from contextlib import contextmanager
 from pathlib import Path
 from types import ModuleType, SimpleNamespace

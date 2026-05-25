@@ -18,13 +18,16 @@ class TestBackfillGuardianContactPoints(TestCase):
         contact_privacy.sync_guardian_contact_points = sync_guardian_contact_points
 
         with stubbed_frappe(extra_modules={"ifitwala_ed.contacts.contact_privacy": contact_privacy}) as frappe:
-            frappe.db.table_exists = lambda doctype: doctype in {
-                "Communication Contact Point",
-                "Contact Access Log",
-                "Guardian",
-                "Student",
-                "Student Guardian",
-            }
+            frappe.db.table_exists = lambda doctype: (
+                doctype
+                in {
+                    "Communication Contact Point",
+                    "Contact Access Log",
+                    "Guardian",
+                    "Student",
+                    "Student Guardian",
+                }
+            )
 
             def get_all(doctype, **kwargs):
                 if doctype == "Student Guardian":
@@ -85,8 +88,9 @@ class TestBackfillGuardianContactPoints(TestCase):
 
             stats = module.backfill_guardian_contact_points(
                 frappe,
-                sync_function=lambda guardian_doc, **kwargs: sync_calls.append({"guardian": guardian_doc, **kwargs})
-                or ["CCP-EMAIL", "CCP-PHONE"],
+                sync_function=lambda guardian_doc, **kwargs: (
+                    sync_calls.append({"guardian": guardian_doc, **kwargs}) or ["CCP-EMAIL", "CCP-PHONE"]
+                ),
             )
 
         self.assertEqual(stats["guardians_eligible"], 1)

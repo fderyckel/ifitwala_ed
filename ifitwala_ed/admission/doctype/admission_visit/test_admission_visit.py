@@ -177,7 +177,9 @@ class TestAdmissionVisit(IfitwalaEdTestSuite):
         school_event = payload.get("school_event")
         self.assertTrue(frappe.db.exists("School Event", school_event))
 
-        cancel_payload = cancel_admission_visit(admission_visit=payload.get("admission_visit"), reason="Family unavailable")
+        cancel_payload = cancel_admission_visit(
+            admission_visit=payload.get("admission_visit"), reason="Family unavailable"
+        )
 
         self.assertTrue(cancel_payload.get("ok"))
         visit = frappe.get_doc("Admission Visit", payload.get("admission_visit"))

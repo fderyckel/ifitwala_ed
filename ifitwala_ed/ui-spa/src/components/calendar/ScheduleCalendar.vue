@@ -688,23 +688,23 @@ function handleEventClick(info: EventClickArg) {
 		if (!schoolEventName) return;
 
 		const { referenceType, referenceName } = resolveSchoolEventReference(info);
-			if (referenceType === 'Applicant Interview' && referenceName) {
-				overlay.open('admissions-workspace', {
-					interview: referenceName,
-					schoolEvent: schoolEventName,
-				});
-				return;
-			}
+		if (referenceType === 'Applicant Interview' && referenceName) {
+			overlay.open('admissions-workspace', {
+				interview: referenceName,
+				schoolEvent: schoolEventName,
+			});
+			return;
+		}
 
-			if (referenceType === 'Admission Visit' && referenceName) {
-				overlay.open('admissions-visit-schedule', {
-					admissionVisit: referenceName,
-					schoolEvent: schoolEventName,
-				});
-				return;
-			}
+		if (referenceType === 'Admission Visit' && referenceName) {
+			overlay.open('admissions-visit-schedule', {
+				admissionVisit: referenceName,
+				schoolEvent: schoolEventName,
+			});
+			return;
+		}
 
-			overlay.open('school-event', { event: schoolEventName });
+		overlay.open('school-event', { event: schoolEventName });
 		return;
 	}
 

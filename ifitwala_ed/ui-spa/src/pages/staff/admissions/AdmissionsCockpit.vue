@@ -145,21 +145,21 @@
 										>
 											{{ __('Timeline') }}
 										</button>
-											<button
-												type="button"
-												class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
-												@click="openScheduleInterview(item)"
-											>
-												{{ __('Schedule Interview') }}
-											</button>
-											<button
-												type="button"
-												class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
-												@click="openScheduleVisit(item)"
-											>
-												{{ __('Schedule Visit') }}
-											</button>
-											<button
+										<button
+											type="button"
+											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
+											@click="openScheduleInterview(item)"
+										>
+											{{ __('Schedule Interview') }}
+										</button>
+										<button
+											type="button"
+											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
+											@click="openScheduleVisit(item)"
+										>
+											{{ __('Schedule Visit') }}
+										</button>
+										<button
 											type="button"
 											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
 											@click="openThread(item)"
@@ -526,9 +526,7 @@
 								<p class="type-overline text-slate-token/70">{{ __('Admissions CRM') }}</p>
 								<h3 class="type-body-strong text-ink">
 									{{
-										activeCrmAction.id === 'log_message'
-											? __('Log Message')
-											: __('Log Activity')
+										activeCrmAction.id === 'log_message' ? __('Log Message') : __('Log Activity')
 									}}
 								</h3>
 							</div>
@@ -601,7 +599,11 @@
 							</label>
 						</template>
 
-						<p v-if="crmActionError" data-testid="cockpit-crm-action-error" class="mt-3 text-sm text-rose-700">
+						<p
+							v-if="crmActionError"
+							data-testid="cockpit-crm-action-error"
+							class="mt-3 text-sm text-rose-700"
+						>
 							{{ crmActionError }}
 						</p>
 						<p
@@ -1160,7 +1162,10 @@ function isAepActionPending(planName?: string | null, action: AepAction = 'send_
 	return pendingAepActionKey.value === aepActionKey(planName, action);
 }
 
-function applicantActionKey(applicantName?: string | null, action: ApplicantAction = 'manage_offer') {
+function applicantActionKey(
+	applicantName?: string | null,
+	action: ApplicantAction = 'manage_offer'
+) {
 	return `${String(applicantName || '').trim()}:${action}`;
 }
 

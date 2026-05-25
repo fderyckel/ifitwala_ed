@@ -34,7 +34,9 @@ def _new_contact_point(module, **overrides):
 class TestCommunicationContactPointController(TestCase):
     def test_manual_insert_is_blocked(self):
         with stubbed_frappe() as frappe:
-            module = import_fresh("ifitwala_ed.governance.doctype.communication_contact_point.communication_contact_point")
+            module = import_fresh(
+                "ifitwala_ed.governance.doctype.communication_contact_point.communication_contact_point"
+            )
             doc = _new_contact_point(module, flags={})
 
             with self.assertRaises(frappe.PermissionError):
@@ -42,7 +44,9 @@ class TestCommunicationContactPointController(TestCase):
 
     def test_manual_update_is_blocked(self):
         with stubbed_frappe() as frappe:
-            module = import_fresh("ifitwala_ed.governance.doctype.communication_contact_point.communication_contact_point")
+            module = import_fresh(
+                "ifitwala_ed.governance.doctype.communication_contact_point.communication_contact_point"
+            )
             doc = _new_contact_point(module, flags={})
 
             with self.assertRaises(frappe.PermissionError):
@@ -50,7 +54,9 @@ class TestCommunicationContactPointController(TestCase):
 
     def test_delete_is_blocked(self):
         with stubbed_frappe() as frappe:
-            module = import_fresh("ifitwala_ed.governance.doctype.communication_contact_point.communication_contact_point")
+            module = import_fresh(
+                "ifitwala_ed.governance.doctype.communication_contact_point.communication_contact_point"
+            )
             doc = _new_contact_point(module)
 
             with self.assertRaises(frappe.ValidationError):
@@ -58,7 +64,9 @@ class TestCommunicationContactPointController(TestCase):
 
     def test_guardian_contact_point_requires_school(self):
         with stubbed_frappe() as frappe:
-            module = import_fresh("ifitwala_ed.governance.doctype.communication_contact_point.communication_contact_point")
+            module = import_fresh(
+                "ifitwala_ed.governance.doctype.communication_contact_point.communication_contact_point"
+            )
             doc = _new_contact_point(module, school=None)
 
             with self.assertRaises(frappe.ValidationError):
@@ -66,7 +74,9 @@ class TestCommunicationContactPointController(TestCase):
 
     def test_unapproved_owner_doctype_is_rejected(self):
         with stubbed_frappe() as frappe:
-            module = import_fresh("ifitwala_ed.governance.doctype.communication_contact_point.communication_contact_point")
+            module = import_fresh(
+                "ifitwala_ed.governance.doctype.communication_contact_point.communication_contact_point"
+            )
             doc = _new_contact_point(module, owner_doctype="Contact", subject_doctype="Contact")
 
             with self.assertRaises(frappe.ValidationError):
@@ -74,7 +84,9 @@ class TestCommunicationContactPointController(TestCase):
 
     def test_active_contact_point_requires_protected_values(self):
         with stubbed_frappe() as frappe:
-            module = import_fresh("ifitwala_ed.governance.doctype.communication_contact_point.communication_contact_point")
+            module = import_fresh(
+                "ifitwala_ed.governance.doctype.communication_contact_point.communication_contact_point"
+            )
             doc = _new_contact_point(module, value_encrypted="")
 
             with self.assertRaises(frappe.ValidationError):
@@ -82,7 +94,9 @@ class TestCommunicationContactPointController(TestCase):
 
     def test_primary_duplicate_is_rejected(self):
         with stubbed_frappe() as frappe:
-            module = import_fresh("ifitwala_ed.governance.doctype.communication_contact_point.communication_contact_point")
+            module = import_fresh(
+                "ifitwala_ed.governance.doctype.communication_contact_point.communication_contact_point"
+            )
             frappe.db.exists = Mock(return_value="CCP-OTHER")
             doc = _new_contact_point(module, is_primary=1)
 
@@ -96,7 +110,9 @@ class TestCommunicationContactPointController(TestCase):
 
     def test_primary_duplicate_check_is_school_scoped(self):
         with stubbed_frappe() as frappe:
-            module = import_fresh("ifitwala_ed.governance.doctype.communication_contact_point.communication_contact_point")
+            module = import_fresh(
+                "ifitwala_ed.governance.doctype.communication_contact_point.communication_contact_point"
+            )
             frappe.db.exists = Mock(return_value=None)
             doc = _new_contact_point(module, is_primary=1, school="SCHOOL-2")
 
@@ -107,7 +123,9 @@ class TestCommunicationContactPointController(TestCase):
 
     def test_on_doctype_update_adds_expected_indexes(self):
         with stubbed_frappe() as frappe:
-            module = import_fresh("ifitwala_ed.governance.doctype.communication_contact_point.communication_contact_point")
+            module = import_fresh(
+                "ifitwala_ed.governance.doctype.communication_contact_point.communication_contact_point"
+            )
             frappe.db.add_index = Mock()
 
             module.on_doctype_update()
@@ -138,9 +156,7 @@ class TestCommunicationContactPointMetadata(TestCase):
         import json
         from pathlib import Path
 
-        metadata_path = (
-            Path(__file__).resolve().parent / "communication_contact_point.json"
-        )
+        metadata_path = Path(__file__).resolve().parent / "communication_contact_point.json"
         payload = json.loads(metadata_path.read_text(encoding="utf-8"))
         fields = {field["fieldname"]: field for field in payload["fields"]}
 

@@ -136,7 +136,9 @@ class AdmissionVisit(Document):
         if not doc_is_in_admissions_crm_scope(user=user, organization=self.organization, school=self.school):
             frappe.throw(_("You do not have permission for this admission visit scope."), frappe.PermissionError)
         if self.conversation and not conversation_has_permission(self.conversation, ptype="write", user=user):
-            frappe.throw(_("You do not have permission to schedule visits for this conversation."), frappe.PermissionError)
+            frappe.throw(
+                _("You do not have permission to schedule visits for this conversation."), frappe.PermissionError
+            )
 
     def _validate_time_window(self) -> None:
         if not self.starts_on or not self.ends_on:
@@ -265,7 +267,9 @@ class AdmissionVisit(Document):
             activity_type="Attended Tour",
             activity_channel=_activity_channel_for_visit(self.visit_mode),
             outcome="Completed",
-            note=_("Visit marked completed for {window}.").format(window=_format_visit_window(self.starts_on, self.ends_on)),
+            note=_("Visit marked completed for {window}.").format(
+                window=_format_visit_window(self.starts_on, self.ends_on)
+            ),
         )
         self.db_set("attended_crm_activity", activity.name, update_modified=False)
 
@@ -278,7 +282,9 @@ class AdmissionVisit(Document):
             activity_type="Note",
             activity_channel=_activity_channel_for_visit(self.visit_mode),
             outcome="No Show",
-            note=_("Visit marked no-show for {window}.").format(window=_format_visit_window(self.starts_on, self.ends_on)),
+            note=_("Visit marked no-show for {window}.").format(
+                window=_format_visit_window(self.starts_on, self.ends_on)
+            ),
         )
         self.db_set("no_show_crm_activity", activity.name, update_modified=False)
 
@@ -400,7 +406,9 @@ def suggest_admission_visit_slots(
         frappe.throw(_("Visit date is required."), title=_("Missing Visit Date"))
     target_date = _to_date_or_throw(visit_date, fieldname="visit_date")
 
-    duration = _to_positive_int(value=duration_minutes, default=DEFAULT_VISIT_DURATION_MINUTES, fieldname="duration_minutes")
+    duration = _to_positive_int(
+        value=duration_minutes, default=DEFAULT_VISIT_DURATION_MINUTES, fieldname="duration_minutes"
+    )
     start_time = _coerce_time(window_start_time or DEFAULT_SUGGESTION_WINDOW_START, fieldname="window_start_time")
     end_time = _coerce_time(window_end_time or DEFAULT_SUGGESTION_WINDOW_END, fieldname="window_end_time")
     window_start, window_end = _build_window_datetimes_for_date(
@@ -496,7 +504,9 @@ def schedule_admission_visit(
     if ends_on:
         end_dt = _to_datetime_or_throw(ends_on, fieldname="ends_on")
     else:
-        minutes = _to_positive_int(value=duration_minutes, default=DEFAULT_VISIT_DURATION_MINUTES, fieldname="duration_minutes")
+        minutes = _to_positive_int(
+            value=duration_minutes, default=DEFAULT_VISIT_DURATION_MINUTES, fieldname="duration_minutes"
+        )
         end_dt = start_dt + timedelta(minutes=minutes)
     if end_dt <= start_dt:
         frappe.throw(_("Visit end must be after visit start."), title=_("Invalid Time Window"))
@@ -684,7 +694,9 @@ def reschedule_admission_visit(
     if ends_on:
         end_dt = _to_datetime_or_throw(ends_on, fieldname="ends_on")
     else:
-        minutes = _to_positive_int(value=duration_minutes, default=DEFAULT_VISIT_DURATION_MINUTES, fieldname="duration_minutes")
+        minutes = _to_positive_int(
+            value=duration_minutes, default=DEFAULT_VISIT_DURATION_MINUTES, fieldname="duration_minutes"
+        )
         end_dt = start_dt + timedelta(minutes=minutes)
     if end_dt <= start_dt:
         frappe.throw(_("Visit end must be after visit start."), title=_("Invalid Time Window"))
@@ -938,7 +950,9 @@ def _resolve_visit_context(
 
     conversation_row = _get_conversation_context(out.get("conversation"))
     if conversation_row:
-        _apply_context_value(out, "organization", conversation_row.get("organization"), source_label=_("Admission Conversation"))
+        _apply_context_value(
+            out, "organization", conversation_row.get("organization"), source_label=_("Admission Conversation")
+        )
         _apply_context_value(out, "school", conversation_row.get("school"), source_label=_("Admission Conversation"))
         _apply_context_value(out, "inquiry", conversation_row.get("inquiry"), source_label=_("Admission Conversation"))
         _apply_context_value(
@@ -963,7 +977,9 @@ def _resolve_visit_context(
 
     applicant_row = _get_student_applicant_context(out.get("student_applicant"))
     if applicant_row:
-        _apply_context_value(out, "organization", applicant_row.get("organization"), source_label=_("Student Applicant"))
+        _apply_context_value(
+            out, "organization", applicant_row.get("organization"), source_label=_("Student Applicant")
+        )
         _apply_context_value(out, "school", applicant_row.get("school"), source_label=_("Student Applicant"))
         _apply_context_value(out, "inquiry", applicant_row.get("inquiry"), source_label=_("Student Applicant"))
         out["visitor_name"] = out.get("visitor_name") or _applicant_display_name_from_row(applicant_row)
@@ -1050,7 +1066,9 @@ def _apply_context_value(target: dict, fieldname: str, value: str | None, *, sou
         return
     current_value = clean(target.get(fieldname))
     if current_value and current_value != resolved_value:
-        frappe.throw(_("{fieldname} does not match {source_label}.").format(fieldname=fieldname, source_label=source_label))
+        frappe.throw(
+            _("{fieldname} does not match {source_label}.").format(fieldname=fieldname, source_label=source_label)
+        )
     target[fieldname] = resolved_value
 
 
@@ -1063,7 +1081,9 @@ def _assert_visit_manage_permission(*, user: str, context: dict) -> None:
         school=context.get("school"),
     ):
         frappe.throw(_("You do not have permission for this admission visit scope."), frappe.PermissionError)
-    if context.get("conversation") and not conversation_has_permission(context.get("conversation"), ptype="write", user=user):
+    if context.get("conversation") and not conversation_has_permission(
+        context.get("conversation"), ptype="write", user=user
+    ):
         frappe.throw(_("You do not have permission to schedule visits for this conversation."), frappe.PermissionError)
 
 
@@ -1144,7 +1164,15 @@ def _build_visit_schedule_options_payload(*, context: dict) -> dict:
         },
         "rooms": [_serialize_location_option(row) for row in room_rows],
         "buildings": [_serialize_location_option(row) for row in building_rows],
-        "visit_types": ["Family Tour", "Student Tour", "Open Day", "School Visit", "College Visit", "Shadow Day", "Other"],
+        "visit_types": [
+            "Family Tour",
+            "Student Tour",
+            "Open Day",
+            "School Visit",
+            "College Visit",
+            "Shadow Day",
+            "Other",
+        ],
         "visit_modes": ["In Person", "Online", "Phone"],
     }
 
@@ -1262,7 +1290,9 @@ def _ensure_visit_conversation(*, user: str, context: dict) -> str | None:
     existing = _find_existing_visit_conversation(inquiry=inquiry, student_applicant=student_applicant)
     if existing:
         if not conversation_has_permission(existing, ptype="write", user=user):
-            frappe.throw(_("You do not have permission to schedule visits for this conversation."), frappe.PermissionError)
+            frappe.throw(
+                _("You do not have permission to schedule visits for this conversation."), frappe.PermissionError
+            )
         return existing
 
     doc = frappe.get_doc(
@@ -1538,7 +1568,9 @@ def _to_non_negative_int_or_none(value, *, fieldname: str) -> int | None:
 
 
 def _child_user_table_changed(*, before, after, user_field: str, extra_fields: Sequence[str]) -> bool:
-    return _child_user_table_signature(before, user_field=user_field, extra_fields=extra_fields) != _child_user_table_signature(
+    return _child_user_table_signature(
+        before, user_field=user_field, extra_fields=extra_fields
+    ) != _child_user_table_signature(
         after,
         user_field=user_field,
         extra_fields=extra_fields,
