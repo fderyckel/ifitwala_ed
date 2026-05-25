@@ -6,7 +6,7 @@ import frappe
 from frappe import _
 from frappe.desk.form.assign_to import add as add_assignment
 from frappe.desk.form.assign_to import remove as remove_assignment
-from frappe.utils import add_days, get_datetime, getdate, now, now_datetime, nowdate, validate_email_address
+from frappe.utils import add_days, cint, get_datetime, getdate, now, now_datetime, nowdate, validate_email_address
 from frappe.utils.nestedset import get_ancestors_of, get_descendants_of
 
 from ifitwala_ed.governance.policy_scope_utils import (
@@ -570,6 +570,55 @@ def _get_organization_scope(organization: str | None) -> list[str]:
     return [organization, *[org for org in descendants if org and org != organization]]
 
 
+def get_public_inquiry_organization_scope(organization: str | None) -> list[str]:
+    organization = (organization or "").strip()
+    if not organization:
+        return []
+
+    org_row = frappe.db.get_value(
+        "Organization",
+        organization,
+        ["lft", "rgt", "get_inquiry", "archived"],
+        as_dict=True,
+    )
+    if not org_row or not cint(org_row.get("get_inquiry")) or cint(org_row.get("archived")):
+        return []
+
+    rows = frappe.get_all(
+        "Organization",
+        filters={
+            "lft": [">=", org_row.get("lft")],
+            "rgt": ["<=", org_row.get("rgt")],
+            "archived": 0,
+        },
+        pluck="name",
+        order_by="lft asc, name asc",
+        limit=0,
+    )
+    return _merge_scope_values(rows)
+
+
+def is_school_available_for_public_inquiry(school: str | None, organization: str | None = None) -> bool:
+    school = (school or "").strip()
+    organization = (organization or "").strip()
+    if not school:
+        return False
+
+    school_row = frappe.db.get_value(
+        "School",
+        school,
+        ["show_in_inquiry", "organization"],
+        as_dict=True,
+    )
+    if not school_row or not cint(school_row.get("show_in_inquiry")):
+        return False
+
+    school_org = (school_row.get("organization") or "").strip()
+    selected_organization = organization or school_org
+    organization_scope = get_public_inquiry_organization_scope(selected_organization)
+    return bool(school_org and school_org in organization_scope)
+
+
 def _merge_scope_values(*scopes: list[str]) -> list[str]:
     merged: list[str] = []
     seen: set[str] = set()
@@ -731,7 +780,7 @@ def build_open_applicant_review_access_exists_sql(
     )
 
 
-def get_admissions_file_staff_scope(user: str | None = None) -> dict:
+def get_admissions_file_staff_scope(user: str | None = None, *, allow_system_bypass: bool = True) -> dict:
     resolved_user = (user or frappe.session.user or "").strip()
     denied = {
         "allowed": False,
@@ -743,7 +792,7 @@ def get_admissions_file_staff_scope(user: str | None = None) -> dict:
         return denied
 
     roles = set(frappe.get_roles(resolved_user))
-    if resolved_user == "Administrator" or "System Manager" in roles:
+    if allow_system_bypass and (resolved_user == "Administrator" or "System Manager" in roles):
         return {
             "allowed": True,
             "bypass": True,
@@ -856,12 +905,17 @@ def _get_effective_student_schools(*, student: str | None, applicant_school: str
     return effective_schools
 
 
-def has_scoped_staff_access_to_student_applicant(*, user: str | None = None, student_applicant: str | None) -> bool:
+def has_scoped_staff_access_to_student_applicant(
+    *,
+    user: str | None = None,
+    student_applicant: str | None,
+    allow_system_bypass: bool = True,
+) -> bool:
     applicant_name = (student_applicant or "").strip()
     if not applicant_name:
         return False
 
-    scope = get_admissions_file_staff_scope(user)
+    scope = get_admissions_file_staff_scope(user, allow_system_bypass=allow_system_bypass)
     if not scope.get("allowed"):
         return False
 

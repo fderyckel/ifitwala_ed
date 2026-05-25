@@ -33,6 +33,7 @@ app_include_js = [
     "/assets/ifitwala_ed/js/ifitwala_ed.bundle.js",
     "/assets/ifitwala_ed/js/initial_setup.js",
     "/assets/ifitwala_ed/js/governed_drive_links.js",
+    "/assets/ifitwala_ed/js/admissions_timeline_desk.js",
 ]
 
 # app_include_css = "/assets/ifitwala_ed/css/desk_overrides.bundle.css"

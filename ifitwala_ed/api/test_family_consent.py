@@ -129,7 +129,7 @@ class TestFamilyConsentPortalContracts(FrappeTestCase):
                 return self
 
         with (
-            patch("ifitwala_ed.api.family_consent.get_contact_linked_to_student", return_value=""),
+            patch("ifitwala_ed.api.family_consent._get_contact_linked_to_student_unchecked", return_value=""),
             patch(
                 "ifitwala_ed.api.family_consent.frappe.db.exists",
                 side_effect=lambda doctype, name: doctype == "User" and name == "student@example.com",

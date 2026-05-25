@@ -327,5 +327,9 @@ class Guardian(Document):
 # ---------------- public API ----------------
 @frappe.whitelist()
 def create_guardian_user(guardian: str):
+    if not guardian or not frappe.db.exists("Guardian", guardian):
+        frappe.throw(_("Invalid Guardian: {guardian}.").format(guardian=guardian or _("missing")))
     doc = frappe.get_doc("Guardian", guardian)
+    if not frappe.has_permission("Guardian", doc=doc, ptype="write"):
+        frappe.throw(_("You do not have permission to update this Guardian."), frappe.PermissionError)
     return doc.create_guardian_user()

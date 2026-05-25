@@ -54,7 +54,10 @@ Current domain indexes:
 - `files_and_policies/README.md`
 - `i18n/README.md`
 - `printing/README.md`
+- `relationship_crm/README.md`
 - `scheduling/README.md`
+- `security/README.md`
+- `setup/README.md`
 - `spa/README.md`
 - `testing/README.md`
 - `website/README.md`

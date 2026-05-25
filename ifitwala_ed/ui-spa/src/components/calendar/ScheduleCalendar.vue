@@ -696,6 +696,14 @@ function handleEventClick(info: EventClickArg) {
 			return;
 		}
 
+		if (referenceType === 'Admission Visit' && referenceName) {
+			overlay.open('admissions-visit-schedule', {
+				admissionVisit: referenceName,
+				schoolEvent: schoolEventName,
+			});
+			return;
+		}
+
 		overlay.open('school-event', { event: schoolEventName });
 		return;
 	}

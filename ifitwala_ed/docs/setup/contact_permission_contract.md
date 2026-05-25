@@ -1,8 +1,15 @@
 # Contact Permission Contract
 
-Status: Active
+Status: Active current-runtime contract; transitional relative to `../security/contact_data_governance.md`
 
 This document is the canonical contract for Desk access to the native Frappe `Contact` DocType as governed by Ifitwala Ed setup code.
+
+Target architecture warning:
+
+- `../security/contact_data_governance.md` is the locked target architecture for person/contact data.
+- This document records the current native-`Contact` runtime so migrations can be planned safely.
+- New work must not extend native `Contact` into a broader education people registry.
+- Native `Contact` remains a transitional storage surface only; broad list, export, delete, and raw-value access are blocked for ordinary roles while domain-owned contact-point migration remains future work.
 
 ## 1. Contact Permission Contract
 
@@ -19,19 +26,21 @@ Test refs:
 
 Rules:
 
-1. `Contact` remains the native Frappe DocType; Ifitwala Ed governs role access through seeded `Custom DocPerm` rows rather than a custom clone.
-2. The canonical Desk roles with read/write/create access on `Contact` are `Academic Admin`, `Academic Assistant`, `Accounts User`, `Accounts Manager`, `Admission Officer`, `Admission Manager`, `Marketing User`, and `Marketing Manager`.
-3. `Curriculum Coordinator` has read-only Desk access on `Contact` and `Address` so student-facing academic workflows can open linked family CRM records without granting edit authority.
-4. Manager-level roles keep delete access on `Contact`: `Academic Admin`, `Academic Assistant`, `Accounts Manager`, `Admission Manager`, and `Marketing Manager`.
-5. Non-manager editor roles keep no delete access on `Contact`: `Accounts User`, `Admission Officer`, and `Marketing User`.
-6. The permission seed must create any missing canonical roles before inserting `Custom DocPerm` rows, so migrate/setup never fails on a missing role record.
-7. App-level Contact permission hooks may further restrict linked contacts through server-owned scope contracts:
+1. `Contact` remains the native Frappe DocType during migration, but it is not the target canonical people registry.
+2. Seeded `Custom DocPerm` rows remain a baseline Frappe mechanism, but app-level hooks are the runtime authority for native `Contact` list/doc access.
+3. The native `Contact` permission seed grants no delete permission to ordinary Desk roles.
+4. No ordinary role has a broad native `Contact` list, report, export, or open/read path.
+5. Admissions and marketing roles may see only scoped education contacts resolved through Inquiry, Student Applicant, Student, or Guardian relationships; they no longer bypass Contact scope.
+6. `System Manager` is not treated as unrestricted product owner for native `Contact` list, export, delete, or raw-value access. The built-in `Administrator` account remains the framework superuser.
+7. `Employee` can read only the native Contact linked to their own Employee record.
+8. Roles without an implemented contact scope, such as Accounts roles and Curriculum Coordinator, receive no native `Contact` list rows until a named scoped workflow is implemented.
+9. The permission seed must create any missing canonical roles before inserting `Custom DocPerm` rows, so migrate/setup never fails on a missing role record.
+10. App-level Contact permission hooks restrict linked contacts through server-owned scope contracts:
    - employee-linked contacts use the Employee visibility contract
-   - `Admission Officer`, `Admission Manager`, `Marketing User`, and `Marketing Manager` can open all native Contact records allowed by their seeded editor role; the Contact hook must not narrow those roles by Inquiry, Student Applicant, Student, Guardian, Employee, organization, or school scope.
-   - Inquiry, Student Applicant, active Student, and Guardian contacts use staff organization/school visibility scope for `Academic Admin` and `Academic Assistant`; Inquiry contacts are recognized through Contact Dynamic Link rows and `Inquiry.contact`, and Student Applicant contacts are recognized through Contact Dynamic Link rows and `Student Applicant.applicant_contact`
-   - unrelated contacts continue to defer to the seeded DocPerm contract
-8. Student-form Contact and Address details are a read-only Student-context projection. A user who can read the Student may see the linked Contact summary and linked Address lines on the Student form even when native `Contact` or `Address` DocType opening/editing is not available.
-9. Native `Contact` and `Address` open/edit affordances remain gated by the native DocType role-permission contract. The read-only Student projection must not call `frappe.has_permission("Contact" | "Address", ...)` during Student form load, because a negative native permission probe can add noisy role-permission messages to an otherwise successful Student page refresh.
+   - Inquiry, Student Applicant, active Student, and Guardian contacts use staff organization/school visibility scope for `Academic Admin`, `Academic Assistant`, admissions roles, and marketing roles; Inquiry contacts are recognized through Contact Dynamic Link rows and `Inquiry.contact`, and Student Applicant contacts are recognized through Contact Dynamic Link rows and `Student Applicant.applicant_contact`
+   - unrelated contacts do not fall back to seeded DocPerm access for read-like or editor operations
+11. Student-form Contact and Address details are a read-only Student-context projection. A user who can read the Student may see the linked Contact summary and linked Address lines on the Student form even when native `Contact` or `Address` DocType opening/editing is not available.
+12. Native `Contact` open/edit affordances are gated by the Contact permission hook plus DocPerm; native `Address` open/edit affordances remain gated by the native DocType role-permission contract. The read-only Student projection must not call `frappe.has_permission("Contact" | "Address", ...)` during Student form load, because a negative native permission probe can add noisy role-permission messages to an otherwise successful Student page refresh.
 
 ## 2. Runtime Enforcement
 
@@ -52,14 +61,14 @@ Rules:
 1. Fresh installs seed the canonical `Contact` permissions through `grant_core_crm_permissions()` during `after_install`.
 2. Existing sites re-run the canonical seed through `ifitwala_ed.patches.sync_core_crm_permissions` and `ifitwala_ed.patches.sync_global_contact_access_permissions`.
 3. `grant_core_crm_permissions()` ensures canonical roles exist before seeding the `Custom DocPerm` rows.
-4. Contact document-level permission checks apply education-linked and employee-linked contact scope on top of Frappe core permissions. `Admission Officer`, `Admission Manager`, `Marketing User`, and `Marketing Manager` bypass those Contact scopes for their role-granted Contact operations so admissions and marketing staff can open the full CRM contact base from Desk. For read-like operations, a scoped academic education link may allow the native Contact form even when Frappe's core linked-document gate would otherwise deny the Contact.
-5. Contact list visibility keeps unrelated contacts on the seeded DocPerm contract, but linked contacts are narrowed server-side:
+4. Contact document-level permission checks apply education-linked and employee-linked contact scope before Frappe core permissions. Read-like and editor operations on unscoped native `Contact` rows are denied for ordinary roles even when a seeded DocPerm row exists. Delete is denied for all ordinary roles.
+5. Contact list visibility is deny-by-default unless a scoped relationship is proven:
    - `HR Manager` / `HR User`: organization descendants plus blank-organization employee rows
    - `Academic Admin` / `Academic Assistant`: effective school + descendant-school scope, where Academic Admin resolves school from the active Employee profile before persisted defaults
    - `Academic Admin` only: when no school scope resolves, or the active Employee profile exists with a blank `school`, organization descendants
    - `Employee`: own linked employee contact only
-   - `Admission Officer`, `Admission Manager`, `Marketing User`, and `Marketing Manager`: no Contact query condition; these roles can see the full native Contact list according to their seeded Contact DocPerm rows.
-   - `Academic Admin` and `Academic Assistant`: Inquiry, Student Applicant, active Student, and Guardian contacts within the user's visible organization/school scope; visible schools are the user's school descendants, or when no school is set, every school in the user's organization descendants. Inquiry contact visibility must check both Contact Dynamic Links and reverse references from `Inquiry.contact`. Student Applicant contact visibility must check both Contact Dynamic Links and reverse references from `Student Applicant.applicant_contact`.
+   - `Academic Admin`, `Academic Assistant`, admissions roles, and marketing roles: Inquiry, Student Applicant, active Student, and Guardian contacts within the user's visible organization/school scope; visible schools are the user's school descendants, or when no school is set, every school in the user's organization descendants. Inquiry contact visibility must check both Contact Dynamic Links and reverse references from `Inquiry.contact`. Student Applicant contact visibility must check both Contact Dynamic Links and reverse references from `Student Applicant.applicant_contact`.
+   - `System Manager`, Accounts roles, Curriculum Coordinator, and any role without an implemented Contact scope: no native Contact list rows.
 
 ## 3. Contract Matrix
 

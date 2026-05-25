@@ -360,7 +360,7 @@ class TestEmployee(FrappeTestCase):
         access_signature.assert_not_called()
         sync_access.assert_called_once_with(emp, notify_role_additions=True)
 
-    def test_update_user_prefers_thumb_variant_for_user_avatar(self):
+    def test_update_user_sets_stable_governed_avatar_route(self):
         emp = employee_controller.Employee.__new__(employee_controller.Employee)
         emp.user_id = "staff@example.com"
         emp.employment_status = "Active"
@@ -382,14 +382,17 @@ class TestEmployee(FrappeTestCase):
         with (
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_doc", return_value=user_doc),
             patch(
-                "ifitwala_ed.hr.doctype.employee.employee.get_preferred_employee_avatar_url",
-                return_value="/files/thumb.webp",
-            ) as preferred_image,
+                "ifitwala_ed.hr.doctype.employee.employee.get_employee_user_avatar_url",
+                return_value="/api/method/ifitwala_ed.api.file_access.open_employee_user_avatar?employee=EMP-0001",
+            ) as avatar_url,
         ):
             emp.update_user()
 
-        preferred_image.assert_called_once_with("EMP-0001", original_url="/files/original.png")
-        self.assertEqual(user_doc.user_image, "/files/thumb.webp")
+        avatar_url.assert_called_once_with("EMP-0001", original_url="/files/original.png")
+        self.assertEqual(
+            user_doc.user_image,
+            "/api/method/ifitwala_ed.api.file_access.open_employee_user_avatar?employee=EMP-0001",
+        )
         user_doc.save.assert_called_once_with(ignore_permissions=True)
 
     def test_employee_pqc_hr_user_is_org_scoped_and_includes_unassigned(self):

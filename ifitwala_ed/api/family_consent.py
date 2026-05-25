@@ -12,6 +12,10 @@ from ifitwala_ed.api.attachment_previews import build_attachment_preview_item, e
 from ifitwala_ed.api.guardian_home import _resolve_guardian_scope
 from ifitwala_ed.api.guardian_policy import _children_with_signer_authority, _expected_guardian_signature_name
 from ifitwala_ed.api.student_policy import _expected_student_signature_name, _require_student_name_for_session_user
+from ifitwala_ed.contacts.contact_privacy import (
+    get_raw_contact_primary_values_for_portal_context,
+    update_family_contact_from_portal_context,
+)
 from ifitwala_ed.governance.doctype.family_consent_request.family_consent_request import (
     AUDIENCE_GUARDIAN,
     AUDIENCE_STUDENT,
@@ -31,7 +35,7 @@ from ifitwala_ed.governance.doctype.family_consent_request.family_consent_reques
     SUBJECT_SCOPE_PER_STUDENT,
 )
 from ifitwala_ed.integrations.drive.authority import get_drive_file_for_file
-from ifitwala_ed.students.doctype.student.student import get_contact_linked_to_student
+from ifitwala_ed.students.doctype.student.student import _get_contact_linked_to_student_unchecked
 from ifitwala_ed.utilities.html_sanitizer import sanitize_html
 
 CURRENT_STATUS_COMPLETED = "completed"
@@ -220,41 +224,19 @@ def _resolve_single_address(*, link_doctype: str, link_name: str) -> tuple[str |
     return names[0], _get_address_value(names[0])
 
 
-def _get_contact_primary_values(contact_name: str | None) -> dict[str, Any]:
-    contact_name = _clean_data(contact_name)
-    if not contact_name or not frappe.db.exists("Contact", contact_name):
-        return {"name": None, "primary_email": None, "primary_mobile": None}
-
-    contact_row = frappe.db.get_value("Contact", contact_name, ["email_id", "mobile_no"], as_dict=True) or {}
-    email_rows = frappe.get_all(
-        "Contact Email",
-        filters={"parent": contact_name},
-        fields=["email_id", "is_primary", "idx"],
-        order_by="is_primary desc, idx asc, creation asc",
-        limit=0,
+def _get_contact_primary_values(
+    contact_name: str | None,
+    *,
+    subject_doctype: str | None = None,
+    subject_name: str | None = None,
+) -> dict[str, Any]:
+    return get_raw_contact_primary_values_for_portal_context(
+        contact=contact_name,
+        purpose="family_consent_profile_context",
+        subject_doctype=subject_doctype,
+        subject_name=subject_name,
+        workflow="family_consent_profile_context",
     )
-    phone_rows = frappe.get_all(
-        "Contact Phone",
-        filters={"parent": contact_name},
-        fields=["phone", "is_primary_mobile_no", "idx"],
-        order_by="is_primary_mobile_no desc, idx asc, creation asc",
-        limit=0,
-    )
-
-    primary_email = next(
-        (_clean_data(row.get("email_id")) for row in email_rows if _clean_data(row.get("email_id"))), ""
-    )
-    primary_mobile = next((_clean_data(row.get("phone")) for row in phone_rows if _clean_data(row.get("phone"))), "")
-    if not primary_email:
-        primary_email = _clean_data(contact_row.get("email_id"))
-    if not primary_mobile:
-        primary_mobile = _clean_data(contact_row.get("mobile_no"))
-
-    return {
-        "name": contact_name,
-        "primary_email": primary_email or None,
-        "primary_mobile": primary_mobile or None,
-    }
 
 
 def _get_guardian_contact_name(guardian_name: str) -> str | None:
@@ -317,7 +299,7 @@ def _ensure_contact_link(*, contact_name: str, link_doctype: str, link_name: str
 
 
 def _get_or_create_student_contact(student_name: str, student_row: dict[str, Any]) -> str:
-    contact_name = _clean_data(get_contact_linked_to_student(student_name))
+    contact_name = _clean_data(_get_contact_linked_to_student_unchecked(student_name))
     if contact_name:
         return contact_name
 
@@ -360,66 +342,6 @@ def _get_or_create_student_contact(student_name: str, student_row: dict[str, Any
         link_title=display_name or student_name,
     )
     return _clean_data(contact_doc.name)
-
-
-def _set_contact_primary_email(contact_doc, email: str) -> bool:
-    email = _clean_data(email)
-    if not email:
-        return False
-
-    changed = False
-    email_rows = list(contact_doc.get("email_ids") or [])
-    has_email = any(_clean_data(row.get("email_id")).casefold() == email.casefold() for row in email_rows)
-    if not has_email:
-        contact_doc.append("email_ids", {"email_id": email, "is_primary": 1})
-        changed = True
-        email_rows = list(contact_doc.get("email_ids") or [])
-
-    primary_set = False
-    for row in email_rows:
-        row_email = _clean_data(row.get("email_id"))
-        should_be_primary = row_email.casefold() == email.casefold() and not primary_set
-        if should_be_primary:
-            primary_set = True
-        desired = 1 if should_be_primary else 0
-        if cint(row.get("is_primary") or 0) != desired:
-            row.is_primary = desired
-            changed = True
-
-    if _clean_data(contact_doc.get("email_id")).casefold() != email.casefold():
-        contact_doc.email_id = email
-        changed = True
-    return changed
-
-
-def _set_contact_primary_mobile(contact_doc, mobile: str) -> bool:
-    mobile = _clean_data(mobile)
-    if not mobile:
-        return False
-
-    changed = False
-    phone_rows = list(contact_doc.get("phone_nos") or [])
-    has_phone = any(_clean_data(row.get("phone")) == mobile for row in phone_rows)
-    if not has_phone:
-        contact_doc.append("phone_nos", {"phone": mobile, "is_primary_mobile_no": 1})
-        changed = True
-        phone_rows = list(contact_doc.get("phone_nos") or [])
-
-    primary_set = False
-    for row in phone_rows:
-        row_phone = _clean_data(row.get("phone"))
-        should_be_primary = row_phone == mobile and not primary_set
-        if should_be_primary:
-            primary_set = True
-        desired = 1 if should_be_primary else 0
-        if cint(row.get("is_primary_mobile_no") or 0) != desired:
-            row.is_primary_mobile_no = desired
-            changed = True
-
-    if _clean_data(contact_doc.get("mobile_no")) != mobile:
-        contact_doc.mobile_no = mobile
-        changed = True
-    return changed
 
 
 def _ensure_guardian_portal_scope() -> tuple[str, list[dict[str, Any]]]:
@@ -701,7 +623,7 @@ def _build_guardian_binding_context(student_name: str, guardian_name: str) -> di
         or {}
     )
 
-    student_contact_name = _clean_data(get_contact_linked_to_student(student_name))
+    student_contact_name = _clean_data(_get_contact_linked_to_student_unchecked(student_name))
     guardian_contact_name = _clean_data(_get_guardian_contact_name(guardian_name))
     student_address_name, student_address_value = _resolve_single_address(
         link_doctype="Student", link_name=student_name
@@ -716,8 +638,16 @@ def _build_guardian_binding_context(student_name: str, guardian_name: str) -> di
         "guardian_row": guardian_row,
         "student_contact_name": student_contact_name or None,
         "guardian_contact_name": guardian_contact_name or None,
-        "student_contact_values": _get_contact_primary_values(student_contact_name),
-        "guardian_contact_values": _get_contact_primary_values(guardian_contact_name),
+        "student_contact_values": _get_contact_primary_values(
+            student_contact_name,
+            subject_doctype="Student",
+            subject_name=student_name,
+        ),
+        "guardian_contact_values": _get_contact_primary_values(
+            guardian_contact_name,
+            subject_doctype="Guardian",
+            subject_name=guardian_name,
+        ),
         "student_primary_address_name": student_address_name,
         "student_primary_address_value": student_address_value,
         "guardian_primary_address_name": guardian_address_name,
@@ -742,7 +672,7 @@ def _build_student_binding_context(student_name: str) -> dict[str, Any]:
         )
         or {}
     )
-    student_contact_name = _clean_data(get_contact_linked_to_student(student_name))
+    student_contact_name = _clean_data(_get_contact_linked_to_student_unchecked(student_name))
     student_address_name, student_address_value = _resolve_single_address(
         link_doctype="Student", link_name=student_name
     )
@@ -753,7 +683,11 @@ def _build_student_binding_context(student_name: str) -> dict[str, Any]:
         "guardian_row": {},
         "student_contact_name": student_contact_name or None,
         "guardian_contact_name": None,
-        "student_contact_values": _get_contact_primary_values(student_contact_name),
+        "student_contact_values": _get_contact_primary_values(
+            student_contact_name,
+            subject_doctype="Student",
+            subject_name=student_name,
+        ),
         "guardian_contact_values": {"name": None, "primary_email": None, "primary_mobile": None},
         "student_primary_address_name": student_address_name,
         "student_primary_address_value": student_address_value,
@@ -969,38 +903,44 @@ def _apply_profile_writeback(*, binding_key: str, value: Any, context: dict[str,
     if binding_key == "Student.student_mobile_number":
         mobile = _clean_data(value)
         contact_name = _get_or_create_student_contact(context["student_name"], context["student_row"])
-        contact_doc = frappe.get_doc("Contact", contact_name)
-        if _set_contact_primary_mobile(contact_doc, mobile):
-            contact_doc.save(ignore_permissions=True)
+        context["student_contact_values"] = update_family_contact_from_portal_context(
+            context_doctype="Student",
+            context_name=context["student_name"],
+            payload={"contact": contact_name, "channel_type": "mobile", "value": mobile},
+            purpose="family_consent_profile_writeback",
+        )
         frappe.db.set_value("Student", context["student_name"], "student_mobile_number", mobile, update_modified=False)
         context["student_contact_name"] = contact_name
-        context["student_contact_values"] = _get_contact_primary_values(contact_name)
         context["student_row"]["student_mobile_number"] = mobile
         return context["student_contact_values"].get("primary_mobile") or mobile
 
     if binding_key == "Guardian.guardian_email":
         email = _clean_data(value)
         contact_name = _get_or_create_guardian_contact(context["guardian_name"])
-        contact_doc = frappe.get_doc("Contact", contact_name)
-        if _set_contact_primary_email(contact_doc, email):
-            contact_doc.save(ignore_permissions=True)
+        context["guardian_contact_values"] = update_family_contact_from_portal_context(
+            context_doctype="Guardian",
+            context_name=context["guardian_name"],
+            payload={"contact": contact_name, "channel_type": "email", "value": email},
+            purpose="family_consent_profile_writeback",
+        )
         frappe.db.set_value("Guardian", context["guardian_name"], "guardian_email", email, update_modified=False)
         context["guardian_contact_name"] = contact_name
-        context["guardian_contact_values"] = _get_contact_primary_values(contact_name)
         context["guardian_row"]["guardian_email"] = email
         return context["guardian_contact_values"].get("primary_email") or email
 
     if binding_key == "Guardian.guardian_mobile_phone":
         mobile = _clean_data(value)
         contact_name = _get_or_create_guardian_contact(context["guardian_name"])
-        contact_doc = frappe.get_doc("Contact", contact_name)
-        if _set_contact_primary_mobile(contact_doc, mobile):
-            contact_doc.save(ignore_permissions=True)
+        context["guardian_contact_values"] = update_family_contact_from_portal_context(
+            context_doctype="Guardian",
+            context_name=context["guardian_name"],
+            payload={"contact": contact_name, "channel_type": "mobile", "value": mobile},
+            purpose="family_consent_profile_writeback",
+        )
         frappe.db.set_value(
             "Guardian", context["guardian_name"], "guardian_mobile_phone", mobile, update_modified=False
         )
         context["guardian_contact_name"] = contact_name
-        context["guardian_contact_values"] = _get_contact_primary_values(contact_name)
         context["guardian_row"]["guardian_mobile_phone"] = mobile
         return context["guardian_contact_values"].get("primary_mobile") or mobile
 

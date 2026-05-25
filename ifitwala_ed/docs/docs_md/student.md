@@ -3,8 +3,8 @@ title: "Student: Your Learner Records Made Simple"
 slug: student
 category: Students
 doc_order: 1
-version: "1.3.6"
-last_change_date: "2026-05-03"
+version: "1.3.8"
+last_change_date: "2026-05-20"
 summary: "Manage learner records with confidence—from admissions intake to alumni status. Understand when to use the admissions pipeline versus importing existing students."
 seo_title: "Student: Your Learner Records Made Simple"
 seo_description: "Learn how to manage Student records in Ifitwala Ed—from admissions promotion to bulk importing existing students with full portal access and health record integration."
@@ -231,6 +231,7 @@ Sensitive identity fields are additionally separated by field permission level. 
 - **Creation Paths**: Applicant promotion (canonical) or Data Import (exception)
 - **Import Flag**: `allow_direct_creation` check field required for imports
 - **Desk visibility**: Student List, Image, Report, and form access are server-scoped through scripted permissions. Academic Admin and Academic Assistant users use `Student.anchor_school` plus the active Employee school branch. Instructors use active `Student Group Instructor` and `Student Group Student` rows.
+- **Demographic analytics**: Student Demographic Analytics is aggregate-only. It must not expose named Student or Guardian drill-down rows from demographic buckets. Demographic cells below the configured minimum count are suppressed; several suppressed cells may appear only as a combined `Other / Suppressed` aggregate when that combined count also meets the minimum.
 - **DOB visibility**: `student_date_of_birth` is `permlevel 2` on Student; `student_age` is the derived read-only field for general academic display.
 - **Side Effects**: imported/direct student creation keeps user creation, Student Patient creation, contact linking, and image sync; applicant promotion now also materializes the canonical `Contact.links -> Student` binding synchronously.
 - **Legacy remediation**: existing sites backfill missing `Contact.links -> Student` rows through the one-shot patch `ifitwala_ed.patches.backfill_student_contact_links`

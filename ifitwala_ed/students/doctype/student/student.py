@@ -49,9 +49,12 @@ from frappe.model.document import Document
 from frappe.utils import get_link_to_form, getdate, today, validate_email_address
 
 from ifitwala_ed.accounting.account_holder_utils import validate_account_holder_for_student
+from ifitwala_ed.contacts.contact_privacy import (
+    get_masked_guardian_contacts_for_student,
+    get_masked_student_contact_summary,
+)
 from ifitwala_ed.utilities.employee_utils import get_user_visible_schools
 from ifitwala_ed.utilities.student_utils import format_student_age
-
 
 STUDENT_SCHOOL_SCOPED_ROLES = {
     "Academic Admin",
@@ -468,9 +471,7 @@ class Student(Document):
 
     def _hydrate_sibling_age_rows(self):
         sibling_names = [
-            row.student
-            for row in (self.siblings or [])
-            if getattr(row, "student", None) and row.student != self.name
+            row.student for row in (self.siblings or []) if getattr(row, "student", None) and row.student != self.name
         ]
         if not sibling_names:
             return
@@ -648,12 +649,17 @@ class Student(Document):
         contact.save(ignore_permissions=True)
 
 
-@frappe.whitelist()
-def get_contact_linked_to_student(student_name):
+def _get_contact_linked_to_student_unchecked(student_name):
     """Pure read: return Contact name linked to this Student, or None."""
     return frappe.db.get_value(
         "Dynamic Link", {"link_doctype": "Student", "link_name": student_name, "parenttype": "Contact"}, "parent"
     )
+
+
+@frappe.whitelist()
+def get_contact_linked_to_student(student_name):
+    student = _require_student_access(student_name, ptype="read")
+    return _get_contact_linked_to_student_unchecked(student.name)
 
 
 def _require_student_access(student_name: str, *, ptype: str = "read") -> "Student":
@@ -662,7 +668,10 @@ def _require_student_access(student_name: str, *, ptype: str = "read") -> "Stude
         frappe.throw(_("Invalid Student: {student}").format(student=student_name or _("missing")))
     student = frappe.get_doc("Student", student_name)
     if not frappe.has_permission("Student", doc=student, ptype=ptype):
-        frappe.throw(_("You do not have permission to {permission_type} this Student.").format(permission_type=ptype))
+        frappe.throw(
+            _("You do not have permission to {permission_type} this Student.").format(permission_type=ptype),
+            frappe.PermissionError,
+        )
     return student
 
 
@@ -843,82 +852,6 @@ def _has_native_doctype_role_permission(doctype: str, *, ptype: str = "read", us
     return False
 
 
-def _build_student_contact_summary(contact_name: str | None) -> dict | None:
-    contact_name = (contact_name or "").strip()
-    if not contact_name or not frappe.db.exists("Contact", contact_name):
-        return None
-
-    contact_row = (
-        frappe.db.get_value(
-            "Contact",
-            contact_name,
-            ["first_name", "last_name", "email_id", "mobile_no"],
-            as_dict=True,
-        )
-        or {}
-    )
-    display_name = (
-        " ".join(
-            filter(
-                None,
-                [
-                    (contact_row.get("first_name") or "").strip(),
-                    (contact_row.get("last_name") or "").strip(),
-                ],
-            )
-        ).strip()
-        or contact_name
-    )
-
-    email_rows = frappe.get_all(
-        "Contact Email",
-        filters={"parent": contact_name},
-        fields=["email_id", "is_primary", "idx"],
-        order_by="is_primary desc, idx asc, creation asc",
-        limit=0,
-    )
-    phone_rows = frappe.get_all(
-        "Contact Phone",
-        filters={"parent": contact_name},
-        fields=["phone", "is_primary_mobile_no", "idx"],
-        order_by="is_primary_mobile_no desc, idx asc, creation asc",
-        limit=0,
-    )
-
-    emails = []
-    seen_emails = set()
-    for row in email_rows:
-        value = (row.get("email_id") or "").strip()
-        if not value or value in seen_emails:
-            continue
-        seen_emails.add(value)
-        emails.append({"value": value, "is_primary": int(row.get("is_primary") or 0)})
-
-    fallback_email = (contact_row.get("email_id") or "").strip()
-    if fallback_email and fallback_email not in seen_emails:
-        emails.insert(0, {"value": fallback_email, "is_primary": 1})
-
-    phones = []
-    seen_phones = set()
-    for row in phone_rows:
-        value = (row.get("phone") or "").strip()
-        if not value or value in seen_phones:
-            continue
-        seen_phones.add(value)
-        phones.append({"value": value, "is_primary": int(row.get("is_primary_mobile_no") or 0)})
-
-    fallback_phone = (contact_row.get("mobile_no") or "").strip()
-    if fallback_phone and fallback_phone not in seen_phones:
-        phones.insert(0, {"value": fallback_phone, "is_primary": 1})
-
-    return {
-        "name": contact_name,
-        "display_name": display_name,
-        "emails": emails,
-        "phones": phones,
-    }
-
-
 def _build_student_address_summaries(address_names: list[str]) -> list[dict]:
     if not address_names:
         return []
@@ -977,9 +910,12 @@ def _build_student_address_summaries(address_names: list[str]) -> list[dict]:
 @frappe.whitelist()
 def get_student_crm_summary(student_name: str) -> dict:
     student = _require_student_access(student_name, ptype="read")
-    contact_name = (get_contact_linked_to_student(student.name) or "").strip()
     address_names = _get_student_address_names(student.name)
-    contact_summary = _build_student_contact_summary(contact_name)
+    contact_summary = get_masked_student_contact_summary(
+        student.name,
+        purpose="student_crm_summary",
+    )
+    contact_name = (contact_summary or {}).get("name") or ""
     address_summaries = _build_student_address_summaries(address_names)
     resolved_address_names = [row["name"] for row in address_summaries]
 
@@ -1099,9 +1035,9 @@ def get_student_guardians(student_id: str) -> list[dict]:
     """Return guardians for a given student. Used for sibling guardian sync."""
     if not student_id or not frappe.db.exists("Student", student_id):
         return []
+    _require_student_access(student_id, ptype="read")
 
-    return frappe.get_all(
-        "Student Guardian",
-        filters={"parent": student_id, "parenttype": "Student", "parentfield": "guardians"},
-        fields=["guardian", "guardian_name", "relation", "can_consent", "email", "phone"],
+    return get_masked_guardian_contacts_for_student(
+        student_id,
+        purpose="student_guardian_summary",
     )

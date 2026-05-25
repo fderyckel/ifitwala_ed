@@ -13,6 +13,7 @@ Test refs:
 - `ifitwala_ed/utilities/test_employee_image_utils.py`
 - `ifitwala_ed/api/test_organization_chart.py`
 - `ifitwala_ed/api/test_morning_brief.py`
+- `ifitwala_ed/patches/test_backfill_employee_user_images.py`
 - `ifitwala_ed/patches/test_backfill_employee_user_links.py`
 - `ifitwala_ed/patches/test_backfill_employee_contact_links.py`
 - `ifitwala_ed/patches/test_backfill_employee_managed_access.py`
@@ -146,7 +147,8 @@ Backend linkage:
 - `Employee.employee_image` remains the latest canonical Employee image reference.
 - the canonical Employee profile-image workflow is private. Public website staff photos are delivered through the separate public-people read contract and guest-safe public employee-image route, not through the authenticated employee file route.
 - consumers that need a smaller image must resolve the canonical compatibility variants instead of guessing file paths.
-- `update_user()` syncs linked `User.user_image` from the preferred Employee variant in compact-to-larger order, with original only as the last compatibility fallback.
+- `update_user()` syncs linked `User.user_image` to the stable Ed-owned `open_employee_user_avatar` route. That route authorizes through the Employee profile-image surface, resolves the current governed `profile_image` through Drive, prefers compact-to-larger derivatives, and uses the governed original only as the last compatibility fallback.
+- existing linked Users with missing or stale avatars are normalized by the one-shot patch `ifitwala_ed.patches.backfill_employee_user_images`; runtime code must not add a login-time or form-load repair path for this legacy drift.
 
 Current read consumers using canonical variant resolution:
 - Employee form avatar (`employee.js`)

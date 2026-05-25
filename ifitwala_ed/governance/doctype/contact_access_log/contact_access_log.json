@@ -1,0 +1,179 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "CAL-.YY.-.MM.-.#####",
+ "creation": "2026-05-18 18:30:31.000000",
+ "description": "Append-only audit trail for contact-sensitive access decisions. Does not store raw contact values.",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "access_type",
+  "purpose",
+  "workflow",
+  "subject_section",
+  "subject_doctype",
+  "subject_name",
+  "owner_doctype",
+  "owner_name",
+  "scope_section",
+  "organization",
+  "school",
+  "event_section",
+  "channel_type",
+  "result",
+  "request_path",
+  "ip_address",
+  "user_agent",
+  "details"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "User",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "access_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Access Type",
+   "options": "masked_read\nraw_read\nraw_write\nrecipient_resolution\nexport\ndenied_attempt",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "purpose",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Purpose",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "workflow",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Workflow",
+   "read_only": 1
+  },
+  {
+   "fieldname": "subject_section",
+   "fieldtype": "Section Break",
+   "label": "Subject"
+  },
+  {
+   "fieldname": "subject_doctype",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Subject DocType",
+   "read_only": 1
+  },
+  {
+   "fieldname": "subject_name",
+   "fieldtype": "Data",
+   "label": "Subject Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "owner_doctype",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Owner DocType",
+   "read_only": 1
+  },
+  {
+   "fieldname": "owner_name",
+   "fieldtype": "Data",
+   "label": "Owner Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "scope_section",
+   "fieldtype": "Section Break",
+   "label": "Scope"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Organization",
+   "options": "Organization",
+   "read_only": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School",
+   "read_only": 1
+  },
+  {
+   "fieldname": "event_section",
+   "fieldtype": "Section Break",
+   "label": "Event"
+  },
+  {
+   "default": "unknown",
+   "fieldname": "channel_type",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Channel Type",
+   "options": "email\nphone\naddress\nmixed\nunknown",
+   "read_only": 1
+  },
+  {
+   "fieldname": "result",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Result",
+   "options": "allowed\ndenied",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "request_path",
+   "fieldtype": "Data",
+   "label": "Request Path",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ip_address",
+   "fieldtype": "Data",
+   "label": "IP Address",
+   "read_only": 1
+  },
+  {
+   "fieldname": "user_agent",
+   "fieldtype": "Small Text",
+   "label": "User Agent",
+   "read_only": 1
+  },
+  {
+   "fieldname": "details",
+   "fieldtype": "Code",
+   "label": "Details",
+   "options": "JSON",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-05-19 09:49:48.000000",
+ "modified_by": "Administrator",
+ "module": "Governance",
+ "name": "Contact Access Log",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

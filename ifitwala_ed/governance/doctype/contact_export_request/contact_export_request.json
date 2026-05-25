@@ -1,0 +1,165 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "CER-.YY.-.MM.-.#####",
+ "creation": "2026-05-19 06:43:51.000000",
+ "description": "Governed approval object for contact-data export requests. This DocType does not generate export files.",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "requester",
+  "status",
+  "scope_section",
+  "organization",
+  "school",
+  "scope_type",
+  "scope_name",
+  "purpose_section",
+  "purpose",
+  "legal_basis",
+  "fields_requested",
+  "estimated_row_count",
+  "approval_section",
+  "approved_by",
+  "approved_on",
+  "expires_on",
+  "rejection_reason"
+ ],
+ "fields": [
+  {
+   "fieldname": "requester",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Requester",
+   "options": "User",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nSubmitted\nApproved\nRejected\nExpired\nUsed\nCancelled",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "scope_section",
+   "fieldtype": "Section Break",
+   "label": "Scope"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Organization",
+   "options": "Organization",
+   "read_only": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School",
+   "read_only": 1
+  },
+  {
+   "fieldname": "scope_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Scope Type",
+   "options": "Student Group Guardians\nAdmissions Applicants\nInquiry Leads\nEmployees",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "scope_name",
+   "fieldtype": "Data",
+   "label": "Scope Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "purpose_section",
+   "fieldtype": "Section Break",
+   "label": "Purpose"
+  },
+  {
+   "fieldname": "purpose",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Purpose",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "legal_basis",
+   "fieldtype": "Data",
+   "label": "Legal Basis",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "fields_requested",
+   "fieldtype": "Code",
+   "label": "Fields Requested",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "estimated_row_count",
+   "fieldtype": "Int",
+   "label": "Estimated Row Count",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approval_section",
+   "fieldtype": "Section Break",
+   "label": "Approval"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approved_on",
+   "fieldtype": "Datetime",
+   "in_standard_filter": 1,
+   "label": "Approved On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "expires_on",
+   "fieldtype": "Datetime",
+   "in_standard_filter": 1,
+   "label": "Expires On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rejection_reason",
+   "fieldtype": "Small Text",
+   "label": "Rejection Reason",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-05-19 09:49:48.000000",
+ "modified_by": "Administrator",
+ "module": "Governance",
+ "name": "Contact Export Request",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

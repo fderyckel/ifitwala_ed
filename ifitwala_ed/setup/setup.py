@@ -681,17 +681,17 @@ def grant_core_crm_permissions():
     doctype_role_permissions = {
         "Contact": {
             "Admission Officer": ["read", "write", "create", "email", "comment", "assign"],
-            "Admission Manager": ["read", "write", "create", "delete", "email", "comment", "assign"],
+            "Admission Manager": ["read", "write", "create", "email", "comment", "assign"],
             "Marketing User": ["read", "write", "create", "email", "comment", "assign"],
-            "Marketing Manager": ["read", "write", "create", "delete", "email", "comment", "assign"],
-            "Academic Admin": ["read", "write", "create", "delete", "email", "comment", "assign"],
-            "Academic Assistant": ["read", "write", "create", "delete", "email", "comment", "assign"],
+            "Marketing Manager": ["read", "write", "create", "email", "comment", "assign"],
+            "Academic Admin": ["read", "write", "create", "email", "comment", "assign"],
+            "Academic Assistant": ["read", "write", "create", "email", "comment", "assign"],
             "Curriculum Coordinator": ["read"],
             "HR Manager": ["read"],
             "HR User": ["read"],
             "Employee": ["read"],
             "Accounts User": ["read", "write", "create", "email", "comment", "assign"],
-            "Accounts Manager": ["read", "write", "create", "delete", "email", "comment", "assign"],
+            "Accounts Manager": ["read", "write", "create", "email", "comment", "assign"],
         },
         "Address": {
             "Admission Officer": ["read", "email", "comment", "assign"],

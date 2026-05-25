@@ -7,26 +7,33 @@
 					class="inline-flex items-center gap-2 type-caption text-ink/70 transition hover:text-ink"
 				>
 					<span>←</span>
-					<span>Back to Class Hub</span>
+					<span>{{ __('Back to Class Hub') }}</span>
 				</RouterLink>
 				<div class="page-header">
 					<div class="page-header__intro">
-						<p class="type-overline text-ink/60">Class Delivery</p>
+						<p class="type-overline text-ink/60">{{ __('Class Delivery') }}</p>
 						<h1 class="mt-2 type-h1 text-canopy">
-							{{ surface?.group.title || studentGroup || 'Class Delivery' }}
+							{{ surface?.group.title || studentGroup || __('Class Delivery') }}
 						</h1>
 						<p class="mt-2 max-w-3xl type-meta text-slate-token/80">
-							Keep the shared unit backbone intact while adapting pacing, session design, and
-							student-visible delivery for this class.
+							{{
+								__(
+									'Keep the shared unit backbone intact while adapting pacing, session design, and student-visible delivery for this class.'
+								)
+							}}
 						</p>
 					</div>
 					<div class="page-header__actions">
-						<span class="chip">{{ surface?.group.course || 'Course pending' }}</span>
-						<span class="chip">{{ surface?.curriculum.units.length || 0 }} units</span>
-						<span class="chip">{{ surface?.curriculum.session_count || 0 }} sessions</span>
-						<span class="chip"
-							>{{ surface?.curriculum.assigned_work_count || 0 }} assigned work</span
-						>
+						<span class="chip">{{ surface?.group.course || __('Course pending') }}</span>
+						<span class="chip">{{
+							__('{0} units', [surface?.curriculum.units.length || 0])
+						}}</span>
+						<span class="chip">{{
+							__('{0} sessions', [surface?.curriculum.session_count || 0])
+						}}</span>
+						<span class="chip">{{
+							__('{0} assigned work', [surface?.curriculum.assigned_work_count || 0])
+						}}</span>
 						<span v-if="surface?.teaching_plan?.planning_status" class="chip">
 							{{ surface.teaching_plan.planning_status }}
 						</span>
@@ -39,7 +46,7 @@
 			v-if="errorMessage"
 			class="rounded-2xl border border-flame/30 bg-[var(--flame)]/5 px-5 py-4"
 		>
-			<p class="type-body-strong text-flame">Could not load Class Delivery.</p>
+			<p class="type-body-strong text-flame">{{ __('Could not load Class Delivery.') }}</p>
 			<p class="mt-1 type-caption text-ink/70">{{ errorMessage }}</p>
 		</section>
 
@@ -47,7 +54,7 @@
 			v-else-if="loading && !surface"
 			class="rounded-2xl border border-line-soft bg-white px-5 py-8"
 		>
-			<p class="type-body text-ink/70">Loading Class Delivery...</p>
+			<p class="type-body text-ink/70">{{ __('Loading Class Delivery...') }}</p>
 		</section>
 
 		<template v-else-if="surface">
@@ -56,11 +63,14 @@
 				class="grid gap-6 rounded-[2rem] border border-line-soft bg-white p-6 xl:grid-cols-[minmax(0,18rem),minmax(0,1fr)]"
 			>
 				<div class="space-y-3">
-					<p class="type-overline text-ink/60">Step 1</p>
-					<h2 class="type-h2 text-ink">Create Class Delivery</h2>
+					<p class="type-overline text-ink/60">{{ __('Step 1') }}</p>
+					<h2 class="type-h2 text-ink">{{ __('Create Class Delivery') }}</h2>
 					<p class="type-body text-ink/80">
-						Select the Course Plan this class will use. The shared unit backbone stays intact,
-						while pacing, sessions, assigned work, and class resources become class-owned.
+						{{
+							__(
+								'Select the Course Plan this class will use. The shared unit backbone stays intact, while pacing, sessions, assigned work, and class resources become class-owned.'
+							)
+						}}
 					</p>
 				</div>
 
@@ -69,17 +79,23 @@
 						v-if="!surface.course_plans.length"
 						class="rounded-2xl border border-dashed border-line-soft p-5"
 					>
-						<p class="type-body-strong text-ink">No course plans are available yet.</p>
+						<p class="type-body-strong text-ink">
+							{{ __('No course plans are available yet.') }}
+						</p>
 						<p class="mt-2 type-caption text-ink/70">
-							Create the shared course plan and unit backbone before creating Class Delivery.
+							{{
+								__(
+									'Create the shared course plan and unit backbone before creating Class Delivery.'
+								)
+							}}
 						</p>
 					</div>
 
 					<template v-else>
 						<label class="block space-y-2">
-							<span class="type-caption text-ink/70">Governing Course Plan</span>
+							<span class="type-caption text-ink/70">{{ __('Governing Course Plan') }}</span>
 							<select v-model="draftCoursePlan" class="if-input w-full">
-								<option value="">Select a course plan</option>
+								<option value="">{{ __('Select a course plan') }}</option>
 								<option
 									v-for="plan in surface.course_plans"
 									:key="plan.course_plan"
@@ -100,11 +116,11 @@
 									<div>
 										<p class="type-body-strong text-ink">{{ plan.title }}</p>
 										<p class="mt-1 type-caption text-ink/70">
-											{{ plan.academic_year || 'No academic year' }}
+											{{ plan.academic_year || __('No academic year') }}
 											<span v-if="plan.cycle_label">· {{ plan.cycle_label }}</span>
 										</p>
 									</div>
-									<span class="chip">{{ plan.plan_status || 'Draft' }}</span>
+									<span class="chip">{{ plan.plan_status || __('Draft') }}</span>
 								</div>
 							</article>
 						</div>
@@ -116,10 +132,10 @@
 								:disabled="!draftCoursePlan || createPending"
 								@click="handleCreatePlan"
 							>
-								{{ createPending ? 'Creating...' : 'Create Class Delivery' }}
+								{{ createPending ? __('Creating...') : __('Create Class Delivery') }}
 							</button>
 							<p class="type-caption text-ink/70">
-								Students see shared resources once Class Delivery is active.
+								{{ __('Students see shared resources once Class Delivery is active.') }}
 							</p>
 						</div>
 					</template>
@@ -135,14 +151,16 @@
 						<div class="space-y-4">
 							<div class="flex items-center justify-between gap-3">
 								<div>
-									<p class="type-overline text-ink/60">Class Delivery</p>
+									<p class="type-overline text-ink/60">{{ __('Class Delivery') }}</p>
 									<h2 class="mt-1 type-h3 text-ink">{{ surface.teaching_plan.title }}</h2>
 								</div>
-								<span class="chip">{{ surface.teaching_plan.planning_status || 'Draft' }}</span>
+								<span class="chip">{{
+									surface.teaching_plan.planning_status || __('Draft')
+								}}</span>
 							</div>
 
 							<label v-if="surface.class_teaching_plans.length > 1" class="block space-y-2">
-								<span class="type-caption text-ink/70">Switch plan</span>
+								<span class="type-caption text-ink/70">{{ __('Switch plan') }}</span>
 								<select
 									:value="surface.resolved.class_teaching_plan || ''"
 									class="if-input w-full"
@@ -159,21 +177,21 @@
 							</label>
 
 							<label class="block space-y-2">
-								<span class="type-caption text-ink/70">Student portal status</span>
+								<span class="type-caption text-ink/70">{{ __('Student portal status') }}</span>
 								<select v-model="planForm.planning_status" class="if-input w-full">
-									<option value="Draft">Draft</option>
-									<option value="Active">Active</option>
-									<option value="Archived">Archived</option>
+									<option value="Draft">{{ __('Draft') }}</option>
+									<option value="Active">{{ __('Active') }}</option>
+									<option value="Archived">{{ __('Archived') }}</option>
 								</select>
 							</label>
 
 							<label class="block space-y-2">
-								<span class="type-caption text-ink/70">Teaching team note</span>
+								<span class="type-caption text-ink/70">{{ __('Teaching team note') }}</span>
 								<textarea
 									v-model="planForm.team_note"
 									rows="5"
 									class="if-input min-h-[8rem] w-full resize-y"
-									placeholder="Shared planning note for the teaching team"
+									:placeholder="__('Shared planning note for the teaching team')"
 								/>
 							</label>
 
@@ -183,7 +201,7 @@
 								:disabled="planPending"
 								@click="handleSavePlan"
 							>
-								{{ planPending ? 'Saving...' : 'Save Delivery Overview' }}
+								{{ planPending ? __('Saving...') : __('Save Delivery Overview') }}
 							</button>
 
 							<RouterLink
@@ -198,7 +216,7 @@
 								}"
 								class="if-action"
 							>
-								Open Shared Course Plan
+								{{ __('Open Shared Course Plan') }}
 							</RouterLink>
 						</div>
 					</section>
@@ -206,10 +224,10 @@
 					<section class="rounded-[2rem] border border-line-soft bg-white p-5 shadow-soft">
 						<div class="mb-4 flex items-center justify-between gap-3">
 							<div>
-								<p class="type-overline text-ink/60">Unit Backbone</p>
-								<h2 class="mt-1 type-h3 text-ink">Class-owned pacing</h2>
+								<p class="type-overline text-ink/60">{{ __('Unit Backbone') }}</p>
+								<h2 class="mt-1 type-h3 text-ink">{{ __('Class-owned pacing') }}</h2>
 							</div>
-							<span class="chip">{{ surface.curriculum.units.length }} units</span>
+							<span class="chip">{{ __('{0} units', [surface.curriculum.units.length]) }}</span>
 						</div>
 
 						<div
@@ -217,7 +235,7 @@
 							class="rounded-2xl border border-dashed border-line-soft p-4"
 						>
 							<p class="type-caption text-ink/70">
-								This course plan does not have any governed units yet.
+								{{ __('This course plan does not have any governed units yet.') }}
 							</p>
 						</div>
 
@@ -236,14 +254,16 @@
 							>
 								<div class="flex items-start justify-between gap-3">
 									<div class="min-w-0">
-										<p class="type-overline text-ink/60">Unit {{ unit.unit_order || '—' }}</p>
+										<p class="type-overline text-ink/60">
+											{{ __('Unit {0}', [unit.unit_order || '—']) }}
+										</p>
 										<p class="mt-1 type-body-strong text-ink">{{ unit.title }}</p>
 										<p class="mt-1 type-caption text-ink/70">
-											{{ unit.sessions.length }} sessions
+											{{ __('{0} sessions', [unit.sessions.length]) }}
 										</p>
 									</div>
 									<span class="chip">{{
-										unit.resolved_pacing_status || unit.pacing_status || 'Not Started'
+										unit.resolved_pacing_status || unit.pacing_status || __('Not Started')
 									}}</span>
 								</div>
 							</button>
@@ -255,112 +275,122 @@
 					<section class="rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft">
 						<div class="grid gap-5 lg:grid-cols-[minmax(0,1fr),auto] lg:items-start">
 							<div>
-								<p class="type-overline text-ink/60">Selected Unit</p>
+								<p class="type-overline text-ink/60">{{ __('Selected Unit') }}</p>
 								<h2 class="mt-2 type-h2 text-ink">{{ selectedUnit.title }}</h2>
 								<p class="mt-2 type-body text-ink/80">
-									Plan pacing, class reflections, and teaching focus for this class without
-									breaking the shared course sequence.
+									{{
+										__(
+											'Plan pacing, class reflections, and teaching focus for this class without breaking the shared course sequence.'
+										)
+									}}
 								</p>
 							</div>
 							<div class="flex flex-wrap gap-2">
-								<span class="chip">Unit {{ selectedUnit.unit_order || '—' }}</span>
-								<span class="chip">{{ selectedUnit.sessions.length }} sessions</span>
+								<span class="chip">{{ __('Unit {0}', [selectedUnit.unit_order || '—']) }}</span>
+								<span class="chip">{{ __('{0} sessions', [selectedUnit.sessions.length]) }}</span>
 								<span v-if="selectedUnit.duration" class="chip">{{ selectedUnit.duration }}</span>
 								<span v-if="selectedUnit.estimated_duration" class="chip">
 									{{ selectedUnit.estimated_duration }}
 								</span>
 								<span class="chip">{{
-									selectedUnit.resolved_pacing_status || unitForm.pacing_status || 'Not Started'
+									selectedUnit.resolved_pacing_status ||
+									unitForm.pacing_status ||
+									__('Not Started')
 								}}</span>
 							</div>
 						</div>
 
 						<div class="mt-6 grid gap-4 lg:grid-cols-3">
 							<label class="block space-y-2">
-								<span class="type-caption text-ink/70">Pacing status</span>
+								<span class="type-caption text-ink/70">{{ __('Pacing status') }}</span>
 								<select v-model="unitForm.pacing_status" class="if-input w-full">
-									<option value="Not Started">Not Started</option>
-									<option value="In Progress">In Progress</option>
-									<option value="Completed">Completed</option>
-									<option value="Hold">Hold</option>
+									<option value="Not Started">{{ __('Not Started') }}</option>
+									<option value="In Progress">{{ __('In Progress') }}</option>
+									<option value="Completed">{{ __('Completed') }}</option>
+									<option value="Hold">{{ __('Hold') }}</option>
 								</select>
 							</label>
 							<label class="block space-y-2 lg:col-span-2">
-								<span class="type-caption text-ink/70">Teacher focus</span>
+								<span class="type-caption text-ink/70">{{ __('Teacher focus') }}</span>
 								<input
 									v-model="unitForm.teacher_focus"
 									type="text"
 									class="if-input w-full"
-									placeholder="What matters most for this class inside the unit"
+									:placeholder="__('What matters most for this class inside the unit')"
 								/>
 							</label>
 						</div>
 
 						<label class="mt-4 block space-y-2">
-							<span class="type-caption text-ink/70">Pacing note</span>
+							<span class="type-caption text-ink/70">{{ __('Pacing note') }}</span>
 							<textarea
 								v-model="unitForm.pacing_note"
 								rows="4"
 								class="if-input min-h-[7rem] w-full resize-y"
-								placeholder="Record adjustments, substitutions, or class-specific constraints"
+								:placeholder="
+									__('Record adjustments, substitutions, or class-specific constraints')
+								"
 							/>
 						</label>
 
 						<div class="mt-6 space-y-4">
 							<div>
-								<p class="type-overline text-ink/60">Class Reflection</p>
+								<p class="type-overline text-ink/60">{{ __('Class Reflection') }}</p>
 								<p class="mt-1 type-caption text-ink/70">
-									Record what this class needed before, during, and after the unit. These
-									reflections are rolled up into the broader unit view for staff.
+									{{
+										__(
+											'Record what this class needed before, during, and after the unit. These reflections are rolled up into the broader unit view for staff.'
+										)
+									}}
 								</p>
 							</div>
 
 							<div class="grid gap-4 xl:grid-cols-2">
 								<label class="block space-y-2">
-									<span class="type-caption text-ink/70">Prior to the unit</span>
+									<span class="type-caption text-ink/70">{{ __('Prior to the unit') }}</span>
 									<textarea
 										v-model="unitForm.prior_to_the_unit"
 										rows="4"
 										class="if-input min-h-[7rem] w-full resize-y"
-										placeholder="What this class needed before starting the unit"
+										:placeholder="__('What this class needed before starting the unit')"
 									/>
 								</label>
 								<label class="block space-y-2">
-									<span class="type-caption text-ink/70">During the unit</span>
+									<span class="type-caption text-ink/70">{{ __('During the unit') }}</span>
 									<textarea
 										v-model="unitForm.during_the_unit"
 										rows="4"
 										class="if-input min-h-[7rem] w-full resize-y"
-										placeholder="What changed or surfaced while teaching the unit"
+										:placeholder="__('What changed or surfaced while teaching the unit')"
 									/>
 								</label>
 								<label class="block space-y-2">
-									<span class="type-caption text-ink/70">What worked well</span>
+									<span class="type-caption text-ink/70">{{ __('What worked well') }}</span>
 									<textarea
 										v-model="unitForm.what_work_well"
 										rows="4"
 										class="if-input min-h-[7rem] w-full resize-y"
-										placeholder="Approaches, resources, or structures that worked"
+										:placeholder="__('Approaches, resources, or structures that worked')"
 									/>
 								</label>
 								<label class="block space-y-2">
-									<span class="type-caption text-ink/70">What didn’t work well</span>
+									<span class="type-caption text-ink/70">{{ __('What didn’t work well') }}</span>
 									<textarea
 										v-model="unitForm.what_didnt_work_well"
 										rows="4"
 										class="if-input min-h-[7rem] w-full resize-y"
-										placeholder="Where this class struggled or the plan broke down"
+										:placeholder="__('Where this class struggled or the plan broke down')"
 									/>
 								</label>
 							</div>
 
 							<label class="block space-y-2">
-								<span class="type-caption text-ink/70">Changes and suggestions</span>
+								<span class="type-caption text-ink/70">{{ __('Changes and suggestions') }}</span>
 								<textarea
 									v-model="unitForm.changes_suggestions"
 									rows="4"
 									class="if-input min-h-[7rem] w-full resize-y"
-									placeholder="What should change the next time this unit is taught"
+									:placeholder="__('What should change the next time this unit is taught')"
 								/>
 							</label>
 						</div>
@@ -372,10 +402,10 @@
 								:disabled="unitPending"
 								@click="handleSaveUnit"
 							>
-								{{ unitPending ? 'Saving...' : 'Save Unit Plan For This Class' }}
+								{{ unitPending ? __('Saving...') : __('Save Unit Plan For This Class') }}
 							</button>
 							<p class="type-caption text-ink/70">
-								The unit order remains governed across all classes on this course plan.
+								{{ __('The unit order remains governed across all classes on this course plan.') }}
 							</p>
 						</div>
 					</section>
@@ -383,11 +413,16 @@
 					<section class="rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft">
 						<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 							<div>
-								<p class="type-overline text-ink/60">Shared Unit Plan</p>
-								<h2 class="mt-1 type-h3 text-ink">Curriculum backbone for all classes</h2>
+								<p class="type-overline text-ink/60">{{ __('Shared Unit Plan') }}</p>
+								<h2 class="mt-1 type-h3 text-ink">
+									{{ __('Curriculum backbone for all classes') }}
+								</h2>
 								<p class="mt-2 type-body text-ink/80">
-									This is the governed unit context inherited from the course plan, enriched by
-									reflections from teaching teams.
+									{{
+										__(
+											'This is the governed unit context inherited from the course plan, enriched by reflections from teaching teams.'
+										)
+									}}
 								</p>
 							</div>
 							<div class="flex flex-wrap gap-2">
@@ -395,9 +430,11 @@
 									{{ selectedUnit.unit_status }}
 								</span>
 								<span v-if="selectedUnit.version" class="chip">{{ selectedUnit.version }}</span>
-								<span class="chip">{{ selectedUnit.standards.length }} standards</span>
+								<span class="chip">{{
+									__('{0} standards', [selectedUnit.standards.length])
+								}}</span>
 								<span v-if="selectedUnit.class_reflections?.length" class="chip">
-									{{ selectedUnit.class_reflections.length }} class reflections
+									{{ __('{0} class reflections', [selectedUnit.class_reflections.length]) }}
 								</span>
 							</div>
 						</div>
@@ -407,14 +444,14 @@
 								v-if="selectedUnit.overview"
 								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 							>
-								<p class="type-overline text-ink/60">Overview and Rationale</p>
+								<p class="type-overline text-ink/60">{{ __('Overview and Rationale') }}</p>
 								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.overview }}</p>
 							</article>
 							<article
 								v-if="selectedUnit.essential_understanding"
 								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 							>
-								<p class="type-overline text-ink/60">Essential Understanding</p>
+								<p class="type-overline text-ink/60">{{ __('Essential Understanding') }}</p>
 								<p class="mt-2 type-body text-ink/80">
 									{{ selectedUnit.essential_understanding }}
 								</p>
@@ -423,35 +460,35 @@
 								v-if="selectedUnit.content"
 								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 							>
-								<p class="type-overline text-ink/60">Content</p>
+								<p class="type-overline text-ink/60">{{ __('Content') }}</p>
 								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.content }}</p>
 							</article>
 							<article
 								v-if="selectedUnit.skills"
 								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 							>
-								<p class="type-overline text-ink/60">Skills</p>
+								<p class="type-overline text-ink/60">{{ __('Skills') }}</p>
 								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.skills }}</p>
 							</article>
 							<article
 								v-if="selectedUnit.concepts"
 								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 							>
-								<p class="type-overline text-ink/60">Concepts</p>
+								<p class="type-overline text-ink/60">{{ __('Concepts') }}</p>
 								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.concepts }}</p>
 							</article>
 							<article
 								v-if="selectedUnit.misconceptions"
 								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 							>
-								<p class="type-overline text-ink/60">Likely Misconceptions</p>
+								<p class="type-overline text-ink/60">{{ __('Likely Misconceptions') }}</p>
 								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.misconceptions }}</p>
 							</article>
 						</div>
 
 						<div v-if="selectedUnit.standards.length" class="mt-6 space-y-3">
 							<div class="flex items-center justify-between gap-3">
-								<h3 class="type-h3 text-ink">Standards Alignment</h3>
+								<h3 class="type-h3 text-ink">{{ __('Standards Alignment') }}</h3>
 								<span class="chip">{{ selectedUnit.standards.length }}</span>
 							</div>
 							<div class="grid gap-3">
@@ -462,7 +499,7 @@
 								>
 									<div class="flex flex-wrap items-center gap-2">
 										<p class="type-body-strong text-ink">
-											{{ standard.standard_code || 'Standard' }}
+											{{ standard.standard_code || __('Standard') }}
 										</p>
 										<span v-if="standard.coverage_level" class="chip">
 											{{ standard.coverage_level }}
@@ -490,7 +527,7 @@
 
 						<div v-if="selectedUnit.shared_reflections?.length" class="mt-6 space-y-3">
 							<div class="flex items-center justify-between gap-3">
-								<h3 class="type-h3 text-ink">Shared Curriculum Reflections</h3>
+								<h3 class="type-h3 text-ink">{{ __('Shared Curriculum Reflections') }}</h3>
 								<span class="chip">{{ selectedUnit.shared_reflections.length }}</span>
 							</div>
 							<div class="grid gap-3 xl:grid-cols-2">
@@ -500,7 +537,7 @@
 									class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 								>
 									<p class="type-caption text-ink/70">
-										{{ reflection.academic_year || 'Shared unit reflection' }}
+										{{ reflection.academic_year || __('Shared unit reflection') }}
 									</p>
 									<p v-if="reflection.prior_to_the_unit" class="mt-2 type-body text-ink/80">
 										{{ reflection.prior_to_the_unit }}
@@ -509,10 +546,10 @@
 										{{ reflection.during_the_unit }}
 									</p>
 									<p v-if="reflection.what_work_well" class="mt-2 type-caption text-ink/70">
-										Worked well: {{ reflection.what_work_well }}
+										{{ __('Worked well: {0}', [reflection.what_work_well]) }}
 									</p>
 									<p v-if="reflection.changes_suggestions" class="mt-2 type-caption text-ink/70">
-										Next change: {{ reflection.changes_suggestions }}
+										{{ __('Next change: {0}', [reflection.changes_suggestions]) }}
 									</p>
 								</article>
 							</div>
@@ -520,7 +557,7 @@
 
 						<div v-if="selectedUnit.class_reflections?.length" class="mt-6 space-y-3">
 							<div class="flex items-center justify-between gap-3">
-								<h3 class="type-h3 text-ink">What Other Classes Learned</h3>
+								<h3 class="type-h3 text-ink">{{ __('What Other Classes Learned') }}</h3>
 								<span class="chip">{{ selectedUnit.class_reflections.length }}</span>
 							</div>
 							<div class="grid gap-3 xl:grid-cols-2">
@@ -542,13 +579,13 @@
 										{{ reflection.during_the_unit }}
 									</p>
 									<p v-if="reflection.what_work_well" class="mt-2 type-caption text-ink/70">
-										Worked well: {{ reflection.what_work_well }}
+										{{ __('Worked well: {0}', [reflection.what_work_well]) }}
 									</p>
 									<p v-if="reflection.what_didnt_work_well" class="mt-2 type-caption text-ink/70">
-										Watch for: {{ reflection.what_didnt_work_well }}
+										{{ __('Watch for: {0}', [reflection.what_didnt_work_well]) }}
 									</p>
 									<p v-if="reflection.changes_suggestions" class="mt-2 type-caption text-ink/70">
-										Next change: {{ reflection.changes_suggestions }}
+										{{ __('Next change: {0}', [reflection.changes_suggestions]) }}
 									</p>
 								</article>
 							</div>
@@ -556,7 +593,7 @@
 
 						<div v-if="selectedUnit.shared_resources.length" class="mt-6 space-y-3">
 							<div class="flex items-center justify-between gap-3">
-								<h3 class="type-h3 text-ink">Shared Unit Resources</h3>
+								<h3 class="type-h3 text-ink">{{ __('Shared Unit Resources') }}</h3>
 								<span class="chip">{{ selectedUnit.shared_resources.length }}</span>
 							</div>
 							<PlanningResourcePanel
@@ -564,11 +601,13 @@
 								:anchor-name="selectedUnit.unit_plan"
 								:can-manage="false"
 								:show-read-only-notice="false"
-								eyebrow="Shared Unit Resources"
-								title="Shared resources for this unit"
-								description="Inherited governed materials from the shared unit backbone."
-								empty-message="No shared unit resources are attached to this unit."
-								blocked-message="Select a governed unit before reviewing shared unit resources."
+								:eyebrow="__('Shared Unit Resources')"
+								:title="__('Shared resources for this unit')"
+								:description="__('Inherited governed materials from the shared unit backbone.')"
+								:empty-message="__('No shared unit resources are attached to this unit.')"
+								:blocked-message="
+									__('Select a governed unit before reviewing shared unit resources.')
+								"
 								:resources="selectedUnit.shared_resources"
 								enable-attachment-preview
 								hide-header
@@ -581,11 +620,15 @@
 						<PlanningResourcePanel
 							anchor-doctype="Class Teaching Plan"
 							:anchor-name="surface.teaching_plan.class_teaching_plan"
-							eyebrow="Class-Owned Resources"
-							title="Shared across this class delivery"
-							description="Keep class-wide links, files, and exemplars where the teaching team already plans."
-							empty-message="No class-wide resources shared yet."
-							blocked-message="Create Class Delivery before sharing class resources."
+							:eyebrow="__('Class-Owned Resources')"
+							:title="__('Shared across this class delivery')"
+							:description="
+								__(
+									'Keep class-wide links, files, and exemplars where the teaching team already plans.'
+								)
+							"
+							:empty-message="__('No class-wide resources shared yet.')"
+							:blocked-message="__('Create Class Delivery before sharing class resources.')"
 							:resources="surface.resources.class_resources"
 							enable-attachment-preview
 							@changed="loadSurface"
@@ -594,8 +637,10 @@
 						<article class="rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft">
 							<div class="flex items-center justify-between gap-3">
 								<div>
-									<p class="type-overline text-ink/60">Assigned Work</p>
-									<h2 class="mt-1 type-h3 text-ink">Not tied to one unit or session</h2>
+									<p class="type-overline text-ink/60">{{ __('Assigned Work') }}</p>
+									<h2 class="mt-1 type-h3 text-ink">
+										{{ __('Not tied to one unit or session') }}
+									</h2>
 								</div>
 								<span class="chip">{{ surface.resources.general_assigned_work.length }}</span>
 							</div>
@@ -605,8 +650,11 @@
 								class="mt-5 rounded-2xl border border-dashed border-line-soft px-4 py-4"
 							>
 								<p class="type-caption text-ink/70">
-									No class-wide assigned work yet. Launch assigned work from a unit or session when
-									it is ready.
+									{{
+										__(
+											'No class-wide assigned work yet. Launch assigned work from a unit or session when it is ready.'
+										)
+									}}
 								</p>
 							</div>
 
@@ -622,7 +670,7 @@
 										<span v-if="item.delivery_mode" class="chip">{{ item.delivery_mode }}</span>
 									</div>
 									<p v-if="item.due_date" class="mt-2 type-caption text-ink/70">
-										Due {{ item.due_date }}
+										{{ __('Due {0}', [item.due_date]) }}
 									</p>
 									<div class="mt-3 flex flex-wrap gap-2">
 										<button type="button" class="if-action" @click="openGradebook(item)">
@@ -637,15 +685,17 @@
 					<section class="rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft">
 						<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 							<div>
-								<p class="type-overline text-ink/60">Class Sessions</p>
-								<h2 class="mt-1 type-h3 text-ink">Plan what this class will actually do</h2>
+								<p class="type-overline text-ink/60">{{ __('Class Sessions') }}</p>
+								<h2 class="mt-1 type-h3 text-ink">
+									{{ __('Plan what this class will actually do') }}
+								</h2>
 							</div>
 							<div class="flex flex-wrap gap-3">
 								<button type="button" class="if-action" @click="openAssignedWorkOverlay()">
-									Assign Work To This Class
+									{{ __('Assign Work To This Class') }}
 								</button>
 								<button type="button" class="if-action" @click="startNewSession">
-									New Class Session
+									{{ __('New Class Session') }}
 								</button>
 							</div>
 						</div>
@@ -666,7 +716,7 @@
 								>
 									<p class="type-body-strong text-ink">{{ session.title }}</p>
 									<p class="mt-1 type-caption text-ink/70">
-										{{ session.session_status || 'Draft' }}
+										{{ session.session_status || __('Draft') }}
 										<span v-if="session.session_date">· {{ session.session_date }}</span>
 									</p>
 								</button>
@@ -675,7 +725,7 @@
 									v-if="!selectedUnit.sessions.length"
 									class="rounded-2xl border border-dashed border-line-soft p-4 type-caption text-ink/70"
 								>
-									No sessions planned yet for this unit.
+									{{ __('No sessions planned yet for this unit.') }}
 								</div>
 							</div>
 
@@ -683,42 +733,42 @@
 								<div class="flex items-start justify-between gap-3">
 									<div>
 										<p class="type-overline text-ink/60">
-											{{ selectedSessionId ? 'Edit Session' : 'New Session' }}
+											{{ selectedSessionId ? __('Edit Session') : __('New Session') }}
 										</p>
 										<h3 class="mt-1 type-h3 text-ink">
 											{{
 												selectedSessionId
-													? sessionForm.title || 'Untitled session'
-													: 'Plan a class session'
+													? sessionForm.title || __('Untitled session')
+													: __('Plan a class session')
 											}}
 										</h3>
 									</div>
-									<span class="chip">{{ sessionForm.session_status || 'Draft' }}</span>
+									<span class="chip">{{ sessionForm.session_status || __('Draft') }}</span>
 								</div>
 
 								<div class="grid gap-4 md:grid-cols-2">
 									<label class="block space-y-2 md:col-span-2">
-										<span class="type-caption text-ink/70">Session title</span>
+										<span class="type-caption text-ink/70">{{ __('Session title') }}</span>
 										<input
 											v-model="sessionForm.title"
 											type="text"
 											class="if-input w-full"
-											placeholder="e.g. Evidence walk and structured discussion"
+											:placeholder="__('e.g. Evidence walk and structured discussion')"
 										/>
 									</label>
 									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Session status</span>
+										<span class="type-caption text-ink/70">{{ __('Session status') }}</span>
 										<select v-model="sessionForm.session_status" class="if-input w-full">
-											<option value="Draft">Draft</option>
-											<option value="Planned">Planned</option>
-											<option value="In Progress">In Progress</option>
-											<option value="Taught">Taught</option>
-											<option value="Changed">Changed</option>
-											<option value="Canceled">Canceled</option>
+											<option value="Draft">{{ __('Draft') }}</option>
+											<option value="Planned">{{ __('Planned') }}</option>
+											<option value="In Progress">{{ __('In Progress') }}</option>
+											<option value="Taught">{{ __('Taught') }}</option>
+											<option value="Changed">{{ __('Changed') }}</option>
+											<option value="Canceled">{{ __('Canceled') }}</option>
 										</select>
 									</label>
 									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Session date</span>
+										<span class="type-caption text-ink/70">{{ __('Session date') }}</span>
 										<input
 											v-model="sessionForm.session_date"
 											type="date"
@@ -726,7 +776,7 @@
 										/>
 									</label>
 									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Sequence</span>
+										<span class="type-caption text-ink/70">{{ __('Sequence') }}</span>
 										<input
 											v-model.number="sessionForm.sequence_index"
 											type="number"
@@ -736,21 +786,23 @@
 										/>
 									</label>
 									<label class="block space-y-2 md:col-span-2">
-										<span class="type-caption text-ink/70">Learning goal</span>
+										<span class="type-caption text-ink/70">{{ __('Learning goal') }}</span>
 										<textarea
 											v-model="sessionForm.learning_goal"
 											rows="3"
 											class="if-input min-h-[6rem] w-full resize-y"
-											placeholder="State the learning goal students should understand and act on"
+											:placeholder="
+												__('State the learning goal students should understand and act on')
+											"
 										/>
 									</label>
 									<label class="block space-y-2 md:col-span-2">
-										<span class="type-caption text-ink/70">Teacher note</span>
+										<span class="type-caption text-ink/70">{{ __('Teacher note') }}</span>
 										<textarea
 											v-model="sessionForm.teacher_note"
 											rows="4"
 											class="if-input min-h-[7rem] w-full resize-y"
-											placeholder="Private teacher-facing note for delivery and reflection"
+											:placeholder="__('Private teacher-facing note for delivery and reflection')"
 										/>
 									</label>
 								</div>
@@ -758,13 +810,13 @@
 								<div class="space-y-3">
 									<div class="flex items-center justify-between gap-3">
 										<div>
-											<p class="type-overline text-ink/60">Session Activities</p>
+											<p class="type-overline text-ink/60">{{ __('Session Activities') }}</p>
 											<p class="type-caption text-ink/70">
-												Capture the flow students will experience in this class.
+												{{ __('Capture the flow students will experience in this class.') }}
 											</p>
 										</div>
 										<button type="button" class="if-action" @click="addActivity">
-											Add Activity
+											{{ __('Add Activity') }}
 										</button>
 									</div>
 
@@ -773,7 +825,11 @@
 										class="rounded-2xl border border-dashed border-line-soft p-4"
 									>
 										<p class="type-caption text-ink/70">
-											Add teaching steps, checks for understanding, practice, or reflection.
+											{{
+												__(
+													'Add teaching steps, checks for understanding, practice, or reflection.'
+												)
+											}}
 										</p>
 									</div>
 
@@ -785,33 +841,35 @@
 										>
 											<div class="grid gap-4 md:grid-cols-2">
 												<label class="block space-y-2 md:col-span-2">
-													<span class="type-caption text-ink/70">Activity title</span>
+													<span class="type-caption text-ink/70">{{ __('Activity title') }}</span>
 													<input
 														v-model="activity.title"
 														type="text"
 														class="if-input w-full"
-														:placeholder="`Activity ${index + 1}`"
+														:placeholder="__('Activity {0}', [index + 1])"
 													/>
 												</label>
 												<label class="block space-y-2">
-													<span class="type-caption text-ink/70">Activity type</span>
+													<span class="type-caption text-ink/70">{{ __('Activity type') }}</span>
 													<select v-model="activity.activity_type" class="if-input w-full">
-														<option value="Discuss">Discuss</option>
-														<option value="Practice">Practice</option>
-														<option value="Read">Read</option>
-														<option value="Watch">Watch</option>
-														<option value="Write">Write</option>
-														<option value="Collaborate">Collaborate</option>
+														<option value="Discuss">{{ __('Discuss') }}</option>
+														<option value="Practice">{{ __('Practice') }}</option>
+														<option value="Read">{{ __('Read') }}</option>
+														<option value="Watch">{{ __('Watch') }}</option>
+														<option value="Write">{{ __('Write') }}</option>
+														<option value="Collaborate">{{ __('Collaborate') }}</option>
 														<option value="Check for Understanding">
-															Check for Understanding
+															{{ __('Check for Understanding') }}
 														</option>
-														<option value="Reflect">Reflect</option>
-														<option value="Assess">Assess</option>
-														<option value="Other">Other</option>
+														<option value="Reflect">{{ __('Reflect') }}</option>
+														<option value="Assess">{{ __('Assess') }}</option>
+														<option value="Other">{{ __('Other') }}</option>
 													</select>
 												</label>
 												<label class="block space-y-2">
-													<span class="type-caption text-ink/70">Estimated minutes</span>
+													<span class="type-caption text-ink/70">{{
+														__('Estimated minutes')
+													}}</span>
 													<input
 														v-model.number="activity.estimated_minutes"
 														type="number"
@@ -821,7 +879,9 @@
 													/>
 												</label>
 												<label class="block space-y-2 md:col-span-2">
-													<span class="type-caption text-ink/70">Student direction</span>
+													<span class="type-caption text-ink/70">{{
+														__('Student direction')
+													}}</span>
 													<textarea
 														v-model="activity.student_direction"
 														rows="2"
@@ -829,7 +889,7 @@
 													/>
 												</label>
 												<label class="block space-y-2">
-													<span class="type-caption text-ink/70">Teacher prompt</span>
+													<span class="type-caption text-ink/70">{{ __('Teacher prompt') }}</span>
 													<textarea
 														v-model="activity.teacher_prompt"
 														rows="2"
@@ -837,7 +897,7 @@
 													/>
 												</label>
 												<label class="block space-y-2">
-													<span class="type-caption text-ink/70">Resource note</span>
+													<span class="type-caption text-ink/70">{{ __('Resource note') }}</span>
 													<textarea
 														v-model="activity.resource_note"
 														rows="2"
@@ -852,7 +912,7 @@
 													class="rounded-full border border-line-soft px-4 py-2 type-button-label text-ink transition hover:border-flame hover:text-flame"
 													@click="removeActivity(activity.local_id)"
 												>
-													Remove Activity
+													{{ __('Remove Activity') }}
 												</button>
 											</div>
 										</div>
@@ -871,7 +931,7 @@
 											})
 										"
 									>
-										Assign Work To This Session
+										{{ __('Assign Work To This Session') }}
 									</button>
 									<button
 										type="button"
@@ -881,10 +941,10 @@
 									>
 										{{
 											sessionPending
-												? 'Saving...'
+												? __('Saving...')
 												: selectedSessionId
-													? 'Save Session'
-													: 'Create Session'
+													? __('Save Session')
+													: __('Create Session')
 										}}
 									</button>
 									<button
@@ -893,7 +953,7 @@
 										class="rounded-full border border-line-soft px-4 py-2 type-button-label text-ink transition hover:border-ink/30"
 										@click="startNewSession"
 									>
-										Start New Session Draft
+										{{ __('Start New Session Draft') }}
 									</button>
 								</div>
 
@@ -903,9 +963,11 @@
 								>
 									<div class="flex items-center justify-between gap-3">
 										<div>
-											<p class="type-overline text-ink/60">Assigned Work In This Unit</p>
+											<p class="type-overline text-ink/60">
+												{{ __('Assigned Work In This Unit') }}
+											</p>
 											<p class="type-caption text-ink/70">
-												Reusable tasks delivered to this class for the selected unit.
+												{{ __('Reusable tasks delivered to this class for the selected unit.') }}
 											</p>
 										</div>
 										<span class="chip">{{ selectedUnit.assigned_work.length }}</span>
@@ -924,7 +986,7 @@
 												}}</span>
 											</div>
 											<p v-if="item.due_date" class="mt-2 type-caption text-ink/70">
-												Due {{ item.due_date }}
+												{{ __('Due {0}', [item.due_date]) }}
 											</p>
 											<div class="mt-3 flex flex-wrap gap-2">
 												<button type="button" class="if-action" @click="openGradebook(item)">
@@ -940,11 +1002,17 @@
 										<PlanningResourcePanel
 											anchor-doctype="Class Session"
 											:anchor-name="selectedSessionId || null"
-											eyebrow="Session Resources"
-											title="Materials for this class session"
-											description="Share the exact files and links students should open from the selected session."
-											empty-message="No session resources shared yet."
-											blocked-message="Create or select a class session before sharing session resources."
+											:eyebrow="__('Session Resources')"
+											:title="__('Materials for this class session')"
+											:description="
+												__(
+													'Share the exact files and links students should open from the selected session.'
+												)
+											"
+											:empty-message="__('No session resources shared yet.')"
+											:blocked-message="
+												__('Create or select a class session before sharing session resources.')
+											"
 											:resources="selectedSessionResources"
 											enable-attachment-preview
 											@changed="loadSurface"
@@ -955,9 +1023,11 @@
 										>
 											<div class="flex items-center justify-between gap-3">
 												<div>
-													<p class="type-overline text-ink/60">Session Assigned Work</p>
+													<p class="type-overline text-ink/60">
+														{{ __('Session Assigned Work') }}
+													</p>
 													<p class="type-caption text-ink/70">
-														Assignments launched from the selected class session.
+														{{ __('Assignments launched from the selected class session.') }}
 													</p>
 												</div>
 												<span class="chip">{{ selectedSessionAssignedWork.length }}</span>
@@ -968,7 +1038,7 @@
 												class="mt-5 rounded-2xl border border-dashed border-line-soft px-4 py-4"
 											>
 												<p class="type-caption text-ink/70">
-													No assigned work is tied to this session yet.
+													{{ __('No assigned work is tied to this session yet.') }}
 												</p>
 											</div>
 
@@ -983,7 +1053,7 @@
 														<span v-if="item.task_type" class="chip">{{ item.task_type }}</span>
 													</div>
 													<p v-if="item.due_date" class="mt-2 type-caption text-ink/70">
-														Due {{ item.due_date }}
+														{{ __('Due {0}', [item.due_date]) }}
 													</p>
 													<div class="mt-3 flex flex-wrap gap-2">
 														<button type="button" class="if-action" @click="openGradebook(item)">
@@ -1001,7 +1071,9 @@
 				</div>
 
 				<section v-else class="rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft">
-					<p class="type-body text-ink/70">Select a governed unit to plan this class.</p>
+					<p class="type-body text-ink/70">
+						{{ __('Select a governed unit to plan this class.') }}
+					</p>
 				</section>
 			</section>
 		</template>
@@ -1015,6 +1087,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router';
 
 import PlanningResourcePanel from '@/components/planning/PlanningResourcePanel.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import { __ } from '@/lib/i18n';
 import { SIGNAL_TASK_DELIVERY_CREATED, uiSignals } from '@/lib/uiSignals';
 import { normalizePlanningSurfaceError } from '@/lib/planning/planningActionGuards';
 import {
@@ -1185,11 +1258,11 @@ function openAssignedWorkOverlay(options?: {
 	classSession?: string | null;
 }) {
 	if (!surface.value?.teaching_plan?.class_teaching_plan) {
-		toast.error('Create Class Delivery before assigning work.');
+		toast.error(__('Create Class Delivery before assigning work.'));
 		return;
 	}
 	if (String(surface.value.teaching_plan.planning_status || '').trim() !== 'Active') {
-		toast.error('Set Class Delivery to Active before assigning work.');
+		toast.error(__('Set Class Delivery to Active before assigning work.'));
 		return;
 	}
 	overlay.open('create-task', {
@@ -1205,9 +1278,9 @@ function gradebookActionLabel(item: StaffAssignedWork) {
 	const deliveryMode = String(item.delivery_mode || '').trim();
 	const gradingMode = String(item.grading_mode || '').trim();
 	if (deliveryMode === 'Assign Only' && !gradingMode) {
-		return 'Review completion';
+		return __('Review completion');
 	}
-	return 'Open gradebook';
+	return __('Open gradebook');
 }
 
 function openGradebook(item: StaffAssignedWork) {
@@ -1301,9 +1374,9 @@ async function handleCreatePlan() {
 				class_teaching_plan: result.class_teaching_plan,
 			},
 		});
-		toast.success('Class Delivery created.');
+		toast.success(__('Class Delivery created.'));
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : 'Could not create Class Delivery.');
+		toast.error(error instanceof Error ? error.message : __('Could not create Class Delivery.'));
 	} finally {
 		createPending.value = false;
 	}
@@ -1319,9 +1392,9 @@ async function handleSavePlan() {
 			team_note: planForm.team_note,
 		});
 		await loadSurface();
-		toast.success('Class Delivery updated.');
+		toast.success(__('Class Delivery updated.'));
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : 'Could not save Class Delivery.');
+		toast.error(error instanceof Error ? error.message : __('Could not save Class Delivery.'));
 	} finally {
 		planPending.value = false;
 	}
@@ -1344,9 +1417,11 @@ async function handleSaveUnit() {
 			changes_suggestions: unitForm.changes_suggestions,
 		});
 		await loadSurface();
-		toast.success('Unit plan updated for this class.');
+		toast.success(__('Unit plan updated for this class.'));
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : 'Could not save the class unit plan.');
+		toast.error(
+			error instanceof Error ? error.message : __('Could not save the class unit plan.')
+		);
 	} finally {
 		unitPending.value = false;
 	}
@@ -1378,9 +1453,9 @@ async function handleSaveSession() {
 		});
 		selectedSessionId.value = result.class_session;
 		await loadSurface();
-		toast.success('Class session saved.');
+		toast.success(__('Class session saved.'));
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : 'Could not save the class session.');
+		toast.error(error instanceof Error ? error.message : __('Could not save the class session.'));
 	} finally {
 		sessionPending.value = false;
 	}

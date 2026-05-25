@@ -5,7 +5,10 @@ import frappe
 from frappe import _
 from frappe.utils import add_days, get_datetime, getdate, now_datetime, nowdate
 
-from ifitwala_ed.admission.admission_utils import get_admissions_file_staff_scope
+from ifitwala_ed.admission.admission_utils import (
+    get_admissions_file_staff_scope,
+    get_public_inquiry_organization_scope,
+)
 from ifitwala_ed.utilities.employee_utils import get_schools_for_organization_scope
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
@@ -1121,24 +1124,22 @@ def inquiry_organization_link_query(doctype=None, txt=None, searchfield=None, st
 def inquiry_school_link_query(doctype=None, txt=None, searchfield=None, start=0, page_len=20, filters=None):
     filters = frappe.parse_json(filters) if isinstance(filters, str) else (filters or {})
     organization = (filters.get("organization") or "").strip()
+    organization_scope = get_public_inquiry_organization_scope(organization)
+    if not organization_scope:
+        return []
+
     params = {
         "txt": f"%{txt or ''}%",
         "start": int(start or 0),
         "page_len": int(page_len or 20),
+        "organizations": tuple(organization_scope),
     }
     where = [
         "COALESCE(s.show_in_inquiry, 0) = 1",
-        "COALESCE(o.get_inquiry, 0) = 1",
         "COALESCE(o.archived, 0) = 0",
+        "s.organization IN %(organizations)s",
         "(s.name LIKE %(txt)s OR s.school_name LIKE %(txt)s)",
     ]
-
-    if organization:
-        organization_scope = _get_descendant_organizations(organization)
-        if not organization_scope:
-            return []
-        where.append("s.organization IN %(organizations)s")
-        params["organizations"] = tuple(organization_scope)
 
     return frappe.db.sql(
         f"""

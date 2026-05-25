@@ -331,7 +331,9 @@ Student Demographic Analytics has the same privacy boundary:
 
 * full-mode users must intersect any selected school filter with their authorized school branch before querying `Student`
 * instructor-mode users must aggregate only active students in active `Student Group` rows where the user is assigned through `Student Group Instructor`
-* demographic drill-downs must reuse the same scoped student set as the aggregate cards
+* demographic responses must remain aggregate-only and must not expose named `Student` or `Guardian` drill-down rows
+* demographic buckets below `MIN_DEMOGRAPHIC_CELL_COUNT` must not be emitted as distinct labels; they may be shown only as a combined `Other / Suppressed` bucket when the combined suppressed count also meets the threshold
+* named student review belongs in the server-scoped `Student` list/report/form surfaces, not in demographic analytics
 
 ---
 
@@ -540,7 +542,7 @@ Rules:
 * Always define an explicit `inRange.color` palette for heatmaps, even when `visualMap.show = false`.
 * Always clamp a non-zero max bound (`max >= 1`) so sparse datasets do not collapse into near-invisible color output.
 * Prefer showing non-zero cell labels for sparse cohort/category matrices so users can verify values at a glance.
-* Keep click payloads (`sliceKey`) in the series data tuple when adding display labels.
+* For surfaces whose privacy contract permits row-level drill-down, keep click payloads (`sliceKey`) in the series data tuple when adding display labels.
 
 ---
 
@@ -550,6 +552,7 @@ A drawer that lists entities but offers no next action is a UX dead-end.
 
 Rules:
 
+* Do not add drill-down drawers to aggregate-only privacy surfaces such as Student Demographic Analytics.
 * Student drill-down rows must link directly to canonical Desk forms (`/desk/student/<name>`).
 * Links must open safely (`target="_blank"` + `rel="noopener noreferrer"`) for staff workflows.
 * Apply route links only for supported entities; unsupported entities must remain readable text, not broken links.

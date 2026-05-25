@@ -3,7 +3,9 @@
 		<header class="page-header">
 			<div class="page-header__intro">
 				<h1 class="type-h1 text-ink">{{ __('Admissions Inbox') }}</h1>
-				<p class="type-meta text-slate-token/80">{{ __('Lead and applicant communication queues') }}</p>
+				<p class="type-meta text-slate-token/80">
+					{{ __('Lead and applicant communication queues') }}
+				</p>
 			</div>
 			<div class="page-header__actions">
 				<p v-if="lastRefreshedLabel" class="type-caption text-slate-token/70">
@@ -115,9 +117,9 @@
 							</div>
 							<div class="inbox-row-card__pills">
 								<span class="inbox-pill inbox-pill--stage">{{ stageLabel(row.stage) }}</span>
-								<span v-if="row.needs_reply" class="inbox-pill inbox-pill--reply"
-									>{{ __('Needs reply') }}</span
-								>
+								<span v-if="row.needs_reply" class="inbox-pill inbox-pill--reply">{{
+									__('Needs reply')
+								}}</span>
 								<span v-if="row.unread_count" class="inbox-pill inbox-pill--unread">
 									{{ __('{0} unread', [row.unread_count]) }}
 								</span>
@@ -137,6 +139,16 @@
 
 						<footer class="inbox-row-card__footer">
 							<div class="inbox-row-card__footer-actions">
+								<button
+									v-if="canScheduleVisit(row)"
+									type="button"
+									:data-testid="`inbox-schedule-visit-${row.id}`"
+									class="if-button if-button--quiet"
+									@click="openScheduleVisit(row)"
+								>
+									<FeatherIcon name="calendar" class="h-4 w-4" />
+									<span>{{ __('Schedule Visit') }}</span>
+								</button>
 								<button
 									v-if="hasRowActions(row)"
 									type="button"
@@ -449,6 +461,30 @@
 			</header>
 
 			<div class="action-drawer__body">
+				<AdmissionsTimelinePanel
+					:timeline="selectedTimeline"
+					:loading="timelineLoading"
+					:error="timelineError"
+					@refresh="reloadSelectedTimeline"
+					@action="handleTimelineAction"
+					@open="openTimelineItem"
+				/>
+
+				<p
+					v-if="actionError && !activeActionId"
+					data-testid="admissions-inbox-action-error"
+					class="action-error"
+				>
+					{{ actionError }}
+				</p>
+				<p
+					v-if="actionSuccess && !activeActionId"
+					data-testid="admissions-inbox-action-success"
+					class="action-success"
+				>
+					{{ actionSuccess }}
+				</p>
+
 				<section class="action-choice-list" :aria-label="__('Available inbox actions')">
 					<button
 						v-for="action in selectedRowActionStates"
@@ -467,10 +503,9 @@
 
 				<p v-if="unsupportedActionLabels.length" class="action-drawer__note">
 					{{
-						__(
-							'Handled from the source record in this phase: {0}.',
-							[unsupportedActionLabels.join(', ')]
-						)
+						__('Handled from the source record in this phase: {0}.', [
+							unsupportedActionLabels.join(', '),
+						])
 					}}
 				</p>
 
@@ -504,7 +539,11 @@
 						</label>
 						<label class="action-field">
 							<span>{{ __('Outcome') }}</span>
-							<input v-model="actionForm.outcome" type="text" :placeholder="__('Optional outcome')" />
+							<input
+								v-model="actionForm.outcome"
+								type="text"
+								:placeholder="__('Optional outcome')"
+							/>
 						</label>
 						<label class="action-field">
 							<span>{{ __('Next Action On') }}</span>
@@ -512,7 +551,11 @@
 						</label>
 						<label class="action-field">
 							<span>{{ __('Note') }}</span>
-							<textarea v-model="actionForm.note" rows="4" :placeholder="__('Structured CRM note')" />
+							<textarea
+								v-model="actionForm.note"
+								rows="4"
+								:placeholder="__('Structured CRM note')"
+							/>
 						</label>
 					</template>
 
@@ -631,7 +674,11 @@
 						<div class="action-form__grid">
 							<label class="action-field">
 								<span>{{ __('Inquiry') }}</span>
-								<input v-model="actionForm.inquiry" type="text" :placeholder="__('Optional Inquiry')" />
+								<input
+									v-model="actionForm.inquiry"
+									type="text"
+									:placeholder="__('Optional Inquiry')"
+								/>
 							</label>
 							<label class="action-field">
 								<span>{{ __('Student Applicant') }}</span>
@@ -643,11 +690,19 @@
 							</label>
 							<label class="action-field">
 								<span>{{ __('Contact') }}</span>
-								<input v-model="actionForm.contact" type="text" :placeholder="__('Optional Contact')" />
+								<input
+									v-model="actionForm.contact"
+									type="text"
+									:placeholder="__('Optional Contact')"
+								/>
 							</label>
 							<label class="action-field">
 								<span>{{ __('Guardian') }}</span>
-								<input v-model="actionForm.guardian" type="text" :placeholder="__('Optional Guardian')" />
+								<input
+									v-model="actionForm.guardian"
+									type="text"
+									:placeholder="__('Optional Guardian')"
+								/>
 							</label>
 						</div>
 					</template>
@@ -684,6 +739,8 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { FeatherIcon } from 'frappe-ui';
 
+import AdmissionsTimelinePanel from '@/components/admissions/AdmissionsTimelinePanel.vue';
+import { useOverlayStack } from '@/composables/useOverlayStack';
 import {
 	archiveInquiryFromInbox,
 	assignAdmissionConversation,
@@ -701,6 +758,12 @@ import {
 	sendAdmissionsCaseMessageFromInbox,
 	updateAdmissionConversationStatus,
 } from '@/lib/services/admissions/admissionsInboxService';
+import { getAdmissionsTimelineContext } from '@/lib/services/admissions/admissionsTimelineService';
+import {
+	generateAdmissionsCockpitDepositInvoice,
+	getOrCreateAdmissionsCockpitOfferPlan,
+	promoteAdmissionsCockpitApplicant,
+} from '@/lib/admission';
 import { __ } from '@/lib/i18n';
 import { SIGNAL_ADMISSIONS_INBOX_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 import type {
@@ -711,6 +774,12 @@ import type {
 	AdmissionsInboxQueue,
 	AdmissionsInboxRow,
 } from '@/types/contracts/admissions_inbox/get_admissions_inbox_context';
+import type {
+	AdmissionsTimelineAction,
+	AdmissionsTimelineContext,
+	AdmissionsTimelineItem,
+	AdmissionsTimelineRequest,
+} from '@/types/contracts/admissions_timeline/get_admissions_timeline_context';
 
 const DEFAULT_LIMIT = 40;
 const SUPPORTED_ACTION_IDS = [
@@ -935,6 +1004,7 @@ const activityChannels: AdmissionCrmActivityChannel[] = [
 ];
 
 const context = ref<AdmissionsInboxContext | null>(null);
+const overlay = useOverlayStack();
 const loading = ref(false);
 const error = ref<string | null>(null);
 const activeQueueId = ref('needs_reply');
@@ -949,8 +1019,12 @@ const actionSuccess = ref<string | null>(null);
 const intakeSaving = ref(false);
 const intakeError = ref<string | null>(null);
 const intakeSuccess = ref<string | null>(null);
+const selectedTimeline = ref<AdmissionsTimelineContext | null>(null);
+const timelineLoading = ref(false);
+const timelineError = ref<string | null>(null);
 
 let refreshSequence = 0;
+let timelineSequence = 0;
 let disposeInboxInvalidate: (() => void) | null = null;
 
 const queues = computed<AdmissionsInboxQueue[]>(() => context.value?.queues || []);
@@ -1067,6 +1141,28 @@ function hasRowActions(row: AdmissionsInboxRow) {
 	return row.actions.length > 0;
 }
 
+function canScheduleVisit(row: AdmissionsInboxRow) {
+	return Boolean(row.conversation || row.inquiry || row.student_applicant || row.organization);
+}
+
+function openScheduleVisit(row: AdmissionsInboxRow) {
+	if (!canScheduleVisit(row)) {
+		error.value = __(
+			'A conversation, inquiry, applicant, or organization is required before scheduling a visit.'
+		);
+		return;
+	}
+
+	overlay.open('admissions-visit-schedule', {
+		conversation: row.conversation || null,
+		inquiry: row.inquiry || null,
+		studentApplicant: row.student_applicant || null,
+		organization: row.organization || null,
+		school: row.school || null,
+		visitorName: row.title || null,
+	});
+}
+
 function isSupportedActionId(actionId: string): actionId is SupportedActionId {
 	return SUPPORTED_ACTION_IDS.includes(actionId as SupportedActionId);
 }
@@ -1127,14 +1223,19 @@ function openActionDrawer(row: AdmissionsInboxRow) {
 	actionError.value = null;
 	actionSuccess.value = null;
 	activeActionId.value = rowActionStates(row).find(action => action.enabled)?.id || '';
+	void loadTimelineForRow(row);
 }
 
 function closeActionDrawer() {
+	timelineSequence += 1;
 	selectedRow.value = null;
 	activeActionId.value = '';
 	actionError.value = null;
 	actionSuccess.value = null;
 	actionSaving.value = false;
+	selectedTimeline.value = null;
+	timelineError.value = null;
+	timelineLoading.value = false;
 }
 
 function openIntakeDrawer() {
@@ -1157,6 +1258,208 @@ function selectAction(actionId: SupportedActionId) {
 	activeActionId.value = actionId;
 	actionError.value = null;
 	actionSuccess.value = null;
+}
+
+function timelineRequestForRow(row: AdmissionsInboxRow): AdmissionsTimelineRequest | null {
+	const studentApplicant = blankToNull(String(row.student_applicant || ''));
+	if (studentApplicant) {
+		return {
+			context_doctype: 'Student Applicant',
+			context_name: studentApplicant,
+			limit: 30,
+		};
+	}
+
+	const inquiry = blankToNull(String(row.inquiry || ''));
+	if (inquiry) {
+		return {
+			context_doctype: 'Inquiry',
+			context_name: inquiry,
+			limit: 30,
+		};
+	}
+
+	const conversation = blankToNull(String(row.conversation || ''));
+	if (conversation) {
+		return {
+			context_doctype: 'Admission Conversation',
+			context_name: conversation,
+			limit: 30,
+		};
+	}
+
+	return null;
+}
+
+async function loadTimelineForRow(row: AdmissionsInboxRow) {
+	const payload = timelineRequestForRow(row);
+	const sequence = ++timelineSequence;
+	selectedTimeline.value = null;
+	timelineError.value = null;
+
+	if (!payload) {
+		timelineError.value = __('Timeline unavailable: this Inbox item has no admissions context.');
+		timelineLoading.value = false;
+		return;
+	}
+
+	timelineLoading.value = true;
+	try {
+		const response = await getAdmissionsTimelineContext(payload);
+		if (sequence !== timelineSequence) return;
+		selectedTimeline.value = response;
+	} catch (err) {
+		if (sequence !== timelineSequence) return;
+		timelineError.value =
+			err instanceof Error
+				? err.message
+				: String(err || __('Could not load admissions timeline.'));
+	} finally {
+		if (sequence === timelineSequence) {
+			timelineLoading.value = false;
+		}
+	}
+}
+
+function reloadSelectedTimeline() {
+	const row = selectedRow.value;
+	if (!row) return;
+	void loadTimelineForRow(row);
+}
+
+function timelineActionToInboxAction(action: AdmissionsTimelineAction): SupportedActionId | '' {
+	const row = selectedRow.value;
+	if (!row) return '';
+
+	if (action.id === 'log_activity') return 'record_activity';
+	if (action.id === 'log_message') return 'log_message';
+	if (action.id === 'message_family') return 'reply_applicant_case';
+	if (action.id === 'invite_to_apply') return 'invite_to_apply';
+	if (action.id === 'archive') {
+		return row.conversation ? 'archive_conversation' : row.inquiry ? 'archive_inquiry' : '';
+	}
+
+	return '';
+}
+
+function timelineActionStudentApplicant(action: AdmissionsTimelineAction) {
+	const row = selectedRow.value;
+	const context = selectedTimeline.value?.context || null;
+	return blankToNull(
+		String(action.target || context?.student_applicant || row?.student_applicant || '')
+	);
+}
+
+function timelineActionEnrollmentPlan(action: AdmissionsTimelineAction) {
+	return blankToNull(String(action.target || ''));
+}
+
+function handleTimelineAction(action: AdmissionsTimelineAction) {
+	if (!action.enabled) {
+		actionError.value = action.disabled_reason || __('The server did not allow this action.');
+		return;
+	}
+
+	if (action.id === 'schedule_visit') {
+		const row = selectedRow.value;
+		if (!row) {
+			actionError.value = __('Select an Inbox item before scheduling a visit.');
+			return;
+		}
+		actionError.value = null;
+		openScheduleVisit(row);
+		return;
+	}
+
+	if (action.id === 'manage_offer' || action.id === 'check_deposit' || action.id === 'promote') {
+		void submitApplicantTimelineAction(action);
+		return;
+	}
+
+	const mappedAction = timelineActionToInboxAction(action);
+	if (!mappedAction) {
+		actionError.value = __(
+			'This contextual action is not available in the Inbox drawer yet. Open the source record to continue.'
+		);
+		return;
+	}
+
+	const state = selectedRowActionStates.value.find(rowAction => rowAction.id === mappedAction);
+	if (!state?.enabled) {
+		actionError.value =
+			state?.disabledReason ||
+			__(
+				'This action is blocked for the current admissions context. Refresh the Inbox and try again.'
+			);
+		return;
+	}
+
+	selectAction(mappedAction);
+}
+
+async function submitApplicantTimelineAction(action: AdmissionsTimelineAction) {
+	const row = selectedRow.value;
+	if (!row || actionSaving.value) {
+		return;
+	}
+
+	activeActionId.value = '';
+	actionForm.value = createActionForm(row);
+	actionError.value = null;
+	actionSuccess.value = null;
+	actionSaving.value = true;
+
+	try {
+		if (action.id === 'manage_offer') {
+			const studentApplicant = timelineActionStudentApplicant(action);
+			if (!studentApplicant) {
+				actionError.value = __('This action requires a linked Student Applicant.');
+				return;
+			}
+			await getOrCreateAdmissionsCockpitOfferPlan({
+				student_applicant: studentApplicant,
+			});
+			actionSuccess.value = __('Offer plan is ready. Refreshing drawer.');
+		} else if (action.id === 'check_deposit') {
+			const applicantEnrollmentPlan = timelineActionEnrollmentPlan(action);
+			if (!applicantEnrollmentPlan) {
+				actionError.value = __('This action requires an applicant enrollment plan.');
+				return;
+			}
+			await generateAdmissionsCockpitDepositInvoice({
+				applicant_enrollment_plan: applicantEnrollmentPlan,
+			});
+			actionSuccess.value = __('Deposit status updated. Refreshing drawer.');
+		} else if (action.id === 'promote') {
+			const studentApplicant = timelineActionStudentApplicant(action);
+			if (!studentApplicant) {
+				actionError.value = __('This action requires a linked Student Applicant.');
+				return;
+			}
+			await promoteAdmissionsCockpitApplicant({
+				student_applicant: studentApplicant,
+			});
+			actionSuccess.value = __('Applicant promoted. Refreshing drawer.');
+		}
+
+		if (!actionError.value) {
+			await refreshInbox('timeline action');
+			await loadTimelineForRow(row);
+		}
+	} catch (err) {
+		actionError.value = err instanceof Error ? err.message : String(err || __('Action failed.'));
+	} finally {
+		actionSaving.value = false;
+	}
+}
+
+function openTimelineItem(item: AdmissionsTimelineItem) {
+	const url = String(item.open_url || '').trim();
+	if (!url || url.startsWith('/private/')) {
+		actionError.value = __('Open unavailable: no permitted destination returned.');
+		return;
+	}
+	window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 function isLogAction(actionId: SupportedActionId | '') {
@@ -1633,6 +1936,7 @@ async function submitInviteInquiry(row: AdmissionsInboxRow) {
 
 function onInboxInvalidated() {
 	refreshInbox('signal');
+	reloadSelectedTimeline();
 }
 
 onMounted(() => {

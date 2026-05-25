@@ -53,6 +53,10 @@ Current implementation resolves employees from:
 
 …and writes Employee Booking rows.
 
+Admission Visit uses this School Event projection deliberately: the visit lead and
+additional visit staff become School Event participants and are booked. Informed
+users remain on the Admission Visit only and do not create Employee Booking rows.
+
 ---
 
 ## 2. Canonical overlap predicate

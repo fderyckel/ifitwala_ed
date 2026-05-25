@@ -42,22 +42,10 @@ def _coerce_date(value):
 
 def _format_age_part(value: int, unit: str) -> str:
     if unit == "year":
-        return (
-            _("{count} year").format(count=value)
-            if value == 1
-            else _("{count} years").format(count=value)
-        )
+        return _("{count} year").format(count=value) if value == 1 else _("{count} years").format(count=value)
     if unit == "month":
-        return (
-            _("{count} month").format(count=value)
-            if value == 1
-            else _("{count} months").format(count=value)
-        )
-    return (
-        _("{count} day").format(count=value)
-        if value == 1
-        else _("{count} days").format(count=value)
-    )
+        return _("{count} month").format(count=value) if value == 1 else _("{count} months").format(count=value)
+    return _("{count} day").format(count=value) if value == 1 else _("{count} days").format(count=value)
 
 
 def get_student_age_years(student_date_of_birth, reference_date=None) -> int | None:
@@ -65,9 +53,7 @@ def get_student_age_years(student_date_of_birth, reference_date=None) -> int | N
     reference = _coerce_date(reference_date) or getdate(today())
     if not birthdate or birthdate > reference:
         return None
-    years = reference.year - birthdate.year - (
-        (reference.month, reference.day) < (birthdate.month, birthdate.day)
-    )
+    years = reference.year - birthdate.year - ((reference.month, reference.day) < (birthdate.month, birthdate.day))
     return max(years, 0)
 
 

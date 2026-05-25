@@ -216,6 +216,9 @@ Agents MUST NOT invent field names.
 - Never change DocType metadata `.json` or server-side production logic solely to make a test pass.
 - If a test is failing because of setup, fixtures, naming, or isolation, fix the test or fixture first.
 - Any DocType metadata `.json` change requires explicit user approval before editing.
+- Frappe DocTypes are package-owned runtime objects, not just JSON metadata. Every DocType folder, including child tables, must include `__init__.py`, the DocType `.json`, and a matching `.py` controller with the exact PascalCase class inheriting from the correct Frappe controller base.
+- Do not introduce app module names that collide with Frappe or ERPNext core modules. In particular, Ifitwala Ed must not claim a `Contacts` module, because Frappe core owns native `Contact`, `Address`, `Contact Email`, and related DocTypes there.
+- When `bench migrate` reports orphaned DocTypes, check both the full DocType package shape/controller class and module ownership/collision before blaming deploy scripts or assuming the JSON file alone is sufficient.
 
 Allowed sources:
 

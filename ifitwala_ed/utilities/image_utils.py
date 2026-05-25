@@ -767,6 +767,33 @@ def get_preferred_employee_avatar_url(
     )
 
 
+def get_employee_user_avatar_url(
+    employee_name: str | None,
+    *,
+    original_url: str | None = None,
+) -> str | None:
+    resolved_employee = str(employee_name or "").strip()
+    if not resolved_employee:
+        return None
+
+    current_file_doc = _get_current_governed_profile_file(
+        primary_subject_type="Employee",
+        subject_name=resolved_employee,
+    )
+    if not current_file_doc:
+        return None
+
+    get_employee_image_variants_map(
+        [resolved_employee],
+        slots=EMPLOYEE_AVATAR_VARIANT_SLOTS,
+        request_missing_derivatives=True,
+    )
+
+    from ifitwala_ed.api.file_access import build_employee_user_avatar_url
+
+    return build_employee_user_avatar_url(resolved_employee)
+
+
 def build_employee_image_variants(
     employee_name: str | None,
     original_url: str | None = None,
@@ -1044,6 +1071,144 @@ def _sync_student_profile_image_field(*, student_name: str, file_url: str | None
         resolved_url,
         update_modified=False,
     )
+
+
+def _sync_employee_profile_image_field(*, employee_name: str, file_url: str | None) -> None:
+    resolved_employee = str(employee_name or "").strip()
+    resolved_url = str(file_url or "").strip()
+    if not resolved_employee or not resolved_url:
+        return
+
+    frappe.db.set_value(
+        "Employee",
+        resolved_employee,
+        "employee_image",
+        resolved_url,
+        update_modified=False,
+    )
+
+
+def ensure_employee_profile_image(
+    employee_name: str | None,
+    *,
+    original_url: str | None = None,
+    source_file_name: str | None = None,
+    upload_source: str = "API",
+) -> str | None:
+    resolved_employee = str(employee_name or "").strip()
+    if not resolved_employee:
+        return None
+
+    employee_doc = None
+
+    def load_employee_doc():
+        nonlocal employee_doc
+        if employee_doc is None:
+            employee_doc = frappe.get_doc("Employee", resolved_employee)
+        return employee_doc
+
+    current_file_doc = _get_current_governed_profile_file(
+        primary_subject_type="Employee",
+        subject_name=resolved_employee,
+    )
+
+    if current_file_doc:
+        _sync_employee_profile_image_field(
+            employee_name=resolved_employee,
+            file_url=current_file_doc.file_url,
+        )
+        return current_file_doc.file_url
+
+    loaded_employee_doc = load_employee_doc()
+
+    from ifitwala_drive.api.media import upload_employee_image
+
+    from ifitwala_ed.integrations.drive.content_uploads import upload_content_via_drive
+    from ifitwala_ed.integrations.drive.media import build_employee_image_contract
+
+    build_employee_image_contract(loaded_employee_doc)
+
+    source_file_doc = None
+    resolved_source_file_name = str(source_file_name or "").strip()
+    if resolved_source_file_name and frappe.db.exists("File", resolved_source_file_name):
+        source_file_doc = frappe.get_doc("File", resolved_source_file_name)
+    else:
+        raw_url = str(original_url or "").strip()
+        if not raw_url:
+            raw_url = str(getattr(loaded_employee_doc, "employee_image", "") or "").strip()
+
+        employee_file_filters = {
+            "attached_to_doctype": "Employee",
+            "attached_to_name": resolved_employee,
+            "attached_to_field": "employee_image",
+        }
+        if raw_url:
+            employee_file_filters["file_url"] = raw_url
+
+        employee_matches = frappe.get_all(
+            "File",
+            filters=employee_file_filters,
+            fields=["name"],
+            limit=2,
+        )
+        if len(employee_matches) == 1:
+            source_file_doc = frappe.get_doc("File", employee_matches[0]["name"])
+
+        if raw_url:
+            if not source_file_doc:
+                source_file_doc = _resolve_unique_file_doc_by_url(raw_url)
+            if not source_file_doc:
+                employee_matches = frappe.get_all(
+                    "File",
+                    filters={
+                        "attached_to_doctype": "Employee",
+                        "attached_to_name": resolved_employee,
+                        "file_url": raw_url,
+                    },
+                    fields=["name"],
+                    limit=2,
+                )
+                if len(employee_matches) == 1:
+                    source_file_doc = frappe.get_doc("File", employee_matches[0]["name"])
+
+    if not source_file_doc:
+        return None
+
+    content = _read_managed_file_bytes(source_file_doc, log_label="Employee")
+    if not content:
+        frappe.log_error(
+            frappe.as_json(
+                {
+                    "error": "employee_profile_image_source_unreadable",
+                    "employee": resolved_employee,
+                    "source_file": source_file_doc.name,
+                    "source_file_url": source_file_doc.file_url,
+                },
+                indent=2,
+            ),
+            "Employee Profile Image Sync Failed",
+        )
+        return None
+
+    filename = (source_file_doc.file_name or "").strip() or os.path.basename(
+        source_file_doc.file_url or "employee_profile_image"
+    )
+    session_response, finalize_response, current_file_doc = upload_content_via_drive(
+        create_session_callable=upload_employee_image,
+        session_payload={
+            "employee": loaded_employee_doc.name,
+            "upload_source": upload_source,
+        },
+        file_name=filename,
+        content=content,
+    )
+    del session_response, finalize_response
+
+    _sync_employee_profile_image_field(
+        employee_name=resolved_employee,
+        file_url=current_file_doc.file_url,
+    )
+    return current_file_doc.file_url
 
 
 def ensure_student_profile_image(

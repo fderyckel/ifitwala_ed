@@ -59,6 +59,62 @@ def _apply_module_specs(modules: dict[str, object]) -> None:
             module_obj.__package__ = module_name if is_package else module_name.rpartition(".")[0]
 
 
+def _is_stub_frappe_module(value: object) -> bool:
+    return (
+        isinstance(value, types.ModuleType)
+        and value.__name__ == "frappe"
+        and getattr(value, "ValidationError", None) is StubValidationError
+        and getattr(value, "PermissionError", None) is StubPermissionError
+    )
+
+
+def _is_stub_document_class(value: object) -> bool:
+    return (
+        isinstance(value, type)
+        and value.__name__ == "Document"
+        and value.__qualname__ == "stubbed_frappe.<locals>.Document"
+        and value.__module__ == __name__
+    )
+
+
+def _module_uses_stubbed_frappe(module_obj: object) -> bool:
+    if not isinstance(module_obj, types.ModuleType):
+        return False
+    if _is_stub_frappe_module(module_obj):
+        return True
+
+    for value in vars(module_obj).values():
+        if _is_stub_frappe_module(value) or _is_stub_document_class(value):
+            return True
+        if isinstance(value, type) and any(_is_stub_document_class(base) for base in value.__mro__):
+            return True
+    return False
+
+
+def _remove_module_reference(module_name: str) -> None:
+    module_obj = sys.modules.get(module_name)
+    parent_name, _, attr_name = module_name.rpartition(".")
+    if module_obj is not None and parent_name and attr_name:
+        parent_module = sys.modules.get(parent_name)
+        if parent_module is not None and getattr(parent_module, attr_name, _MISSING) is module_obj:
+            delattr(parent_module, attr_name)
+    sys.modules.pop(module_name, None)
+
+
+def _module_name_matches_prefixes(module_name: str, prefixes: set[str]) -> bool:
+    return any(module_name == prefix or module_name.startswith(f"{prefix}.") for prefix in prefixes)
+
+
+def _purge_stub_bound_modules(prefixes: set[str]) -> None:
+    stub_bound_module_names = [
+        module_name
+        for module_name, module_obj in sys.modules.items()
+        if _module_name_matches_prefixes(module_name, prefixes) and _module_uses_stubbed_frappe(module_obj)
+    ]
+    for module_name in sorted(stub_bound_module_names, key=len, reverse=True):
+        _remove_module_reference(module_name)
+
+
 @contextmanager
 def stubbed_frappe(extra_modules: dict[str, object] | None = None) -> Iterator[types.ModuleType]:
     frappe = types.ModuleType("frappe")
@@ -114,6 +170,7 @@ def stubbed_frappe(extra_modules: dict[str, object] | None = None) -> Iterator[t
     cleanup_prefixes = {
         module_name.split(".", 1)[0] for module_name in modules if module_name and module_name.split(".", 1)[0]
     }
+    cleanup_prefixes.add("ifitwala_ed")
 
     restored_package_attrs: list[tuple[object, str, object, bool]] = []
     imported_modules: list[tuple[str, object, object | None, str | None, object, bool]] = []
@@ -158,16 +215,14 @@ def stubbed_frappe(extra_modules: dict[str, object] | None = None) -> Iterator[t
                 module_name
                 for module_name in sys.modules
                 if module_name not in preexisting_module_names
-                and any(module_name == prefix or module_name.startswith(f"{prefix}.") for prefix in cleanup_prefixes)
+                and _module_name_matches_prefixes(module_name, cleanup_prefixes)
             ]
             for module_name in sorted(leaked_module_names, key=len, reverse=True):
-                leaked_module = sys.modules.get(module_name)
-                parent_name, _, attr_name = module_name.rpartition(".")
-                if leaked_module is not None and parent_name and attr_name:
-                    parent_module = sys.modules.get(parent_name)
-                    if parent_module is not None and getattr(parent_module, attr_name, _MISSING) is leaked_module:
-                        delattr(parent_module, attr_name)
-                sys.modules.pop(module_name, None)
+                _remove_module_reference(module_name)
+
+            _purge_stub_bound_modules(cleanup_prefixes)
+
+    _purge_stub_bound_modules(cleanup_prefixes)
 
 
 def import_fresh(module_name: str):

@@ -15,11 +15,13 @@ from frappe.utils import cint, escape_html, get_datetime, now_datetime
 from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
     ensure_admissions_permission,
+    is_school_available_for_public_inquiry,
     notify_admission_manager,
     set_inquiry_deadlines,
     update_sla_status,
 )
 from ifitwala_ed.admission.inquiry_acknowledgement import queue_inquiry_family_acknowledgement
+from ifitwala_ed.contacts.contact_privacy import get_existing_contact_for_inquiry_reuse
 
 CANONICAL_INQUIRY_STATES = {"New", "Assigned", "Contacted", "Qualified", "Archived"}
 
@@ -64,26 +66,7 @@ class Inquiry(Document):
         if not frappe.flags.in_web_form or not self.school:
             return
 
-        school_row = frappe.db.get_value(
-            "School",
-            self.school,
-            ["show_in_inquiry", "organization"],
-            as_dict=True,
-        )
-        if not school_row or not int(school_row.get("show_in_inquiry") or 0):
-            frappe.throw(_("Selected School is not available for public inquiries."))
-
-        organization_row = frappe.db.get_value(
-            "Organization",
-            school_row.get("organization"),
-            ["get_inquiry", "archived"],
-            as_dict=True,
-        )
-        if (
-            not organization_row
-            or not int(organization_row.get("get_inquiry") or 0)
-            or int(organization_row.get("archived") or 0)
-        ):
+        if not is_school_available_for_public_inquiry(self.school, self.organization):
             frappe.throw(_("Selected School is not available for public inquiries."))
 
     def _validate_state_change(self):
@@ -314,19 +297,19 @@ class Inquiry(Document):
 
     @frappe.whitelist()
     def create_contact_from_inquiry(self):
+        self._ensure_contact_action_permission()
+
         if self.contact:
             frappe.msgprint(_("This Inquiry is already linked to Contact: {contact}").format(contact=self.contact))
             return
 
-        # Check for existing email or phone match
-        existing_contact = None
-        if self.email:
-            existing_contact = frappe.db.get_value("Contact Email", {"email_id": self.email, "is_primary": 1}, "parent")
-
-        if not existing_contact and self.phone_number:
-            existing_contact = frappe.db.get_value(
-                "Contact Phone", {"phone": self.phone_number, "is_primary_mobile_no": 1}, "parent"
-            )
+        existing_contact = get_existing_contact_for_inquiry_reuse(
+            email=self.email,
+            phone=self.phone_number,
+            purpose="inquiry_contact_reuse",
+            subject_doctype="Inquiry",
+            subject_name=self.name,
+        )
 
         if existing_contact:
             self.contact = existing_contact

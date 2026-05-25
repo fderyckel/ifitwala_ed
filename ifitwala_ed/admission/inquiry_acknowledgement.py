@@ -19,6 +19,18 @@ from ifitwala_ed.website.utils import validate_cta_link
 ACK_PROFILE_DOCTYPE = "Admission Acknowledgement Profile"
 INQUIRY_DOCTYPE = "Inquiry"
 AUTHENTICATED_ADMISSIONS_PORTAL_ROUTE = "/admissions"
+INQUIRY_TYPE_ADMISSION = "Admission"
+INQUIRY_TYPE_CURRENT_FAMILY = "Current Family"
+INQUIRY_TYPE_GENERAL = "General Inquiry"
+INQUIRY_TYPE_PARTNERSHIP = "Partnership / Agent"
+INQUIRY_TYPE_OTHER = "Other"
+PUBLIC_ACKNOWLEDGEMENT_INQUIRY_TYPES = {
+    INQUIRY_TYPE_ADMISSION,
+    INQUIRY_TYPE_CURRENT_FAMILY,
+    INQUIRY_TYPE_GENERAL,
+    INQUIRY_TYPE_PARTNERSHIP,
+    INQUIRY_TYPE_OTHER,
+}
 
 PROFILE_FIELDS = [
     "name",
@@ -96,11 +108,12 @@ def send_inquiry_family_acknowledgement(inquiry_name: str) -> dict:
         school=inquiry.get("school"),
         type_of_inquiry=inquiry.get("type_of_inquiry"),
     )
+    profile_for_email = profile if _is_admission_inquiry_type(inquiry.get("type_of_inquiry")) else None
 
     try:
         subject, message = _render_acknowledgement_email(
             inquiry=inquiry,
-            profile=profile,
+            profile=profile_for_email,
             acknowledgement=acknowledgement,
         )
         frappe.sendmail(
@@ -127,27 +140,31 @@ def build_public_acknowledgement_context(
     school_row = _get_school_row(school)
     organization_row = _get_organization_row(_resolve_organization(organization=organization, school_row=school_row))
     brand = _build_brand_context(school_row=school_row, organization_row=organization_row)
+    variant = _build_acknowledgement_variant(type_of_inquiry=type_of_inquiry)
+    allow_profile_copy = _is_admission_inquiry_type(type_of_inquiry)
 
     ctas = []
-    visit_cta = _build_visit_cta(profile=profile, school_row=school_row)
-    if visit_cta:
-        ctas.append(visit_cta)
+    if variant["allow_admission_ctas"]:
+        visit_cta = _build_visit_cta(profile=profile, school_row=school_row)
+        if visit_cta:
+            ctas.append(visit_cta)
 
-    application_cta = _build_application_cta(profile=profile)
-    if application_cta:
-        ctas.append(application_cta)
+        application_cta = _build_application_cta(profile=profile)
+        if application_cta:
+            ctas.append(application_cta)
 
     return {
         "brand": brand,
-        "title": _profile_value(profile, "thank_you_title", _("Inquiry received")),
-        "message": _profile_value(
+        "title": _profile_value(profile, "thank_you_title", variant["title"], allow_profile=allow_profile_copy),
+        "message": _profile_value(profile, "thank_you_message", variant["message"], allow_profile=allow_profile_copy),
+        "timeline_intro": _profile_value(
             profile,
-            "thank_you_message",
-            _("Thank you for contacting us. Our admissions team will review your inquiry and get back to you soon."),
+            "timeline_intro",
+            _("What happens next"),
+            allow_profile=allow_profile_copy,
         ),
-        "timeline_intro": _profile_value(profile, "timeline_intro", _("What happens next")),
-        "timeline": _build_timeline(type_of_inquiry=type_of_inquiry),
-        "footer_note": _profile_value(profile, "footer_note", ""),
+        "timeline": variant["timeline"],
+        "footer_note": _profile_value(profile, "footer_note", "", allow_profile=allow_profile_copy),
         "ctas": ctas,
     }
 
@@ -297,38 +314,183 @@ def _resolve_public_logo(*, file_name: str | None, file_url: str | None) -> str:
         return ""
 
 
-def _profile_value(profile: dict | None, fieldname: str, fallback: str) -> str:
+def _profile_value(profile: dict | None, fieldname: str, fallback: str, *, allow_profile: bool = True) -> str:
+    if not allow_profile:
+        return fallback
+
     value = ""
     if profile:
         value = (profile.get(fieldname) or "").strip()
     return value or fallback
 
 
-def _build_timeline(*, type_of_inquiry: str | None) -> list[dict]:
-    is_admission = (type_of_inquiry or "").strip() == "Admission"
-    final_description = (
-        _("If the next step is an application, admissions staff will send the correct application path.")
-        if is_admission
-        else _("The right team will follow up with the next step for your request.")
-    )
-    return [
-        {
-            "label": _("Inquiry received"),
-            "description": _("Your message is now in the admissions inbox."),
-        },
-        {
-            "label": _("Admissions review"),
-            "description": _("The team checks the school context, student details, and preferred contact channel."),
-        },
-        {
-            "label": _("Family follow-up"),
-            "description": _("A staff member replies with the next practical action."),
-        },
-        {
-            "label": _("Next step"),
-            "description": final_description,
-        },
-    ]
+def _normalize_public_inquiry_type(type_of_inquiry: str | None) -> str:
+    value = (type_of_inquiry or "").strip()
+    if value in PUBLIC_ACKNOWLEDGEMENT_INQUIRY_TYPES:
+        return value
+    return INQUIRY_TYPE_GENERAL
+
+
+def _is_admission_inquiry_type(type_of_inquiry: str | None) -> bool:
+    return _normalize_public_inquiry_type(type_of_inquiry) == INQUIRY_TYPE_ADMISSION
+
+
+def _build_acknowledgement_variant(*, type_of_inquiry: str | None) -> dict:
+    normalized_type = _normalize_public_inquiry_type(type_of_inquiry)
+
+    if normalized_type == INQUIRY_TYPE_ADMISSION:
+        return {
+            "type_of_inquiry": normalized_type,
+            "allow_admission_ctas": True,
+            "title": _("Inquiry received"),
+            "message": _(
+                "Thank you for contacting us. Our admissions team will review your inquiry and get back to you soon."
+            ),
+            "email_followup": _("A member of the admissions team will contact you with the next practical step."),
+            "timeline": [
+                {
+                    "label": _("Inquiry received"),
+                    "description": _("Your message is now in the admissions inbox."),
+                },
+                {
+                    "label": _("Admissions review"),
+                    "description": _(
+                        "The team checks the school context, student details, and preferred contact channel."
+                    ),
+                },
+                {
+                    "label": _("Family follow-up"),
+                    "description": _("A staff member replies with the next practical action."),
+                },
+                {
+                    "label": _("Next step"),
+                    "description": _(
+                        "If the next step is an application, admissions staff will send the correct application path."
+                    ),
+                },
+            ],
+        }
+
+    if normalized_type == INQUIRY_TYPE_CURRENT_FAMILY:
+        return {
+            "type_of_inquiry": normalized_type,
+            "allow_admission_ctas": False,
+            "title": _("Inquiry received"),
+            "message": _(
+                "Thank you for contacting us. We will route your message to the appropriate school team and they will follow up through your preferred contact channel."
+            ),
+            "email_followup": _(
+                "The appropriate school team will review your message and follow up through your preferred contact channel."
+            ),
+            "timeline": [
+                {
+                    "label": _("Message received"),
+                    "description": _("Your message has been received by the school team."),
+                },
+                {
+                    "label": _("School context checked"),
+                    "description": _("The team checks the school context and any student details you shared."),
+                },
+                {
+                    "label": _("Routed to the right team"),
+                    "description": _("Your message is forwarded to the staff member or office best placed to help."),
+                },
+                {
+                    "label": _("Team follow-up"),
+                    "description": _("The appropriate team follows up through your preferred contact channel."),
+                },
+            ],
+        }
+
+    if normalized_type == INQUIRY_TYPE_PARTNERSHIP:
+        return {
+            "type_of_inquiry": normalized_type,
+            "allow_admission_ctas": False,
+            "title": _("Inquiry received"),
+            "message": _(
+                "Thank you for contacting us. We will review the organization and partnership details, then route the inquiry to the appropriate person."
+            ),
+            "email_followup": _(
+                "The appropriate person will review the partnership context and follow up when there is a practical next step."
+            ),
+            "timeline": [
+                {
+                    "label": _("Partnership inquiry received"),
+                    "description": _("Your partnership or agent inquiry has been received."),
+                },
+                {
+                    "label": _("Context reviewed"),
+                    "description": _("The team reviews the organization details and partnership context you shared."),
+                },
+                {
+                    "label": _("Routed to the right owner"),
+                    "description": _("The inquiry is forwarded to the person best placed to assess the request."),
+                },
+                {
+                    "label": _("Next conversation"),
+                    "description": _(
+                        "The appropriate person follows up if there is a fit or a useful next discussion."
+                    ),
+                },
+            ],
+        }
+
+    if normalized_type == INQUIRY_TYPE_OTHER:
+        return {
+            "type_of_inquiry": normalized_type,
+            "allow_admission_ctas": False,
+            "title": _("Inquiry received"),
+            "message": _(
+                "Thank you for contacting us. We will review your message and forward it to the appropriate team or person."
+            ),
+            "email_followup": _("The appropriate team or person will follow up if a response is needed."),
+            "timeline": [
+                {
+                    "label": _("Message received"),
+                    "description": _("Your message has been received."),
+                },
+                {
+                    "label": _("Triage review"),
+                    "description": _("The team reviews your message to understand who should handle it."),
+                },
+                {
+                    "label": _("Routed internally"),
+                    "description": _("Your message is forwarded to the appropriate team or person."),
+                },
+                {
+                    "label": _("Appropriate follow-up"),
+                    "description": _("The right team follows up if a response is needed."),
+                },
+            ],
+        }
+
+    return {
+        "type_of_inquiry": normalized_type,
+        "allow_admission_ctas": False,
+        "title": _("Inquiry received"),
+        "message": _(
+            "Thank you for contacting us. We will review your question and forward it to the team best placed to respond."
+        ),
+        "email_followup": _("The team best placed to respond will follow up if a response is needed."),
+        "timeline": [
+            {
+                "label": _("Inquiry received"),
+                "description": _("Your question has been received."),
+            },
+            {
+                "label": _("Request reviewed"),
+                "description": _("The team reviews your question and the context you shared."),
+            },
+            {
+                "label": _("Forwarded internally"),
+                "description": _("Your inquiry is forwarded to the team best placed to respond."),
+            },
+            {
+                "label": _("Follow-up if needed"),
+                "description": _("The right team follows up when there is a useful next step or response."),
+            },
+        ],
+    }
 
 
 def _safe_cta_link(route: str | None) -> str:
@@ -376,7 +538,17 @@ def _render_acknowledgement_email(*, inquiry, profile: dict | None, acknowledgem
         email_template = frappe.get_doc("Email Template", profile.get("email_template"))
         context = _email_template_context(inquiry=inquiry, profile=profile, acknowledgement=acknowledgement)
         subject = frappe.render_template(email_template.subject or "", context)
-        message = frappe.render_template(email_template.response_ or "", context)
+        template_body = (
+            (
+                email_template.get("response_html")
+                if cint(email_template.get("use_html"))
+                else email_template.get("response")
+            )
+            or email_template.get("response")
+            or email_template.get("response_html")
+            or ""
+        )
+        message = frappe.render_template(template_body, context)
         if message:
             return subject or _("We received your inquiry"), message
         fallback_subject, fallback_message = _render_acknowledgement_email(
@@ -386,9 +558,10 @@ def _render_acknowledgement_email(*, inquiry, profile: dict | None, acknowledgem
         )
         return subject or fallback_subject, fallback_message
 
-    brand_name = ((acknowledgement.get("brand") or {}).get("name") or _("our school")).strip()
+    brand_name = ((acknowledgement.get("brand") or {}).get("name") or _("us")).strip()
     first_name = (inquiry.get("first_name") or "").strip()
     greeting = _("Hello {first_name},").format(first_name=first_name) if first_name else _("Hello,")
+    variant = _build_acknowledgement_variant(type_of_inquiry=inquiry.get("type_of_inquiry"))
     subject = _("We received your inquiry")
     message = "\n\n".join(
         [
@@ -396,7 +569,7 @@ def _render_acknowledgement_email(*, inquiry, profile: dict | None, acknowledgem
             _("Thank you for contacting {brand_name}. We received your inquiry and will review it shortly.").format(
                 brand_name=brand_name
             ),
-            _("A member of the admissions team will contact you with the next practical step."),
+            variant["email_followup"],
         ]
     )
     return subject, message

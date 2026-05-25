@@ -233,18 +233,21 @@ Do NOT write for:
 
 ### 10.3 Document Structure
 
-Every `docs_md` DocType document should follow this structure:
+Every `docs_md` DocType document should follow this user-first structure unless the DocType clearly needs a small variation:
 
-1. **Opening Hook** — What is this? Why does it matter? (1-2 paragraphs)
-2. **Why This Matters** — Bullet points explaining practical value
-3. **Creating/Using [DocType]** — Step-by-step practical guide
-4. **Field Reference** — Table explaining what each field does, with tips
-5. **Where You'll Use This** — Real workflows and scenarios
-6. **Permissions: Who Can Do What** — Second-level section (##) with role table
-7. **Best Practices** — Actionable advice for different scenarios
-8. **Common Questions** — FAQ format addressing likely confusion points
-9. **Related Docs** — Links to connected features
-10. **Technical Notes (IT)** — Final section for system administrators
+1. **What Is/Are [DocType]?** — Opening hook in plain language: what this is, why it matters, and who uses it (1-2 paragraphs)
+2. **Why This Matters** — Bullet points explaining practical value and product outcomes
+3. **Before You Create/Use/Change This** — prerequisites, policy decisions, and setup context
+4. **Settings/Fields You Control** — table explaining what each visible field or setting does, with user-facing tips
+5. **How This Fits the Workflow** — practical lifecycle or cross-DocType flow, preferably with `<Steps>` when useful
+6. **Permission Matrix** — second-level section (`## Permission Matrix`) with role table and plain-language access summary
+7. **Practical Examples** — real scenarios that help users imagine the feature in their school
+8. **Best Practices** — actionable advice, preferably with `<DoDont>` when useful
+9. **Common Questions** — FAQ format addressing likely confusion points
+10. **Related Docs** — links to connected features with `<RelatedDocs>`
+11. **Technical Notes (IT)** — final section for implementation detail, field names, code refs, hooks, caches, jobs, and system-admin nuance
+
+For small child-table or technical support DocTypes, keep the same reader journey but compress sections rather than moving technical detail to the top.
 
 ### 10.4 Key Content Elements
 
@@ -276,7 +279,17 @@ Include:
 
 ### 10.6 Reference Document
 
-See `organization.md` as the canonical example of this style:
+See `admission-settings.md` as the canonical template for the current `docs_md` reader journey:
+- user-first opening before any implementation contract
+- "Why This Matters" before field details
+- practical setup/change guidance
+- field/settings table in plain language
+- workflow explanation with `<Steps>`
+- `## Permission Matrix` as section 6
+- examples, best practices, and FAQ before related docs
+- technical implementation details relegated to the final section
+
+See `organization.md` as a strong example of the same tone for broader setup pages:
 - Conversational tone throughout
 - "Why Ifitwala Ed is different" callouts
 - Step-by-step creation guide
@@ -285,7 +298,7 @@ See `organization.md` as the canonical example of this style:
 - Permission section as `##` (second level)
 - Technical details relegated to final section
 
-When writing or rewriting any `docs_md` file, use `organization.md` as your style reference.
+When writing or rewriting any `docs_md` file, use `admission-settings.md` for structure and `organization.md` for tone and depth.
 
 ---
 

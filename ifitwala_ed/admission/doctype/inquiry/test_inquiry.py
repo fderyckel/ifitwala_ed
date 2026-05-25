@@ -13,8 +13,9 @@ from ifitwala_ed.admission.admission_utils import (
     _validate_inquiry_assignee_scope,
     from_inquiry_invite,
     get_inquiry_assignees,
+    is_school_available_for_public_inquiry,
 )
-from ifitwala_ed.api.inquiry import get_zero_lost_lead_context
+from ifitwala_ed.api.inquiry import get_zero_lost_lead_context, inquiry_school_link_query
 from ifitwala_ed.tests.factories.users import make_user
 
 
@@ -75,6 +76,9 @@ class TestInquiry(FrappeTestCase):
         self.assertEqual(frappe.db.get_value("Inquiry", doc.name, "source"), "Website")
         mocked_queue.assert_called_once()
 
+    def test_public_inquiry_school_availability_helper_is_importable(self):
+        self.assertFalse(is_school_available_for_public_inquiry(None))
+
     def test_web_form_inquiry_rejects_school_hidden_from_inquiry_picker(self):
         organization = self._make_organization("Web Form Inquiry")
         frappe.db.set_value("Organization", organization, "get_inquiry", 1, update_modified=False)
@@ -99,6 +103,68 @@ class TestInquiry(FrappeTestCase):
                 doc.insert(ignore_permissions=True)
         finally:
             frappe.flags.in_web_form = previous
+
+    def test_public_inquiry_school_query_uses_selected_organization_descendants(self):
+        parent_org = self._make_organization("Public Inquiry Parent", is_group=1)
+        child_org = self._make_organization("Public Inquiry Child", parent=parent_org)
+        sibling_org = self._make_organization("Public Inquiry Sibling")
+        frappe.db.set_value("Organization", parent_org, "get_inquiry", 1, update_modified=False)
+        frappe.db.set_value("Organization", sibling_org, "get_inquiry", 1, update_modified=False)
+
+        descendant_school = self._make_school(
+            child_org,
+            "Visible Descendant Inquiry School",
+            show_in_inquiry=1,
+        )
+        hidden_descendant_school = self._make_school(
+            child_org,
+            "Hidden Descendant Inquiry School",
+            show_in_inquiry=0,
+        )
+        sibling_school = self._make_school(
+            sibling_org,
+            "Visible Sibling Inquiry School",
+            show_in_inquiry=1,
+        )
+
+        rows = inquiry_school_link_query(txt="Inquiry School", filters={"organization": parent_org})
+        names = {row[0] for row in rows}
+
+        self.assertIn(descendant_school, names)
+        self.assertNotIn(hidden_descendant_school, names)
+        self.assertNotIn(sibling_school, names)
+
+    def test_web_form_inquiry_accepts_school_under_selected_parent_organization(self):
+        parent_org = self._make_organization("Web Parent Inquiry", is_group=1)
+        child_org = self._make_organization("Web Child Inquiry", parent=parent_org)
+        frappe.db.set_value("Organization", parent_org, "get_inquiry", 1, update_modified=False)
+        school = self._make_school(child_org, "Visible Child Web Inquiry School", show_in_inquiry=1)
+
+        previous = getattr(frappe.flags, "in_web_form", None)
+        frappe.flags.in_web_form = True
+        try:
+            with patch(
+                "ifitwala_ed.admission.doctype.inquiry.inquiry.queue_inquiry_family_acknowledgement"
+            ) as mocked_queue:
+                doc = frappe.get_doc(
+                    {
+                        "doctype": "Inquiry",
+                        "first_name": "Web",
+                        "last_name": "Child",
+                        "email": f"child-web-{frappe.generate_hash(length=8)}@example.com",
+                        "type_of_inquiry": "Admission",
+                        "organization": parent_org,
+                        "school": school,
+                        "message": "We would like to learn more.",
+                    }
+                )
+                doc.insert(ignore_permissions=True)
+        finally:
+            frappe.flags.in_web_form = previous
+
+        self.assertEqual(frappe.db.get_value("Inquiry", doc.name, "school"), school)
+        self.assertEqual(frappe.db.get_value("Inquiry", doc.name, "organization"), parent_org)
+        mocked_queue.assert_called_once()
 
     def test_insert_legacy_new_inquiry_state_is_rejected(self):
         doc = frappe.get_doc(
@@ -412,6 +478,59 @@ class TestInquiry(FrappeTestCase):
                 inquiry.mark_contacted(complete_todo=0)
         finally:
             frappe.set_user(previous_user)
+
+    def test_create_contact_from_inquiry_rejects_unassigned_non_admissions_user(self):
+        inquiry = self._make_inquiry(email=f"lead-{frappe.generate_hash(length=8)}@example.com")
+        user = make_user()
+
+        previous_user = frappe.session.user
+        try:
+            frappe.set_user(user.name)
+            with self.assertRaises(frappe.PermissionError):
+                inquiry.create_contact_from_inquiry()
+        finally:
+            frappe.set_user(previous_user)
+
+        self.assertFalse(bool(frappe.db.get_value("Inquiry", inquiry.name, "contact")))
+
+    def test_create_contact_from_inquiry_does_not_reuse_protected_guardian_contact(self):
+        email = f"guardian-lead-{frappe.generate_hash(length=8)}@example.com"
+        guardian = frappe.get_doc(
+            {
+                "doctype": "Guardian",
+                "guardian_first_name": "Protected",
+                "guardian_last_name": "Guardian",
+                "guardian_email": email,
+                "guardian_mobile_phone": "+14155550130",
+            }
+        ).insert(ignore_permissions=True)
+        contact_name = frappe.db.get_value("Contact Email", {"email_id": email}, "parent")
+        self.assertTrue(bool(contact_name))
+        self.assertTrue(
+            bool(
+                frappe.db.exists(
+                    "Dynamic Link",
+                    {
+                        "parenttype": "Contact",
+                        "parentfield": "links",
+                        "parent": contact_name,
+                        "link_doctype": "Guardian",
+                        "link_name": guardian.name,
+                    },
+                )
+            )
+        )
+        inquiry = self._make_inquiry(email=email)
+
+        previous_user = frappe.session.user
+        try:
+            frappe.set_user("Administrator")
+            with self.assertRaises(frappe.PermissionError):
+                inquiry.create_contact_from_inquiry()
+        finally:
+            frappe.set_user(previous_user)
+
+        self.assertFalse(bool(frappe.db.get_value("Inquiry", inquiry.name, "contact")))
 
     def test_archive_requires_and_stores_reason(self):
         inquiry = self._make_inquiry()

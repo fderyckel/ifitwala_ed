@@ -191,16 +191,34 @@ jobs:
       - name: Resolve changed python module targets
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
         run: |
           python <<'PY' >> "$GITHUB_ENV"
           import os
           import subprocess
 
           base_sha = (os.environ.get("BASE_SHA") or "").strip()
+          before_sha = (os.environ.get("BEFORE_SHA") or "").strip()
+
+          def is_usable_sha(value):
+              return bool(value) and set(value) != {"0"}
+
           if base_sha:
               diff_cmd = ["git", "diff", "--name-only", f"{base_sha}...HEAD"]
-          else:
+          elif is_usable_sha(before_sha):
+              diff_cmd = ["git", "diff", "--name-only", f"{before_sha}...HEAD"]
+          elif (
+              subprocess.run(
+                  ["git", "rev-parse", "--verify", "HEAD~1"],
+                  check=False,
+                  stdout=subprocess.DEVNULL,
+                  stderr=subprocess.DEVNULL,
+              ).returncode
+              == 0
+          ):
               diff_cmd = ["git", "diff", "--name-only", "HEAD~1...HEAD"]
+          else:
+              diff_cmd = ["git", "ls-files"]
 
           changed = subprocess.check_output(diff_cmd, text=True).splitlines()
           python_files = [

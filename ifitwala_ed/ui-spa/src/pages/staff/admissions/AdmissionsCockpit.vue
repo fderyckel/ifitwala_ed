@@ -3,9 +3,9 @@
 	<div class="analytics-shell">
 		<header class="page-header">
 			<div class="page-header__intro">
-				<h1 class="type-h1 text-canopy">Admissions Cockpit</h1>
+				<h1 class="type-h1 text-canopy">{{ __('Admissions Cockpit') }}</h1>
 				<p class="type-meta text-slate-token/80">
-					Application progression and blockers (applicant-centered)
+					{{ __('Application progression and blockers (applicant-centered)') }}
 				</p>
 			</div>
 			<div class="page-header__actions">
@@ -16,30 +16,30 @@
 					rel="noopener noreferrer"
 					class="if-button if-button--primary"
 				>
-					New Inquiry
+					{{ __('New Inquiry') }}
 				</a>
 				<button type="button" class="if-button if-button--quiet" @click="refreshNow">
-					Refresh
+					{{ __('Refresh') }}
 				</button>
 			</div>
 		</header>
 
 		<FiltersBar class="analytics-filters">
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Organization</label>
+				<label class="type-label">{{ __('Organization') }}</label>
 				<select
 					v-model="filters.organization"
 					class="h-9 min-w-[180px] rounded-md border px-2 text-sm"
 				>
-					<option value="">All Organizations</option>
+					<option value="">{{ __('All Organizations') }}</option>
 					<option v-for="org in organizations" :key="org" :value="org">{{ org }}</option>
 				</select>
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">School</label>
+				<label class="type-label">{{ __('School') }}</label>
 				<select v-model="filters.school" class="h-9 min-w-[180px] rounded-md border px-2 text-sm">
-					<option value="">All Schools</option>
+					<option value="">{{ __('All Schools') }}</option>
 					<option v-for="school in schools" :key="school" :value="school">{{ school }}</option>
 				</select>
 			</div>
@@ -47,7 +47,7 @@
 			<div class="flex min-w-[180px] items-end pb-1">
 				<label class="inline-flex items-center gap-2 type-label">
 					<input v-model="filters.assigned_to_me" type="checkbox" class="h-4 w-4 rounded border" />
-					<span>My Assignments Only</span>
+					<span>{{ __('My Assignments Only') }}</span>
 				</label>
 			</div>
 		</FiltersBar>
@@ -58,14 +58,24 @@
 		>
 			{{ error }}
 		</div>
+		<div
+			v-if="notice"
+			class="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+		>
+			{{ notice }}
+		</div>
 
-		<div v-if="loading" class="py-10 text-center text-slate-500">Loading cockpit...</div>
+		<div v-if="loading" class="py-10 text-center text-slate-500">
+			{{ __('Loading cockpit...') }}
+		</div>
 
 		<template v-else>
 			<KpiRow :items="kpiItems" />
 
 			<section class="rounded-xl border border-slate-200 bg-white p-4">
-				<h2 class="type-overline mb-3 text-slate-token/70">Top Admission Blockers</h2>
+				<h2 class="type-overline mb-3 text-slate-token/70">
+					{{ __('Top Admission Blockers') }}
+				</h2>
 				<div class="flex flex-wrap gap-2">
 					<button
 						class="rounded-full border px-3 py-1 text-xs font-semibold transition"
@@ -76,7 +86,7 @@
 						"
 						@click="activeBlocker = ''"
 					>
-						All
+						{{ __('All') }}
 					</button>
 					<button
 						v-for="blocker in blockers"
@@ -131,16 +141,30 @@
 										<button
 											type="button"
 											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
+											@click="openTimeline(item)"
+										>
+											{{ __('Timeline') }}
+										</button>
+										<button
+											type="button"
+											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
 											@click="openScheduleInterview(item)"
 										>
-											Schedule Interview
+											{{ __('Schedule Interview') }}
+										</button>
+										<button
+											type="button"
+											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
+											@click="openScheduleVisit(item)"
+										>
+											{{ __('Schedule Visit') }}
 										</button>
 										<button
 											type="button"
 											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
 											@click="openThread(item)"
 										>
-											Message
+											{{ __('Message') }}
 										</button>
 										<a
 											:href="item.open_url"
@@ -148,7 +172,7 @@
 											rel="noopener noreferrer"
 											class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
 										>
-											Open
+											{{ __('Open') }}
 										</a>
 									</div>
 								</div>
@@ -160,7 +184,7 @@
 
 								<div class="mb-2 flex flex-wrap gap-1">
 									<span v-if="column.id === 'review'" :class="reviewStageClass(item)">
-										{{ item.ready ? 'Ready for Decision' : 'Needs Review' }}
+										{{ item.ready ? __('Ready for Decision') : __('Needs Review') }}
 									</span>
 									<span
 										class="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-token"
@@ -168,7 +192,7 @@
 										{{ item.application_status }}
 									</span>
 									<span v-if="item.aep?.has_plan" :class="aepPillClass(item.aep?.status)">
-										AEP · {{ item.aep?.status || 'Plan' }}
+										{{ __('AEP') }} · {{ item.aep?.status || __('Plan') }}
 									</span>
 									<span
 										v-if="item.aep?.deposit?.deposit_required"
@@ -176,28 +200,28 @@
 									>
 										{{
 											item.aep.deposit.is_paid
-												? 'Deposit paid'
-												: item.aep.deposit.blocker_label || 'Deposit required'
+												? __('Deposit paid')
+												: item.aep.deposit.blocker_label || __('Deposit required')
 										}}
 									</span>
-									<span :class="pillClass(item.readiness.profile_ok)">Profile</span>
-									<span :class="pillClass(item.readiness.documents_ok)">Docs</span>
-									<span :class="pillClass(item.readiness.recommendations_ok)"
-										>Recommendations</span
-									>
-									<span :class="pillClass(item.readiness.policies_ok)">Policies</span>
-									<span :class="pillClass(item.readiness.health_ok)">Health</span>
+									<span :class="pillClass(item.readiness.profile_ok)">{{ __('Profile') }}</span>
+									<span :class="pillClass(item.readiness.documents_ok)">{{ __('Docs') }}</span>
+									<span :class="pillClass(item.readiness.recommendations_ok)">{{
+										__('Recommendations')
+									}}</span>
+									<span :class="pillClass(item.readiness.policies_ok)">{{ __('Policies') }}</span>
+									<span :class="pillClass(item.readiness.health_ok)">{{ __('Health') }}</span>
 									<span
 										v-if="(item.interviews?.count || 0) > 0"
 										class="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-token"
 									>
-										Interviews · {{ item.interviews?.count || 0 }}
+										{{ __('Interviews') }} · {{ item.interviews?.count || 0 }}
 									</span>
 									<span
 										v-if="(item.comms?.unread_count || 0) > 0"
 										class="rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700"
 									>
-										Comms · {{ item.comms?.unread_count || 0 }}
+										{{ __('Comms') }} · {{ item.comms?.unread_count || 0 }}
 									</span>
 								</div>
 
@@ -207,7 +231,9 @@
 								>
 									<div class="flex items-start justify-between gap-3">
 										<div class="min-w-0">
-											<p class="text-xs font-semibold text-slate-900">Enrollment Plan</p>
+											<p class="text-xs font-semibold text-slate-900">
+												{{ __('Enrollment Plan') }}
+											</p>
 											<p class="text-xs text-slate-token/80">
 												{{ item.aep?.name }}
 												<span v-if="item.aep?.status">· {{ item.aep?.status }}</span>
@@ -216,7 +242,7 @@
 												v-if="item.aep?.status === 'Offer Sent' && item.aep?.offer_expires_on"
 												class="text-xs text-slate-token/80"
 											>
-												Offer expires {{ formatDateOnly(item.aep.offer_expires_on) }}
+												{{ __('Offer expires {0}', [formatDateOnly(item.aep.offer_expires_on)]) }}
 											</p>
 										</div>
 										<div class="flex flex-wrap justify-end gap-2">
@@ -229,8 +255,8 @@
 											>
 												{{
 													isAepActionPending(item.aep?.name, 'send_offer')
-														? 'Sending...'
-														: 'Send Offer'
+														? __('Sending...')
+														: __('Send Offer')
 												}}
 											</button>
 											<button
@@ -242,8 +268,8 @@
 											>
 												{{
 													isAepActionPending(item.aep?.name, 'hydrate_request')
-														? 'Hydrating...'
-														: 'Hydrate Request'
+														? __('Hydrating...')
+														: __('Hydrate Request')
 												}}
 											</button>
 											<a
@@ -253,7 +279,7 @@
 												rel="noopener noreferrer"
 												class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
 											>
-												Open Request
+												{{ __('Open Request') }}
 											</a>
 											<a
 												v-if="item.aep?.open_url"
@@ -262,7 +288,7 @@
 												rel="noopener noreferrer"
 												class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
 											>
-												Open Plan
+												{{ __('Open Plan') }}
 											</a>
 										</div>
 									</div>
@@ -274,7 +300,7 @@
 								>
 									<div class="flex items-start justify-between gap-3">
 										<div class="min-w-0">
-											<p class="text-xs font-semibold text-slate-900">Deposit</p>
+											<p class="text-xs font-semibold text-slate-900">{{ __('Deposit') }}</p>
 											<p class="text-xs text-slate-token/80">
 												{{
 													formatAmount(item.aep.deposit.amount || item.aep.deposit.deposit_amount)
@@ -282,26 +308,30 @@
 												<span
 													v-if="item.aep.deposit.due_date || item.aep.deposit.deposit_due_date"
 												>
-													· Due
+													·
 													{{
-														formatDateOnly(
-															item.aep.deposit.due_date || item.aep.deposit.deposit_due_date
-														)
+														__('Due {0}', [
+															formatDateOnly(
+																item.aep.deposit.due_date || item.aep.deposit.deposit_due_date
+															),
+														])
 													}}
 												</span>
 											</p>
 											<p class="text-xs text-slate-token/80">
 												{{
 													item.aep.deposit.invoice
-														? `${item.aep.deposit.invoice} · ${item.aep.deposit.invoice_status || 'Draft'}`
-														: item.aep.deposit.blocker_label || 'Invoice not generated'
+														? `${item.aep.deposit.invoice} · ${
+																item.aep.deposit.invoice_status || __('Draft')
+															}`
+														: item.aep.deposit.blocker_label || __('Invoice not generated')
 												}}
 											</p>
 											<p
 												v-if="item.aep.deposit.requires_override_approval"
 												class="text-xs font-semibold text-amber-800"
 											>
-												Override approval required
+												{{ __('Override approval required') }}
 											</p>
 										</div>
 										<div class="flex flex-wrap justify-end gap-2">
@@ -314,8 +344,8 @@
 											>
 												{{
 													isAepActionPending(item.aep?.name, 'generate_deposit')
-														? 'Generating...'
-														: 'Generate Invoice'
+														? __('Generating...')
+														: __('Generate Invoice')
 												}}
 											</button>
 											<a
@@ -325,7 +355,7 @@
 												rel="noopener noreferrer"
 												class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
 											>
-												Open Invoice
+												{{ __('Open Invoice') }}
 											</a>
 										</div>
 									</div>
@@ -337,11 +367,20 @@
 								>
 									<div class="flex items-center justify-between gap-3">
 										<div>
-											<p class="text-xs font-semibold text-amber-900">Recommendation review</p>
+											<p class="text-xs font-semibold text-amber-900">
+												{{ __('Recommendation review') }}
+											</p>
 											<p class="text-xs text-amber-900/80">
-												{{ item.recommendations.pending_review_count }} awaiting review
+												{{
+													__('{0} awaiting review', [item.recommendations.pending_review_count])
+												}}
 												<span v-if="item.recommendations.latest_submitted_on">
-													· latest {{ formatDate(item.recommendations.latest_submitted_on) }}
+													·
+													{{
+														__('latest {0}', [
+															formatDate(item.recommendations.latest_submitted_on),
+														])
+													}}
 												</span>
 											</p>
 										</div>
@@ -352,8 +391,8 @@
 										>
 											{{
 												item.recommendations.pending_review_count === 1
-													? 'Review Recommendation'
-													: 'Review Recommendations'
+													? __('Review Recommendation')
+													: __('Review Recommendations')
 											}}
 										</button>
 									</div>
@@ -365,9 +404,11 @@
 								>
 									<div class="flex items-start justify-between gap-3">
 										<div class="min-w-0">
-											<p class="text-xs font-semibold text-slate-900">Latest Interview</p>
+											<p class="text-xs font-semibold text-slate-900">
+												{{ __('Latest Interview') }}
+											</p>
 											<p class="text-xs text-slate-token/80">
-												{{ item.interviews.latest.interview_type || 'Interview' }}
+												{{ item.interviews.latest.interview_type || __('Interview') }}
 												<span v-if="item.interviews.latest.mode">
 													· {{ item.interviews.latest.mode }}
 												</span>
@@ -389,7 +430,7 @@
 														: 'text-amber-800'
 												"
 											>
-												Feedback · {{ item.interviews.latest.feedback_status_label }}
+												{{ __('Feedback') }} · {{ item.interviews.latest.feedback_status_label }}
 											</p>
 										</div>
 										<button
@@ -397,7 +438,7 @@
 											class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-canopy hover:border-canopy"
 											@click="openInterviewWorkspace(item.interviews.latest.name)"
 										>
-											Open Interview
+											{{ __('Open Interview') }}
 										</button>
 									</div>
 								</div>
@@ -412,7 +453,7 @@
 								</div>
 
 								<div v-if="item.top_blockers.length" class="space-y-1">
-									<p class="type-caption text-slate-token/80">Missing / Blocked</p>
+									<p class="type-caption text-slate-token/80">{{ __('Missing / Blocked') }}</p>
 									<template
 										v-for="issue in item.top_blockers"
 										:key="`${item.name}-${issue.kind}-${issue.label}`"
@@ -442,13 +483,166 @@
 								v-if="!filteredItems(column.items).length"
 								class="flex flex-1 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white/70 p-4 text-xs text-slate-500"
 							>
-								No applicants in this stage.
+								{{ __('No applicants in this stage.') }}
 							</div>
 						</div>
 					</section>
 				</div>
 			</section>
 		</template>
+
+		<div
+			v-if="activeTimelineCard"
+			class="fixed inset-0 z-50 flex items-stretch justify-end bg-slate-900/35"
+			@click.self="closeTimeline"
+		>
+			<section class="flex h-full w-full max-w-2xl flex-col bg-white shadow-2xl">
+				<header class="border-b border-slate-200 px-5 py-4">
+					<div class="flex items-start justify-between gap-3">
+						<div class="min-w-0">
+							<p class="type-label text-canopy">{{ __('Admissions Timeline') }}</p>
+							<p class="type-body-strong text-ink">{{ activeTimelineCard.display_name }}</p>
+							<p class="type-caption text-slate-token/70">{{ activeTimelineCard.name }}</p>
+						</div>
+						<button
+							type="button"
+							class="rounded-full border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-token hover:border-slate-400"
+							@click="closeTimeline"
+						>
+							{{ __('Close') }}
+						</button>
+					</div>
+				</header>
+
+				<div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+					<form
+						v-if="activeCrmAction"
+						data-testid="cockpit-crm-action-form"
+						class="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4"
+						@submit.prevent="submitCrmAction"
+					>
+						<div class="mb-3 flex items-start justify-between gap-3">
+							<div class="min-w-0">
+								<p class="type-overline text-slate-token/70">{{ __('Admissions CRM') }}</p>
+								<h3 class="type-body-strong text-ink">
+									{{
+										activeCrmAction.id === 'log_message' ? __('Log Message') : __('Log Activity')
+									}}
+								</h3>
+							</div>
+							<button
+								type="button"
+								data-testid="cockpit-crm-action-cancel"
+								class="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-token hover:border-slate-400"
+								@click="closeCrmActionForm"
+							>
+								{{ __('Cancel') }}
+							</button>
+						</div>
+
+						<template v-if="activeCrmAction.id === 'log_message'">
+							<label class="grid gap-1 text-sm font-semibold text-slate-700">
+								<span>{{ __('Message') }}</span>
+								<textarea
+									v-model="crmActionForm.body"
+									data-testid="cockpit-crm-message-body"
+									rows="4"
+									class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-800 focus:border-canopy focus:outline-none focus:ring-2 focus:ring-canopy/20"
+									:placeholder="__('Record the admissions reply or message outcome')"
+								/>
+							</label>
+						</template>
+
+						<template v-else>
+							<div class="grid gap-3 md:grid-cols-2">
+								<label class="grid gap-1 text-sm font-semibold text-slate-700">
+									<span>{{ __('Activity Type') }}</span>
+									<select
+										v-model="crmActionForm.activity_type"
+										data-testid="cockpit-crm-activity-type"
+										class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-normal text-slate-800 focus:border-canopy focus:outline-none focus:ring-2 focus:ring-canopy/20"
+									>
+										<option v-for="type in activityTypes" :key="type" :value="type">
+											{{ type }}
+										</option>
+									</select>
+								</label>
+								<label class="grid gap-1 text-sm font-semibold text-slate-700">
+									<span>{{ __('Next Action On') }}</span>
+									<input
+										v-model="crmActionForm.next_action_on"
+										data-testid="cockpit-crm-activity-next-action"
+										type="date"
+										class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-normal text-slate-800 focus:border-canopy focus:outline-none focus:ring-2 focus:ring-canopy/20"
+									/>
+								</label>
+							</div>
+							<label class="mt-3 grid gap-1 text-sm font-semibold text-slate-700">
+								<span>{{ __('Outcome') }}</span>
+								<input
+									v-model="crmActionForm.outcome"
+									data-testid="cockpit-crm-activity-outcome"
+									type="text"
+									class="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-normal text-slate-800 focus:border-canopy focus:outline-none focus:ring-2 focus:ring-canopy/20"
+									:placeholder="__('Optional outcome')"
+								/>
+							</label>
+							<label class="mt-3 grid gap-1 text-sm font-semibold text-slate-700">
+								<span>{{ __('Note') }}</span>
+								<textarea
+									v-model="crmActionForm.note"
+									data-testid="cockpit-crm-activity-note"
+									rows="4"
+									class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-800 focus:border-canopy focus:outline-none focus:ring-2 focus:ring-canopy/20"
+									:placeholder="__('Structured CRM note')"
+								/>
+							</label>
+						</template>
+
+						<p
+							v-if="crmActionError"
+							data-testid="cockpit-crm-action-error"
+							class="mt-3 text-sm text-rose-700"
+						>
+							{{ crmActionError }}
+						</p>
+						<p
+							v-if="crmActionSuccess"
+							data-testid="cockpit-crm-action-success"
+							class="mt-3 text-sm text-emerald-700"
+						>
+							{{ crmActionSuccess }}
+						</p>
+
+						<div class="mt-3 flex justify-end">
+							<button
+								type="submit"
+								data-testid="cockpit-crm-action-submit"
+								class="if-button if-button--primary"
+								:disabled="crmActionSaving"
+							>
+								{{
+									crmActionSaving
+										? __('Saving...')
+										: activeCrmAction.id === 'log_message'
+											? __('Log Message')
+											: __('Log Activity')
+								}}
+							</button>
+						</div>
+					</form>
+
+					<AdmissionsTimelinePanel
+						:timeline="timelineContext"
+						:loading="timelineLoading"
+						:error="timelineError"
+						@refresh="reloadTimeline"
+						@action="handleTimelineAction"
+						@open="openTimelineItem"
+					/>
+				</div>
+			</section>
+		</div>
 
 		<div
 			v-if="activeThreadCard"
@@ -459,7 +653,7 @@
 				<header class="border-b border-slate-200 px-5 py-4">
 					<div class="flex items-start justify-between gap-3">
 						<div>
-							<p class="type-label text-canopy">Case Communication</p>
+							<p class="type-label text-canopy">{{ __('Case Communication') }}</p>
 							<p class="type-body-strong text-ink">{{ activeThreadCard.display_name }}</p>
 							<p class="type-caption text-slate-token/70">{{ activeThreadCard.name }}</p>
 						</div>
@@ -468,13 +662,15 @@
 							class="rounded-full border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-token hover:border-slate-400"
 							@click="closeThread"
 						>
-							Close
+							{{ __('Close') }}
 						</button>
 					</div>
 				</header>
 
 				<div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-					<p v-if="threadLoading" class="text-sm text-slate-500">Loading messages...</p>
+					<p v-if="threadLoading" class="text-sm text-slate-500">
+						{{ __('Loading messages...') }}
+					</p>
 					<div
 						v-else-if="threadError"
 						class="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"
@@ -485,7 +681,7 @@
 						v-else-if="!threadMessages.length"
 						class="rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-sm text-slate-600"
 					>
-						No messages yet.
+						{{ __('No messages yet.') }}
 					</div>
 					<div v-else class="space-y-2">
 						<article
@@ -506,13 +702,13 @@
 				</div>
 
 				<footer class="border-t border-slate-200 px-5 py-4">
-					<p class="mb-1 text-xs font-semibold text-slate-700">Reply</p>
+					<p class="mb-1 text-xs font-semibold text-slate-700">{{ __('Reply') }}</p>
 					<textarea
 						v-model="threadDraft"
 						rows="4"
 						maxlength="300"
 						class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-canopy focus:outline-none focus:ring-2 focus:ring-canopy/20"
-						placeholder="Write a message to applicant..."
+						:placeholder="__('Write a message to applicant...')"
 						@keydown.ctrl.enter.prevent="sendThreadMessage"
 						@keydown.meta.enter.prevent="sendThreadMessage"
 					/>
@@ -523,7 +719,7 @@
 								type="checkbox"
 								class="h-4 w-4 rounded border-slate-300"
 							/>
-							<span>Internal note (not visible to applicant)</span>
+							<span>{{ __('Internal note (not visible to applicant)') }}</span>
 						</label>
 						<div class="ml-auto flex items-center gap-3">
 							<p class="text-xs text-slate-500">{{ threadDraft.length }}/300</p>
@@ -533,11 +729,13 @@
 								:disabled="threadSending"
 								@click="sendThreadMessage"
 							>
-								{{ threadSending ? 'Sending...' : 'Send' }}
+								{{ threadSending ? __('Sending...') : __('Send') }}
 							</button>
 						</div>
 					</div>
-					<p class="mt-1 text-[11px] text-slate-500">Shortcut: Ctrl/Cmd + Enter</p>
+					<p class="mt-1 text-[11px] text-slate-500">
+						{{ __('Shortcut: Ctrl/Cmd + Enter') }}
+					</p>
 					<p v-if="threadSendError" class="mt-2 text-xs text-rose-700">{{ threadSendError }}</p>
 				</footer>
 			</section>
@@ -549,19 +747,34 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import AdmissionsTimelinePanel from '@/components/admissions/AdmissionsTimelinePanel.vue';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
+import { __ } from '@/lib/i18n';
 import { SIGNAL_ADMISSIONS_COCKPIT_INVALIDATE, uiSignals } from '@/lib/uiSignals';
+import { getAdmissionsTimelineContext } from '@/lib/services/admissions/admissionsTimelineService';
+import {
+	logAdmissionMessage,
+	recordAdmissionCrmActivity,
+} from '@/lib/services/admissions/admissionsInboxService';
 import {
 	getAdmissionsCaseThread,
 	getAdmissionsCockpitData,
+	getOrCreateAdmissionsCockpitOfferPlan,
 	generateAdmissionsCockpitDepositInvoice,
 	hydrateAdmissionsCockpitRequest,
 	markAdmissionsCaseRead,
+	promoteAdmissionsCockpitApplicant,
 	sendAdmissionsCockpitOffer,
 	sendAdmissionsCaseMessage,
 	type AdmissionsCaseMessage,
 } from '@/lib/admission';
+import type {
+	AdmissionsTimelineAction,
+	AdmissionsTimelineContext,
+	AdmissionsTimelineItem,
+} from '@/types/contracts/admissions_timeline/get_admissions_timeline_context';
+import type { AdmissionCrmActivityType } from '@/types/contracts/admissions_inbox/get_admissions_inbox_context';
 
 type CockpitCounts = {
 	active_applications: number;
@@ -708,12 +921,53 @@ type CockpitPayload = {
 	columns?: CockpitColumn[];
 };
 
+type CockpitCrmActionForm = {
+	body: string;
+	activity_type: AdmissionCrmActivityType;
+	outcome: string;
+	note: string;
+	next_action_on: string;
+};
+
+const activityTypes: AdmissionCrmActivityType[] = [
+	'Call Attempt',
+	'Reached',
+	'No Answer',
+	'Qualified',
+	'Not Interested',
+	'Booked Tour',
+	'Attended Tour',
+	'Follow-up Scheduled',
+	'Archived',
+	'Note',
+];
+
+function createCrmActionForm(): CockpitCrmActionForm {
+	return {
+		body: '',
+		activity_type: 'Reached',
+		outcome: '',
+		note: '',
+		next_action_on: '',
+	};
+}
+
 const loading = ref(false);
 const error = ref('');
+const notice = ref('');
 const data = ref<CockpitPayload | null>(null);
 const overlay = useOverlayStack();
 const activeBlocker = ref('');
 const activeThreadCard = ref<CockpitCard | null>(null);
+const activeTimelineCard = ref<CockpitCard | null>(null);
+const timelineContext = ref<AdmissionsTimelineContext | null>(null);
+const timelineLoading = ref(false);
+const timelineError = ref('');
+const activeCrmAction = ref<AdmissionsTimelineAction | null>(null);
+const crmActionForm = ref<CockpitCrmActionForm>(createCrmActionForm());
+const crmActionSaving = ref(false);
+const crmActionError = ref('');
+const crmActionSuccess = ref('');
 const threadLoading = ref(false);
 const threadError = ref('');
 const threadMessages = ref<AdmissionsCaseMessage[]>([]);
@@ -722,6 +976,7 @@ const threadInternalNote = ref(false);
 const threadSending = ref(false);
 const threadSendError = ref('');
 const pendingAepActionKey = ref('');
+const pendingApplicantActionKey = ref('');
 
 const filters = ref({
 	organization: '',
@@ -731,6 +986,7 @@ const filters = ref({
 
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 let requestToken = 0;
+let timelineRequestToken = 0;
 let unsubscribeCockpitInvalidate: (() => void) | null = null;
 
 const organizations = computed(() => data.value?.config?.organizations || []);
@@ -750,22 +1006,22 @@ const boardColumns = computed<CockpitColumn[]>(() => {
 	return [
 		{
 			id: 'preparation',
-			title: 'Preparation',
+			title: __('Preparation'),
 			items: [...(byId.get('in_progress') || []), ...(byId.get('draft') || [])],
 		},
 		{
 			id: 'submitted',
-			title: 'Submitted',
+			title: __('Submitted'),
 			items: [...(byId.get('submitted') || [])],
 		},
 		{
 			id: 'review',
-			title: 'Review',
+			title: __('Review'),
 			items: [...(byId.get('awaiting_decision') || []), ...(byId.get('under_review') || [])],
 		},
 		{
 			id: 'accepted',
-			title: 'Accepted',
+			title: __('Accepted'),
 			items: [...(byId.get('accepted_pending_promotion') || [])],
 		},
 	];
@@ -781,20 +1037,25 @@ const kpiItems = computed(() => {
 		unread_applicant_replies: 0,
 	};
 	return [
-		{ id: 'active', label: 'Active Applications', value: counts.active_applications },
-		{ id: 'blocked', label: 'Blocked', value: counts.blocked_applications, hint: 'Action Needed' },
-		{ id: 'decision', label: 'Ready for Decision', value: counts.ready_for_decision },
+		{ id: 'active', label: __('Active Applications'), value: counts.active_applications },
+		{
+			id: 'blocked',
+			label: __('Blocked'),
+			value: counts.blocked_applications,
+			hint: __('Action Needed'),
+		},
+		{ id: 'decision', label: __('Ready for Decision'), value: counts.ready_for_decision },
 		{
 			id: 'promotion',
-			label: 'Accepted Pending Promotion',
+			label: __('Accepted Pending Promotion'),
 			value: counts.accepted_pending_promotion,
 		},
-		{ id: 'assignments', label: 'My Open Assignments', value: counts.my_open_assignments },
+		{ id: 'assignments', label: __('My Open Assignments'), value: counts.my_open_assignments },
 		{
 			id: 'unread-replies',
-			label: 'Unread Applicant Replies',
+			label: __('Unread Applicant Replies'),
 			value: counts.unread_applicant_replies,
-			hint: 'Comms Queue',
+			hint: __('Comms Queue'),
 		},
 	];
 });
@@ -885,7 +1146,13 @@ function formatDateOnly(value?: string | null) {
 	return date.toLocaleDateString();
 }
 
+function blankToNull(value?: string | null) {
+	const text = String(value || '').trim();
+	return text || null;
+}
+
 type AepAction = 'send_offer' | 'hydrate_request' | 'generate_deposit';
+type ApplicantAction = 'manage_offer' | 'promote';
 
 function aepActionKey(planName?: string | null, action: AepAction = 'send_offer') {
 	return `${String(planName || '').trim()}:${action}`;
@@ -893,6 +1160,13 @@ function aepActionKey(planName?: string | null, action: AepAction = 'send_offer'
 
 function isAepActionPending(planName?: string | null, action: AepAction = 'send_offer') {
 	return pendingAepActionKey.value === aepActionKey(planName, action);
+}
+
+function applicantActionKey(
+	applicantName?: string | null,
+	action: ApplicantAction = 'manage_offer'
+) {
+	return `${String(applicantName || '').trim()}:${action}`;
 }
 
 function formatAmount(value?: number | string | null) {
@@ -1019,6 +1293,335 @@ function openScheduleInterview(card: CockpitCard) {
 	});
 }
 
+function openScheduleVisit(card: CockpitCard) {
+	const applicantName = String(card?.name || '').trim();
+	if (!applicantName) {
+		error.value = 'Applicant reference is missing for visit scheduling.';
+		return;
+	}
+
+	overlay.open('admissions-visit-schedule', {
+		studentApplicant: applicantName,
+		visitorName: String(card?.display_name || '').trim() || applicantName,
+		school: String(card?.school || '').trim() || null,
+	});
+}
+
+function openTimeline(card: CockpitCard) {
+	const applicantName = String(card?.name || '').trim();
+	if (!applicantName) {
+		error.value = __('Applicant reference is missing for timeline open.');
+		return;
+	}
+
+	activeTimelineCard.value = card;
+	void loadTimeline(card);
+}
+
+function closeTimeline() {
+	timelineRequestToken += 1;
+	activeTimelineCard.value = null;
+	timelineContext.value = null;
+	timelineError.value = '';
+	timelineLoading.value = false;
+	closeCrmActionForm();
+}
+
+function closeCrmActionForm() {
+	activeCrmAction.value = null;
+	crmActionForm.value = createCrmActionForm();
+	crmActionError.value = '';
+	crmActionSuccess.value = '';
+	crmActionSaving.value = false;
+}
+
+async function loadTimeline(card: CockpitCard) {
+	const applicantName = String(card?.name || '').trim();
+	if (!applicantName) {
+		timelineError.value = __('Applicant reference is missing for timeline load.');
+		return;
+	}
+
+	const token = ++timelineRequestToken;
+	timelineLoading.value = true;
+	timelineError.value = '';
+	timelineContext.value = null;
+
+	try {
+		const payload = await getAdmissionsTimelineContext({
+			context_doctype: 'Student Applicant',
+			context_name: applicantName,
+			limit: 40,
+		});
+		if (token !== timelineRequestToken) {
+			return;
+		}
+		timelineContext.value = payload;
+	} catch (err: any) {
+		if (token !== timelineRequestToken) {
+			return;
+		}
+		timelineError.value = err?.message || __('Could not load admissions timeline.');
+	} finally {
+		if (token === timelineRequestToken) {
+			timelineLoading.value = false;
+		}
+	}
+}
+
+function reloadTimeline() {
+	const card = activeTimelineCard.value;
+	if (!card) return;
+	void loadTimeline(card);
+}
+
+function openCrmActionForm(action: AdmissionsTimelineAction) {
+	const context = timelineContext.value?.context || null;
+	const conversation = blankToNull(String(action.target || context?.conversation || ''));
+
+	if (action.id === 'log_activity' && !conversation) {
+		timelineError.value = __(
+			'Log a message first so an admissions conversation exists for this activity.'
+		);
+		return;
+	}
+
+	activeCrmAction.value = action;
+	crmActionForm.value = createCrmActionForm();
+	crmActionError.value = '';
+	crmActionSuccess.value = '';
+}
+
+async function submitCrmAction() {
+	const action = activeCrmAction.value;
+	const card = activeTimelineCard.value;
+	if (!action || !card || crmActionSaving.value) {
+		return;
+	}
+
+	const context = timelineContext.value?.context || null;
+	const conversation = blankToNull(String(action.target || context?.conversation || ''));
+	const inquiry = blankToNull(String(context?.inquiry || ''));
+	const studentApplicant = blankToNull(String(context?.student_applicant || card.name || ''));
+	const organization = blankToNull(String(context?.organization || ''));
+	const school = blankToNull(String(context?.school || card.school || ''));
+
+	crmActionError.value = '';
+	crmActionSuccess.value = '';
+
+	if (action.id === 'log_message') {
+		const body = blankToNull(crmActionForm.value.body);
+		if (!body) {
+			crmActionError.value = __('Message is required.');
+			return;
+		}
+
+		crmActionSaving.value = true;
+		try {
+			await logAdmissionMessage({
+				conversation,
+				inquiry,
+				student_applicant: studentApplicant,
+				organization,
+				school,
+				direction: 'Outbound',
+				message_type: 'Text',
+				delivery_status: 'Logged',
+				body,
+			});
+			crmActionForm.value = createCrmActionForm();
+			crmActionSuccess.value = __('Message logged. Timeline refreshed.');
+			await loadTimeline(card);
+			await refreshNow();
+		} catch (err: any) {
+			crmActionError.value = err?.message || __('Unable to log message.');
+		} finally {
+			crmActionSaving.value = false;
+		}
+		return;
+	}
+
+	if (action.id === 'log_activity') {
+		if (!conversation) {
+			crmActionError.value = __(
+				'Log a message first so an admissions conversation exists for this activity.'
+			);
+			return;
+		}
+
+		crmActionSaving.value = true;
+		try {
+			await recordAdmissionCrmActivity({
+				conversation,
+				activity_type: crmActionForm.value.activity_type,
+				outcome: blankToNull(crmActionForm.value.outcome),
+				note: blankToNull(crmActionForm.value.note),
+				next_action_on: blankToNull(crmActionForm.value.next_action_on),
+			});
+			crmActionForm.value = createCrmActionForm();
+			crmActionSuccess.value = __('Activity logged. Timeline refreshed.');
+			await loadTimeline(card);
+			await refreshNow();
+		} catch (err: any) {
+			crmActionError.value = err?.message || __('Unable to log activity.');
+		} finally {
+			crmActionSaving.value = false;
+		}
+	}
+}
+
+function handleTimelineAction(action: AdmissionsTimelineAction) {
+	if (!action.enabled) {
+		timelineError.value = action.disabled_reason || __('This timeline action is blocked.');
+		return;
+	}
+
+	const card = activeTimelineCard.value;
+	if (!card) {
+		timelineError.value = __('Applicant reference is missing for this timeline action.');
+		return;
+	}
+
+	if (action.id === 'log_activity' || action.id === 'log_message') {
+		openCrmActionForm(action);
+		return;
+	}
+
+	if (action.id === 'message_family') {
+		openThread(card);
+		closeTimeline();
+		return;
+	}
+
+	if (action.id === 'schedule_visit') {
+		openScheduleVisit(card);
+		closeTimeline();
+		return;
+	}
+
+	if (action.id === 'open_timeline') {
+		reloadTimeline();
+		return;
+	}
+
+	if (action.id === 'manage_offer') {
+		closeTimeline();
+		void manageOfferPlan(card);
+		return;
+	}
+
+	if (action.id === 'check_deposit') {
+		closeTimeline();
+		void checkDeposit(card);
+		return;
+	}
+
+	if (action.id === 'promote') {
+		closeTimeline();
+		void promoteApplicant(card);
+		return;
+	}
+
+	timelineError.value = __('This timeline action is not available in the Cockpit drawer yet.');
+}
+
+function openTimelineItem(item: AdmissionsTimelineItem) {
+	const url = String(item.open_url || '').trim();
+	if (!url || url.startsWith('/private/')) {
+		timelineError.value = __('Open unavailable: no permitted destination returned.');
+		return;
+	}
+	window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+async function manageOfferPlan(card: CockpitCard) {
+	const applicantName = String(card?.name || '').trim();
+	if (!applicantName) {
+		error.value = __('Applicant reference is missing for offer management.');
+		return;
+	}
+
+	if (card?.aep?.can_send_offer) {
+		await sendEnrollmentOffer(card);
+		return;
+	}
+	if (card?.aep?.can_hydrate_request) {
+		await hydrateEnrollmentRequest(card);
+		return;
+	}
+	if (card?.aep?.has_plan) {
+		notice.value = __('Offer plan is already available on the applicant card.');
+		await refreshNow();
+		return;
+	}
+
+	const key = applicantActionKey(applicantName, 'manage_offer');
+	pendingApplicantActionKey.value = key;
+	error.value = '';
+	notice.value = '';
+
+	try {
+		await getOrCreateAdmissionsCockpitOfferPlan({
+			student_applicant: applicantName,
+		});
+		await refreshNow();
+		notice.value = __('Offer plan is ready on the applicant card.');
+	} catch (err: any) {
+		error.value = err?.message || __('Could not open the enrollment offer plan.');
+	} finally {
+		if (pendingApplicantActionKey.value === key) {
+			pendingApplicantActionKey.value = '';
+		}
+	}
+}
+
+async function checkDeposit(card: CockpitCard) {
+	const deposit = card?.aep?.deposit || null;
+	const invoice = String(deposit?.invoice || '').trim();
+	if (deposit?.can_generate_invoice) {
+		await generateDepositInvoice(card);
+		return;
+	}
+	if (invoice) {
+		notice.value = __('Deposit invoice is already available on the applicant card.');
+		await refreshNow();
+		return;
+	}
+	if (deposit?.deposit_required || card?.aep?.has_plan) {
+		notice.value = __('Deposit status refreshed on the applicant card.');
+		await refreshNow();
+		return;
+	}
+	error.value = __('No deposit action is available for this applicant yet.');
+}
+
+async function promoteApplicant(card: CockpitCard) {
+	const applicantName = String(card?.name || '').trim();
+	if (!applicantName) {
+		error.value = __('Applicant reference is missing for promotion.');
+		return;
+	}
+
+	const key = applicantActionKey(applicantName, 'promote');
+	pendingApplicantActionKey.value = key;
+	error.value = '';
+	notice.value = '';
+
+	try {
+		await promoteAdmissionsCockpitApplicant({
+			student_applicant: applicantName,
+		});
+		await refreshNow();
+		notice.value = __('Applicant promoted. Cockpit refreshed.');
+	} catch (err: any) {
+		error.value = err?.message || __('Could not promote this applicant.');
+	} finally {
+		if (pendingApplicantActionKey.value === key) {
+			pendingApplicantActionKey.value = '';
+		}
+	}
+}
+
 async function sendEnrollmentOffer(card: CockpitCard) {
 	const planName = String(card?.aep?.name || '').trim();
 	if (!planName) {
@@ -1029,10 +1632,12 @@ async function sendEnrollmentOffer(card: CockpitCard) {
 	const key = aepActionKey(planName, 'send_offer');
 	pendingAepActionKey.value = key;
 	error.value = '';
+	notice.value = '';
 
 	try {
 		await sendAdmissionsCockpitOffer({ applicant_enrollment_plan: planName });
 		await refreshNow();
+		notice.value = __('Enrollment offer sent. Cockpit refreshed.');
 	} catch (err: any) {
 		error.value = err?.message || 'Could not send the enrollment offer.';
 	} finally {
@@ -1052,10 +1657,12 @@ async function hydrateEnrollmentRequest(card: CockpitCard) {
 	const key = aepActionKey(planName, 'hydrate_request');
 	pendingAepActionKey.value = key;
 	error.value = '';
+	notice.value = '';
 
 	try {
 		await hydrateAdmissionsCockpitRequest({ applicant_enrollment_plan: planName });
 		await refreshNow();
+		notice.value = __('Enrollment request hydrated. Cockpit refreshed.');
 	} catch (err: any) {
 		error.value = err?.message || 'Could not hydrate the enrollment request.';
 	} finally {
@@ -1075,10 +1682,12 @@ async function generateDepositInvoice(card: CockpitCard) {
 	const key = aepActionKey(planName, 'generate_deposit');
 	pendingAepActionKey.value = key;
 	error.value = '';
+	notice.value = '';
 
 	try {
 		await generateAdmissionsCockpitDepositInvoice({ applicant_enrollment_plan: planName });
 		await refreshNow();
+		notice.value = __('Deposit invoice generated. Cockpit refreshed.');
 	} catch (err: any) {
 		error.value = err?.message || 'Could not generate the deposit invoice.';
 	} finally {
@@ -1203,6 +1812,7 @@ watch(
 onMounted(() => {
 	unsubscribeCockpitInvalidate = uiSignals.subscribe(SIGNAL_ADMISSIONS_COCKPIT_INVALIDATE, () => {
 		queueRefresh();
+		reloadTimeline();
 	});
 	void refreshNow();
 });

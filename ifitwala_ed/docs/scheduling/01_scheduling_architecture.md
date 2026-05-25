@@ -210,6 +210,11 @@ They own:
 
 They do not replace the booking fact tables for conflict reads.
 
+Admissions visits are owned by `Admission Visit` and projected into `School Event`.
+The linked School Event is a participant-only calendar projection for the visit lead
+and additional visit staff. Informed users on the admission visit are not calendar
+participants and must not create staff free/busy rows.
+
 ---
 
 ## 5. Conflict Model

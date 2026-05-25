@@ -57,6 +57,62 @@ class TestAdmissionAcknowledgementProfile(FrappeTestCase):
         )
         self.assertFalse([cta for cta in payload["ctas"] if cta.get("kind") == "application"])
 
+    def test_non_admission_context_uses_type_copy_and_suppresses_admission_ctas(self):
+        organization = self._make_organization()
+        school = self._make_school(
+            organization=organization,
+            school_name="Current Family School",
+            is_published=1,
+            website_slug="current-family-school",
+            admissions_visit_route="/schools/current-family-school/visit",
+        )
+        template = self._make_email_template()
+        self._make_profile(
+            organization=organization,
+            school=school.name,
+            email_template=template.name,
+            thank_you_message="Admissions profile copy should not be used here.",
+            visit_cta_route="",
+            show_application_cta=1,
+            application_cta_route="/apply/start",
+        )
+
+        payload = build_public_acknowledgement_context(
+            organization=organization,
+            school=school.name,
+            type_of_inquiry="Current Family",
+        )
+
+        self.assertIn("appropriate school team", payload["message"])
+        self.assertNotIn("admissions", payload["message"].lower())
+        self.assertEqual(
+            [row.get("label") for row in payload["timeline"]],
+            [
+                "Message received",
+                "School context checked",
+                "Routed to the right team",
+                "Team follow-up",
+            ],
+        )
+        self.assertFalse(payload["ctas"])
+
+    def test_public_context_uses_distinct_non_admission_timelines(self):
+        cases = {
+            "General Inquiry": ("team best placed to respond", "Forwarded internally"),
+            "Partnership / Agent": ("appropriate person", "Partnership inquiry received"),
+            "Other": ("appropriate team or person", "Triage review"),
+        }
+
+        for inquiry_type, (message_fragment, expected_label) in cases.items():
+            with self.subTest(inquiry_type=inquiry_type):
+                payload = build_public_acknowledgement_context(type_of_inquiry=inquiry_type)
+                labels = [row.get("label") for row in payload["timeline"]]
+
+                self.assertIn(message_fragment, payload["message"])
+                self.assertIn(expected_label, labels)
+                self.assertNotIn("Admissions review", labels)
+                self.assertFalse(payload["ctas"])
+
     def test_application_cta_rejects_authenticated_admissions_portal(self):
         organization = self._make_organization()
         school = self._make_school(organization=organization)
@@ -148,6 +204,32 @@ class TestAdmissionAcknowledgementProfile(FrappeTestCase):
         self.assertEqual(mocked_sendmail.call_args.kwargs["reference_doctype"], "Inquiry")
         self.assertEqual(mocked_sendmail.call_args.kwargs["reference_name"], inquiry.name)
 
+    def test_non_admission_fallback_email_avoids_admissions_team_copy(self):
+        organization = self._make_organization()
+        school = self._make_school(organization=organization, school_name="General Mail School")
+        template = self._make_email_template(
+            subject="Admissions profile subject",
+            response_="Admissions profile body from the admissions team.",
+        )
+        self._make_profile(organization=organization, school=school.name, email_template=template.name)
+        inquiry = self._make_inquiry(
+            organization=organization,
+            school=school.name,
+            email="general-inquiry@example.com",
+            first_name="Nora",
+            type_of_inquiry="Current Family",
+        )
+
+        with patch("ifitwala_ed.admission.inquiry_acknowledgement.frappe.sendmail") as mocked_sendmail:
+            result = send_inquiry_family_acknowledgement(inquiry.name)
+
+        self.assertTrue(result["sent"])
+        self.assertEqual(mocked_sendmail.call_args.kwargs["subject"], "We received your inquiry")
+        message = mocked_sendmail.call_args.kwargs["message"]
+        self.assertIn("appropriate school team", message)
+        self.assertNotIn("Admissions profile body", message)
+        self.assertNotIn("admissions team", message.lower())
+
     def _make_organization(self, *, get_inquiry: int = 0) -> str:
         doc = frappe.get_doc(
             {
@@ -200,7 +282,7 @@ class TestAdmissionAcknowledgementProfile(FrappeTestCase):
                 "name": template_name,
                 "email_template_name": template_name,
                 "subject": subject,
-                "response_": response_,
+                "response": response_,
             }
         )
         doc.insert(ignore_permissions=True)
@@ -232,6 +314,7 @@ class TestAdmissionAcknowledgementProfile(FrappeTestCase):
         school: str,
         email: str,
         first_name: str,
+        type_of_inquiry: str = "Admission",
     ):
         doc = frappe.get_doc(
             {
@@ -241,7 +324,7 @@ class TestAdmissionAcknowledgementProfile(FrappeTestCase):
                 "email": email,
                 "organization": organization,
                 "school": school,
-                "type_of_inquiry": "Admission",
+                "type_of_inquiry": type_of_inquiry,
                 "message": "Please send more information.",
             }
         )

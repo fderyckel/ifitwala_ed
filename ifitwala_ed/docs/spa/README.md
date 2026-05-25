@@ -37,7 +37,7 @@ Feature contracts:
 - `16_class_event_session_planning_contract.md`
 - `16_class_hub_entry_contract.md`
 - `17_admissions_inbox_contract.md`
-  staff Admissions Inbox route, DTO, action, and refresh contract; current runtime covers the Phase 3B queue route, with mutation workflows still planned
+  staff Admissions Inbox route, DTO, action, timeline, and refresh contract; current runtime covers the queue route, controlled action drawer, ownership/triage workflows, manual CRM intake, applicant-stage message aggregation, the backend contextual timeline endpoint, and Inbox/Cockpit timeline drawers, while provider and media workflows remain planned
 
 Non-authoritative proposal:
 

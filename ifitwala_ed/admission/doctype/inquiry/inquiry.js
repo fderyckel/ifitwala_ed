@@ -13,6 +13,100 @@ function blurActiveModalFocus() {
 	}
 }
 
+function admissions_timeline_desk() {
+	return window.ifitwala_ed && window.ifitwala_ed.admissionsTimeline;
+}
+
+function with_admissions_timeline_desk(callback, unavailable_message) {
+	const helper = admissions_timeline_desk();
+	if (helper) {
+		callback(helper);
+		return;
+	}
+
+	if (!frappe.require) {
+		frappe.msgprint(unavailable_message);
+		return;
+	}
+
+	frappe.show_alert({
+		message: __("Loading admissions timeline actions..."),
+		indicator: "blue",
+	});
+	frappe.require("/assets/ifitwala_ed/js/admissions_timeline_desk.js", () => {
+		const loaded_helper = admissions_timeline_desk();
+		if (!loaded_helper) {
+			frappe.msgprint(unavailable_message);
+			return;
+		}
+		callback(loaded_helper);
+	});
+}
+
+function run_admissions_context_action(frm, action_id) {
+	with_admissions_timeline_desk(
+		(helper) => {
+			if (typeof helper.loadContextThenRun !== "function") {
+				frappe.msgprint(__("Admissions timeline actions are not available. Please refresh Desk and try again."));
+				return;
+			}
+			helper.loadContextThenRun(
+				{
+					contextDoctype: "Inquiry",
+					contextName: frm.doc.name,
+					sourceFrm: frm,
+				},
+				action_id
+			);
+		},
+		__("Admissions timeline actions are not available. Please refresh Desk and try again.")
+	);
+}
+
+function open_admissions_timeline(frm) {
+	with_admissions_timeline_desk(
+		(helper) => {
+			if (typeof helper.openTimelineDialog !== "function") {
+				frappe.msgprint(__("Admissions timeline is not available. Please refresh Desk and try again."));
+				return;
+			}
+			helper.openTimelineDialog({
+				contextDoctype: "Inquiry",
+				contextName: frm.doc.name,
+				sourceFrm: frm,
+			});
+		},
+		__("Admissions timeline is not available. Please refresh Desk and try again.")
+	);
+}
+
+function add_admissions_context_actions(frm) {
+	[
+		__("Open Timeline"),
+		__("Log Message"),
+		__("Log Activity"),
+		__("Schedule Visit"),
+	].forEach((label) => {
+		frm.remove_custom_button(label, __("Admissions"));
+		frm.remove_custom_button(label);
+	});
+
+	if (!frm.doc || frm.is_new()) {
+		return;
+	}
+
+	const state = String(frm.doc.workflow_state || "").trim();
+	frm.add_custom_button(__("Open Timeline"), () => open_admissions_timeline(frm), __("Admissions"));
+
+	if (state === "Archived") {
+		return;
+	}
+
+	frm.add_custom_button(__("Log Message"), () => run_admissions_context_action(frm, "log_message"), __("Admissions"));
+	frm.add_custom_button(__("Log Activity"), () => run_admissions_context_action(frm, "log_activity"), __("Admissions"));
+	frm.add_custom_button(__("Schedule Visit"), () => run_admissions_context_action(frm, "schedule_visit"), __("Admissions"));
+}
+
 frappe.ui.form.on("Inquiry", {
 	setup(frm) {
 		frm.set_query('organization', () => ({
@@ -65,6 +159,8 @@ frappe.ui.form.on("Inquiry", {
 			return;
 		}
 
+		add_admissions_context_actions(frm);
+
 		// Assignment flows
 		if (s === 'New' && is_manager) {
 			frm.add_custom_button(__('Assign'), () => frm.trigger('assign'));
@@ -83,7 +179,7 @@ frappe.ui.form.on("Inquiry", {
 		}
 
 		if (s !== 'Archived' && (is_manager || is_officer)) {
-			frm.add_custom_button(__('Archive'), () => frm.trigger('archive'));
+			frm.add_custom_button(__('Archive'), () => frm.trigger('archive'), __('Admissions'));
 		}
 
 		// --------------------------------------------------

@@ -11,7 +11,6 @@ import StackedBarChart from '@/components/analytics/StackedBarChart.vue';
 import DonutSplit from '@/components/analytics/DonutSplit.vue';
 import HistogramBuckets from '@/components/analytics/HistogramBuckets.vue';
 import TagCloudBar from '@/components/analytics/TagCloudBar.vue';
-import SideDrawerList from '@/components/analytics/SideDrawerList.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { openAnalyticsChartOverlay } from '@/lib/analyticsOverlay';
 
@@ -23,8 +22,6 @@ type FilterState = {
 	cohort: string | null;
 	preset: ViewPreset;
 };
-
-type SliceMeta = { entity: 'student' | 'guardian'; title?: string };
 
 type DashboardResponse = {
 	kpis: {
@@ -41,26 +38,26 @@ type DashboardResponse = {
 		pct_with_siblings: number;
 		guardian_diversity_score: number;
 	};
-	nationality_distribution: { label: string; count: number; pct?: number; sliceKey?: string }[];
+	nationality_distribution: { label: string; count: number; pct?: number }[];
 	nationality_by_cohort: {
 		cohort: string;
-		buckets: { label: string; count: number; sliceKey?: string }[];
+		buckets: { label: string; count: number }[];
 	}[];
 	gender_by_cohort: {
 		cohort: string;
 		female: number;
 		male: number;
 		other: number;
-		sliceKeys?: Record<string, string>;
+		suppressed?: number;
 	}[];
 	student_house_by_cohort: {
 		cohort: string;
-		buckets: { label: string; count: number; sliceKey?: string }[];
+		buckets: { label: string; count: number }[];
 	}[];
-	residency_status: { label: string; count: number; pct?: number; sliceKey?: string }[];
-	age_distribution: { bucket: string; count: number; sliceKey?: string }[];
-	home_language: { label: string; count: number; pct?: number; sliceKey?: string }[];
-	multilingual_profile: { label: string; count: number; pct?: number; sliceKey?: string }[];
+	residency_status: { label: string; count: number; pct?: number }[];
+	age_distribution: { bucket: string; count: number }[];
+	home_language: { label: string; count: number; pct?: number }[];
+	multilingual_profile: { label: string; count: number; pct?: number }[];
 	family_kpis: {
 		family_count: number;
 		avg_children_per_family: number;
@@ -71,16 +68,15 @@ type DashboardResponse = {
 		none: number;
 		older: number;
 		younger: number;
-		sliceKeys?: Record<string, string>;
+		suppressed?: number;
 	}[];
-	family_size_histogram: { bucket: string; count: number; sliceKey?: string }[];
-	guardian_nationality: { label: string; count: number; pct?: number; sliceKey?: string }[];
-	guardian_comm_language: { label: string; count: number; pct?: number; sliceKey?: string }[];
-	guardian_residence_country: { label: string; count: number; pct?: number; sliceKey?: string }[];
-	guardian_residence_city: { label: string; count: number; sliceKey?: string }[];
-	guardian_sector: { label: string; count: number; pct?: number; sliceKey?: string }[];
-	financial_guardian: { label: string; count: number; pct?: number; sliceKey?: string }[];
-	slices?: Record<string, SliceMeta>;
+	family_size_histogram: { bucket: string; count: number }[];
+	guardian_nationality: { label: string; count: number; pct?: number }[];
+	guardian_comm_language: { label: string; count: number; pct?: number }[];
+	guardian_residence_country: { label: string; count: number; pct?: number }[];
+	guardian_residence_city: { label: string; count: number }[];
+	guardian_sector: { label: string; count: number; pct?: number }[];
+	financial_guardian: { label: string; count: number; pct?: number }[];
 };
 
 const viewPresets: { id: ViewPreset; label: string }[] = [
@@ -154,7 +150,6 @@ const emptyDashboard: DashboardResponse = {
 	guardian_residence_city: [],
 	guardian_sector: [],
 	financial_guardian: [],
-	slices: {},
 };
 
 const dashboard = computed<DashboardResponse>(() => {
@@ -245,12 +240,14 @@ const stackedGenderSeries = [
 	{ key: 'female', label: 'Female', color: '#fb7185' },
 	{ key: 'male', label: 'Male', color: '#38bdf8' },
 	{ key: 'other', label: 'Other', color: '#a855f7' },
+	{ key: 'suppressed', label: 'Suppressed', color: '#64748b' },
 ];
 
 const siblingSeries = [
 	{ key: 'none', label: 'No siblings', color: '#94a3b8' },
 	{ key: 'older', label: 'Has older siblings', color: '#38bdf8' },
 	{ key: 'younger', label: 'Has younger siblings', color: '#fbbf24' },
+	{ key: 'suppressed', label: 'Suppressed', color: '#64748b' },
 ];
 
 const nationalityHeatmapPalette = ['#fff7ed', '#f9a03f', '#e76f51', '#7f1d1d'];
@@ -258,16 +255,24 @@ const nationalityHeatmapPalette = ['#fff7ed', '#f9a03f', '#e76f51', '#7f1d1d'];
 const genderRows = computed(() =>
 	dashboard.value.gender_by_cohort.map(row => ({
 		category: row.cohort,
-		values: { female: row.female, male: row.male, other: row.other },
-		sliceKeys: row.sliceKeys,
+		values: {
+			female: row.female,
+			male: row.male,
+			other: row.other,
+			suppressed: row.suppressed || 0,
+		},
 	}))
 );
 
 const siblingRows = computed(() =>
 	dashboard.value.sibling_distribution.map(row => ({
 		category: row.cohort,
-		values: { none: row.none, older: row.older, younger: row.younger },
-		sliceKeys: row.sliceKeys,
+		values: {
+			none: row.none,
+			older: row.older,
+			younger: row.younger,
+			suppressed: row.suppressed || 0,
+		},
 	}))
 );
 
@@ -285,65 +290,7 @@ const studentHouseHeatmapRows = computed(() =>
 	}))
 );
 
-const sliceDrawerOpen = ref(false);
-const activeSliceKey = ref<string | null>(null);
-const sliceRows = ref<any[]>([]);
-const sliceStart = ref(0);
-const slicePageLength = 50;
 const overlay = useOverlayStack();
-
-const sliceResource = createResource({
-	url: 'ifitwala_ed.api.student_demographics_dashboard.get_slice_entities',
-	method: 'POST',
-	auto: false,
-});
-
-const sliceMeta = computed<SliceMeta | null>(() => {
-	if (!activeSliceKey.value) return null;
-	return dashboard.value.slices?.[activeSliceKey.value] || null;
-});
-
-async function loadSlice(reset = false) {
-	if (!activeSliceKey.value) return;
-
-	if (reset) {
-		sliceStart.value = 0;
-		sliceRows.value = [];
-	}
-
-	const payload = {
-		slice_key: activeSliceKey.value,
-		filters: filters.value,
-		start: sliceStart.value,
-		page_length: slicePageLength,
-	};
-
-	await sliceResource.submit(payload);
-
-	const rows = sliceResource.data as any;
-
-	if (Array.isArray(rows) && rows.length) {
-		sliceRows.value = reset ? rows : [...sliceRows.value, ...rows];
-		sliceStart.value += rows.length;
-	}
-}
-
-function openSliceDrawer(sliceKey: string) {
-	activeSliceKey.value = sliceKey;
-	sliceDrawerOpen.value = true;
-	loadSlice(true);
-}
-
-function closeSliceDrawer() {
-	sliceDrawerOpen.value = false;
-	activeSliceKey.value = null;
-	sliceRows.value = [];
-}
-
-function studentDeskUrl(studentId: string | null | undefined) {
-	if (!studentId) return '#';
-	return `/desk/student/${encodeURIComponent(studentId)}`;
-}
 
 function openChartOverlay(title: string, option: ChartOption) {
 	openAnalyticsChartOverlay(overlay, title, option);
@@ -434,7 +381,6 @@ function setPreset(preset: ViewPreset) {
 						title="Nationality Distribution (Top 10 + Other)"
 						:items="dashboard.nationality_distribution"
 						expandable
-						@select="openSliceDrawer"
 						@expand="
 							option => openChartOverlay('Nationality Distribution (Top 10 + Other)', option)
 						"
@@ -444,7 +390,6 @@ function setPreset(preset: ViewPreset) {
 						:rows="nationalityHeatmapRows"
 						:color-range="nationalityHeatmapPalette"
 						expandable
-						@select="openSliceDrawer"
 						@expand="option => openChartOverlay('Nationality by Cohort', option)"
 					/>
 					<StackedBarChart
@@ -452,21 +397,18 @@ function setPreset(preset: ViewPreset) {
 						:series="stackedGenderSeries"
 						:rows="genderRows"
 						expandable
-						@select="openSliceDrawer"
 						@expand="option => openChartOverlay('Gender Split by Cohort', option)"
 					/>
 					<HeatmapChart
 						title="Student House by Cohort"
 						:rows="studentHouseHeatmapRows"
 						expandable
-						@select="openSliceDrawer"
 						@expand="option => openChartOverlay('Student House by Cohort', option)"
 					/>
 					<DonutSplit
 						title="Residency Status"
 						:items="dashboard.residency_status"
 						expandable
-						@select="openSliceDrawer"
 						@expand="option => openChartOverlay('Residency Status', option)"
 					/>
 					<HistogramBuckets
@@ -475,11 +417,9 @@ function setPreset(preset: ViewPreset) {
 							dashboard.age_distribution.map(b => ({
 								label: b.bucket,
 								count: b.count,
-								sliceKey: b.sliceKey,
 							}))
 						"
 						expandable
-						@select="openSliceDrawer"
 						@expand="option => openChartOverlay('Age Distribution', option)"
 					/>
 				</div>
@@ -489,14 +429,12 @@ function setPreset(preset: ViewPreset) {
 						title="Home Language Distribution"
 						:items="dashboard.home_language"
 						expandable
-						@select="openSliceDrawer"
 						@expand="option => openChartOverlay('Home Language Distribution', option)"
 					/>
 					<DonutSplit
 						title="Multilingual Profile (1 / 2 / 3+)"
 						:items="dashboard.multilingual_profile"
 						expandable
-						@select="openSliceDrawer"
 						@expand="option => openChartOverlay('Multilingual Profile (1 / 2 / 3+)', option)"
 					/>
 				</div>
@@ -512,7 +450,6 @@ function setPreset(preset: ViewPreset) {
 							:series="siblingSeries"
 							:rows="siblingRows"
 							expandable
-							@select="openSliceDrawer"
 							@expand="option => openChartOverlay('Sibling Distribution', option)"
 						/>
 						<HistogramBuckets
@@ -521,11 +458,9 @@ function setPreset(preset: ViewPreset) {
 								dashboard.family_size_histogram.map(b => ({
 									label: b.bucket,
 									count: b.count,
-									sliceKey: b.sliceKey,
 								}))
 							"
 							expandable
-							@select="openSliceDrawer"
 							@expand="option => openChartOverlay('Family Size Histogram', option)"
 						/>
 					</div>
@@ -538,21 +473,18 @@ function setPreset(preset: ViewPreset) {
 							title="Guardian Nationality (Top)"
 							:items="dashboard.guardian_nationality"
 							expandable
-							@select="openSliceDrawer"
 							@expand="option => openChartOverlay('Guardian Nationality (Top)', option)"
 						/>
 						<DonutSplit
 							title="Preferred Communication Language"
 							:items="dashboard.guardian_comm_language"
 							expandable
-							@select="openSliceDrawer"
 							@expand="option => openChartOverlay('Preferred Communication Language', option)"
 						/>
 						<HorizontalBarTopN
 							title="Guardian Residence (Country)"
 							:items="dashboard.guardian_residence_country"
 							expandable
-							@select="openSliceDrawer"
 							@expand="option => openChartOverlay('Guardian Residence (Country)', option)"
 						/>
 						<TagCloudBar
@@ -560,52 +492,23 @@ function setPreset(preset: ViewPreset) {
 							:items="dashboard.guardian_residence_city"
 							:max="12"
 							expandable
-							@select="openSliceDrawer"
 							@expand="option => openChartOverlay('Guardian Residence (City)', option)"
 						/>
 						<HorizontalBarTopN
 							title="Guardian Employment Sector"
 							:items="dashboard.guardian_sector"
 							expandable
-							@select="openSliceDrawer"
 							@expand="option => openChartOverlay('Guardian Employment Sector', option)"
 						/>
 						<DonutSplit
 							title="Financial Guardian Spread"
 							:items="dashboard.financial_guardian"
 							expandable
-							@select="openSliceDrawer"
 							@expand="option => openChartOverlay('Financial Guardian Spread', option)"
 						/>
 					</div>
 				</section>
 			</section>
 		</div>
-
-		<SideDrawerList
-			:open="sliceDrawerOpen"
-			:title="sliceMeta?.title || 'Drill-down'"
-			:entity="sliceMeta?.entity || 'student'"
-			:rows="sliceRows"
-			:loading="sliceResource.loading"
-			:on-load-more="sliceResource.loading ? undefined : loadSlice"
-			@close="closeSliceDrawer"
-		>
-			<template #row="{ row }">
-				<div class="flex flex-col">
-					<a
-						v-if="sliceMeta?.entity === 'student' && row.id"
-						:href="studentDeskUrl(row.id)"
-						target="_blank"
-						rel="noopener noreferrer"
-						class="font-medium text-canopy hover:underline"
-					>
-						{{ row.name || row.title }}
-					</a>
-					<span v-else class="font-medium text-slate-800">{{ row.name || row.title }}</span>
-					<span class="text-xs text-slate-500">{{ row.subtitle || row.cohort }}</span>
-				</div>
-			</template>
-		</SideDrawerList>
 	</div>
 </template>

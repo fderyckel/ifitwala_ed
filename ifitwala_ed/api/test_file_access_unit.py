@@ -1834,3 +1834,149 @@ class TestFileAccessUnit(TestCase):
                 )
 
         self.assertEqual(drive_grant_calls, [])
+
+    def test_open_employee_user_avatar_prefers_thumb_derivative_grant(self):
+        with _file_access_module() as (file_access, frappe):
+            grant_calls: list[tuple[str, dict]] = []
+            file_access.has_active_employee_profile = lambda **kwargs: True
+            frappe.session.user = "staff@example.com"
+            frappe.local.response = {}
+            frappe.db.exists = lambda doctype, name=None: doctype == "Employee" and name == "EMP-0001"
+            file_access.get_current_drive_file_for_slot = lambda **kwargs: {
+                "name": "DRIVE-FILE-EMP-1",
+                "file": "FILE-EMP-1",
+                "owner_doctype": "Employee",
+                "owner_name": "EMP-0001",
+                "attached_doctype": "Employee",
+                "attached_name": "EMP-0001",
+                "primary_subject_type": "Employee",
+                "primary_subject_id": "EMP-0001",
+                "purpose": "employee_profile_display",
+                "slot": "profile_image",
+            }
+            file_access._get_any_file_row = lambda file_name: {
+                "name": "FILE-EMP-1",
+                "file_url": "/private/files/ifitwala_drive/files/aa/bb/employee.png",
+                "file_name": "employee.png",
+                "is_private": 1,
+                "attached_to_doctype": "Employee",
+                "attached_to_name": "EMP-0001",
+            }
+
+            def fake_load_drive_media_callable(attribute):
+                def grant_callable(**kwargs):
+                    grant_calls.append((attribute, dict(kwargs)))
+                    if attribute == "issue_employee_image_preview_grant" and kwargs.get("derivative_role") == "thumb":
+                        return {"url": "https://signed.example.com/employee-thumb.webp"}
+                    return None
+
+                return grant_callable
+
+            file_access._load_drive_media_callable = fake_load_drive_media_callable
+            file_access._load_drive_access_callable = lambda attribute: self.fail(
+                "generic Drive grants should not be used for employee user avatars"
+            )
+
+            file_access.open_employee_user_avatar(employee="EMP-0001")
+
+        self.assertEqual(frappe.local.response.get("type"), "redirect")
+        self.assertEqual(
+            frappe.local.response.get("location"),
+            "https://signed.example.com/employee-thumb.webp",
+        )
+        self.assertEqual(
+            grant_calls,
+            [
+                (
+                    "issue_employee_image_preview_grant",
+                    {"employee": "EMP-0001", "file_id": "FILE-EMP-1", "derivative_role": "thumb"},
+                )
+            ],
+        )
+
+    def test_open_employee_user_avatar_falls_back_to_governed_original_grant(self):
+        with _file_access_module() as (file_access, frappe):
+            grant_calls: list[tuple[str, dict]] = []
+            delivery_requests: list[dict] = []
+            file_access.has_active_employee_profile = lambda **kwargs: True
+            frappe.session.user = "staff@example.com"
+            frappe.local.response = {}
+            frappe.db.exists = lambda doctype, name=None: doctype == "Employee" and name == "EMP-0001"
+            file_access.get_current_drive_file_for_slot = lambda **kwargs: {
+                "name": "DRIVE-FILE-EMP-1",
+                "file": "FILE-EMP-1",
+                "owner_doctype": "Employee",
+                "owner_name": "EMP-0001",
+                "attached_doctype": "Employee",
+                "attached_name": "EMP-0001",
+                "primary_subject_type": "Employee",
+                "primary_subject_id": "EMP-0001",
+                "purpose": "employee_profile_display",
+                "slot": "profile_image",
+            }
+            file_access._get_any_file_row = lambda file_name: {
+                "name": "FILE-EMP-1",
+                "file_url": "/private/files/ifitwala_drive/files/aa/bb/employee.png",
+                "file_name": "employee.png",
+                "is_private": 1,
+                "attached_to_doctype": "Employee",
+                "attached_to_name": "EMP-0001",
+            }
+            file_access._respond_with_delivery_target = lambda **kwargs: (
+                delivery_requests.append(dict(kwargs)) or bool(kwargs.get("target_url"))
+            )
+
+            def fake_load_drive_media_callable(attribute):
+                def grant_callable(**kwargs):
+                    grant_calls.append((attribute, dict(kwargs)))
+                    if attribute == "issue_employee_image_download_grant":
+                        return {"url": "/private/files/ifitwala_drive/files/aa/bb/employee.png"}
+                    return None
+
+                return grant_callable
+
+            file_access._load_drive_media_callable = fake_load_drive_media_callable
+
+            file_access.open_employee_user_avatar(employee="EMP-0001")
+
+        self.assertEqual(
+            [call[1].get("derivative_role") for call in grant_calls[:3]],
+            ["thumb", "card", "viewer_preview"],
+        )
+        self.assertEqual(grant_calls[-1][0], "issue_employee_image_download_grant")
+        self.assertEqual(
+            delivery_requests[-1],
+            {"target_url": "/private/files/ifitwala_drive/files/aa/bb/employee.png", "cache_headers": True},
+        )
+
+    def test_open_employee_user_avatar_enforces_employee_access_before_drive_grant(self):
+        with _file_access_module() as (file_access, frappe):
+            file_access.has_active_employee_profile = lambda **kwargs: False
+            frappe.session.user = "staff@example.com"
+            frappe.db.exists = lambda doctype, name=None: doctype == "Employee" and name == "EMP-0001"
+            file_access.get_current_drive_file_for_slot = lambda **kwargs: {
+                "name": "DRIVE-FILE-EMP-1",
+                "file": "FILE-EMP-1",
+                "owner_doctype": "Employee",
+                "owner_name": "EMP-0001",
+                "attached_doctype": "Employee",
+                "attached_name": "EMP-0001",
+                "primary_subject_type": "Employee",
+                "primary_subject_id": "EMP-0001",
+                "purpose": "employee_profile_display",
+                "slot": "profile_image",
+            }
+            file_access._get_any_file_row = lambda file_name: {
+                "name": "FILE-EMP-1",
+                "file_url": "/private/files/ifitwala_drive/files/aa/bb/employee.png",
+                "file_name": "employee.png",
+                "is_private": 1,
+                "attached_to_doctype": "Employee",
+                "attached_to_name": "EMP-0001",
+            }
+            file_access._load_drive_media_callable = lambda attribute: self.fail(
+                "Drive grant should not be requested before Employee access passes"
+            )
+
+            with self.assertRaises(frappe.PermissionError):
+                file_access.open_employee_user_avatar(employee="EMP-0001")

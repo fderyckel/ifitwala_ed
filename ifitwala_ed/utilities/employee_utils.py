@@ -112,7 +112,8 @@ def get_schools_for_organization_scope(
         order_by=order_by,
         limit=0,
     )
-    return _clean_scope_values(schools)
+    school_names = [row.get("name") if isinstance(row, dict) else row for row in schools]
+    return _clean_scope_values(school_names)
 
 
 def get_user_visible_schools(user: str | None = None) -> list[str]:

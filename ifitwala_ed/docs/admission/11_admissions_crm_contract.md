@@ -1,12 +1,12 @@
 # Admissions CRM Contract
 
 Status: Partial implementation
-Code refs: `ifitwala_ed/admission/doctype/inquiry/inquiry.json`, `ifitwala_ed/admission/web_form/inquiry/inquiry.json`, `ifitwala_ed/admission/web_form/inquiry/inquiry.js`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/admission_acknowledgement_profile.json`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/admission_acknowledgement_profile.js`, `ifitwala_ed/admission/inquiry_acknowledgement.py`, `ifitwala_ed/admission/doctype/admission_channel_account/*`, `ifitwala_ed/admission/doctype/admission_external_identity/*`, `ifitwala_ed/admission/doctype/admission_conversation/*`, `ifitwala_ed/admission/doctype/admission_message/*`, `ifitwala_ed/admission/doctype/admission_crm_activity/*`, `ifitwala_ed/api/admissions_crm.py`, `ifitwala_ed/api/admissions_inbox.py`
-Test refs: `ifitwala_ed/admission/doctype/inquiry/test_inquiry.py`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/test_admission_acknowledgement_profile.py`, `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`, `ifitwala_ed/api/test_admissions_inbox.py`
+Code refs: `ifitwala_ed/admission/doctype/inquiry/inquiry.json`, `ifitwala_ed/admission/web_form/inquiry/inquiry.json`, `ifitwala_ed/admission/web_form/inquiry/inquiry.js`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/admission_acknowledgement_profile.json`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/admission_acknowledgement_profile.js`, `ifitwala_ed/admission/inquiry_acknowledgement.py`, `ifitwala_ed/admission/doctype/admission_channel_account/*`, `ifitwala_ed/admission/doctype/admission_external_identity/*`, `ifitwala_ed/admission/doctype/admission_conversation/*`, `ifitwala_ed/admission/doctype/admission_message/*`, `ifitwala_ed/admission/doctype/admission_crm_activity/*`, `ifitwala_ed/admission/doctype/admission_visit/*`, `ifitwala_ed/api/admissions_crm.py`, `ifitwala_ed/api/admissions_inbox.py`, `ifitwala_ed/api/admissions_timeline.py`, `ifitwala_ed/ui-spa/src/components/admissions/AdmissionsTimelinePanel.vue`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsTimelineService.ts`
+Test refs: `ifitwala_ed/admission/doctype/inquiry/test_inquiry.py`, `ifitwala_ed/admission/doctype/admission_acknowledgement_profile/test_admission_acknowledgement_profile.py`, `ifitwala_ed/admission/doctype/admission_conversation/test_admission_conversation.py`, `ifitwala_ed/admission/doctype/admission_visit/test_admission_visit.py`, `ifitwala_ed/api/test_admissions_inbox.py`, `ifitwala_ed/api/test_admissions_timeline.py`, `ifitwala_ed/ui-spa/src/lib/services/admissions/__tests__/admissionsTimelineService.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsInbox.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsCockpit.test.ts`
 
-This note defines the planned admissions CRM model for Inquiry-stage lead handling and external-channel messaging.
+This note defines the current and planned admissions CRM model for Inquiry-stage lead handling and external-channel messaging.
 
-Phase 1 Inquiry dynamic capture, public family acknowledgement, Phase 2A CRM core manual mode, Phase 3A Admissions Inbox backend context endpoint, Phase 3B/3C staff Inbox route and action drawer, Phase 3D ownership/triage workflows, Phase 3D.5 CRM intake, and Phase 3E applicant-stage message aggregation are implemented.
+Phase 1 Inquiry dynamic capture, public family acknowledgement, Phase 2A CRM core manual mode, Phase 3A Admissions Inbox backend context endpoint, Phase 3B/3C staff Inbox route and action drawer, Phase 3D ownership/triage workflows, Phase 3D.5 CRM intake, Phase 3E applicant-stage message aggregation, the backend Admission Visit workflow, the backend contextual Admissions Timeline endpoint, Inbox/Cockpit SPA timeline drawers, Cockpit CRM log activity/message drawer actions, Inbox/Cockpit applicant-stage offer/deposit/promotion drawer actions, Inbox/Cockpit schedule-visit drawer actions, and Inquiry/Student Applicant Desk entry points are implemented.
 
 Provider adapters, governed media conversion, and lead-scoring/read-model work remain planned until their referenced SPA surfaces, APIs, and tests are implemented.
 
@@ -24,8 +24,11 @@ This contract must remain consistent with:
 - `../files_and_policies/files_07_education_file_semantics_and_cross_app_contract.md`
 - `../spa/07_org_communication_messaging_contract.md`
 - `../spa/17_admissions_inbox_contract.md`
+- `../relationship_crm/README.md`
+- `../relationship_crm/01_education_relationship_crm_contract.md`
+- `../relationship_crm/02_contextual_timeline_contract.md`
 
-If this planned CRM contract conflicts with the locked admissions pipeline or governed-file contracts, those existing contracts win.
+If this CRM contract conflicts with the locked admissions pipeline or governed-file contracts, those existing contracts win.
 
 ## 2. Pipeline Boundary
 
@@ -43,6 +46,52 @@ Responsibilities:
 - `Org Communication` remains the current applicant-stage case communication container for authenticated applicant portal messages.
 
 No CRM work may create a parallel applicant container or bypass `Student Applicant`.
+
+### 2.1 Contextual Timeline Direction
+
+Status: Backend endpoint, Inbox/Cockpit SPA drawers, Cockpit CRM log activity/message drawer actions, Inbox/Cockpit applicant-stage offer/deposit/promotion drawer actions, Inbox/Cockpit schedule-visit drawer actions, and Inquiry/Student Applicant Desk entry points implemented.
+Code refs: `ifitwala_ed/api/admissions_timeline.py`, `ifitwala_ed/api/admission_cockpit.py`, `ifitwala_ed/public/js/admissions_timeline_desk.js`, `ifitwala_ed/admission/doctype/inquiry/inquiry.js`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.js`, `ifitwala_ed/ui-spa/src/components/admissions/AdmissionsTimelinePanel.vue`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsTimelineService.ts`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsInboxService.ts`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsWorkspaceService.ts`, `ifitwala_ed/ui-spa/src/lib/admission.ts`, `ifitwala_ed/ui-spa/src/overlays/admissions/AdmissionsVisitScheduleOverlay.vue`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsInbox.vue`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`; current source ledgers are listed in this document and `../spa/17_admissions_inbox_contract.md`
+Test refs: `ifitwala_ed/api/test_admissions_timeline.py`, `ifitwala_ed/ui-spa/src/lib/services/admissions/__tests__/admissionsTimelineService.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsInbox.test.ts`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsCockpit.test.ts`
+
+Admissions users should not need to know which backend ledger stores a visible item.
+
+The implemented backend timeline is available for Inquiry, Student Applicant, and Admission Conversation contexts. Admissions Inbox, Admissions Cockpit, Inquiry Desk forms, and Student Applicant Desk forms now reuse that pattern contextually from their existing work surfaces. The timeline may project existing ledgers together, but it must not merge their storage models:
+
+- Inquiry remains intake and triage.
+- Admission Conversation, Admission Message, and Admission CRM Activity remain pre-applicant CRM support records.
+- Admission Visit remains the visit workflow truth.
+- Org Communication remains applicant-stage case communication truth.
+- Applicant Enrollment Plan remains offer, family response, deposit, and enrollment-handoff truth.
+
+`Student Applicant.application_status` must not be overloaded to mean "admissions complete." The admissions completion ladder is a derived read-model projection unless a later approved contract defines persistent fields:
+
+```text
+Lead -> Applicant -> Submitted -> Approved -> Offer Sent -> Offer Accepted -> Deposit Ready -> Promoted -> Enrollment Request -> Enrolled -> Identity Upgraded
+```
+
+Contextual actions such as Log Activity, Log Message, Schedule Visit, Message Family, Manage Offer, Check Deposit, and Promote must be server-owned workflows that preserve the current ledger boundaries. The Cockpit timeline drawer can execute Log Activity and Log Message in place, but those actions still write through `admissions_crm.py` into the existing CRM ledgers rather than creating a Cockpit-owned activity store. Inbox and Cockpit timeline drawers can execute applicant-stage offer, deposit, and promotion actions without sending staff to unrelated Desk hops.
+
+### 2.2 Education Relationship CRM Boundary
+
+Status: Planned target behavior; no Relationship CRM schema is implemented yet.
+Code refs: None for planned Relationship CRM DocTypes.
+Test refs: None.
+
+The broader institutional CRM direction lives in `../relationship_crm/01_education_relationship_crm_contract.md`.
+
+Admissions CRM must not become the whole-school CRM.
+
+The future Relationship CRM may receive explicit handoffs from:
+
+- non-admission inquiries
+- partnership or agent inquiries
+- sponsorship discussions
+- current-family relationship work
+- feeder-school, employer, university, alumni, or community-partner work
+
+Those handoffs must be explicit staff actions. A public Inquiry submission must not automatically create an Education Relationship or Relationship Case.
+
+Until the Relationship CRM schema and workflow endpoints are approved, `Inquiry.type_of_inquiry = Partnership / Agent` remains triage context only and must not create a supplier, agent, partner, sponsor, or relationship record by itself.
 
 ## 3. Inquiry Schema Rule
 
@@ -104,6 +153,8 @@ All Inquiry types may use the current baseline fields:
 - next action note
 
 `organization` and `school` remain triage context on Inquiry. They are informational and staff-correctable at this stage.
+
+For the public Inquiry web form, the School picker is derived from the selected Organization using Organization NestedSet inheritance: selecting a public-inquiry-enabled parent Organization exposes eligible schools in that Organization and its non-archived descendants. A School is eligible only when `School.show_in_inquiry = 1`; schools are never free-form public input, and the same eligibility rule is enforced again when the web form creates the Inquiry.
 
 Hard institutional anchoring happens at `Student Applicant`, where `organization` and `school` are required and immutable.
 
@@ -255,6 +306,20 @@ Admission External Identity
 
 Manual social intake may use `Inquiry.source = Facebook` or `Instagram`, but it is not provider-ingested truth until a provider adapter records provider IDs, dedupe keys, and delivery metadata.
 
+### 4.8 Admission Visit Contract
+
+Status: Backend/domain workflow implemented.
+
+Admission Visit is the CRM-owned workflow for campus tours, open-day follow-ups, student shadow visits, school visits, and college visits.
+
+Visits may happen before a Student Applicant exists. They may be linked to `Admission Conversation`, `Inquiry`, or `Student Applicant`, but they must not create a parallel applicant container.
+
+Scheduling an Admission Visit from Inquiry or Student Applicant context finds or creates an `Admission Conversation` and records `Booked Tour` CRM activity. Marking the visit `Completed` records `Attended Tour`.
+
+Calendar presence is projected through a linked participant-only `School Event`; the visit lead and additional visit staff are calendar participants and are booked, while informed users are informational only.
+
+The canonical runtime note is `12_admission_visit_contract.md`.
+
 ### 4.6 Public Family Acknowledgement
 
 Status: Implemented for the first transactional version.
@@ -280,6 +345,10 @@ Runtime rules:
 
 - The thank-you DTO is public-safe and may include only brand/copy/timeline/CTA data.
 - The DTO must not expose Inquiry name, email, phone, internal assignment state, or applicant status.
+- Public thank-you page copy and timeline steps are type-aware:
+  - `Admission` keeps admissions-specific review, family follow-up, and application/visit next-step language.
+  - `Current Family`, `General Inquiry`, `Partnership / Agent`, and `Other` use routing/follow-up language instead of admissions pipeline language.
+- Profile thank-you title/message/timeline-heading/footer/email-template overrides and admission CTAs apply only to `Admission` inquiries until a per-type acknowledgement profile schema is approved.
 - Email sending runs through `frappe.enqueue(..., queue="short", enqueue_after_commit=True)`.
 - Email template rendering receives `doc`, `inquiry`, `profile`, `acknowledgement`, `brand`, `timeline`, and `ctas`.
 - If no acknowledgement profile is configured, the system may send the generic transactional fallback email; school-specific copy requires a profile.
