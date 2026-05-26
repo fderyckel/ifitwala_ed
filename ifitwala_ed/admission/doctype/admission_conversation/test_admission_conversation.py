@@ -67,6 +67,28 @@ class TestAdmissionConversation(FrappeTestCase):
         self.assertTrue(latest.latest_outbound_message_at)
         self.assertIn("Thanks.", latest.last_message_preview)
 
+    def test_manual_message_logging_accepts_student_applicant_context(self):
+        organization = self._make_organization("CRM Applicant")
+        school = self._make_school(organization=organization)
+        applicant = self._make_applicant(organization=organization, school=school)
+
+        previous_user = frappe.session.user
+        try:
+            frappe.set_user("Administrator")
+            response = log_admission_message(
+                student_applicant=applicant.name,
+                direction="Inbound",
+                body="Adding an applicant-stage note from the inquiry modal.",
+                client_request_id=f"crm-applicant-msg-{frappe.generate_hash(length=8)}",
+            )
+        finally:
+            frappe.set_user(previous_user)
+
+        self.assertEqual(response["conversation"]["student_applicant"], applicant.name)
+        self.assertEqual(response["conversation"]["organization"], organization)
+        self.assertEqual(response["conversation"]["school"], school)
+        self.assertEqual(response["conversation"]["title"], applicant.title)
+
     def test_crm_activity_updates_next_action(self):
         organization = self._make_organization("CRM Activity")
 
@@ -295,6 +317,33 @@ class TestAdmissionConversation(FrappeTestCase):
         doc.flags.skip_coa_setup = True
         doc.insert(ignore_permissions=True)
         return doc.name
+
+    def _make_school(self, *, organization: str) -> str:
+        doc = frappe.get_doc(
+            {
+                "doctype": "School",
+                "school_name": f"CRM School {frappe.generate_hash(length=6)}",
+                "abbr": f"CS{frappe.generate_hash(length=3)}",
+                "organization": organization,
+            }
+        )
+        doc.insert(ignore_permissions=True)
+        return doc.name
+
+    def _make_applicant(self, *, organization: str, school: str):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Student Applicant",
+                "first_name": "CRM",
+                "middle_name": "Modal",
+                "last_name": f"Applicant-{frappe.generate_hash(length=6)}",
+                "organization": organization,
+                "school": school,
+                "application_status": "Draft",
+            }
+        )
+        doc.insert(ignore_permissions=True)
+        return doc
 
     def _make_inquiry(self):
         doc = frappe.get_doc(

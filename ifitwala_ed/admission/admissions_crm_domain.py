@@ -51,7 +51,17 @@ def get_student_applicant_context(student_applicant: str | None) -> dict:
     row = frappe.db.get_value(
         "Student Applicant",
         applicant_name,
-        ["name", "organization", "school", "applicant_name", "applicant_email", "inquiry"],
+        [
+            "name",
+            "organization",
+            "school",
+            "first_name",
+            "middle_name",
+            "last_name",
+            "title",
+            "applicant_email",
+            "inquiry",
+        ],
         as_dict=True,
     )
     if not row:
@@ -142,7 +152,13 @@ def set_conversation_title(doc) -> None:
 
     if clean(doc.student_applicant):
         applicant = get_student_applicant_context(doc.student_applicant)
-        doc.title = clean(applicant.get("applicant_name")) or doc.student_applicant
+        name_parts = [
+            clean(applicant.get("first_name")),
+            clean(applicant.get("middle_name")),
+            clean(applicant.get("last_name")),
+        ]
+        display_name = " ".join(part for part in name_parts if part)
+        doc.title = display_name or clean(applicant.get("title")) or doc.student_applicant
         return
 
     if clean(doc.external_identity):
