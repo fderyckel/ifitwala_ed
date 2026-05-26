@@ -127,7 +127,14 @@ class TestInquiry(FrappeTestCase):
             show_in_inquiry=1,
         )
 
-        rows = inquiry_school_link_query(txt="Inquiry School", filters={"organization": parent_org})
+        rows = inquiry_school_link_query(
+            doctype="School",
+            txt="Inquiry School",
+            searchfield="name",
+            start=0,
+            page_len=20,
+            filters={"organization": parent_org},
+        )
         names = {row[0] for row in rows}
 
         self.assertIn(descendant_school, names)

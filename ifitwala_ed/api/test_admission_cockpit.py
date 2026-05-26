@@ -95,14 +95,16 @@ class TestAdmissionCockpit(FrappeTestCase):
             self.fail(f"Unexpected SQL query: {query}")
 
         with (
-            patch("ifitwala_ed.api.admission_cockpit._ensure_cockpit_access", return_value=self.staff_user.name),
-            patch("ifitwala_ed.api.admission_cockpit._get_roles_for_user", return_value={"Admission Manager"}),
-            patch("ifitwala_ed.api.admission_cockpit.get_descendant_schools", return_value=[]),
-            patch("ifitwala_ed.api.admission_cockpit.frappe.parse_json", return_value={"school": "MISSING-SCHOOL"}),
-            patch("ifitwala_ed.api.admission_cockpit.frappe.cache", return_value=cache),
-            patch("ifitwala_ed.api.admission_cockpit.frappe.as_json", side_effect=lambda value: value),
-            patch("ifitwala_ed.api.admission_cockpit.frappe.db.sql", side_effect=fake_sql),
-            patch("ifitwala_ed.api.admission_cockpit.frappe.get_all") as get_all_mock,
+            patch("ifitwala_ed.admission.api.cockpit.data._ensure_cockpit_access", return_value=self.staff_user.name),
+            patch("ifitwala_ed.admission.api.cockpit.data._get_roles_for_user", return_value={"Admission Manager"}),
+            patch("ifitwala_ed.admission.api.cockpit.data.get_descendant_schools", return_value=[]),
+            patch(
+                "ifitwala_ed.admission.api.cockpit.data.frappe.parse_json", return_value={"school": "MISSING-SCHOOL"}
+            ),
+            patch("ifitwala_ed.admission.api.cockpit.data.frappe.cache", return_value=cache),
+            patch("ifitwala_ed.admission.api.cockpit.data.frappe.as_json", side_effect=lambda value: value),
+            patch("ifitwala_ed.admission.api.cockpit.data.frappe.db.sql", side_effect=fake_sql),
+            patch("ifitwala_ed.admission.api.cockpit.data.frappe.get_all") as get_all_mock,
         ):
             payload = get_admissions_cockpit_data(filters={"school": "MISSING-SCHOOL"})
 
@@ -340,7 +342,7 @@ class TestAdmissionCockpit(FrappeTestCase):
         context = self._create_offer_plan(status="Committee Approved")
 
         frappe.set_user(self.staff_user.name)
-        with patch("ifitwala_ed.api.admission_cockpit.invalidate_admissions_cockpit_cache") as invalidate_mock:
+        with patch("ifitwala_ed.admission.api.cockpit.actions.invalidate_admissions_cockpit_cache") as invalidate_mock:
             result = send_admissions_cockpit_offer(context["plan"].name)
 
         context["plan"].reload()
@@ -355,7 +357,7 @@ class TestAdmissionCockpit(FrappeTestCase):
         context = self._create_offer_plan(status="Draft")
 
         frappe.set_user(self.staff_user.name)
-        with patch("ifitwala_ed.api.admission_cockpit.invalidate_admissions_cockpit_cache") as invalidate_mock:
+        with patch("ifitwala_ed.admission.api.cockpit.actions.invalidate_admissions_cockpit_cache") as invalidate_mock:
             result = get_or_create_admissions_cockpit_offer_plan(self.applicant.name)
 
         self.assertTrue(bool(result.get("ok")))
@@ -372,7 +374,7 @@ class TestAdmissionCockpit(FrappeTestCase):
                 "ifitwala_ed.admission.doctype.student_applicant.student_applicant.StudentApplicant.promote_to_student",
                 return_value="STU-COCKPIT-0001",
             ) as promote_mock,
-            patch("ifitwala_ed.api.admission_cockpit.invalidate_admissions_cockpit_cache") as invalidate_mock,
+            patch("ifitwala_ed.admission.api.cockpit.actions.invalidate_admissions_cockpit_cache") as invalidate_mock,
         ):
             result = promote_admissions_cockpit_applicant(self.applicant.name)
 
@@ -406,7 +408,7 @@ class TestAdmissionCockpit(FrappeTestCase):
                 "ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan.hydrate_program_enrollment_request_from_applicant_plan",
                 side_effect=_fake_hydrate,
             ) as hydrate_mock,
-            patch("ifitwala_ed.api.admission_cockpit.invalidate_admissions_cockpit_cache") as invalidate_mock,
+            patch("ifitwala_ed.admission.api.cockpit.actions.invalidate_admissions_cockpit_cache") as invalidate_mock,
         ):
             result = hydrate_admissions_cockpit_request(context["plan"].name)
 

@@ -184,7 +184,7 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
                 item_key="aisl_2019",
                 item_label="AISL transcript 2019",
                 file_name="aisl-2019.pdf",
-                content=self._tiny_file_base64(),
+                content=self._tiny_pdf_base64(),
             )
             second_upload = upload_applicant_document(
                 student_applicant=self.applicant.name,
@@ -192,7 +192,7 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
                 item_key="isl_2020",
                 item_label="ISL transcript 2020",
                 file_name="isl-2020.pdf",
-                content=self._tiny_file_base64(),
+                content=self._tiny_pdf_base64(),
             )
 
         item_names = [
@@ -245,15 +245,15 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
 
         with (
             patch(
-                "ifitwala_ed.api.admissions_portal.get_current_drive_files_for_attachments",
+                "ifitwala_ed.admission.api.portal.documents.get_current_drive_files_for_attachments",
                 side_effect=fake_current_drive_files_for_attachments,
             ),
             patch(
-                "ifitwala_ed.api.admissions_portal.get_drive_file_thumbnail_ready_map",
+                "ifitwala_ed.admission.api.portal.documents.get_drive_file_thumbnail_ready_map",
                 side_effect=fake_thumbnail_ready_map,
             ),
             patch(
-                "ifitwala_ed.api.admissions_portal._load_drive_version_mime_map",
+                "ifitwala_ed.admission.api.portal.documents._load_drive_version_mime_map",
                 side_effect=fake_version_mime_map,
             ),
         ):
@@ -544,7 +544,7 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
             "guardians",
             {
                 "user": family_user,
-                "relationship": "Parent",
+                "relationship": "Other",
                 "can_consent": 1,
                 "is_primary": 1,
                 "is_primary_guardian": 1,
@@ -694,3 +694,8 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
 
     def _tiny_file_base64(self) -> str:
         return base64.b64encode(b"test-file-content").decode("ascii")
+
+    def _tiny_pdf_base64(self) -> str:
+        return base64.b64encode(
+            b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n"
+        ).decode("ascii")

@@ -142,7 +142,14 @@ class TestAdmissionAcknowledgementProfile(FrappeTestCase):
             show_in_inquiry=0,
         )
 
-        rows = inquiry_school_link_query(txt="Inquiry School", filters={"organization": organization})
+        rows = inquiry_school_link_query(
+            doctype="School",
+            txt="Inquiry School",
+            searchfield="name",
+            start=0,
+            page_len=20,
+            filters={"organization": organization},
+        )
         names = {row[0] for row in rows}
 
         self.assertIn(unpublished_enabled.name, names)

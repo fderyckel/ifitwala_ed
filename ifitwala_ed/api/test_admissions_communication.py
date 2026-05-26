@@ -432,10 +432,10 @@ class TestAdmissionsCockpitAuthGuards(FrappeTestCase):
     def test_cockpit_access_rejects_none_literal_without_role_lookup(self):
         with (
             patch(
-                "ifitwala_ed.api.admission_cockpit.frappe.session",
+                "ifitwala_ed.admission.api.cockpit.access.frappe.session",
                 SimpleNamespace(user="None"),
             ),
-            patch("ifitwala_ed.api.admission_cockpit.frappe.get_roles") as get_roles_mock,
+            patch("ifitwala_ed.admission.api.cockpit.access.frappe.get_roles") as get_roles_mock,
         ):
             with self.assertRaises(frappe.PermissionError):
                 _ensure_cockpit_access()
@@ -444,7 +444,7 @@ class TestAdmissionsCockpitAuthGuards(FrappeTestCase):
 
     def test_get_roles_for_user_rejects_none_user_not_found(self):
         with patch(
-            "ifitwala_ed.api.admission_cockpit.frappe.get_roles",
+            "ifitwala_ed.admission.api.cockpit.access.frappe.get_roles",
             side_effect=RuntimeError("User None not found"),
         ):
             with self.assertRaises(frappe.PermissionError):

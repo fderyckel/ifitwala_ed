@@ -11,7 +11,7 @@ from frappe import _
 from frappe.utils import cint, get_datetime, now_datetime
 
 from ifitwala_ed.admission.admission_utils import ADMISSIONS_ROLES
-from ifitwala_ed.api.admissions_portal import _ensure_applicant_match
+from ifitwala_ed.admission.api.portal.access import _ensure_applicant_match
 from ifitwala_ed.api.org_communication_interactions import (
     create_interaction_entry,
     get_latest_org_communication_entry_for_user,

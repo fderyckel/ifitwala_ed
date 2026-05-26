@@ -730,7 +730,9 @@ class TestRecommendationIntake(FrappeTestCase):
                 "mode": "In Person",
                 "interviewers": [{"interviewer": user} for user in interviewer_users],
             }
-        ).insert()
+        )
+        interview.flags.from_schedule_applicant_interview = True
+        interview.insert()
         self._created.append(("Applicant Interview", interview.name))
         return interview
 

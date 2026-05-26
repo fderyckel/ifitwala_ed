@@ -364,7 +364,9 @@ class TestStudentApplicant(FrappeTestCase):
                     "is_private": 1,
                     "content": content,
                 }
-            ).insert(ignore_permissions=True)
+            )
+            file_doc.flags.governed_upload = True
+            file_doc.insert(ignore_permissions=True)
             self._created.append(("File", file_doc.name))
 
             drive_file = frappe.get_doc(

@@ -780,8 +780,8 @@ class TestContactPrivacyStaticBoundary(TestCase):
 
     def test_sensitive_read_entrypoints_do_not_read_native_contact_directly(self):
         targets = [
-            ("api/admissions_portal.py", "_applicant_contact_prefill_payload"),
-            ("api/admissions_portal.py", "_invite_contact_email_options"),
+            ("admission/api/portal/contacts.py", "_applicant_contact_prefill_payload"),
+            ("admission/api/portal/invites.py", "_invite_contact_email_options"),
             ("api/family_consent.py", "_get_contact_primary_values"),
             ("api/family_consent.py", "_apply_profile_writeback"),
             ("admission/doctype/inquiry/inquiry.py", "create_contact_from_inquiry"),

@@ -470,17 +470,12 @@ class TestApplicantInterview(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Document Item", item.name))
 
-        file_doc = frappe.get_doc(
-            {
-                "doctype": "File",
-                "attached_to_doctype": "Applicant Document Item",
-                "attached_to_name": item.name,
-                "file_name": "workspace-proof.txt",
-                "is_private": 1,
-                "content": b"workspace-file",
-            }
-        ).insert(ignore_permissions=True)
-        self._created.append(("File", file_doc.name))
+        file_doc = self._create_governed_applicant_document_file(
+            item_name=item.name,
+            document_type=doc_type.name,
+            file_name="workspace-proof.txt",
+            content=b"workspace-file",
+        )
 
         frappe.set_user(interviewer.name)
         payload = get_interview_workspace(interview=interview.name)
@@ -501,11 +496,15 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertEqual((query.get("context_name") or [None])[0], interview.name)
 
         frappe.local.response = {}
-        download_admissions_file(
-            file=file_doc.name,
-            context_doctype="Applicant Interview",
-            context_name=interview.name,
-        )
+        with patch(
+            "ifitwala_ed.api.file_access._resolve_admissions_drive_download_grant_url",
+            return_value=file_doc.file_url,
+        ):
+            download_admissions_file(
+                file=file_doc.name,
+                context_doctype="Applicant Interview",
+                context_name=interview.name,
+            )
         self.assertEqual(frappe.local.response.get("type"), "download")
         self.assertEqual(frappe.local.response.get("filename"), file_doc.file_name)
         self.assertEqual(frappe.local.response.get("filecontent"), b"workspace-file")
@@ -795,7 +794,7 @@ class TestApplicantInterview(FrappeTestCase):
 
         frappe.local.response = {}
         with patch(
-            "ifitwala_ed.api.file_access._resolve_drive_download_grant_url",
+            "ifitwala_ed.api.file_access._resolve_admissions_drive_download_grant_url",
             return_value=file_doc.file_url,
         ):
             download_admissions_file(
@@ -909,7 +908,7 @@ class TestApplicantInterview(FrappeTestCase):
 
         frappe.local.response = {}
         with patch(
-            "ifitwala_ed.api.file_access._resolve_drive_download_grant_url",
+            "ifitwala_ed.api.file_access._resolve_admissions_drive_download_grant_url",
             return_value=file_doc.file_url,
         ):
             download_admissions_file(
@@ -966,17 +965,12 @@ class TestApplicantInterview(FrappeTestCase):
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Document Item", item.name))
 
-        file_doc = frappe.get_doc(
-            {
-                "doctype": "File",
-                "attached_to_doctype": "Applicant Document Item",
-                "attached_to_name": item.name,
-                "file_name": "overall-interview-review.txt",
-                "is_private": 1,
-                "content": b"overall-interview-review-file",
-            }
-        ).insert(ignore_permissions=True)
-        self._created.append(("File", file_doc.name))
+        file_doc = self._create_governed_applicant_document_file(
+            item_name=item.name,
+            document_type=doc_type.name,
+            file_name="overall-interview-review.txt",
+            content=b"overall-interview-review-file",
+        )
 
         assignment = frappe.get_doc(
             {
@@ -1017,11 +1011,15 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertEqual((query.get("context_name") or [None])[0], interview.name)
 
         frappe.local.response = {}
-        download_admissions_file(
-            file=file_doc.name,
-            context_doctype="Applicant Interview",
-            context_name=interview.name,
-        )
+        with patch(
+            "ifitwala_ed.api.file_access._resolve_admissions_drive_download_grant_url",
+            return_value=file_doc.file_url,
+        ):
+            download_admissions_file(
+                file=file_doc.name,
+                context_doctype="Applicant Interview",
+                context_name=interview.name,
+            )
         self.assertEqual(frappe.local.response.get("type"), "download")
         self.assertEqual(frappe.local.response.get("filename"), file_doc.file_name)
         self.assertEqual(frappe.local.response.get("filecontent"), b"overall-interview-review-file")

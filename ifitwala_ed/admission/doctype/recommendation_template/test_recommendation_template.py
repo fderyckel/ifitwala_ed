@@ -196,6 +196,7 @@ class TestRecommendationTemplate(FrappeTestCase):
                 "organization": self.organization,
                 "school": self.school,
                 "target_document_type": self.doc_type_single,
+                "maximum_allowed": 1,
                 "template_fields": [
                     {
                         "label": "Academic Skill Ratings",

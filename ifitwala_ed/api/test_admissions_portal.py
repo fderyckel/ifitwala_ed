@@ -66,7 +66,7 @@ def _insert_user_without_notifications(user):
 
 class TestAdmissionsPortalAuthGuards(FrappeTestCase):
     def test_require_admissions_applicant_rejects_none_literal_as_unauthenticated(self):
-        with patch("ifitwala_ed.api.admissions_portal._session_user", return_value=""):
+        with patch("ifitwala_ed.admission.api.portal.access._session_user", return_value=""):
             with self.assertRaises(frappe.PermissionError):
                 admissions_portal_api._require_admissions_applicant()
 
@@ -83,10 +83,10 @@ class TestAdmissionsPortalAuthGuards(FrappeTestCase):
 
         with (
             patch(
-                "ifitwala_ed.api.admissions_portal.get_admissions_portal_applicant_names_for_user",
+                "ifitwala_ed.admission.api.portal.access.get_admissions_portal_applicant_names_for_user",
                 return_value=["APP-CANONICAL"],
             ) as mocked_names,
-            patch("ifitwala_ed.api.admissions_portal.frappe.get_all", side_effect=fake_get_all),
+            patch("ifitwala_ed.admission.api.portal.access.frappe.get_all", side_effect=fake_get_all),
         ):
             row = admissions_portal_api._get_applicant_for_user(
                 "applicant@example.com",
@@ -99,11 +99,11 @@ class TestAdmissionsPortalAuthGuards(FrappeTestCase):
     def test_get_applicant_for_user_rejects_email_only_matches(self):
         with (
             patch(
-                "ifitwala_ed.api.admissions_portal.get_admissions_portal_applicant_names_for_user",
+                "ifitwala_ed.admission.api.portal.access.get_admissions_portal_applicant_names_for_user",
                 return_value=[],
             ) as mocked_names,
             patch(
-                "ifitwala_ed.api.admissions_portal.frappe.get_all",
+                "ifitwala_ed.admission.api.portal.access.frappe.get_all",
                 side_effect=AssertionError(
                     "no applicant row lookup should run when canonical access resolution is empty"
                 ),
@@ -243,10 +243,10 @@ class TestInviteApplicant(FrappeTestCase):
 
         with (
             patch(
-                "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
+                "ifitwala_ed.admission.api.portal.invites.ensure_admissions_permission",
                 return_value=self.staff_user,
             ),
-            patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email") as send_invite,
+            patch("ifitwala_ed.admission.api.portal.invites._send_applicant_invite_email") as send_invite,
         ):
             payload = invite_applicant(student_applicant=self.applicant.name, email=email)
 
@@ -300,10 +300,10 @@ class TestInviteApplicant(FrappeTestCase):
 
         with (
             patch(
-                "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
+                "ifitwala_ed.admission.api.portal.invites.ensure_admissions_permission",
                 return_value=self.staff_user,
             ),
-            patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email"),
+            patch("ifitwala_ed.admission.api.portal.invites._send_applicant_invite_email"),
         ):
             invite_applicant(student_applicant=self.applicant.name, email=email)
         self._created.append(("User", email))
@@ -313,10 +313,10 @@ class TestInviteApplicant(FrappeTestCase):
 
         with (
             patch(
-                "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
+                "ifitwala_ed.admission.api.portal.invites.ensure_admissions_permission",
                 return_value=self.staff_user,
             ),
-            patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email") as send_invite,
+            patch("ifitwala_ed.admission.api.portal.invites._send_applicant_invite_email") as send_invite,
         ):
             payload = invite_applicant(student_applicant=self.applicant.name, email=email)
 
@@ -344,10 +344,10 @@ class TestInviteApplicant(FrappeTestCase):
 
         with (
             patch(
-                "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
+                "ifitwala_ed.admission.api.portal.invites.ensure_admissions_permission",
                 return_value=self.staff_user,
             ),
-            patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email", return_value=True),
+            patch("ifitwala_ed.admission.api.portal.invites._send_applicant_invite_email", return_value=True),
         ):
             payload = invite_applicant(student_applicant=self.applicant.name, email=email)
 
@@ -367,10 +367,10 @@ class TestInviteApplicant(FrappeTestCase):
 
         with (
             patch(
-                "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
+                "ifitwala_ed.admission.api.portal.invites.ensure_admissions_permission",
                 return_value=self.staff_user,
             ),
-            patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email", return_value=True),
+            patch("ifitwala_ed.admission.api.portal.invites._send_applicant_invite_email", return_value=True),
         ):
             invite_applicant(student_applicant=self.applicant.name, email=email)
         self._created.append(("User", email))
@@ -386,10 +386,10 @@ class TestInviteApplicant(FrappeTestCase):
 
         with (
             patch(
-                "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
+                "ifitwala_ed.admission.api.portal.invites.ensure_admissions_permission",
                 return_value=self.staff_user,
             ),
-            patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email", return_value=True),
+            patch("ifitwala_ed.admission.api.portal.invites._send_applicant_invite_email", return_value=True),
         ):
             payload = invite_applicant(student_applicant=self.applicant.name, email=email)
 
@@ -406,7 +406,7 @@ class TestInviteApplicant(FrappeTestCase):
             send_welcome_email = 1
             send_password_notification = 1
 
-        with patch("ifitwala_ed.api.admissions_portal.frappe.sendmail") as mocked_sendmail:
+        with patch("ifitwala_ed.admission.api.portal.invites.frappe.sendmail") as mocked_sendmail:
             result = _send_applicant_invite_email(DummyUser(), "dummy@example.com")
 
         self.assertTrue(result)
@@ -422,7 +422,7 @@ class TestInviteApplicant(FrappeTestCase):
         self.applicant.reload()
 
         with patch(
-            "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
+            "ifitwala_ed.admission.api.portal.invites.ensure_admissions_permission",
             return_value=self.staff_user,
         ):
             payload = get_invite_email_options(student_applicant=self.applicant.name)
@@ -449,7 +449,7 @@ class TestInviteApplicant(FrappeTestCase):
         invite_email = f"outside-invite-{frappe.generate_hash(length=8)}@example.com"
 
         with (
-            patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email") as send_invite,
+            patch("ifitwala_ed.admission.api.portal.invites._send_applicant_invite_email") as send_invite,
             self.assertRaises(frappe.PermissionError),
         ):
             invite_applicant(student_applicant=outside_applicant.name, email=invite_email)
@@ -473,10 +473,10 @@ class TestInviteApplicant(FrappeTestCase):
 
         with (
             patch(
-                "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
+                "ifitwala_ed.admission.api.portal.invites.ensure_admissions_permission",
                 return_value=self.staff_user,
             ),
-            patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email"),
+            patch("ifitwala_ed.admission.api.portal.invites._send_applicant_invite_email"),
         ):
             with self.assertRaises(frappe.ValidationError):
                 invite_applicant(student_applicant=self.applicant.name, email=other_contact_email)
@@ -506,10 +506,10 @@ class TestInviteApplicant(FrappeTestCase):
 
         with (
             patch(
-                "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
+                "ifitwala_ed.admission.api.portal.invites.ensure_admissions_permission",
                 return_value=self.staff_user,
             ),
-            patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email", return_value=True),
+            patch("ifitwala_ed.admission.api.portal.invites._send_applicant_invite_email", return_value=True),
         ):
             options = get_family_invite_options(student_applicant=self.applicant.name)
             payload = invite_family_collaborator(
@@ -697,7 +697,7 @@ class TestInviteApplicant(FrappeTestCase):
         self.applicant.save(ignore_permissions=True)
         guardian_row_name = self.applicant.get("guardians")[0].name
 
-        with patch("ifitwala_ed.api.admissions_portal._send_applicant_invite_email", return_value=True):
+        with patch("ifitwala_ed.admission.api.portal.invites._send_applicant_invite_email", return_value=True):
             options = get_admissions_portal_invite_options(student_applicant=self.applicant.name)
             payload = invite_family_collaborator(
                 student_applicant=self.applicant.name,
@@ -745,7 +745,7 @@ class TestInviteApplicant(FrappeTestCase):
         )
 
         with patch(
-            "ifitwala_ed.api.admissions_portal.ensure_admissions_permission",
+            "ifitwala_ed.admission.api.portal.invites.ensure_admissions_permission",
             return_value=self.staff_user,
         ):
             options = get_admissions_portal_invite_options(student_applicant=self.applicant.name)
@@ -1991,7 +1991,7 @@ class TestSubmitApplication(FrappeTestCase):
                 return_value=file_doc.file_url,
             ),
             patch(
-                "ifitwala_ed.api.admissions_portal.get_drive_file_for_file",
+                "ifitwala_ed.admission.api.portal.profile_images.get_drive_file_for_file",
                 return_value={
                     "name": "DRV-GUARDIAN-1",
                     "file": file_doc.name,
@@ -2001,7 +2001,7 @@ class TestSubmitApplication(FrappeTestCase):
                 },
             ),
             patch(
-                "ifitwala_ed.api.admissions_portal.get_drive_file_thumbnail_ready_map",
+                "ifitwala_ed.admission.api.portal.profile.get_drive_file_thumbnail_ready_map",
                 return_value={"DRV-GUARDIAN-1": True},
             ),
         ):
@@ -2059,7 +2059,7 @@ class TestSubmitApplication(FrappeTestCase):
         frappe.set_user(self.applicant_user)
         with (
             patch(
-                "ifitwala_ed.api.admissions_portal.get_drive_file_for_file",
+                "ifitwala_ed.admission.api.portal.profile_images.get_drive_file_for_file",
                 return_value={
                     "name": "DRV-APP-1",
                     "file": file_doc.name,
@@ -2069,7 +2069,7 @@ class TestSubmitApplication(FrappeTestCase):
                 },
             ),
             patch(
-                "ifitwala_ed.api.admissions_portal.get_drive_file_thumbnail_ready_map",
+                "ifitwala_ed.admission.api.portal.profile.get_drive_file_thumbnail_ready_map",
                 return_value={"DRV-APP-1": True},
             ),
         ):
@@ -2125,11 +2125,11 @@ class TestSubmitApplication(FrappeTestCase):
         frappe.set_user(self.applicant_user)
         with (
             patch(
-                "ifitwala_ed.api.admissions_portal.admission_api.upload_applicant_profile_image",
+                "ifitwala_ed.admission.api.portal.profile_images.admission_api.upload_applicant_profile_image",
                 side_effect=_capture_drive_upload,
             ),
             patch(
-                "ifitwala_ed.api.admissions_portal.get_drive_file_thumbnail_ready_map",
+                "ifitwala_ed.admission.api.portal.profile_images.get_drive_file_thumbnail_ready_map",
                 return_value={drive_file_id: True},
             ),
         ):
@@ -2185,11 +2185,11 @@ class TestSubmitApplication(FrappeTestCase):
                 create=True,
             ),
             patch(
-                "ifitwala_ed.api.admissions_portal.admission_api.upload_applicant_profile_image",
+                "ifitwala_ed.admission.api.portal.profile_images.admission_api.upload_applicant_profile_image",
                 side_effect=_capture_drive_upload,
             ),
             patch(
-                "ifitwala_ed.api.admissions_portal.get_drive_file_thumbnail_ready_map",
+                "ifitwala_ed.admission.api.portal.profile_images.get_drive_file_thumbnail_ready_map",
                 return_value={drive_file_id: True},
             ),
         ):
@@ -2247,7 +2247,7 @@ class TestSubmitApplication(FrappeTestCase):
     def test_upload_applicant_profile_image_rejects_images_over_pixel_limit(self):
         frappe.set_user(self.applicant_user)
         with (
-            patch.object(admissions_portal_api, "PROFILE_IMAGE_MAX_PIXELS", 0),
+            patch("ifitwala_ed.admission.api.portal.profile_images.PROFILE_IMAGE_MAX_PIXELS", 0),
             self.assertRaises(frappe.ValidationError) as error_context,
         ):
             upload_applicant_profile_image(
@@ -2290,11 +2290,11 @@ class TestSubmitApplication(FrappeTestCase):
         frappe.set_user(self.applicant_user)
         with (
             patch(
-                "ifitwala_ed.api.admissions_portal.admission_api.upload_applicant_guardian_image",
+                "ifitwala_ed.admission.api.portal.profile_images.admission_api.upload_applicant_guardian_image",
                 side_effect=_capture_drive_upload,
             ),
             patch(
-                "ifitwala_ed.api.admissions_portal.get_drive_file_thumbnail_ready_map",
+                "ifitwala_ed.admission.api.portal.profile_images.get_drive_file_thumbnail_ready_map",
                 return_value={drive_file_id: True},
             ),
         ):
@@ -2367,11 +2367,11 @@ class TestSubmitApplication(FrappeTestCase):
                 create=True,
             ),
             patch(
-                "ifitwala_ed.api.admissions_portal.admission_api.upload_applicant_guardian_image",
+                "ifitwala_ed.admission.api.portal.profile_images.admission_api.upload_applicant_guardian_image",
                 side_effect=_capture_drive_upload,
             ),
             patch(
-                "ifitwala_ed.api.admissions_portal.get_drive_file_thumbnail_ready_map",
+                "ifitwala_ed.admission.api.portal.profile_images.get_drive_file_thumbnail_ready_map",
                 return_value={drive_file_id: True},
             ),
         ):
@@ -2422,10 +2422,10 @@ class TestSubmitApplication(FrappeTestCase):
         frappe.set_user(self.applicant_user)
         with (
             patch(
-                "ifitwala_ed.api.admissions_portal.admission_api.upload_applicant_health_vaccination_proof",
+                "ifitwala_ed.admission.api.portal.health.admission_api.upload_applicant_health_vaccination_proof",
                 side_effect=_capture_drive_upload,
             ),
-            patch("ifitwala_ed.api.admissions_portal.materialize_health_review_assignments"),
+            patch("ifitwala_ed.admission.api.portal.health.materialize_health_review_assignments"),
         ):
             payload = update_applicant_health(
                 student_applicant=self.applicant.name,
