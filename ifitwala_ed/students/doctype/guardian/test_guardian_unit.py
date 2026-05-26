@@ -77,7 +77,12 @@ class TestGuardianUnit(TestCase):
                 name="guardian@example.com",
                 flags=SimpleNamespace(ignore_permissions=False, no_welcome_mail=False),
             )
-            fake_user.insert = lambda ignore_permissions=True: fake_user
+
+            def fake_insert(ignore_permissions=True):
+                captured["skip_user_contact_sync_during_insert"] = guardian_module.frappe.flags.skip_user_contact_sync
+                return fake_user
+
+            fake_user.insert = fake_insert
 
             guardian_module.frappe.db.exists = lambda doctype, name=None: False
             guardian_module.frappe.db.set_value = lambda *args, **kwargs: None
@@ -88,33 +93,28 @@ class TestGuardianUnit(TestCase):
 
             guardian_module.frappe.get_doc = fake_get_doc
 
-            with (
-                patch.object(guardian, "_find_contact_name", return_value=None),
-                patch.object(guardian, "_get_or_create_contact", return_value="CONTACT-0001"),
-            ):
-                user_name = guardian.create_guardian_user()
+            user_name = guardian.create_guardian_user()
 
         self.assertEqual(user_name, "guardian@example.com")
         self.assertEqual(captured["payload"]["send_welcome_email"], 0)
         self.assertNotIn("send_password_notification", captured["payload"])
         self.assertEqual(captured["payload"]["user_type"], "Website User")
+        self.assertTrue(captured["skip_user_contact_sync_during_insert"])
+        self.assertFalse(guardian_module.frappe.flags.skip_user_contact_sync)
         self.assertTrue(fake_user.flags.ignore_permissions)
         self.assertTrue(fake_user.flags.no_welcome_mail)
         self.assertEqual(guardian.user, "guardian@example.com")
 
-    def test_after_insert_still_links_contact_and_updates_portal_routing(self):
+    def test_after_insert_only_updates_portal_routing(self):
         with _guardian_module() as guardian_module:
             guardian = guardian_module.Guardian.__new__(guardian_module.Guardian)
             guardian.user = "guardian@example.com"
 
-            with (
-                patch.object(guardian, "_get_or_create_contact", return_value="CONTACT-0001"),
-                patch.object(guardian, "_ensure_contact_link") as ensure_contact_link,
-                patch.object(guardian, "_ensure_guardian_portal_routing") as ensure_portal_routing,
-            ):
+            with patch.object(guardian, "_ensure_guardian_portal_routing") as ensure_portal_routing:
                 guardian.after_insert()
 
-        ensure_contact_link.assert_called_once_with("CONTACT-0001")
+        self.assertFalse(hasattr(guardian_module.Guardian, "_get_or_create_contact"))
+        self.assertFalse(hasattr(guardian_module.Guardian, "_ensure_contact_link"))
         ensure_portal_routing.assert_called_once_with("guardian@example.com")
 
     def test_on_update_does_not_self_heal_missing_contact_link(self):
@@ -123,16 +123,15 @@ class TestGuardianUnit(TestCase):
             guardian.user = "guardian@example.com"
 
             with (
-                patch.object(guardian, "_find_contact_name") as find_contact_name,
-                patch.object(guardian, "_ensure_contact_link") as ensure_contact_link,
                 patch.object(guardian, "_has_user_changed", return_value=False),
+                patch.object(guardian, "_has_contact_point_data_changed", return_value=False),
                 patch.object(guardian, "_ensure_guardian_portal_routing") as ensure_portal_routing,
+                patch.object(guardian, "sync_contact_points_for_linked_students") as sync_contact_points,
             ):
                 guardian.on_update()
 
-        find_contact_name.assert_not_called()
-        ensure_contact_link.assert_not_called()
         ensure_portal_routing.assert_not_called()
+        sync_contact_points.assert_not_called()
 
     def test_on_update_still_updates_portal_routing_when_user_changes(self):
         with _guardian_module() as guardian_module:
@@ -140,16 +139,80 @@ class TestGuardianUnit(TestCase):
             guardian.user = "guardian@example.com"
 
             with (
-                patch.object(guardian, "_find_contact_name") as find_contact_name,
-                patch.object(guardian, "_ensure_contact_link") as ensure_contact_link,
                 patch.object(guardian, "_has_user_changed", return_value=True),
+                patch.object(guardian, "_has_contact_point_data_changed", return_value=False),
                 patch.object(guardian, "_ensure_guardian_portal_routing") as ensure_portal_routing,
+                patch.object(guardian, "sync_contact_points_for_linked_students") as sync_contact_points,
             ):
                 guardian.on_update()
 
-        find_contact_name.assert_not_called()
-        ensure_contact_link.assert_not_called()
         ensure_portal_routing.assert_called_once_with("guardian@example.com")
+        sync_contact_points.assert_not_called()
+
+    def test_on_update_syncs_contact_points_when_guardian_contact_data_changes(self):
+        with _guardian_module() as guardian_module:
+            guardian = guardian_module.Guardian.__new__(guardian_module.Guardian)
+            guardian.user = "guardian@example.com"
+
+            with (
+                patch.object(guardian, "_has_user_changed", return_value=False),
+                patch.object(guardian, "_has_contact_point_data_changed", return_value=True),
+                patch.object(guardian, "_ensure_guardian_portal_routing") as ensure_portal_routing,
+                patch.object(guardian, "sync_contact_points_for_linked_students") as sync_contact_points,
+            ):
+                guardian.on_update()
+
+        ensure_portal_routing.assert_not_called()
+        sync_contact_points.assert_called_once_with()
+
+    def test_sync_contact_points_for_linked_students_uses_linked_student_schools(self):
+        with _guardian_module() as guardian_module:
+            guardian = guardian_module.Guardian.__new__(guardian_module.Guardian)
+            guardian.name = "GRD-0001"
+            guardian.guardian_email = "guardian@example.com"
+            guardian.guardian_mobile_phone = "+66 812 345 678"
+            guardian.organization = "ORG-1"
+
+            def fake_get_all(doctype, filters=None, fields=None, limit=None):
+                if doctype == "Student Guardian":
+                    return [{"parent": "STU-0001"}]
+                if doctype == "Guardian Student":
+                    return [{"student": "STU-0002"}]
+                if doctype == "Student":
+                    return [{"anchor_school": "SCH-1"}, {"anchor_school": "SCH-2"}]
+                return []
+
+            guardian_module.frappe.get_all = fake_get_all
+            sync_calls: list[dict] = []
+            contact_privacy = ModuleType("ifitwala_ed.contacts.contact_privacy")
+
+            def fake_sync(guardian_doc, **kwargs):
+                sync_calls.append({"guardian": guardian_doc.name, **kwargs})
+                return [f"CCP-{kwargs['school']}"]
+
+            contact_privacy.sync_guardian_contact_points = fake_sync
+
+            with patch.dict(sys.modules, {"ifitwala_ed.contacts.contact_privacy": contact_privacy}):
+                synced = guardian.sync_contact_points_for_linked_students()
+
+        self.assertEqual(synced, ["CCP-SCH-1", "CCP-SCH-2"])
+        self.assertEqual(
+            sync_calls,
+            [
+                {
+                    "guardian": "GRD-0001",
+                    "school": "SCH-1",
+                    "purpose": "school_communication",
+                    "workflow": "guardian_linked_student_contact_point_sync",
+                },
+                {
+                    "guardian": "GRD-0001",
+                    "school": "SCH-2",
+                    "purpose": "school_communication",
+                    "workflow": "guardian_linked_student_contact_point_sync",
+                },
+            ],
+        )
 
     def test_create_guardian_user_endpoint_rejects_unwritable_guardian(self):
         with _guardian_module() as guardian_module:

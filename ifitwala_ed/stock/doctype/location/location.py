@@ -8,7 +8,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint
 
-from ifitwala_ed.utilities.location_utils import get_location_scope
+from ifitwala_ed.utilities.location_utils import clear_location_visibility_caches, get_location_scope
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools
 
 LOCATION_TREE_ROOT = "All Locations"
@@ -25,6 +25,15 @@ class Location(Document):
         We inherit Organization from parent when available.
         """
         self._inherit_org_from_parent()
+
+    def after_insert(self):
+        self._clear_location_visibility_caches()
+
+    def on_update(self):
+        self._clear_location_visibility_caches()
+
+    def on_trash(self):
+        self._clear_location_visibility_caches()
 
     def validate(self):
         """
@@ -52,6 +61,24 @@ class Location(Document):
 
         # 4) Soft warnings (only when relevant)
         self._warn_on_stock_location_without_school()
+
+    def _clear_location_visibility_caches(self):
+        previous = None
+        get_before_save = getattr(self, "get_doc_before_save", None)
+        if callable(get_before_save):
+            previous = get_before_save()
+
+        locations = {
+            getattr(self, "name", None),
+            getattr(self, "parent_location", None),
+            getattr(previous, "name", None) if previous else None,
+            getattr(previous, "parent_location", None) if previous else None,
+        }
+        schools = {
+            getattr(self, "school", None),
+            getattr(previous, "school", None) if previous else None,
+        }
+        clear_location_visibility_caches(locations=locations, schools=schools)
 
     # -------------------------------------------------------------------------
     # Small internal cache helpers (reduces repeated DB hits inside validate)

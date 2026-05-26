@@ -61,6 +61,7 @@ def _load_real_mime_type_resolver():
     image_utils.EMPLOYEE_VARIANT_PRIORITY = []
     image_utils.file_url_is_accessible = lambda file_url, *, file_name=None, is_private=0: True
     image_utils.get_employee_image_variants_map = lambda employee_names, **kwargs: {}
+    image_utils.get_employee_user_avatar_url = lambda employee_name, **kwargs: kwargs.get("original_url")
     image_utils.get_preferred_employee_avatar_url = lambda employee_name, original_url=None: original_url
     image_utils.get_preferred_employee_image_url = lambda employee_name, original_url=None, slots=None: original_url
 

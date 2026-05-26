@@ -83,6 +83,8 @@ Rows in `Admission Visit Informed User` are informational only. They must not be
 
 `location` is the meeting room or schedulable location. It creates a `Location Booking` through the linked `School Event`.
 
+If a non-schedulable visible Location is submitted as the visit location, the workflow treats it as `building` / area context instead of a meeting room. The visit may still be scheduled, but no room free/busy check runs and no `Location Booking` is created for that non-bookable area.
+
 ## 4. CRM Integration
 
 Scheduling from an Inquiry or Student Applicant finds or creates an `Admission Conversation` when one does not already exist.

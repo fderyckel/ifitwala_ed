@@ -11,6 +11,7 @@ from ifitwala_ed.api.family_consent import (
     SIGNER_RULE_ANY_GUARDIAN,
     SIGNER_RULE_STUDENT_SELF,
     SUBJECT_SCOPE_PER_STUDENT,
+    _apply_profile_writeback,
     _decision_status_label,
     _get_or_create_student_contact,
     _request_is_executable,
@@ -151,6 +152,109 @@ class TestFamilyConsentPortalContracts(FrappeTestCase):
 
         self.assertEqual(contact_name, "CONTACT-NEW")
         self.assertEqual(created_payloads[0]["user"], "student@example.com")
+
+    def test_guardian_email_writeback_syncs_contact_point_without_native_contact_write(self):
+        context = {
+            "student_name": "STU-1",
+            "guardian_name": "GRD-1",
+            "student_row": {"anchor_school": "SCH-1"},
+            "guardian_row": {
+                "name": "GRD-1",
+                "organization": "ORG-1",
+                "guardian_email": "old@example.com",
+                "guardian_mobile_phone": "+66 812 345 678",
+            },
+            "guardian_contact_values": {},
+        }
+
+        set_calls: list[tuple] = []
+        with (
+            patch(
+                "ifitwala_ed.api.family_consent.update_family_contact_from_portal_context",
+            ) as update_native_contact,
+            patch(
+                "ifitwala_ed.api.family_consent.frappe.db.set_value",
+                side_effect=lambda *args, **kwargs: set_calls.append((args, kwargs)),
+            ),
+            patch(
+                "ifitwala_ed.api.family_consent.sync_guardian_contact_points",
+                return_value=["CCP-1"],
+            ) as sync_guardian_contact_points,
+        ):
+            returned = _apply_profile_writeback(
+                binding_key="Guardian.guardian_email",
+                value="guardian@example.com",
+                context=context,
+            )
+
+        self.assertEqual(returned, "guardian@example.com")
+        update_native_contact.assert_not_called()
+        sync_guardian_contact_points.assert_called_once_with(
+            {
+                "name": "GRD-1",
+                "organization": "ORG-1",
+                "guardian_email": "guardian@example.com",
+                "guardian_mobile_phone": "+66 812 345 678",
+            },
+            school="SCH-1",
+            purpose="school_communication",
+            workflow="family_consent_profile_writeback",
+        )
+        self.assertEqual(
+            set_calls,
+            [
+                (
+                    ("Guardian", "GRD-1", "guardian_email", "guardian@example.com"),
+                    {"update_modified": False},
+                )
+            ],
+        )
+
+    def test_guardian_mobile_writeback_syncs_contact_point_without_native_contact_write(self):
+        context = {
+            "student_name": "STU-1",
+            "guardian_name": "GRD-1",
+            "student_row": {"anchor_school": "SCH-1"},
+            "guardian_row": {
+                "name": "GRD-1",
+                "organization": "ORG-1",
+                "guardian_email": "guardian@example.com",
+                "guardian_mobile_phone": "+66 812 345 000",
+            },
+            "guardian_contact_values": {},
+        }
+
+        with (
+            patch(
+                "ifitwala_ed.api.family_consent.update_family_contact_from_portal_context",
+            ) as update_native_contact,
+            patch("ifitwala_ed.api.family_consent.frappe.db.set_value"),
+            patch(
+                "ifitwala_ed.api.family_consent.sync_guardian_contact_points",
+                return_value=["CCP-1"],
+            ) as sync_guardian_contact_points,
+        ):
+            returned = _apply_profile_writeback(
+                binding_key="Guardian.guardian_mobile_phone",
+                value="+66 812 345 999",
+                context=context,
+            )
+
+        self.assertEqual(returned, "+66 812 345 999")
+        update_native_contact.assert_not_called()
+        sync_guardian_contact_points.assert_called_once()
+        self.assertEqual(
+            sync_guardian_contact_points.call_args.kwargs,
+            {
+                "school": "SCH-1",
+                "purpose": "school_communication",
+                "workflow": "family_consent_profile_writeback",
+            },
+        )
+        self.assertEqual(
+            sync_guardian_contact_points.call_args.args[0]["guardian_mobile_phone"],
+            "+66 812 345 999",
+        )
 
     def test_resolve_family_consent_source_attachment_access_allows_guardian_authorized_student(self):
         request_doc = SimpleNamespace(name="FCR-REQ-1", request_key="FCR-KEY-1", source_file="FILE-1")

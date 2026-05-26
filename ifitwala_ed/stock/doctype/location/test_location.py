@@ -4,12 +4,12 @@
 # /Users/francois.de/Documents/ifitwala_ed/ifitwala_ed/stock/doctype/location/test_location.py
 
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import frappe
 
 from ifitwala_ed.stock.doctype.location.location import LOCATION_TREE_ROOT, Location, get_valid_parent_locations
-from ifitwala_ed.utilities.location_utils import get_visible_location_rows_for_school
+from ifitwala_ed.utilities.location_utils import clear_location_visibility_caches, get_visible_location_rows_for_school
 
 
 class TestLocation(TestCase):
@@ -154,6 +154,63 @@ class TestLocation(TestCase):
 
         with self.assertRaises(frappe.ValidationError):
             Location._validate_shared_visibility_requires_school(doc)
+
+    @patch("ifitwala_ed.stock.doctype.location.location.clear_location_visibility_caches")
+    def test_location_update_invalidates_current_and_previous_scope_caches(self, mock_clear):
+        previous = frappe._dict(
+            {
+                "name": "OLD-ROOM",
+                "school": "OLD-SCHOOL",
+                "parent_location": "OLD-BUILDING",
+            }
+        )
+        doc = frappe._dict(
+            {
+                "name": "NEW-ROOM",
+                "school": "NEW-SCHOOL",
+                "parent_location": "NEW-BUILDING",
+                "get_doc_before_save": lambda: previous,
+            }
+        )
+
+        Location.on_update(doc)
+
+        mock_clear.assert_called_once()
+        self.assertEqual(
+            mock_clear.call_args.kwargs,
+            {
+                "locations": {"NEW-ROOM", "NEW-BUILDING", "OLD-ROOM", "OLD-BUILDING"},
+                "schools": {"NEW-SCHOOL", "OLD-SCHOOL"},
+            },
+        )
+
+    @patch("ifitwala_ed.utilities.location_utils.get_visible_location_names_for_school")
+    @patch("ifitwala_ed.utilities.location_utils.get_descendant_schools")
+    @patch("ifitwala_ed.utilities.location_utils.get_ancestor_schools")
+    @patch("ifitwala_ed.utilities.location_utils.frappe.cache")
+    def test_location_visibility_cache_clear_expands_school_cache_scope(
+        self,
+        mock_cache,
+        mock_ancestors,
+        mock_descendants,
+        mock_visible_names,
+    ):
+        cache = Mock()
+        mock_cache.return_value = cache
+        mock_ancestors.return_value = ["ROOT-SCHOOL", "CHILD-SCHOOL"]
+        mock_descendants.return_value = ["CHILD-SCHOOL", "LEAF-SCHOOL"]
+        mock_visible_names.clear_cache = Mock()
+
+        clear_location_visibility_caches(locations=["ROOM-1"], schools=["CHILD-SCHOOL"])
+
+        self.assertEqual(
+            cache.delete_value.call_args_list[0].args[0],
+            "location_scope::ROOM-1::include_children=0",
+        )
+        self.assertEqual(
+            [call.args[0] for call in mock_visible_names.clear_cache.call_args_list],
+            ["ROOT-SCHOOL", "CHILD-SCHOOL", "LEAF-SCHOOL"],
+        )
 
     @patch("ifitwala_ed.utilities.location_utils.get_location_scope")
     @patch("ifitwala_ed.utilities.location_utils.get_ancestor_schools")

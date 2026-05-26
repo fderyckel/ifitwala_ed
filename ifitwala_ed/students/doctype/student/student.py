@@ -52,6 +52,7 @@ from ifitwala_ed.accounting.account_holder_utils import validate_account_holder_
 from ifitwala_ed.contacts.contact_privacy import (
     get_masked_guardian_contacts_for_student,
     get_masked_student_contact_summary,
+    sync_guardian_contact_points,
 )
 from ifitwala_ed.utilities.employee_utils import get_user_visible_schools
 from ifitwala_ed.utilities.student_utils import format_student_age
@@ -188,6 +189,25 @@ def _doc_value(doc, fieldname: str):
     if isinstance(doc, dict):
         return doc.get(fieldname)
     return getattr(doc, fieldname, None)
+
+
+def _student_guardian_names(doc) -> list[str]:
+    rows = []
+    if isinstance(doc, dict):
+        rows = doc.get("guardians") or []
+    elif hasattr(doc, "get"):
+        rows = doc.get("guardians") or []
+    else:
+        rows = getattr(doc, "guardians", None) or []
+
+    seen: set[str] = set()
+    guardian_names: list[str] = []
+    for row in rows:
+        guardian_name = (_doc_value(row, "guardian") or "").strip()
+        if guardian_name and guardian_name not in seen:
+            seen.add(guardian_name)
+            guardian_names.append(guardian_name)
+    return guardian_names
 
 
 def _resolve_student_permission_row(doc) -> dict:
@@ -364,15 +384,68 @@ class Student(Document):
         """
         if getattr(frappe.flags, "from_applicant_promotion", False):
             self.ensure_contact_and_link()
+            self.sync_guardian_contact_points_for_school()
             return
         self.create_student_user()
         self.create_student_patient()
         self.ensure_contact_and_link()
+        self.sync_guardian_contact_points_for_school()
 
     def on_update(self):
         self.update_student_enabled_status()
         self.sync_student_contact_image()
         self.sync_reciprocal_siblings()
+        if self._guardian_contact_point_sync_needed():
+            self.sync_guardian_contact_points_for_school()
+
+    def _guardian_contact_point_sync_needed(self) -> bool:
+        is_new = getattr(self, "is_new", None)
+        if callable(is_new) and is_new():
+            return bool((_doc_value(self, "anchor_school") or "").strip() and _student_guardian_names(self))
+
+        previous = self.get_doc_before_save() if hasattr(self, "get_doc_before_save") else None
+        if not previous:
+            return False
+
+        old_school = (_doc_value(previous, "anchor_school") or "").strip()
+        new_school = (_doc_value(self, "anchor_school") or "").strip()
+        if old_school != new_school:
+            return True
+
+        return _student_guardian_names(previous) != _student_guardian_names(self)
+
+    def sync_guardian_contact_points_for_school(self) -> list[str]:
+        school = (_doc_value(self, "anchor_school") or "").strip()
+        guardian_names = _student_guardian_names(self)
+        if not school or not guardian_names:
+            return []
+
+        guardian_rows = frappe.get_all(
+            "Guardian",
+            filters={"name": ["in", tuple(guardian_names)]},
+            fields=["name", "organization", "guardian_email", "guardian_mobile_phone"],
+            limit=0,
+        )
+        guardian_by_name = {
+            (_doc_value(row, "name") or "").strip(): row
+            for row in guardian_rows
+            if (_doc_value(row, "name") or "").strip()
+        }
+
+        synced: list[str] = []
+        for guardian_name in guardian_names:
+            guardian_row = guardian_by_name.get(guardian_name)
+            if not guardian_row:
+                continue
+            synced.extend(
+                sync_guardian_contact_points(
+                    guardian_row,
+                    school=school,
+                    purpose="school_communication",
+                    workflow="student_guardian_link_contact_point_sync",
+                )
+            )
+        return synced
 
     # create student as website user
     def create_student_user(self):

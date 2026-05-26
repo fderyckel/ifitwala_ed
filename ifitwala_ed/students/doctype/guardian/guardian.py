@@ -40,21 +40,19 @@ class Guardian(Document):
         pass
 
     def after_insert(self):
-        # 3) Create/reuse Contact once, then link Contact → Guardian (no contact.save here)
-        contact_name = self._get_or_create_contact()
-        self._ensure_contact_link(contact_name)
-
-        # 4) If Guardian is created with a user already linked, ensure portal routing
+        # 3) If Guardian is created with a user already linked, ensure portal routing
         if getattr(self, "user", None):
             self._ensure_guardian_portal_routing(self.user)
 
     def on_update(self):
-        # 5) If user field was changed or newly set, ensure portal routing
+        # 4) If user field was changed or newly set, ensure portal routing
         if self._has_user_changed():
             self._ensure_guardian_portal_routing(self.user)
+        if self._has_contact_point_data_changed():
+            self.sync_contact_points_for_linked_students()
 
     def onload(self):
-        # 6) Read-only helpers for form quick view
+        # 5) Read-only helpers for form quick view
         load_address_and_contact(self)
         self._load_students_quick_view()
 
@@ -72,6 +70,24 @@ class Guardian(Document):
         old_user = getattr(previous, "user", None)
         new_user = getattr(self, "user", None)
         return old_user != new_user and new_user
+
+    def _has_contact_point_data_changed(self) -> bool:
+        if self.is_new():
+            return bool(
+                (getattr(self, "guardian_email", None) or "").strip()
+                or (getattr(self, "guardian_mobile_phone", None) or "").strip()
+            )
+
+        previous = self.get_doc_before_save()
+        if not previous:
+            return False
+
+        for fieldname in ("guardian_email", "guardian_mobile_phone", "organization"):
+            old_value = (getattr(previous, fieldname, None) or "").strip()
+            new_value = (getattr(self, fieldname, None) or "").strip()
+            if old_value != new_value:
+                return True
+        return False
 
     def _ensure_guardian_portal_routing(self, user_email: str):
         """
@@ -96,68 +112,6 @@ class Guardian(Document):
                     frappe.get_traceback(),
                     f"Guardian portal routing role update failed for user {user_email}",
                 )
-
-    def _find_contact_name(self) -> str | None:
-        # Prefer user match, then primary email match
-        if getattr(self, "user", None):
-            name = frappe.db.get_value("Contact", {"user": self.user}, "name")
-            if name:
-                return name
-        if getattr(self, "guardian_email", None):
-            return frappe.db.get_value("Contact Email", {"email_id": self.guardian_email, "is_primary": 1}, "parent")
-        return None
-
-    def _get_or_create_contact(self) -> str:
-        name = self._find_contact_name()
-        if name:
-            return name
-
-        # Minimal new Contact; insert only (no extra save)
-        contact = frappe.new_doc("Contact")
-        contact.first_name = self.guardian_first_name
-        contact.last_name = self.guardian_last_name
-        if getattr(self, "salutation", None):
-            contact.salutation = self.salutation
-        if getattr(self, "user", None):
-            contact.user = self.user
-        if getattr(self, "guardian_gender", None) and frappe.db.exists("Gender", self.guardian_gender):
-            contact.gender = self.guardian_gender
-        if getattr(self, "guardian_email", None):
-            contact.append("email_ids", {"email_id": self.guardian_email, "is_primary": 1})
-        if getattr(self, "guardian_mobile_phone", None):
-            contact.mobile_no = self.guardian_mobile_phone
-            contact.append("phone_nos", {"phone": self.guardian_mobile_phone, "is_primary": 1})
-
-        # Keep it boring: one insert, ignore perms, no further saves
-        contact.insert(ignore_permissions=True)
-        return contact.name
-
-    def _ensure_contact_link(self, contact_name: str):
-        # If link already exists, stop
-        if frappe.db.exists(
-            "Dynamic Link",
-            {
-                "parenttype": "Contact",
-                "parentfield": "links",
-                "parent": contact_name,
-                "link_doctype": "Guardian",
-                "link_name": self.name,
-            },
-        ):
-            return
-
-        # Insert the child row directly — avoids Contact.on_update loops
-        frappe.get_doc(
-            {
-                "doctype": "Dynamic Link",
-                "parenttype": "Contact",
-                "parentfield": "links",
-                "parent": contact_name,
-                "link_doctype": "Guardian",
-                "link_name": self.name,
-                "link_title": self.guardian_full_name,
-            }
-        ).insert(ignore_permissions=True)
 
     def _load_students_quick_view(self):
         self.set("students", [])
@@ -261,6 +215,41 @@ class Guardian(Document):
             )
         )
 
+    def sync_contact_points_for_linked_students(self) -> list[str]:
+        student_names = self.get_linked_student_names()
+        if not student_names:
+            return []
+
+        student_rows = frappe.get_all(
+            "Student",
+            filters={"name": ["in", tuple(student_names)]},
+            fields=["anchor_school"],
+            limit=0,
+        )
+        school_names = sorted(
+            {
+                (row.get("anchor_school") or "").strip()
+                for row in student_rows
+                if (row.get("anchor_school") or "").strip()
+            }
+        )
+        if not school_names:
+            return []
+
+        from ifitwala_ed.contacts.contact_privacy import sync_guardian_contact_points
+
+        synced: list[str] = []
+        for school_name in school_names:
+            synced.extend(
+                sync_guardian_contact_points(
+                    self,
+                    school=school_name,
+                    purpose="school_communication",
+                    workflow="guardian_linked_student_contact_point_sync",
+                )
+            )
+        return synced
+
     def create_guardian_user(self):
         if not self.guardian_email:
             frappe.throw(_("Please add an email address first."))
@@ -284,12 +273,6 @@ class Guardian(Document):
             return self.guardian_email
 
         try:
-            # Prepare a Contact and bind it to the future User (name is the email)
-            contact_name = self._find_contact_name() or self._get_or_create_contact()
-            if contact_name:
-                # Bind contact to user *now* so core update_contact will update instead of creating a new Contact
-                frappe.db.set_value("Contact", contact_name, "user", self.guardian_email, update_modified=False)
-
             user = frappe.get_doc(
                 {
                     "doctype": "User",
@@ -307,16 +290,16 @@ class Guardian(Document):
             user.flags.ignore_permissions = True
             user.flags.no_welcome_mail = True
 
-            # Prevent Contact→Guardian sync loop during this controlled create
-            frappe.flags.skip_contact_to_guardian_sync = True
-
-            user.insert(ignore_permissions=True)
+            previous_skip_user_contact_sync = getattr(frappe.flags, "skip_user_contact_sync", False)
+            frappe.flags.skip_user_contact_sync = True
+            try:
+                user.insert(ignore_permissions=True)
+            finally:
+                frappe.flags.skip_user_contact_sync = previous_skip_user_contact_sync
 
         except Exception as e:
             frappe.log_error(f"Error creating user for guardian {self.name}: {e}")
             frappe.throw(_("Error creating user for this guardian. Check Error Log."))
-        finally:
-            frappe.flags.skip_contact_to_guardian_sync = False
 
         # Persist the link without running Guardian.validate()
         self.db_set("user", user.name, update_modified=False)

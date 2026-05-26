@@ -14,6 +14,7 @@ from ifitwala_ed.api.guardian_policy import _children_with_signer_authority, _ex
 from ifitwala_ed.api.student_policy import _expected_student_signature_name, _require_student_name_for_session_user
 from ifitwala_ed.contacts.contact_privacy import (
     get_raw_contact_primary_values_for_portal_context,
+    sync_guardian_contact_points,
     update_family_contact_from_portal_context,
 )
 from ifitwala_ed.governance.doctype.family_consent_request.family_consent_request import (
@@ -261,17 +262,6 @@ def _get_guardian_contact_name(guardian_name: str) -> str | None:
     return None
 
 
-def _get_or_create_guardian_contact(guardian_name: str) -> str:
-    contact_name = _clean_data(_get_guardian_contact_name(guardian_name))
-    if contact_name:
-        return contact_name
-
-    guardian_doc = frappe.get_doc("Guardian", guardian_name)
-    contact_name = guardian_doc._get_or_create_contact()  # noqa: SLF001
-    guardian_doc._ensure_contact_link(contact_name)  # noqa: SLF001
-    return _clean_data(contact_name)
-
-
 def _ensure_contact_link(*, contact_name: str, link_doctype: str, link_name: str, link_title: str | None = None):
     if frappe.db.exists(
         "Dynamic Link",
@@ -342,6 +332,30 @@ def _get_or_create_student_contact(student_name: str, student_row: dict[str, Any
         link_title=display_name or student_name,
     )
     return _clean_data(contact_doc.name)
+
+
+def _sync_guardian_contact_points_from_context(context: dict[str, Any]) -> list[str]:
+    student_row = context.get("student_row") or {}
+    guardian_row = context.get("guardian_row") or {}
+    school = _clean_data(student_row.get("anchor_school"))
+    if not school:
+        frappe.throw(
+            _("Guardian profile write-back requires a Student school context before contact values can be updated."),
+            frappe.PermissionError,
+        )
+
+    guardian_payload = {
+        "name": _clean_data(context.get("guardian_name")),
+        "organization": _clean_data(guardian_row.get("organization")),
+        "guardian_email": _clean_data(guardian_row.get("guardian_email")),
+        "guardian_mobile_phone": _clean_data(guardian_row.get("guardian_mobile_phone")),
+    }
+    return sync_guardian_contact_points(
+        guardian_payload,
+        school=school,
+        purpose="school_communication",
+        workflow="family_consent_profile_writeback",
+    )
 
 
 def _ensure_guardian_portal_scope() -> tuple[str, list[dict[str, Any]]]:
@@ -617,7 +631,7 @@ def _build_guardian_binding_context(student_name: str, guardian_name: str) -> di
         frappe.db.get_value(
             "Guardian",
             guardian_name,
-            ["name", "guardian_full_name", "guardian_email", "guardian_mobile_phone"],
+            ["name", "guardian_full_name", "guardian_email", "guardian_mobile_phone", "organization"],
             as_dict=True,
         )
         or {}
@@ -916,33 +930,21 @@ def _apply_profile_writeback(*, binding_key: str, value: Any, context: dict[str,
 
     if binding_key == "Guardian.guardian_email":
         email = _clean_data(value)
-        contact_name = _get_or_create_guardian_contact(context["guardian_name"])
-        context["guardian_contact_values"] = update_family_contact_from_portal_context(
-            context_doctype="Guardian",
-            context_name=context["guardian_name"],
-            payload={"contact": contact_name, "channel_type": "email", "value": email},
-            purpose="family_consent_profile_writeback",
-        )
-        frappe.db.set_value("Guardian", context["guardian_name"], "guardian_email", email, update_modified=False)
-        context["guardian_contact_name"] = contact_name
         context["guardian_row"]["guardian_email"] = email
-        return context["guardian_contact_values"].get("primary_email") or email
+        context.setdefault("guardian_contact_values", {})["primary_email"] = email
+        _sync_guardian_contact_points_from_context(context)
+        frappe.db.set_value("Guardian", context["guardian_name"], "guardian_email", email, update_modified=False)
+        return email
 
     if binding_key == "Guardian.guardian_mobile_phone":
         mobile = _clean_data(value)
-        contact_name = _get_or_create_guardian_contact(context["guardian_name"])
-        context["guardian_contact_values"] = update_family_contact_from_portal_context(
-            context_doctype="Guardian",
-            context_name=context["guardian_name"],
-            payload={"contact": contact_name, "channel_type": "mobile", "value": mobile},
-            purpose="family_consent_profile_writeback",
-        )
+        context["guardian_row"]["guardian_mobile_phone"] = mobile
+        context.setdefault("guardian_contact_values", {})["primary_mobile"] = mobile
+        _sync_guardian_contact_points_from_context(context)
         frappe.db.set_value(
             "Guardian", context["guardian_name"], "guardian_mobile_phone", mobile, update_modified=False
         )
-        context["guardian_contact_name"] = contact_name
-        context["guardian_row"]["guardian_mobile_phone"] = mobile
-        return context["guardian_contact_values"].get("primary_mobile") or mobile
+        return mobile
 
     if binding_key in {"Student.primary_address", "Guardian.primary_address"}:
         address_name = _clean_data(

@@ -6,12 +6,14 @@ import frappe
 
 from ifitwala_ed.admission.doctype.admission_visit.admission_visit import (
     cancel_admission_visit,
+    get_admission_visit_schedule_options,
     mark_admission_visit_no_show,
     notify_admission_visit_informed_users,
     reschedule_admission_visit,
     schedule_admission_visit,
 )
 from ifitwala_ed.api.calendar_staff_feed import PARTICIPANT_ONLY_SCHOOL_EVENT_REFERENCE_TYPES
+from ifitwala_ed.stock.doctype.location_booking.location_booking import upsert_location_booking
 from ifitwala_ed.tests.base import IfitwalaEdTestSuite
 from ifitwala_ed.tests.factories.users import make_user
 from ifitwala_ed.utilities.employee_booking import upsert_employee_booking
@@ -125,6 +127,77 @@ class TestAdmissionVisit(IfitwalaEdTestSuite):
         self.assertGreaterEqual(len(payload.get("suggestions") or []), 1)
         self.assertEqual(before_count, after_count)
 
+    def test_schedule_admission_visit_to_building_does_not_check_or_book_rooms(self):
+        lead_user = make_user()
+        self._make_employee(lead_user.name, first_name="Building", last_name="Lead")
+        building = self._make_location("Busy Building", is_group=1)
+        room = self._make_location("Busy Child Room", parent_location=building.name)
+        inquiry = self._make_inquiry()
+        upsert_location_booking(
+            location=room.name,
+            from_datetime="2030-05-08 09:00:00",
+            to_datetime="2030-05-08 10:00:00",
+            occupancy_type="School Event",
+            source_doctype="Inquiry",
+            source_name=inquiry.name,
+            slot_key=f"test-building-visit::{frappe.generate_hash(length=8)}",
+            school=self.school,
+        )
+
+        payload = schedule_admission_visit(
+            inquiry=inquiry.name,
+            starts_on="2030-05-08 09:15:00",
+            duration_minutes=30,
+            visit_mode="In Person",
+            building=building.name,
+            lead_user=lead_user.name,
+        )
+
+        self.assertTrue(payload.get("ok"))
+        visit = frappe.get_doc("Admission Visit", payload.get("admission_visit"))
+        self.assertEqual(visit.building, building.name)
+        self.assertFalse(visit.location)
+        school_event = frappe.get_doc("School Event", visit.school_event)
+        self.assertFalse(school_event.location)
+        self.assertFalse(
+            frappe.db.exists(
+                "Location Booking",
+                {"source_doctype": "School Event", "source_name": school_event.name},
+            )
+        )
+
+    def test_schedule_admission_visit_treats_non_schedulable_location_as_area_context(self):
+        lead_user = make_user()
+        self._make_employee(lead_user.name, first_name="Area", last_name="Lead")
+        non_bookable_area = self._make_location("Welcome Desk", maximum_capacity=0)
+        applicant = self._make_student_applicant()
+
+        options = get_admission_visit_schedule_options(student_applicant=applicant.name)
+        self.assertNotIn(non_bookable_area.name, {row.get("value") for row in options.get("rooms") or []})
+        self.assertIn(non_bookable_area.name, {row.get("value") for row in options.get("buildings") or []})
+
+        payload = schedule_admission_visit(
+            student_applicant=applicant.name,
+            starts_on="2030-05-08 10:15:00",
+            duration_minutes=30,
+            visit_mode="In Person",
+            location=non_bookable_area.name,
+            lead_user=lead_user.name,
+        )
+
+        self.assertTrue(payload.get("ok"))
+        visit = frappe.get_doc("Admission Visit", payload.get("admission_visit"))
+        self.assertEqual(visit.building, non_bookable_area.name)
+        self.assertFalse(visit.location)
+        school_event = frappe.get_doc("School Event", visit.school_event)
+        self.assertFalse(school_event.location)
+        self.assertFalse(
+            frappe.db.exists(
+                "Location Booking",
+                {"source_doctype": "School Event", "source_name": school_event.name},
+            )
+        )
+
     def test_admission_visit_school_events_are_participant_only_calendar_references(self):
         self.assertIn("Admission Visit", PARTICIPANT_ONLY_SCHOOL_EVENT_REFERENCE_TYPES)
 
@@ -218,8 +291,14 @@ class TestAdmissionVisit(IfitwalaEdTestSuite):
             notify_payload = notify_admission_visit_informed_users(admission_visit=payload.get("admission_visit"))
 
         self.assertTrue(notify_payload.get("ok"))
-        realtime.assert_called_once()
-        self.assertEqual(realtime.call_args.kwargs.get("user"), informed_user.name)
+        notification_calls = [
+            call
+            for call in realtime.call_args_list
+            if call.kwargs.get("event") == "inbox_notification"
+            and call.kwargs.get("message", {}).get("reference_doctype") == "Admission Visit"
+        ]
+        self.assertEqual(len(notification_calls), 1)
+        self.assertEqual(notification_calls[0].kwargs.get("user"), informed_user.name)
 
         status_payload = mark_admission_visit_no_show(admission_visit=payload.get("admission_visit"))
         self.assertTrue(status_payload.get("ok"))
@@ -248,6 +327,18 @@ class TestAdmissionVisit(IfitwalaEdTestSuite):
                 }
             ).insert(ignore_permissions=True)
 
+    def _make_student_applicant(self):
+        return frappe.get_doc(
+            {
+                "doctype": "Student Applicant",
+                "first_name": "Tour",
+                "last_name": f"Applicant {frappe.generate_hash(length=6)}",
+                "organization": self.organization,
+                "school": self.school,
+                "application_status": "Draft",
+            }
+        ).insert(ignore_permissions=True)
+
     def _make_employee(self, user: str, *, first_name: str, last_name: str):
         return frappe.get_doc(
             {
@@ -264,7 +355,14 @@ class TestAdmissionVisit(IfitwalaEdTestSuite):
             }
         ).insert(ignore_permissions=True)
 
-    def _make_location(self, label: str, *, is_group: int = 0, parent_location: str | None = None):
+    def _make_location(
+        self,
+        label: str,
+        *,
+        is_group: int = 0,
+        parent_location: str | None = None,
+        maximum_capacity: int = 12,
+    ):
         return frappe.get_doc(
             {
                 "doctype": "Location",
@@ -273,6 +371,6 @@ class TestAdmissionVisit(IfitwalaEdTestSuite):
                 "organization": self.organization,
                 "parent_location": parent_location,
                 "is_group": is_group,
-                "maximum_capacity": 12,
+                "maximum_capacity": maximum_capacity,
             }
         ).insert(ignore_permissions=True)

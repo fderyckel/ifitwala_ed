@@ -94,6 +94,45 @@ def _get_location_scope_cached(location: str, include_children: bool) -> List[st
     return out
 
 
+def _clear_decorated_cache(fn, *args) -> None:
+    clear_cache = getattr(fn, "clear_cache", None)
+    if not callable(clear_cache):
+        return
+
+    try:
+        clear_cache(*args)
+    except TypeError:
+        clear_cache()
+
+
+def clear_location_visibility_caches(
+    *,
+    locations: Optional[Iterable[str]] = None,
+    schools: Optional[Iterable[str]] = None,
+) -> None:
+    """
+    Clear location scope/visibility caches affected by Location mutations.
+
+    The visible-location cache is school-scoped. A Location owned by one school
+    can affect ancestor-school selectors through descendant scope and
+    descendant-school selectors through explicit shared visibility.
+    """
+    cache = frappe.cache()
+    for location in _dedupe_keep_order(locations or []):
+        for include_children in (0, 1):
+            cache.delete_value(f"location_scope::{location}::include_children={include_children}")
+        _clear_decorated_cache(is_schedulable_location, location)
+        _clear_decorated_cache(_is_bookable_room_cached, location)
+
+    affected_schools: List[str] = []
+    for school in _dedupe_keep_order(schools or []):
+        affected_schools.extend(get_ancestor_schools(school) or [school])
+        affected_schools.extend(get_descendant_schools(school) or [school])
+
+    for school in _dedupe_keep_order(affected_schools):
+        _clear_decorated_cache(get_visible_location_names_for_school, school)
+
+
 # Canonical location hierarchy rule:
 # - Parent booking blocks children
 # - Child booking does NOT block parent

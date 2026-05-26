@@ -209,12 +209,14 @@ class TestStudentUnit(TestCase):
                 patch.object(student, "create_student_user") as create_student_user,
                 patch.object(student, "create_student_patient") as create_student_patient,
                 patch.object(student, "ensure_contact_and_link") as ensure_contact_and_link,
+                patch.object(student, "sync_guardian_contact_points_for_school") as sync_guardian_contact_points,
             ):
                 student.after_insert()
 
         create_student_user.assert_not_called()
         create_student_patient.assert_not_called()
         ensure_contact_and_link.assert_called_once_with()
+        sync_guardian_contact_points.assert_called_once_with()
 
     def test_on_update_no_longer_repairs_missing_contact_binding(self):
         with _student_module() as module_context:
@@ -226,6 +228,8 @@ class TestStudentUnit(TestCase):
                 patch.object(student, "update_student_enabled_status") as update_student_enabled_status,
                 patch.object(student, "sync_student_contact_image") as sync_student_contact_image,
                 patch.object(student, "sync_reciprocal_siblings") as sync_reciprocal_siblings,
+                patch.object(student, "_guardian_contact_point_sync_needed", return_value=False),
+                patch.object(student, "sync_guardian_contact_points_for_school") as sync_guardian_contact_points,
             ):
                 student.on_update()
 
@@ -233,6 +237,83 @@ class TestStudentUnit(TestCase):
         update_student_enabled_status.assert_called_once_with()
         sync_student_contact_image.assert_called_once_with()
         sync_reciprocal_siblings.assert_called_once_with()
+        sync_guardian_contact_points.assert_not_called()
+
+    def test_on_update_syncs_guardian_contact_points_when_guardian_context_changes(self):
+        with _student_module() as module_context:
+            student_module = module_context[0]
+            student = student_module.Student.__new__(student_module.Student)
+
+            with (
+                patch.object(student, "update_student_enabled_status"),
+                patch.object(student, "sync_student_contact_image"),
+                patch.object(student, "sync_reciprocal_siblings"),
+                patch.object(student, "_guardian_contact_point_sync_needed", return_value=True),
+                patch.object(student, "sync_guardian_contact_points_for_school") as sync_guardian_contact_points,
+            ):
+                student.on_update()
+
+        sync_guardian_contact_points.assert_called_once_with()
+
+    def test_sync_guardian_contact_points_for_school_uses_student_anchor_school(self):
+        with _student_module() as (student_module, frappe):
+            student = student_module.Student.__new__(student_module.Student)
+            student.name = "STU-0001"
+            student.anchor_school = "SCH-1"
+            student.guardians = [
+                SimpleNamespace(guardian="GRD-0001"),
+                SimpleNamespace(guardian="GRD-0002"),
+                SimpleNamespace(guardian="GRD-0001"),
+            ]
+
+            def fake_get_all(doctype, filters=None, fields=None, limit=None):
+                self.assertEqual(doctype, "Guardian")
+                self.assertEqual(filters, {"name": ["in", ("GRD-0001", "GRD-0002")]})
+                self.assertEqual(fields, ["name", "organization", "guardian_email", "guardian_mobile_phone"])
+                self.assertEqual(limit, 0)
+                return [
+                    {
+                        "name": "GRD-0001",
+                        "organization": "ORG-1",
+                        "guardian_email": "guardian1@example.com",
+                        "guardian_mobile_phone": "+66 812 345 001",
+                    },
+                    {
+                        "name": "GRD-0002",
+                        "organization": "ORG-1",
+                        "guardian_email": "guardian2@example.com",
+                        "guardian_mobile_phone": "+66 812 345 002",
+                    },
+                ]
+
+            sync_calls: list[dict] = []
+
+            def fake_sync(guardian_row, **kwargs):
+                sync_calls.append({"guardian": guardian_row["name"], **kwargs})
+                return [f"CCP-{guardian_row['name']}"]
+
+            frappe.get_all = fake_get_all
+            with patch.object(student_module, "sync_guardian_contact_points", side_effect=fake_sync):
+                synced = student.sync_guardian_contact_points_for_school()
+
+        self.assertEqual(synced, ["CCP-GRD-0001", "CCP-GRD-0002"])
+        self.assertEqual(
+            sync_calls,
+            [
+                {
+                    "guardian": "GRD-0001",
+                    "school": "SCH-1",
+                    "purpose": "school_communication",
+                    "workflow": "student_guardian_link_contact_point_sync",
+                },
+                {
+                    "guardian": "GRD-0002",
+                    "school": "SCH-1",
+                    "purpose": "school_communication",
+                    "workflow": "student_guardian_link_contact_point_sync",
+                },
+            ],
+        )
 
     def test_ensure_contact_and_link_creates_contact_without_requiring_user(self):
         with _student_module() as (student_module, frappe):

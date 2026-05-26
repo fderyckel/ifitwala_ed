@@ -11,11 +11,27 @@ from ifitwala_ed.utilities.school_tree import get_descendant_schools
 ## the doctype have link to doctype so it should be straight forward.
 
 
+def _flag_enabled(flag_name: str) -> bool:
+    flags = getattr(frappe, "flags", None)
+    if hasattr(flags, "get"):
+        return bool(flags.get(flag_name))
+    return bool(getattr(flags, flag_name, False))
+
+
+def update_user_contact(doc, method=None):
+    if _flag_enabled("skip_user_contact_sync"):
+        return
+
+    from frappe.contacts.doctype.contact.contact import update_contact
+
+    return update_contact(doc, method)
+
+
 def update_profile_from_contact(doc, method=None):
     """Update the main doctype if changes made on Contact DocType.
     Called by hooks.py"""
 
-    if frappe.flags.get("skip_contact_to_guardian_sync"):
+    if _flag_enabled("skip_contact_to_guardian_sync"):
         return
 
     # student = next((link.link_name for link in doc.links if link.link_doctype == "Student"), None)

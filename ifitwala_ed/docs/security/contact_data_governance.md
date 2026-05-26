@@ -1,7 +1,7 @@
 # Contact Data Governance - No Universal Address Book
 
 Status: Locked target architecture with current-runtime gap register
-Last updated: 2026-05-22
+Last updated: 2026-05-26
 Code refs:
 - `ifitwala_ed/setup/setup.py`
 - `ifitwala_ed/hooks.py`
@@ -39,6 +39,7 @@ Test refs:
 - `ifitwala_ed/governance/doctype/contact_access_log/test_contact_access_log.py`
 - `ifitwala_ed/governance/doctype/communication_contact_point/test_communication_contact_point.py`
 - `ifitwala_ed/contacts/test_contact_export.py`
+- `ifitwala_ed/utilities/test_staff_scope_fallback_unit.py`
 - `ifitwala_ed/patches/test_backfill_guardian_contact_points.py`
 
 This document defines the target security posture for personal contact data across Ifitwala Ed.
@@ -152,7 +153,7 @@ Current-runtime lockdown status:
 - Admissions and marketing roles no longer bypass Contact query scoping.
 - Native `Contact` create/write DocPerm rows still exist as transitional Frappe seed data, but document-level editor operations are blocked by the permission hook while domain-owned contact-point services are future work.
 
-Remaining gaps require approved implementation slices: full export execution with per-row logging, Guardian contact-point write-path retirement, and later domain-by-domain Contact Point migration.
+Remaining gaps require approved implementation slices: full export execution with per-row logging, Guardian legacy read fallback retirement, and later domain-by-domain Contact Point migration.
 
 API hardening status:
 
@@ -166,13 +167,15 @@ Contact privacy service boundary status:
 
 - `ifitwala_ed/contacts/contact_privacy.py` is the approved current-runtime boundary for the first contact-sensitive workflows.
 - Covered workflows are applicant contact prefill/invite email options, Student CRM contact summaries, Student guardian summaries, family-consent profile contact write-back, and Inquiry protected-contact reuse checks.
-- Existing workflow functions still read legacy native `Contact`, `Contact Email`, and `Contact Phone` internally until they are bridged to Contact Point data.
+- Existing workflow functions still read legacy native `Contact`, `Contact Email`, and `Contact Phone` internally until they are bridged to Contact Point data or retired.
 - Student Guardian summaries now prefer school-scoped Guardian Contact Points when `Student.anchor_school` proves school context, then fall back to masked values from the already scoped `Student Guardian` child rows.
 - Callers must provide a non-empty `purpose`; masked DTOs are the default for Student/Guardian summaries.
 - Raw values are still allowed only through explicitly named current workflows such as applicant invite/prefill and family-consent write-back.
-- Legacy Contact creation/update code in Student, Guardian, Inquiry, and admissions profile flows remains a migration gap, not an approved pattern for new surfaces.
+- Guardian-owned native `Contact` write paths are retired: Guardian insert/user creation, Student Guardian link saves, and family-consent Guardian profile write-back now use school-scoped Contact Point sync where school context is proven.
+- The app-owned `User.after_insert` hook now passes through `ifitwala_ed.utilities.contact_utils.update_user_contact(...)`, allowing Guardian user creation to suppress native User-to-Contact creation during that controlled workflow without disabling the hook globally.
+- Legacy Contact creation/update code in Student, Inquiry, and admissions profile flows remains a migration gap, not an approved pattern for new surfaces.
 - `Communication Contact Point` service helpers now exist for service-owned upsert, disable, masked owner DTOs, raw reads, recipient resolution, and explicit Guardian sync with a verified school context.
-- Guardian controller write-through is not enabled yet because `Guardian` has no canonical `school` field; callers must prove school context before creating Guardian contact points.
+- Standalone Guardian insert write-through remains blocked because `Guardian` has no canonical `school` field; callers must prove school context before creating Guardian contact points.
 - A post-model-sync one-shot patch backfills Guardian Contact Points for each school resolved from linked students. Multi-school Guardians get duplicate school-scoped Contact Points; `organization` and `school` are part of Contact Point identity and primary uniqueness.
 
 Contact access logging status:

@@ -1,20 +1,29 @@
 # Communication Contact Point Schema Decision
 
-Status: Approved schema decision; Guardian Contact Point implementation through multi-school backfill semantics
-Last updated: 2026-05-22
+Status: Approved schema decision; Guardian Contact Point implementation through Guardian native Contact write-path retirement
+Last updated: 2026-05-26
 Code refs:
 - `ifitwala_ed/governance/doctype/communication_contact_point/communication_contact_point.json`
 - `ifitwala_ed/governance/doctype/communication_contact_point/communication_contact_point.py`
 - `ifitwala_ed/contacts/contact_privacy.py`
+- `ifitwala_ed/hooks.py`
+- `ifitwala_ed/utilities/contact_utils.py`
+- `ifitwala_ed/students/doctype/guardian/guardian.py`
+- `ifitwala_ed/students/doctype/student/student.py`
+- `ifitwala_ed/api/family_consent.py`
 - `ifitwala_ed/patches/backfill_guardian_contact_points.py`
 Test refs:
 - `ifitwala_ed/governance/doctype/communication_contact_point/test_communication_contact_point.py`
 - `ifitwala_ed/contacts/test_contact_privacy.py`
+- `ifitwala_ed/students/doctype/guardian/test_guardian_unit.py`
+- `ifitwala_ed/students/doctype/student/test_student_unit.py`
+- `ifitwala_ed/api/test_family_consent.py`
+- `ifitwala_ed/utilities/test_staff_scope_fallback_unit.py`
 - `ifitwala_ed/patches/test_backfill_guardian_contact_points.py`
 
 This document approves the schema and runtime contract for `Communication Contact Point`.
 
-The DocType, first service helpers, first Guardian read bridge, one-shot Guardian backfill patch, and multi-school Guardian semantics are implemented. Legacy native `Contact` write paths are not retired yet.
+The DocType, first service helpers, first Guardian read bridge, one-shot Guardian backfill patch, multi-school Guardian semantics, and Guardian-owned native `Contact` write-path retirement are implemented. Legacy native `Contact` reads and non-Guardian domain write paths remain transitional gaps.
 
 ## 1. Decision
 
@@ -261,7 +270,7 @@ The implementation sequence is locked:
 4. Done: Add explicit Guardian contact-point sync helper requiring a verified school context.
 5. Done: Bridge Student Guardian summary reads to school-scoped Guardian contact points with scoped legacy cache fallback.
 6. Done: Add a one-shot Guardian migration patch.
-7. Not started: Retire Guardian native `Contact` write paths after tests and docs prove parity.
+7. Done: Retire Guardian native `Contact` write paths after tests and docs prove parity.
 8. Done: Approve and implement semantics for guardians linked to students in multiple schools.
 9. Not started: Repeat by domain: Student, Student Applicant/Inquiry, Employee, then external relationship CRM surfaces.
 
@@ -271,7 +280,10 @@ Guardian controller note:
 
 - `Guardian` has `organization`, `guardian_email`, and `guardian_mobile_phone`, but no canonical `school` field.
 - The service helper `sync_guardian_contact_points(...)` therefore requires an explicit `school` argument.
-- Do not call this helper from `Guardian.after_insert` or `Guardian.on_update` until the caller can prove school context from a Student/family relationship.
+- Do not call this helper from `Guardian.after_insert` because a standalone Guardian insert has no verified school context.
+- `Guardian.on_update` may call this helper only by resolving schools from existing linked Student/family relationships.
+- `Student.after_insert` and `Student.on_update` may call this helper for linked Guardians because `Student.anchor_school` is the verified school context.
+- Family consent Guardian profile write-back may call this helper because the authorized portal context is already bound to a Student and Guardian.
 - `get_masked_guardian_contacts_for_student(...)` may use `Student.anchor_school` as the verified school context for read-side Contact Point lookup. If that school context is missing or no matching Contact Point exists, it must fall back only to the already scoped `Student Guardian` cached email/phone values.
 - `backfill_guardian_contact_points` runs after model sync and calls `sync_guardian_contact_points(...)` once for each school resolved from linked Student rows.
 - A Guardian linked to students in multiple schools gets duplicate school-scoped Contact Points. The same normalized value may exist once per `organization + school + purpose + channel`.
@@ -288,7 +300,7 @@ This decision does not implement:
 - Relationship CRM contact-point writes.
 - Supplier/external partner contact-point writes.
 - Address normalization beyond conservative storage/masking rules.
-- Automatic Guardian controller write-through.
+- Standalone Guardian insert write-through without Student school context.
 - Legacy native `Contact` retirement.
 
 ## 13. Acceptance For PR-7
@@ -337,3 +349,15 @@ The implemented PR-10 slice satisfies:
 4. The Guardian backfill patch processes each linked school for multi-school Guardians rather than skipping them.
 5. Existing Student Guardian summary reads continue resolving only the Contact Points scoped to the Student's `anchor_school`.
 6. No Guardian controller write-through, native Contact write-path retirement, CSV export, or new Desk UI is introduced.
+
+## 17. Acceptance For PR-11
+
+The implemented PR-11 slice satisfies:
+
+1. `Guardian.after_insert` no longer creates, reuses, or links native `Contact`.
+2. `Guardian.create_guardian_user` no longer pre-binds a native `Contact` to the new User and suppresses the app-owned User-to-Contact hook during that controlled insert.
+3. `Guardian.on_update` syncs Guardian Contact Points only when contact-point-owned fields change and linked Student rows provide school context.
+4. `Student.after_insert` and `Student.on_update` sync Guardian Contact Points for linked Guardians using `Student.anchor_school` as the verified school context.
+5. Family consent Guardian email/mobile write-back updates the Guardian record and school-scoped Contact Points, not native `Contact`.
+6. Existing legacy native `Contact` reads remain only as transitional fallbacks until the read-retirement slice.
+7. No new DocType, schema change, data migration, CSV export, or Desk UI is introduced.

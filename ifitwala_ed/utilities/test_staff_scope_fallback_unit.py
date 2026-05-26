@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import sys
 from contextlib import contextmanager
 from html import escape as html_escape
 from types import ModuleType, SimpleNamespace
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from ifitwala_ed.tests.frappe_stubs import import_fresh, stubbed_frappe
 
@@ -39,6 +40,7 @@ def _employee_permission_module():
 
     image_utils = ModuleType("ifitwala_ed.utilities.image_utils")
     image_utils.get_preferred_employee_avatar_url = lambda *args, **kwargs: None
+    image_utils.get_employee_user_avatar_url = lambda *args, **kwargs: None
 
     transaction_base = ModuleType("ifitwala_ed.utilities.transaction_base")
     transaction_base.delete_events = lambda *args, **kwargs: None
@@ -100,10 +102,53 @@ def _contact_utils_module():
         frappe.get_roles = lambda user: []
         frappe.get_all = lambda *args, **kwargs: []
         frappe.db.escape = lambda value, percent=True: f"'{value}'"
+        frappe.flags = SimpleNamespace()
         yield import_fresh("ifitwala_ed.utilities.contact_utils")
 
 
 class TestStaffScopeFallbackUnit(TestCase):
+    def test_update_user_contact_skips_core_contact_when_flag_is_set(self):
+        with _contact_utils_module() as contact_utils:
+            contact_utils.frappe.flags.skip_user_contact_sync = True
+            core_contact_module = ModuleType("frappe.contacts.doctype.contact.contact")
+            core_contact_module.update_contact = Mock()
+
+            with patch.dict(
+                sys.modules,
+                {
+                    "frappe.contacts.doctype": ModuleType("frappe.contacts.doctype"),
+                    "frappe.contacts.doctype.contact": ModuleType("frappe.contacts.doctype.contact"),
+                    "frappe.contacts.doctype.contact.contact": core_contact_module,
+                },
+            ):
+                contact_utils.update_user_contact(SimpleNamespace(name="guardian@example.com"), "after_insert")
+
+        core_contact_module.update_contact.assert_not_called()
+
+    def test_update_user_contact_delegates_to_core_when_not_skipped(self):
+        with _contact_utils_module() as contact_utils:
+            calls: list[tuple] = []
+            core_contact_module = ModuleType("frappe.contacts.doctype.contact.contact")
+
+            def fake_update_contact(doc, method=None):
+                calls.append((doc.name, method))
+                return "CONTACT-UPDATED"
+
+            core_contact_module.update_contact = fake_update_contact
+
+            with patch.dict(
+                sys.modules,
+                {
+                    "frappe.contacts.doctype": ModuleType("frappe.contacts.doctype"),
+                    "frappe.contacts.doctype.contact": ModuleType("frappe.contacts.doctype.contact"),
+                    "frappe.contacts.doctype.contact.contact": core_contact_module,
+                },
+            ):
+                result = contact_utils.update_user_contact(SimpleNamespace(name="staff@example.com"), "after_insert")
+
+        self.assertEqual(result, "CONTACT-UPDATED")
+        self.assertEqual(calls, [("staff@example.com", "after_insert")])
+
     def test_resolve_academic_admin_school_scope_ignores_stale_default_when_active_profile_school_is_blank(self):
         with _employee_permission_module() as employee_module:
             with (

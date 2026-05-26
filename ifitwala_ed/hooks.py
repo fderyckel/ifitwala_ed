@@ -307,7 +307,7 @@ doc_events = {
     "Contact": {"on_update": "ifitwala_ed.utilities.contact_utils.update_profile_from_contact"},
     "ToDo": {"on_update": "ifitwala_ed.admission.admission_utils.on_todo_update_close_marks_contacted"},
     "User": {
-        "after_insert": "frappe.contacts.doctype.contact.contact.update_contact",
+        "after_insert": "ifitwala_ed.utilities.contact_utils.update_user_contact",
         "validate": [
             "ifitwala_ed.hr.doctype.employee.employee.validate_employee_role",
             "ifitwala_ed.hr.workspace_utils.set_default_workspace_based_on_roles",

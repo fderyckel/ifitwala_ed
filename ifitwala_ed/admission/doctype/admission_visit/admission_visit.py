@@ -1118,24 +1118,24 @@ def _build_visit_schedule_options_payload(*, context: dict) -> dict:
             ],
             limit=200,
         )
+        room_names = {row.get("name") for row in room_rows if row.get("name")}
+        all_location_rows = get_visible_location_rows_for_school(
+            school_name,
+            include_groups=True,
+            only_schedulable=False,
+            fields=[
+                "name",
+                "location_name",
+                "school",
+                "parent_location",
+                "location_type",
+                "is_group",
+                "maximum_capacity",
+            ],
+            limit=200,
+        )
         building_rows = [
-            row
-            for row in get_visible_location_rows_for_school(
-                school_name,
-                include_groups=True,
-                only_schedulable=False,
-                fields=[
-                    "name",
-                    "location_name",
-                    "school",
-                    "parent_location",
-                    "location_type",
-                    "is_group",
-                    "maximum_capacity",
-                ],
-                limit=200,
-            )
-            if int(row.get("is_group") or 0)
+            row for row in all_location_rows if int(row.get("is_group") or 0) or row.get("name") not in room_names
         ]
 
     return {
@@ -1367,7 +1367,8 @@ def _resolve_visit_locations(
         if location_name not in visible_names:
             frappe.throw(_("Selected meeting room is not available for this school."), title=_("Invalid Room"))
         if not is_schedulable_location(location_name):
-            frappe.throw(_("Selected meeting room is not schedulable."), title=_("Invalid Room"))
+            building_name = location_name
+            location_name = ""
     if building_name and building_name not in visible_names:
         frappe.throw(_("Selected building is not available for this school."), title=_("Invalid Building"))
 
