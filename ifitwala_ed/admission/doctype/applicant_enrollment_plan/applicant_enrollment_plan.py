@@ -641,8 +641,14 @@ def get_student_applicant_course_intent_state(applicant) -> dict:
     )
 
 
-def update_student_applicant_course_intents(applicant, *, user: str, courses: list[dict] | None = None) -> dict:
-    if (getattr(applicant, "applicant_user", "") or "").strip() != user:
+def update_student_applicant_course_intents(
+    applicant,
+    *,
+    user: str,
+    courses: list[dict] | None = None,
+    access_verified: bool = False,
+) -> dict:
+    if not access_verified and (getattr(applicant, "applicant_user", "") or "").strip() != user:
         frappe.throw(_("You do not have permission to update course intent."), frappe.PermissionError)
     if (getattr(applicant, "application_status", "") or "").strip() not in APPLICANT_INTENT_EDITABLE_STATUSES:
         frappe.throw(_("Course intent can only be updated while the application is editable."))

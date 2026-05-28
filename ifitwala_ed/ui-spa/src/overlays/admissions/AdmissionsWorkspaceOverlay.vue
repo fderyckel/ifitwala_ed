@@ -182,6 +182,21 @@
 												</p>
 											</div>
 											<div>
+												<p class="type-caption text-ink/65">{{ __('Academic Year') }}</p>
+												<p class="type-body-strong text-ink">
+													{{ workspaceApplicant?.academic_year || '—' }}
+													<span v-if="workspaceApplicant?.term" class="text-ink/65">
+														· {{ workspaceApplicant.term }}
+													</span>
+												</p>
+											</div>
+											<div>
+												<p class="type-caption text-ink/65">{{ __('Applying Grade Level') }}</p>
+												<p class="type-body-strong text-ink">
+													{{ workspaceApplicant?.applying_grade_level || '—' }}
+												</p>
+											</div>
+											<div>
 												<p class="type-caption text-ink/65">{{ __('Program Intent') }}</p>
 												<p class="type-body-strong text-ink">
 													{{ workspaceApplicant?.program || '—' }}
@@ -216,6 +231,36 @@
 														})
 													}}
 												</p>
+											</div>
+											<div>
+												<p class="type-caption text-ink/65">{{ __('Gender') }}</p>
+												<p class="type-body text-ink">
+													{{ workspaceApplicant?.student_gender || '—' }}
+												</p>
+											</div>
+										</div>
+									</article>
+
+									<article class="interview-card">
+										<h3 class="type-h3 text-ink">{{ __('Address') }}</h3>
+										<div v-if="applicantAddressLines.length" class="mt-3 space-y-1">
+											<p
+												v-for="line in applicantAddressLines"
+												:key="line"
+												class="type-body text-ink break-words"
+											>
+												{{ line }}
+											</p>
+										</div>
+										<p v-else class="mt-3 type-body text-ink/65">{{ __('Not provided') }}</p>
+									</article>
+
+									<article class="interview-card">
+										<h3 class="type-h3 text-ink">{{ __('Previous School') }}</h3>
+										<div class="mt-3 grid gap-3 sm:grid-cols-2">
+											<div v-for="field in previousSchoolFields" :key="field.label">
+												<p class="type-caption text-ink/65">{{ field.label }}</p>
+												<p class="type-body text-ink break-words">{{ field.value }}</p>
 											</div>
 										</div>
 									</article>
@@ -1622,6 +1667,37 @@ const recommendationOptions = [
 const workspaceApplicant = computed(
 	() => workspace.value?.applicant || applicantWorkspace.value?.applicant || null
 );
+const applicantAddressLines = computed(() => {
+	const address = workspaceApplicant.value?.address || {};
+	const localityParts = [address.city, address.state]
+		.map(part => String(part || '').trim())
+		.filter(Boolean);
+	const locality = [localityParts.join(', '), String(address.postal_code || '').trim()]
+		.filter(Boolean)
+		.join(' ');
+	return [address.address_line1, address.address_line2, locality, address.country]
+		.map(line => String(line || '').trim())
+		.filter(Boolean);
+});
+const previousSchoolFields = computed(() => {
+	const previousSchool = workspaceApplicant.value?.previous_school || {};
+	return [
+		{ label: __('School'), value: displayValue(previousSchool.school_name) },
+		{ label: __('Previous Grade Level'), value: displayValue(previousSchool.grade_level) },
+		{ label: __('Curriculum'), value: displayValue(previousSchool.curriculum) },
+		{ label: __('City'), value: displayValue(previousSchool.city) },
+		{ label: __('Country'), value: displayValue(previousSchool.country) },
+		{
+			label: __('Language of Instruction'),
+			value: displayValue(previousSchool.language_of_instruction),
+		},
+		{
+			label: __('School Year Completed'),
+			value: displayValue(previousSchool.school_year_completed),
+		},
+		{ label: __('Notes'), value: displayValue(previousSchool.notes) },
+	];
+});
 const workspaceTimeline = computed(
 	() => workspace.value?.timeline || applicantWorkspace.value?.timeline || []
 );

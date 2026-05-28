@@ -1173,6 +1173,37 @@ class TestSubmitApplication(FrappeTestCase):
         )
         self.assertEqual(rows_by_course[context["optional_course"].name].choice_rank, 1)
 
+    def test_family_workspace_user_can_persist_applicant_course_intent(self):
+        self._set_admissions_access_mode("Family Workspace")
+        family_user = self._create_family_user()
+        guardian = self._create_guardian_record(user=family_user.name, is_primary_guardian=True)
+        self._link_family_guardian(self.applicant, guardian_name=guardian.name, user=family_user.name)
+        humanities_group = f"Group 3 Humanities {frappe.generate_hash(length=6)}"
+        context = self._create_offer_plan(
+            status="Draft",
+            optional_course_basket_groups=[humanities_group],
+        )
+        self.applicant.db_set("application_status", "In Progress", update_modified=False)
+
+        frappe.set_user(family_user.name)
+        payload = update_applicant_enrollment_choices(
+            student_applicant=self.applicant.name,
+            courses=[
+                {
+                    "course": context["optional_course"].name,
+                    "applied_basket_group": humanities_group,
+                }
+            ],
+        )
+
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual(payload.get("source"), "applicant_intent")
+        self.applicant.reload()
+        self.assertEqual(
+            (self.applicant.course_intents[0].applied_basket_group or "").strip(),
+            humanities_group,
+        )
+
     def test_applicant_enrollment_plan_seeds_from_applicant_course_intent(self):
         humanities_group = f"Group 3 Humanities {frappe.generate_hash(length=6)}"
         context = self._create_offer_plan(
@@ -1588,6 +1619,21 @@ class TestSubmitApplication(FrappeTestCase):
             student_nationality=country,
             student_second_nationality=country,
             residency_status="Local Resident",
+            address_line1="123 Admission Road",
+            address_line2="Unit 4",
+            city="Bangkok",
+            state="Bangkok",
+            postal_code="10110",
+            country=country,
+            applying_grade_level="Grade 4",
+            previous_school_name="River Primary School",
+            previous_grade_level="Grade 3",
+            previous_curriculum="IB PYP",
+            previous_school_city="Chiang Mai",
+            previous_school_country=country,
+            previous_language_of_instruction="English",
+            previous_school_year_completed="2029-2030",
+            previous_school_notes="Recent transfer from another province.",
         )
         self.assertTrue(payload.get("ok"))
         self.assertTrue((payload.get("completeness") or {}).get("ok"))
@@ -1597,6 +1643,12 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual(profile.get("student_preferred_name"), "Portal Preferred")
         self.assertEqual(profile.get("student_nationality"), country)
         self.assertEqual(profile.get("student_first_language"), language)
+        self.assertEqual(profile.get("address_line1"), "123 Admission Road")
+        self.assertEqual(profile.get("city"), "Bangkok")
+        self.assertEqual(profile.get("country"), country)
+        self.assertEqual(profile.get("applying_grade_level"), "Grade 4")
+        self.assertEqual(profile.get("previous_school_name"), "River Primary School")
+        self.assertEqual(profile.get("previous_school_country"), country)
 
     def test_update_applicant_profile_rejects_stale_expected_modified(self):
         frappe.set_user(self.applicant_user)

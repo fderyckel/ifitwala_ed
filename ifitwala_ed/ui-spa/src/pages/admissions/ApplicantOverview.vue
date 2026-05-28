@@ -207,6 +207,7 @@ function displayText(value: unknown): string {
 const applicationRows = computed(() => {
 	const context = snapshot.value?.application_context;
 	if (!context) return [];
+	const profile = snapshot.value?.profile;
 	return [
 		{ key: 'school', label: __('School'), value: displayText(context.school) },
 		{ key: 'organization', label: __('Organization'), value: displayText(context.organization) },
@@ -214,6 +215,11 @@ const applicationRows = computed(() => {
 			key: 'academic_year',
 			label: __('Academic year'),
 			value: displayText(context.academic_year),
+		},
+		{
+			key: 'applying_grade_level',
+			label: __('Applying grade level'),
+			value: displayText(profile?.applying_grade_level),
 		},
 		{ key: 'program', label: __('Program'), value: displayText(context.program) },
 	];
@@ -242,6 +248,13 @@ const profileRows = computed(() => {
 			key: 'first_language',
 			label: __('First language'),
 			value: displayText(profile.student_first_language),
+		},
+		{
+			key: 'address',
+			label: __('Address'),
+			value: displayText(
+				[profile.address_line1, profile.city, profile.country].filter(Boolean).join(', ')
+			),
 		},
 	];
 });

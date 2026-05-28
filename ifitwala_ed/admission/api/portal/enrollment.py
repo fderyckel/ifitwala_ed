@@ -182,7 +182,12 @@ def update_applicant_enrollment_choices_impl(*, student_applicant: str | None = 
         payload = plan.update_portal_choices(user=user, courses=parsed_courses)
     else:
         applicant = frappe.get_doc("Student Applicant", row.get("name"))
-        payload = update_student_applicant_course_intents(applicant, user=user, courses=parsed_courses)
+        payload = update_student_applicant_course_intents(
+            applicant,
+            user=user,
+            courses=parsed_courses,
+            access_verified=True,
+        )
     return {"ok": True, **payload}
 
 

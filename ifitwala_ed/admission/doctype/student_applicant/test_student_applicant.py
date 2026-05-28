@@ -933,6 +933,11 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertIn("Date of Birth", payload.get("missing") or [])
         self.assertIn("First Language", payload.get("missing") or [])
         self.assertIn("Nationality", payload.get("missing") or [])
+        self.assertIn("Address Line 1", payload.get("missing") or [])
+        self.assertIn("City", payload.get("missing") or [])
+        self.assertIn("Postal Code", payload.get("missing") or [])
+        self.assertIn("Country", payload.get("missing") or [])
+        self.assertIn("Applying Grade Level", payload.get("missing") or [])
         self.assertNotIn("Joining Date", payload.get("missing") or [])
 
     def test_readiness_snapshot_does_not_block_on_health_when_school_setting_disabled(self):

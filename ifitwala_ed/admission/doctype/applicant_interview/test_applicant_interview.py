@@ -444,6 +444,19 @@ class TestApplicantInterview(FrappeTestCase):
         self._created.append(("Applicant Interview", interview.name))
 
         applicant_doc = frappe.get_doc("Student Applicant", self.applicant.name)
+        applicant_doc.address_line1 = "123 Admission Road"
+        applicant_doc.address_line2 = "Unit 4"
+        applicant_doc.city = "Bangkok"
+        applicant_doc.state = "Bangkok"
+        applicant_doc.postal_code = "10110"
+        applicant_doc.applying_grade_level = "Grade 4"
+        applicant_doc.previous_school_name = "River Primary School"
+        applicant_doc.previous_grade_level = "Grade 3"
+        applicant_doc.previous_curriculum = "IB PYP"
+        applicant_doc.previous_school_city = "Chiang Mai"
+        applicant_doc.previous_language_of_instruction = "English"
+        applicant_doc.previous_school_year_completed = "2029-2030"
+        applicant_doc.previous_school_notes = "Recent transfer from another province."
         applicant_doc.append(
             "guardians",
             {
@@ -471,6 +484,31 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertTrue(payload.get("ok"))
         self.assertEqual(payload.get("interview", {}).get("name"), interview.name)
         self.assertEqual(payload.get("applicant", {}).get("name"), self.applicant.name)
+        self.assertEqual(payload.get("applicant", {}).get("applying_grade_level"), "Grade 4")
+        self.assertEqual(
+            payload.get("applicant", {}).get("address"),
+            {
+                "address_line1": "123 Admission Road",
+                "address_line2": "Unit 4",
+                "city": "Bangkok",
+                "state": "Bangkok",
+                "postal_code": "10110",
+                "country": None,
+            },
+        )
+        self.assertEqual(
+            payload.get("applicant", {}).get("previous_school"),
+            {
+                "school_name": "River Primary School",
+                "grade_level": "Grade 3",
+                "curriculum": "IB PYP",
+                "city": "Chiang Mai",
+                "country": None,
+                "language_of_instruction": "English",
+                "school_year_completed": "2029-2030",
+                "notes": "Recent transfer from another province.",
+            },
+        )
         guardians = payload.get("applicant", {}).get("guardians") or []
         self.assertGreaterEqual(len(guardians), 1)
         self.assertEqual((guardians[0] or {}).get("first_name"), "Ada")
