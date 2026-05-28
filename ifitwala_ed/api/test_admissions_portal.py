@@ -1625,7 +1625,6 @@ class TestSubmitApplication(FrappeTestCase):
             state="Bangkok",
             postal_code="10110",
             country=country,
-            applying_grade_level="Grade 4",
             previous_school_name="River Primary School",
             previous_grade_level="Grade 3",
             previous_curriculum="IB PYP",
@@ -1634,21 +1633,50 @@ class TestSubmitApplication(FrappeTestCase):
             previous_language_of_instruction="English",
             previous_school_year_completed="2029-2030",
             previous_school_notes="Recent transfer from another province.",
+            learning_support_status="Support details provided",
+            learning_needs="Needs extra time for extended writing.",
+            effective_supports="Visual planning and quiet drafting time.",
+            existing_support_plans="Learning support plan available.",
+            social_emotional_needs="Benefits from predictable transitions.",
+            physical_access_needs="No physical access needs currently known.",
+            family_support_priorities="Build confidence in classroom discussions.",
+            student_strengths="Curious, kind, and persistent.",
+            student_interests="Robotics and music.",
+            student_activities="Community coding club.",
+            student_achievements="Regional robotics finalist.",
+            student_motivators="Hands-on projects.",
+            student_relationship_notes="Warms up after a short personal check-in.",
+            student_voice_notes="I like building things with friends.",
         )
         self.assertTrue(payload.get("ok"))
         self.assertTrue((payload.get("completeness") or {}).get("ok"))
 
         profile_payload = get_applicant_profile(student_applicant=self.applicant.name)
         profile = profile_payload.get("profile") or {}
+        options = profile_payload.get("options") or {}
         self.assertEqual(profile.get("student_preferred_name"), "Portal Preferred")
         self.assertEqual(profile.get("student_nationality"), country)
         self.assertEqual(profile.get("student_first_language"), language)
         self.assertEqual(profile.get("address_line1"), "123 Admission Road")
         self.assertEqual(profile.get("city"), "Bangkok")
         self.assertEqual(profile.get("country"), country)
-        self.assertEqual(profile.get("applying_grade_level"), "Grade 4")
         self.assertEqual(profile.get("previous_school_name"), "River Primary School")
         self.assertEqual(profile.get("previous_school_country"), country)
+        self.assertEqual(profile.get("learning_support_status"), "Support details provided")
+        self.assertEqual(profile.get("learning_needs"), "Needs extra time for extended writing.")
+        self.assertEqual(profile.get("effective_supports"), "Visual planning and quiet drafting time.")
+        self.assertEqual(profile.get("existing_support_plans"), "Learning support plan available.")
+        self.assertEqual(profile.get("social_emotional_needs"), "Benefits from predictable transitions.")
+        self.assertEqual(profile.get("physical_access_needs"), "No physical access needs currently known.")
+        self.assertEqual(profile.get("family_support_priorities"), "Build confidence in classroom discussions.")
+        self.assertEqual(profile.get("student_strengths"), "Curious, kind, and persistent.")
+        self.assertEqual(profile.get("student_interests"), "Robotics and music.")
+        self.assertEqual(profile.get("student_activities"), "Community coding club.")
+        self.assertEqual(profile.get("student_achievements"), "Regional robotics finalist.")
+        self.assertEqual(profile.get("student_motivators"), "Hands-on projects.")
+        self.assertEqual(profile.get("student_relationship_notes"), "Warms up after a short personal check-in.")
+        self.assertEqual(profile.get("student_voice_notes"), "I like building things with friends.")
+        self.assertIn("Support details provided", options.get("learning_support_statuses") or [])
 
     def test_update_applicant_profile_rejects_stale_expected_modified(self):
         frappe.set_user(self.applicant_user)

@@ -250,8 +250,8 @@ class AccountingTestMixin:
         self,
         organization,
         program_offering,
-        academic_year,
-        components,
+        academic_year=None,
+        components=None,
         billing_cadence="Annual",
         is_active=1,
     ):
@@ -264,7 +264,7 @@ class AccountingTestMixin:
                 "billing_cadence": billing_cadence,
                 "invoice_grouping_policy": "One invoice per Account Holder per period",
                 "is_active": is_active,
-                "components": components,
+                "components": components or [],
             }
         )
         doc.insert()

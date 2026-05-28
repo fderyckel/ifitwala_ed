@@ -3,6 +3,7 @@ const users = require("../../fixtures/users/e2e-users.json");
 describe("admissions profile save", () => {
 	const applicant = users.admissions_profile_edit;
 	const preferredName = "Cypress Profile Save";
+	const strengths = "Curious, kind, and persistent.";
 
 	beforeEach(() => {
 		cy.loginAs("admissions_profile_edit");
@@ -17,6 +18,11 @@ describe("admissions profile save", () => {
 
 		cy.getByTestId("admissions-profile-page").should("be.visible");
 		cy.contains("label", "Preferred name").find("input").clear().type(preferredName);
+		cy.get("body").should("not.contain", "Applying grade level");
+		cy.contains("label", "Support sharing preference")
+			.find("select")
+			.select("Support details provided");
+		cy.contains("label", "Strengths and qualities").find("textarea").clear().type(strengths);
 		cy.getByTestId("admissions-profile-save").click();
 
 		cy.wait("@updateProfile").its("response.statusCode").should("eq", 200);
@@ -24,5 +30,6 @@ describe("admissions profile save", () => {
 		cy.reload();
 		cy.getByTestId("admissions-profile-page").should("be.visible");
 		cy.contains("label", "Preferred name").find("input").should("have.value", preferredName);
+		cy.contains("label", "Strengths and qualities").find("textarea").should("have.value", strengths);
 	});
 });

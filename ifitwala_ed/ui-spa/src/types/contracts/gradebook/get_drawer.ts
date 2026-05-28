@@ -1,5 +1,6 @@
 import type { AttachmentPreviewStatus, GovernedAttachmentRow } from '@/types/contracts/attachments/shared'
 import type { FeedbackArtifact } from '@/types/contracts/assessment/feedback_artifact'
+import type { StudentInsightSummary } from '../studentInsight'
 import type { CommentBankPayload } from './comment_bank'
 import type { FeedbackThread, FeedbackWorkspacePayload } from './feedback_workspace'
 
@@ -37,6 +38,7 @@ export type StudentPayload = {
 	student_name: string | null
 	student_id?: string | null
 	student_image?: string | null
+	insight_summary?: StudentInsightSummary | null
 }
 
 export type SubmissionVersionSummary = {

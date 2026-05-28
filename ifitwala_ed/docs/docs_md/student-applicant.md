@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.21.0"
-last_change_date: "2026-05-21"
+version: "1.22.1"
+last_change_date: "2026-05-28"
 summary: "Manage each applicant from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, health, offers, deposits, and enrollment handoff."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Use Student Applicant to manage the applicant lifecycle from invitation to promotion, with readiness checks, portal access, family collaboration, and enrollment handoff."
@@ -25,6 +25,7 @@ Student Applicant keeps admissions human for staff and families while still prot
 - **One applicant record stays with the whole journey.** Teams can follow the applicant from `Draft` or `Invited` all the way to `Promoted`.
 - **Readiness is visible instead of guessed.** Profile, policy, document, health, recommendation, and review signals come together on the applicant.
 - **Families get a proper admissions portal.** Applicants or family collaborators can complete forms, acknowledge policies, upload documents, and track status through `/admissions`.
+- **Teachers get a warmer handoff.** Optional learning-support context, strengths, interests, activities, achievements, and student voice can be captured before the first day.
 - **Staff work from context.** Admissions teams can review evidence from the applicant record, Admissions Cockpit, and workspace overlays without hopping across disconnected files.
 - **Inquiry data carries forward.** When staff invite from an inquiry, identity, intent, school context, and contact lineage move into the applicant.
 - **Promotion is protected.** Approved applicants only move forward when readiness, offer, deposit, and required profile rules are satisfied.
@@ -180,7 +181,7 @@ Promotion creates or links the student and may auto-hydrate a draft Program Enro
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-05-21)
+### Latest Technical Snapshot (2026-05-28)
 
 - **DocType schema file**: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.json`
 - **Controller file**: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
@@ -294,6 +295,18 @@ Portal URL details:
 - If email delivery fails, portal linkage still succeeds; the invited person can use `Forgot Password` on `/login`
 
 Website gate `ifitwala_ed/www/admissions/index.py` requires an authenticated user with either `Admissions Applicant` resolved from `Student Applicant.applicant_user`, or `Admissions Family` with family workspace mode enabled and explicit guardian linkage to one or more applicants.
+
+### Applicant Profile Context
+
+The applicant profile page separates required promotion data from optional context:
+
+- Required profile completeness covers identity, language, residency, and home-address details needed for promotion.
+- `program` and `program_offering` remain the canonical application intent. Families are not asked for a duplicate applying grade level on the profile form.
+- Previous learning context records prior school, curriculum, language of instruction, and related notes.
+- Learning and access support records family-provided context such as support-sharing preference, learning needs, helpful supports, existing plans or reports, social/emotional needs, physical or access needs, and family support priorities.
+- Student strengths and interests records strengths, hobbies, activities, achievements, motivation, relationship notes, and student voice.
+
+Learning/access and student-insight fields help admissions staff and future teachers prepare well. They do not replace the health page, medical clearance, required documents, or confidential recommendation workflows. When an applicant is promoted, these optional fields can become reviewable Student Insight Notes instead of permanent Student profile attributes.
 
 ### Applicant Portal Uploads
 
@@ -412,7 +425,7 @@ Required for approval-readiness path:
 1. Required `Applicant Document Type` records are configured.
 2. Applicant has corresponding `Applicant Document` requirement rows and each required one is satisfied by approved evidence or admissions override.
 3. If `School.require_health_profile_for_approval = 1`, `Applicant Health Profile.review_status = Cleared`.
-4. Applicant profile information required for Student promotion is complete.
+4. Applicant profile information required for Student promotion is complete. Optional learning/access and student-insight context does not block profile completeness.
 
 Optional but commonly expected:
 
@@ -461,6 +474,7 @@ Optional but commonly expected:
 - creates/syncs `Student Patient` from Applicant Health Profile data
 - copies approved admissions documents into Student-owned governed files; current runtime excludes only rows whose `promotion_target` is explicitly non-`Student`
 - copies applicant image through the governed Drive workflow into the Student profile image slot
+- creates reviewable `Student Insight Note` rows from optional learning/access, strengths, interests, relationship starter, and achievement context
 - may auto-hydrate a draft `Program Enrollment Request` from the accepted Applicant Enrollment Plan when `Admission Settings.auto_hydrate_enrollment_request_after_promotion = 1`
 - does not create Guardian/User portal access
 - does not mutate portal roles

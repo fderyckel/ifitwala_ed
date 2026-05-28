@@ -41,7 +41,6 @@ APPLICANT_PROFILE_FIELDS = (
     "state",
     "postal_code",
     "country",
-    "applying_grade_level",
     "previous_school_name",
     "previous_grade_level",
     "previous_curriculum",
@@ -50,6 +49,20 @@ APPLICANT_PROFILE_FIELDS = (
     "previous_language_of_instruction",
     "previous_school_year_completed",
     "previous_school_notes",
+    "learning_support_status",
+    "learning_needs",
+    "effective_supports",
+    "existing_support_plans",
+    "social_emotional_needs",
+    "physical_access_needs",
+    "family_support_priorities",
+    "student_strengths",
+    "student_interests",
+    "student_activities",
+    "student_achievements",
+    "student_motivators",
+    "student_relationship_notes",
+    "student_voice_notes",
 )
 
 APPLICANT_PROFILE_REQUIRED_FIELD_LABELS = (
@@ -63,11 +76,16 @@ APPLICANT_PROFILE_REQUIRED_FIELD_LABELS = (
     ("city", "City"),
     ("postal_code", "Postal Code"),
     ("country", "Country"),
-    ("applying_grade_level", "Applying Grade Level"),
 )
 
 APPLICANT_PROFILE_GENDER_OPTIONS = ("Female", "Male", "Other")
 APPLICANT_PROFILE_RESIDENCY_OPTIONS = ("Local Resident", "Expat Resident", "Boarder", "Other")
+APPLICANT_LEARNING_SUPPORT_STATUS_OPTIONS = (
+    "No known support needs",
+    "Support details provided",
+    "Unsure / would like to discuss",
+    "Prefer to discuss privately",
+)
 
 
 def _default_profile_payload() -> dict:
@@ -179,6 +197,7 @@ def _profile_reference_options() -> dict:
     return {
         "genders": list(APPLICANT_PROFILE_GENDER_OPTIONS),
         "residency_statuses": list(APPLICANT_PROFILE_RESIDENCY_OPTIONS),
+        "learning_support_statuses": list(APPLICANT_LEARNING_SUPPORT_STATUS_OPTIONS),
         "languages": [
             {
                 "value": _as_text(row.get("name")).strip(),
@@ -230,7 +249,6 @@ def update_applicant_profile_impl(
     state: str | None = None,
     postal_code: str | None = None,
     country: str | None = None,
-    applying_grade_level: str | None = None,
     previous_school_name: str | None = None,
     previous_grade_level: str | None = None,
     previous_curriculum: str | None = None,
@@ -239,6 +257,20 @@ def update_applicant_profile_impl(
     previous_language_of_instruction: str | None = None,
     previous_school_year_completed: str | None = None,
     previous_school_notes: str | None = None,
+    learning_support_status: str | None = None,
+    learning_needs: str | None = None,
+    effective_supports: str | None = None,
+    existing_support_plans: str | None = None,
+    social_emotional_needs: str | None = None,
+    physical_access_needs: str | None = None,
+    family_support_priorities: str | None = None,
+    student_strengths: str | None = None,
+    student_interests: str | None = None,
+    student_activities: str | None = None,
+    student_achievements: str | None = None,
+    student_motivators: str | None = None,
+    student_relationship_notes: str | None = None,
+    student_voice_notes: str | None = None,
     guardians=None,
 ):
     user = _require_admissions_applicant()
@@ -292,9 +324,6 @@ def update_applicant_profile_impl(
         "state": _as_text(applicant.get("state") if state is None else state).strip(),
         "postal_code": _as_text(applicant.get("postal_code") if postal_code is None else postal_code).strip(),
         "country": _as_text(applicant.get("country") if country is None else country).strip(),
-        "applying_grade_level": _as_text(
-            applicant.get("applying_grade_level") if applying_grade_level is None else applying_grade_level
-        ).strip(),
         "previous_school_name": _as_text(
             applicant.get("previous_school_name") if previous_school_name is None else previous_school_name
         ).strip(),
@@ -322,6 +351,52 @@ def update_applicant_profile_impl(
         ).strip(),
         "previous_school_notes": _as_text(
             applicant.get("previous_school_notes") if previous_school_notes is None else previous_school_notes
+        ).strip(),
+        "learning_support_status": _as_text(
+            applicant.get("learning_support_status") if learning_support_status is None else learning_support_status
+        ).strip(),
+        "learning_needs": _as_text(
+            applicant.get("learning_needs") if learning_needs is None else learning_needs
+        ).strip(),
+        "effective_supports": _as_text(
+            applicant.get("effective_supports") if effective_supports is None else effective_supports
+        ).strip(),
+        "existing_support_plans": _as_text(
+            applicant.get("existing_support_plans") if existing_support_plans is None else existing_support_plans
+        ).strip(),
+        "social_emotional_needs": _as_text(
+            applicant.get("social_emotional_needs") if social_emotional_needs is None else social_emotional_needs
+        ).strip(),
+        "physical_access_needs": _as_text(
+            applicant.get("physical_access_needs") if physical_access_needs is None else physical_access_needs
+        ).strip(),
+        "family_support_priorities": _as_text(
+            applicant.get("family_support_priorities")
+            if family_support_priorities is None
+            else family_support_priorities
+        ).strip(),
+        "student_strengths": _as_text(
+            applicant.get("student_strengths") if student_strengths is None else student_strengths
+        ).strip(),
+        "student_interests": _as_text(
+            applicant.get("student_interests") if student_interests is None else student_interests
+        ).strip(),
+        "student_activities": _as_text(
+            applicant.get("student_activities") if student_activities is None else student_activities
+        ).strip(),
+        "student_achievements": _as_text(
+            applicant.get("student_achievements") if student_achievements is None else student_achievements
+        ).strip(),
+        "student_motivators": _as_text(
+            applicant.get("student_motivators") if student_motivators is None else student_motivators
+        ).strip(),
+        "student_relationship_notes": _as_text(
+            applicant.get("student_relationship_notes")
+            if student_relationship_notes is None
+            else student_relationship_notes
+        ).strip(),
+        "student_voice_notes": _as_text(
+            applicant.get("student_voice_notes") if student_voice_notes is None else student_voice_notes
         ).strip(),
     }
 

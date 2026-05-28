@@ -3,11 +3,12 @@ title: "Student: Your Learner Records Made Simple"
 slug: student
 category: Students
 doc_order: 1
-version: "1.3.8"
-last_change_date: "2026-05-20"
+version: "1.3.9"
+last_change_date: "2026-05-28"
 summary: "Manage learner records with confidence—from admissions intake to alumni status. Understand when to use the admissions pipeline versus importing existing students."
 seo_title: "Student: Your Learner Records Made Simple"
 seo_description: "Learn how to manage Student records in Ifitwala Ed—from admissions promotion to bulk importing existing students with full portal access and health record integration."
+---
 
 ## What is a Student Record?
 
@@ -68,6 +69,7 @@ The admissions workflow is the heart of Ifitwala Ed's student intake. Here's how
 <Callout type="success" title="What happens automatically">
 When you promote an applicant:
 - Student record is created with all application data
+- Reviewable Student Insight Notes are created from family-provided learning, access, strengths, interests, and achievement context when present
 - Student portal user account is created (email = username)
 - Student Patient record is created for health services
 - Contact record links the student to your CRM
@@ -172,6 +174,7 @@ This flow is especially useful after migration/import when staff have already li
 - Enroll students in courses and programs
 - Track attendance and participation
 - View grades and assessment results
+- See current Student Insight Notes beside learner names in attendance and gradebook
 - Manage course loads and academic policies
 
 ### Health & Wellness
@@ -220,7 +223,7 @@ Sensitive identity fields are additionally separated by field permission level. 
 ## Related Docs
 
 <RelatedDocs
-  slugs="student-applicant,school,organization,student-enrollment-playbook,inquiry"
+  slugs="student-applicant,student-insight-note,school,organization,student-enrollment-playbook,inquiry"
   title="Continue With Admissions and Enrollment Docs"
 />
 
@@ -233,6 +236,6 @@ Sensitive identity fields are additionally separated by field permission level. 
 - **Desk visibility**: Student List, Image, Report, and form access are server-scoped through scripted permissions. Academic Admin and Academic Assistant users use `Student.anchor_school` plus the active Employee school branch. Instructors use active `Student Group Instructor` and `Student Group Student` rows.
 - **Demographic analytics**: Student Demographic Analytics is aggregate-only. It must not expose named Student or Guardian drill-down rows from demographic buckets. Demographic cells below the configured minimum count are suppressed; several suppressed cells may appear only as a combined `Other / Suppressed` aggregate when that combined count also meets the minimum.
 - **DOB visibility**: `student_date_of_birth` is `permlevel 2` on Student; `student_age` is the derived read-only field for general academic display.
-- **Side Effects**: imported/direct student creation keeps user creation, Student Patient creation, contact linking, and image sync; applicant promotion now also materializes the canonical `Contact.links -> Student` binding synchronously.
+- **Side Effects**: imported/direct student creation keeps user creation, Student Patient creation, contact linking, and image sync; applicant promotion now also materializes the canonical `Contact.links -> Student` binding synchronously and creates reviewable `Student Insight Note` rows from optional applicant context.
 - **Legacy remediation**: existing sites backfill missing `Contact.links -> Student` rows through the one-shot patch `ifitwala_ed.patches.backfill_student_contact_links`
 - **Profile-image cleanup**: runtime Student saves no longer rename or repair legacy image files; existing sites normalize legacy `Student.student_image` rows through the one-shot patch `ifitwala_ed.patches.backfill_student_profile_images`

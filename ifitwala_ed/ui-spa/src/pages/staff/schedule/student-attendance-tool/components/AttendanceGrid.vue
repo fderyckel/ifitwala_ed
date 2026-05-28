@@ -70,6 +70,8 @@
 								<span role="img" aria-hidden="true">🎂</span>
 								{{ __('Birthday') }}
 							</button>
+
+							<StudentInsightNoteButton :summary="student.insight_summary" />
 						</div>
 
 						<div class="pt-1">
@@ -199,6 +201,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { FeatherIcon } from 'frappe-ui';
 import { __ } from '@/lib/i18n';
+import StudentInsightNoteButton from '@/components/student/StudentInsightNoteButton.vue';
 import type { StudentRosterEntry, BlockKey } from '../types';
 import type { StudentAttendanceCodeRow } from '@/types/contracts/studentAttendance';
 

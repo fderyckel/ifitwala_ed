@@ -66,6 +66,24 @@
   "previous_language_of_instruction",
   "previous_school_year_completed",
   "previous_school_notes",
+  "learning_access_section",
+  "learning_support_status",
+  "learning_needs",
+  "effective_supports",
+  "existing_support_plans",
+  "column_break_learning_access",
+  "social_emotional_needs",
+  "physical_access_needs",
+  "family_support_priorities",
+  "student_insight_section",
+  "student_strengths",
+  "student_interests",
+  "student_activities",
+  "student_achievements",
+  "column_break_student_insight",
+  "student_motivators",
+  "student_relationship_notes",
+  "student_voice_notes",
   "guardians_section",
   "guardians",
   "billing_section",
@@ -417,12 +435,15 @@
   {
    "fieldname": "previous_school_section",
    "fieldtype": "Section Break",
-   "label": "Previous School"
+   "label": "Previous Learning Context"
   },
   {
+   "description": "Deprecated. Program and Program Offering are the canonical application intent fields.",
    "fieldname": "applying_grade_level",
    "fieldtype": "Data",
-   "label": "Applying Grade Level"
+   "hidden": 1,
+   "label": "Applying Grade Level",
+   "read_only": 1
   },
   {
    "fieldname": "previous_school_name",
@@ -470,6 +491,96 @@
    "label": "Previous School Notes"
   },
   {
+   "fieldname": "learning_access_section",
+   "fieldtype": "Section Break",
+   "label": "Learning and Access Support"
+  },
+  {
+   "description": "Optional family disclosure to help the school plan welcome, access, and support. This is not an admissions decision by itself.",
+   "fieldname": "learning_support_status",
+   "fieldtype": "Select",
+   "label": "Learning Support Status",
+   "options": "\nNo known support needs\nSupport details provided\nUnsure / would like to discuss\nPrefer to discuss privately"
+  },
+  {
+   "fieldname": "learning_needs",
+   "fieldtype": "Text",
+   "label": "Learning Needs"
+  },
+  {
+   "fieldname": "effective_supports",
+   "fieldtype": "Text",
+   "label": "Supports That Help"
+  },
+  {
+   "fieldname": "existing_support_plans",
+   "fieldtype": "Small Text",
+   "label": "Existing Support Plans or Reports"
+  },
+  {
+   "fieldname": "column_break_learning_access",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "social_emotional_needs",
+   "fieldtype": "Text",
+   "label": "Social / Emotional Needs"
+  },
+  {
+   "fieldname": "physical_access_needs",
+   "fieldtype": "Text",
+   "label": "Physical or Access Needs"
+  },
+  {
+   "fieldname": "family_support_priorities",
+   "fieldtype": "Text",
+   "label": "Family Support Priorities"
+  },
+  {
+   "fieldname": "student_insight_section",
+   "fieldtype": "Section Break",
+   "label": "Student Strengths and Interests"
+  },
+  {
+   "fieldname": "student_strengths",
+   "fieldtype": "Text",
+   "label": "Strengths and Qualities"
+  },
+  {
+   "fieldname": "student_interests",
+   "fieldtype": "Text",
+   "label": "Hobbies and Interests"
+  },
+  {
+   "fieldname": "student_activities",
+   "fieldtype": "Text",
+   "label": "Activities and Service"
+  },
+  {
+   "fieldname": "student_achievements",
+   "fieldtype": "Text",
+   "label": "Achievements and Recognition"
+  },
+  {
+   "fieldname": "column_break_student_insight",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "student_motivators",
+   "fieldtype": "Text",
+   "label": "Motivation and Engagement"
+  },
+  {
+   "fieldname": "student_relationship_notes",
+   "fieldtype": "Text",
+   "label": "Relationship Notes"
+  },
+  {
+   "fieldname": "student_voice_notes",
+   "fieldtype": "Text",
+   "label": "Student Voice Notes"
+  },
+  {
    "fieldname": "title",
    "fieldtype": "Data",
    "hidden": 1,
@@ -501,7 +612,7 @@
  "image_field": "applicant_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-28 17:00:00.000000",
+ "modified": "2026-05-28 19:10:14.000000",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Student Applicant",

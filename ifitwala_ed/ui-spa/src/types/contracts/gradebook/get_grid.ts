@@ -1,5 +1,7 @@
 // ui-spa/src/types/contracts/gradebook/get_grid.ts
 
+import type { StudentInsightSummary } from '../studentInsight'
+
 export type Request = {
 	school: string
 	academic_year: string
@@ -28,6 +30,7 @@ export type Student = {
 	student_name: string
 	student_id?: string | null
 	student_image?: string | null
+	insight_summary?: StudentInsightSummary | null
 }
 
 export type Cell = {

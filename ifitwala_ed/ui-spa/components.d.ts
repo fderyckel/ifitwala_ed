@@ -84,6 +84,7 @@ declare module 'vue' {
     StudentCalendar: typeof import('./src/components/calendar/StudentCalendar.vue')['default']
     StudentContextOverlay: typeof import('./src/components/overlays/class-hub/StudentContextOverlay.vue')['default']
     StudentContextSidebar: typeof import('./src/components/StudentContextSidebar.vue')['default']
+    StudentInsightNoteButton: typeof import('./src/components/student/StudentInsightNoteButton.vue')['default']
     StudentLearningResourceCard: typeof import('./src/components/learning/StudentLearningResourceCard.vue')['default']
     StudentLogFollowUpAction: typeof import('./src/components/focus/StudentLogFollowUpAction.vue')['default']
     TagCloudBar: typeof import('./src/components/analytics/TagCloudBar.vue')['default']

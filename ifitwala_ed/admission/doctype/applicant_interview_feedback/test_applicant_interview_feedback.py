@@ -80,6 +80,44 @@ class TestApplicantInterviewFeedback(FrappeTestCase):
                 }
             ).insert()
 
+    def test_scoped_counselor_can_read_other_interviewer_notes_but_not_edit(self):
+        frappe.set_user(self.interviewer.name)
+        doc = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview Feedback",
+                "applicant_interview": self.interview.name,
+                "interviewer_user": self.interviewer.name,
+                "feedback_status": "Submitted",
+                "strengths": "Thoughtful answers",
+                "concerns": "Needs transition support",
+            }
+        ).insert()
+        self._created.append(("Applicant Interview Feedback", doc.name))
+
+        frappe.set_user(self.outsider.name)
+        visible = get_value(
+            "Applicant Interview Feedback",
+            "name",
+            filters={"name": doc.name},
+        )
+        self.assertEqual(visible.get("name"), doc.name)
+        self.assertTrue(
+            frappe.has_permission(
+                "Applicant Interview Feedback",
+                ptype="read",
+                doc=doc.name,
+                user=self.outsider.name,
+            )
+        )
+        self.assertFalse(
+            frappe.has_permission(
+                "Applicant Interview Feedback",
+                ptype="write",
+                doc=doc.name,
+                user=self.outsider.name,
+            )
+        )
+
     def test_instructor_interviewer_can_lookup_missing_feedback_before_create(self):
         self._ensure_role("Instructor")
         interviewer = self._create_user("feedback-instructor-interviewer", roles=["Instructor"])

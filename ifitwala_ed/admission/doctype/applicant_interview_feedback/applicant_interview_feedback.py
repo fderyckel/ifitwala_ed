@@ -9,8 +9,9 @@ from frappe.utils import now_datetime
 
 from ifitwala_ed.admission.admission_utils import (
     READ_LIKE_PERMISSION_TYPES,
-    build_admissions_file_scope_exists_sql,
-    has_scoped_staff_access_to_student_applicant,
+    build_admissions_feedback_note_scope_exists_sql,
+    has_scoped_admissions_feedback_note_access,
+    is_admissions_feedback_note_reader_user,
     is_admissions_file_staff_user,
 )
 
@@ -81,14 +82,6 @@ class ApplicantInterviewFeedback(Document):
         if not current_user or current_user == "Guest":
             frappe.throw(_("Please sign in to continue."), frappe.PermissionError)
 
-        if _is_feedback_privileged_user(current_user):
-            if not has_scoped_staff_access_to_student_applicant(
-                user=current_user,
-                student_applicant=self.student_applicant,
-            ):
-                frappe.throw(_("You do not have permission to edit this interview feedback."), frappe.PermissionError)
-            return
-
         if (self.interviewer_user or "").strip() != current_user:
             frappe.throw(_("You can only edit your own interview feedback."), frappe.PermissionError)
 
@@ -114,28 +107,17 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
         return "1=0"
 
     conditions: list[str] = []
-    if _is_feedback_privileged_user(user):
-        staff_condition = build_admissions_file_scope_exists_sql(
-            user=user,
-            student_applicant_expr_sql="`tabApplicant Interview Feedback`.`student_applicant`",
-        )
-        if staff_condition is None:
-            return None
-        if staff_condition != "1=0":
-            conditions.append(f"({staff_condition})")
+    feedback_note_reader_condition = build_admissions_feedback_note_scope_exists_sql(
+        user=user,
+        student_applicant_expr_sql="`tabApplicant Interview Feedback`.`student_applicant`",
+    )
+    if feedback_note_reader_condition is None:
+        return None
+    if feedback_note_reader_condition != "1=0":
+        conditions.append(f"({feedback_note_reader_condition})")
 
     escaped_user = frappe.db.escape(user)
-    interviewer_condition = (
-        "(`tabApplicant Interview Feedback`.`interviewer_user` = {user} "
-        "AND exists ("
-        "select 1 from `tabApplicant Interviewer` ai "
-        "where ai.parent = `tabApplicant Interview Feedback`.`applicant_interview` "
-        "and ai.parenttype = 'Applicant Interview' "
-        "and ai.parentfield = 'interviewers' "
-        "and ai.interviewer = {user}"
-        "))"
-    ).format(user=escaped_user)
-    conditions.append(f"({interviewer_condition})")
+    conditions.append(f"(`tabApplicant Interview Feedback`.`interviewer_user` = {escaped_user})")
     return " OR ".join(conditions) if conditions else "1=0"
 
 
@@ -145,20 +127,9 @@ def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bo
 
     if not user or user == "Guest":
         return False
-    if _is_feedback_privileged_user(user):
-        valid_staff_ops = READ_LIKE_PERMISSION_TYPES | {"write", "create", "delete", "submit", "cancel", "amend"}
-        if op not in valid_staff_ops:
-            return False
-        if op == "create":
-            if not doc:
-                return True
-        if not doc:
-            return True
-        student_applicant = _resolve_feedback_student_applicant(doc)
-        return has_scoped_staff_access_to_student_applicant(user=user, student_applicant=student_applicant)
 
     if op in {"delete", "submit", "cancel", "amend"}:
-        return False
+        return user == "Administrator"
 
     if op == "create":
         if not doc:
@@ -187,34 +158,47 @@ def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bo
         return False
 
     if not doc:
-        return bool(
-            frappe.db.exists(
-                "Applicant Interview Feedback",
-                {
-                    "interviewer_user": user,
-                },
+        if op == "write":
+            return bool(
+                frappe.db.exists(
+                    "Applicant Interview Feedback",
+                    {
+                        "interviewer_user": user,
+                    },
+                )
             )
+        return bool(
+            frappe.db.exists("Applicant Interview Feedback", {"interviewer_user": user})
+            or is_admissions_feedback_note_reader_user(user)
         )
 
     if isinstance(doc, str):
         row = frappe.db.get_value(
             "Applicant Interview Feedback",
             doc,
-            ["applicant_interview", "interviewer_user"],
+            ["applicant_interview", "interviewer_user", "student_applicant"],
             as_dict=True,
         )
         if not row:
             return False
         interview_name = (row.get("applicant_interview") or "").strip()
         interviewer_user = (row.get("interviewer_user") or "").strip()
+        student_applicant = (row.get("student_applicant") or "").strip()
     else:
         interview_name = _extract_doc_field(doc, "applicant_interview")
         interviewer_user = _extract_doc_field(doc, "interviewer_user")
+        student_applicant = _resolve_feedback_student_applicant(doc)
 
-    if interviewer_user != user:
-        return False
+    if op == "write":
+        return bool(interviewer_user == user and _is_interviewer_on_interview(user=user, interview_name=interview_name))
 
-    return _is_interviewer_on_interview(user=user, interview_name=interview_name)
+    if interviewer_user == user:
+        return True
+
+    return has_scoped_admissions_feedback_note_access(
+        user=user,
+        student_applicant=student_applicant,
+    )
 
 
 def _extract_doc_field(doc, fieldname: str) -> str:

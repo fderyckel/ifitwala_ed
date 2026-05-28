@@ -46,6 +46,9 @@ from ifitwala_ed.integrations.drive.authority import (
     get_current_drive_files_for_attachments,
     get_drive_file_for_file,
 )
+from ifitwala_ed.students.doctype.student_insight_note.student_insight_note import (
+    create_student_insight_notes_from_applicant,
+)
 from ifitwala_ed.utilities.image_utils import ensure_guardian_profile_image
 from ifitwala_ed.utilities.school_tree import get_school_scope_for_academic_year
 
@@ -145,7 +148,6 @@ STUDENT_PROFILE_FIELDS = (
     "state",
     "postal_code",
     "country",
-    "applying_grade_level",
     "previous_school_name",
     "previous_grade_level",
     "previous_curriculum",
@@ -154,6 +156,20 @@ STUDENT_PROFILE_FIELDS = (
     "previous_language_of_instruction",
     "previous_school_year_completed",
     "previous_school_notes",
+    "learning_support_status",
+    "learning_needs",
+    "effective_supports",
+    "existing_support_plans",
+    "social_emotional_needs",
+    "physical_access_needs",
+    "family_support_priorities",
+    "student_strengths",
+    "student_interests",
+    "student_activities",
+    "student_achievements",
+    "student_motivators",
+    "student_relationship_notes",
+    "student_voice_notes",
 )
 
 STUDENT_PROFILE_REQUIRED_FIELD_LABELS = (
@@ -167,7 +183,6 @@ STUDENT_PROFILE_REQUIRED_FIELD_LABELS = (
     ("city", "City"),
     ("postal_code", "Postal Code"),
     ("country", "Country"),
-    ("applying_grade_level", "Applying Grade Level"),
 )
 
 
@@ -719,6 +734,7 @@ class StudentApplicant(Document):
             self._carry_guardians_to_promoted_student(self.student)
             hydrated_request = self._maybe_auto_hydrate_enrollment_request_after_promotion(self.student)
             self._copy_health_profile_to_student_patient(self.student, require_profile=False)
+            self._create_insight_notes_for_promoted_student(self.student)
             self._set_status("Promoted", "Applicant promoted")
         if hydrated_request:
             self.add_comment(
@@ -734,6 +750,7 @@ class StudentApplicant(Document):
             self._sync_account_holder_to_student(existing)
             self._carry_guardians_to_promoted_student(existing)
             self._copy_health_profile_to_student_patient(existing, require_profile=False)
+            self._create_insight_notes_for_promoted_student(existing)
             self.flags.from_promotion = True
             self.student = existing
             self.save(ignore_permissions=True)
@@ -788,6 +805,7 @@ class StudentApplicant(Document):
         self._carry_guardians_to_promoted_student(student.name)
         health_snapshot = self._copy_health_profile_to_student_patient(student.name)
         copied_docs = self._copy_promotable_documents_to_student(student)
+        self._create_insight_notes_for_promoted_student(student.name)
 
         self._copy_applicant_image_to_student(student)
 
@@ -987,6 +1005,9 @@ class StudentApplicant(Document):
 
         student.account_holder = account_holder
         student.save(ignore_permissions=True)
+
+    def _create_insight_notes_for_promoted_student(self, student_name: str) -> int:
+        return create_student_insight_notes_from_applicant(self, student_name)
 
     def _maybe_auto_hydrate_enrollment_request_after_promotion(self, student_name: str) -> str | None:
         try:

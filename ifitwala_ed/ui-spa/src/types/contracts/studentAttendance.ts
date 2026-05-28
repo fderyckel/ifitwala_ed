@@ -4,6 +4,8 @@
 // Student Attendance (SPA) — Backend-owned contracts
 // ------------------------------------------------------------
 
+import type { StudentInsightSummary } from './studentInsight'
+
 export type AttendanceBlockNumber = number
 
 export type StudentAttendanceCodeRow = {
@@ -168,6 +170,7 @@ export type FetchStudentsResponse = {
 			birthday_today?: boolean
 			birthday_label?: string | null
 			medical_info?: string | null
+			insight_summary?: StudentInsightSummary | null
 		}>
 	start: number
 	total: number

@@ -1,5 +1,7 @@
 // ui-spa/src/types/contracts/gradebook/get_task_gradebook.ts
 
+import type { StudentInsightSummary } from '../studentInsight'
+
 export type Request = {
 	task: string
 }
@@ -44,6 +46,7 @@ export type StudentRow = {
 	student_name: string
 	student_id?: string | null
 	student_image?: string | null
+	insight_summary?: StudentInsightSummary | null
 	status?: string | null
 	procedural_status?: string | null
 	submission_status?: string | null

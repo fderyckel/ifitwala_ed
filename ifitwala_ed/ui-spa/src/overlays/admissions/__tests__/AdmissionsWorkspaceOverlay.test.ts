@@ -66,7 +66,10 @@ vi.mock('@/lib/services/admissions/admissionsWorkspaceService', () => ({
 }));
 
 import AdmissionsWorkspaceOverlay from '@/overlays/admissions/AdmissionsWorkspaceOverlay.vue';
-import type { ApplicantWorkspaceResponse } from '@/types/contracts/admissions/admissions_workspace';
+import type {
+	ApplicantWorkspaceResponse,
+	InterviewWorkspaceResponse,
+} from '@/types/contracts/admissions/admissions_workspace';
 
 const cleanupFns: Array<() => void> = [];
 
@@ -141,6 +144,62 @@ function buildWorkspace(reviewStatus: string): ApplicantWorkspaceResponse {
 	};
 }
 
+function buildInterviewWorkspace(canEdit: boolean): InterviewWorkspaceResponse {
+	return {
+		ok: true,
+		interview: {
+			name: 'INT-0001',
+			student_applicant: 'APP-0001',
+			interview_type: 'Student',
+			mode: 'Online',
+			interviewers: [{ user: 'interviewer@example.com', name: 'Panel Interviewer' }],
+		},
+		applicant: {
+			name: 'APP-0001',
+			display_name: 'Ada Applicant',
+			application_status: 'Under Review',
+			guardians: [],
+		},
+		timeline: [],
+		documents: {
+			rows: [],
+			count: 0,
+		},
+		recommendations: {
+			summary: {
+				required_total: 0,
+				received_total: 0,
+				requested_total: 0,
+				pending_review_count: 0,
+			},
+			requests: [],
+			submissions: [],
+			review_rows: [],
+		},
+		feedback: {
+			can_edit: canEdit,
+			can_view_notes: true,
+			allowed_statuses: ['Draft', 'Submitted'],
+			my_feedback: {
+				interviewer_user: 'manager@example.com',
+				feedback_status: 'Draft',
+			},
+			panel: [
+				{
+					name: 'FEED-0001',
+					interviewer_user: 'interviewer@example.com',
+					interviewer_name: 'Panel Interviewer',
+					feedback_status: 'Submitted',
+					can_view_notes: true,
+					recommendation: 'Recommend with Conditions',
+					strengths: 'Thoughtful answers',
+					concerns: 'Needs transition support',
+				},
+			],
+		},
+	};
+}
+
 async function flushUi() {
 	await Promise.resolve();
 	await nextTick();
@@ -148,7 +207,7 @@ async function flushUi() {
 	await nextTick();
 }
 
-function mountOverlay() {
+function mountOverlay(props: Record<string, unknown> = {}) {
 	const host = document.createElement('div');
 	document.body.appendChild(host);
 
@@ -159,6 +218,7 @@ function mountOverlay() {
 					open: true,
 					mode: 'applicant',
 					studentApplicant: 'APP-0001',
+					...props,
 				});
 			},
 		})
@@ -213,5 +273,18 @@ describe('AdmissionsWorkspaceOverlay', () => {
 		expect(buttonLabels()).toContain('Approve');
 		expect(buttonLabels()).toContain('Request Changes');
 		expect(buttonLabels()).toContain('Reject');
+	});
+
+	it('shows read-only interview notes instead of submit controls for non-editing readers', async () => {
+		getInterviewWorkspaceMock.mockResolvedValue(buildInterviewWorkspace(false));
+
+		mountOverlay({ mode: 'interview', interview: 'INT-0001', studentApplicant: null });
+		await flushUi();
+
+		expect(document.body.textContent || '').toContain('Recommend with Conditions');
+		expect(document.body.textContent || '').toContain('Needs transition support');
+		expect(buttonLabels()).not.toContain('Save Notes');
+		expect(buttonLabels()).not.toContain('Submit Notes');
+		expect(saveMyInterviewFeedbackMock).not.toHaveBeenCalled();
 	});
 });

@@ -24,6 +24,7 @@ frappe.ui.form.on('Student', {
 
 		frm.trigger("render_contact_address_readonly");
 		frm.trigger("refresh_family_address_proposal");
+		frm.trigger("refresh_insight_actions");
 
 		frm.trigger("setup_governed_image_upload");
 		frm.trigger("setup_governed_drive_link");
@@ -114,6 +115,22 @@ frappe.ui.form.on('Student', {
 				__("View")
 			);
 		}
+	},
+
+	refresh_insight_actions: function(frm) {
+		frm.remove_custom_button(__("Student Insight Notes"), __("View"));
+		if (frm.is_new()) {
+			return;
+		}
+
+		frm.add_custom_button(
+			__("Student Insight Notes"),
+			() => {
+				frappe.route_options = { student: frm.doc.name };
+				frappe.set_route("List", "Student Insight Note");
+			},
+			__("View")
+		);
 	},
 
 	setup_sibling_guardian_sync: function(frm) {

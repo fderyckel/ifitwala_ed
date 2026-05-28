@@ -449,7 +449,6 @@ class TestApplicantInterview(FrappeTestCase):
         applicant_doc.city = "Bangkok"
         applicant_doc.state = "Bangkok"
         applicant_doc.postal_code = "10110"
-        applicant_doc.applying_grade_level = "Grade 4"
         applicant_doc.previous_school_name = "River Primary School"
         applicant_doc.previous_grade_level = "Grade 3"
         applicant_doc.previous_curriculum = "IB PYP"
@@ -457,6 +456,20 @@ class TestApplicantInterview(FrappeTestCase):
         applicant_doc.previous_language_of_instruction = "English"
         applicant_doc.previous_school_year_completed = "2029-2030"
         applicant_doc.previous_school_notes = "Recent transfer from another province."
+        applicant_doc.learning_support_status = "Support details provided"
+        applicant_doc.learning_needs = "Needs extra time for extended writing."
+        applicant_doc.effective_supports = "Visual planning and quiet drafting time."
+        applicant_doc.existing_support_plans = "Learning support plan available."
+        applicant_doc.social_emotional_needs = "Benefits from a predictable transition."
+        applicant_doc.physical_access_needs = "No physical access needs currently known."
+        applicant_doc.family_support_priorities = "Build confidence in classroom discussions."
+        applicant_doc.student_strengths = "Curious, kind, and persistent."
+        applicant_doc.student_interests = "Robotics and music."
+        applicant_doc.student_activities = "Community coding club."
+        applicant_doc.student_achievements = "Regional robotics finalist."
+        applicant_doc.student_motivators = "Hands-on projects."
+        applicant_doc.student_relationship_notes = "Warms up after a short personal check-in."
+        applicant_doc.student_voice_notes = "I like building things with friends."
         applicant_doc.append(
             "guardians",
             {
@@ -484,7 +497,6 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertTrue(payload.get("ok"))
         self.assertEqual(payload.get("interview", {}).get("name"), interview.name)
         self.assertEqual(payload.get("applicant", {}).get("name"), self.applicant.name)
-        self.assertEqual(payload.get("applicant", {}).get("applying_grade_level"), "Grade 4")
         self.assertEqual(
             payload.get("applicant", {}).get("address"),
             {
@@ -507,6 +519,30 @@ class TestApplicantInterview(FrappeTestCase):
                 "language_of_instruction": "English",
                 "school_year_completed": "2029-2030",
                 "notes": "Recent transfer from another province.",
+            },
+        )
+        self.assertEqual(
+            payload.get("applicant", {}).get("learning_access"),
+            {
+                "support_status": "Support details provided",
+                "learning_needs": "Needs extra time for extended writing.",
+                "supports_that_help": "Visual planning and quiet drafting time.",
+                "existing_plans": "Learning support plan available.",
+                "social_emotional_needs": "Benefits from a predictable transition.",
+                "physical_access_needs": "No physical access needs currently known.",
+                "family_priorities": "Build confidence in classroom discussions.",
+            },
+        )
+        self.assertEqual(
+            payload.get("applicant", {}).get("student_insight"),
+            {
+                "strengths": "Curious, kind, and persistent.",
+                "interests": "Robotics and music.",
+                "activities": "Community coding club.",
+                "achievements": "Regional robotics finalist.",
+                "motivators": "Hands-on projects.",
+                "relationship_notes": "Warms up after a short personal check-in.",
+                "student_voice": "I like building things with friends.",
             },
         )
         guardians = payload.get("applicant", {}).get("guardians") or []
@@ -701,6 +737,54 @@ class TestApplicantInterview(FrappeTestCase):
         self.assertIn("ownership", rows[0].get("strengths") or "")
 
         self._created.append(("Applicant Interview Feedback", rows[0].get("name")))
+
+    def test_scoped_admission_manager_can_read_notes_but_not_edit_feedback(self):
+        manager = self._create_user("feedback_read_manager", roles=["Admission Manager"])
+        self._create_employee(manager, first_name="Feedback", last_name="Reader")
+        interviewer = self._create_user("feedback_read_interviewer")
+        self._create_employee(interviewer, first_name="Note", last_name="Owner")
+
+        interview = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview",
+                "student_applicant": self.applicant.name,
+                "interview_date": "2030-06-09",
+                "interview_start": "2030-06-09 09:00:00",
+                "interview_end": "2030-06-09 09:30:00",
+                "interview_type": "Student",
+                "interviewers": [{"interviewer": interviewer.name}],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Interview", interview.name))
+
+        frappe.set_user(interviewer.name)
+        feedback_payload = save_my_interview_feedback(
+            interview=interview.name,
+            strengths="Reads complex prompts carefully.",
+            concerns="Needs extra language support.",
+            recommendation="Recommend with Conditions",
+            feedback_status="Submitted",
+        )
+        self._created.append(("Applicant Interview Feedback", feedback_payload.get("feedback_name")))
+
+        frappe.set_user(manager.name)
+        payload = get_interview_workspace(interview=interview.name)
+        feedback = payload.get("feedback") or {}
+        note_rows = feedback.get("panel") or []
+
+        self.assertFalse(bool(feedback.get("can_edit")))
+        self.assertTrue(bool(feedback.get("can_view_notes")))
+        self.assertEqual(note_rows[0].get("interviewer_user"), interviewer.name)
+        self.assertTrue(bool(note_rows[0].get("can_view_notes")))
+        self.assertEqual(note_rows[0].get("recommendation"), "Recommend with Conditions")
+        self.assertIn("language support", note_rows[0].get("concerns") or "")
+
+        with self.assertRaises(frappe.PermissionError):
+            save_my_interview_feedback(
+                interview=interview.name,
+                strengths="Manager edit attempt",
+                feedback_status="Draft",
+            )
 
     def test_workspace_blocks_non_assigned_user(self):
         interviewer = self._create_user("workspace_allow")

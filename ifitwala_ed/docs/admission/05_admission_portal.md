@@ -327,6 +327,26 @@ Admissions access is site-configured in `Admission Settings.admissions_access_mo
 
 In both modes, access is enforced **server-side**, not via UI hiding.
 
+### 9.2 Applicant profile contract
+
+Status: Implemented
+Code refs: `ifitwala_ed/admission/api/portal/profile.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantProfile.vue`
+Test refs: `ifitwala_ed/api/test_admissions_portal.py`, `cypress/e2e/admissions/profile-save.cy.js`
+
+The profile page collects promotion-required identity/address fields and optional context that helps the school welcome the student.
+
+Profile completeness is blocked only by the required promotion fields defined by `StudentApplicant.has_required_profile_information()` and the portal profile contract. `program` / `program_offering` remain the canonical application intent shown in the application context; the family-facing profile form must not ask for a duplicate applying grade level.
+
+Optional profile context includes:
+
+* previous learning context
+* learning and access support disclosure
+* student strengths, hobbies, activities, achievements, motivation, relationship notes, and student voice
+
+Learning/access and student-insight fields are family-provided context. They are not medical clearance, do not replace the health page, and must not become hidden admissions-decision blockers.
+
+When an approved applicant is promoted, that optional context is copied into reviewable `Student Insight Note` rows instead of fixed Student profile fields. These notes carry category, source, effective date, review date, status, and visibility so teachers and support staff can use the context without freezing the student in place.
+
 ### 9.3 Admissions deposit visibility
 
 Status: Implemented
@@ -344,7 +364,7 @@ The portal must not create a `Sales Invoice`, submit an invoice, record payment,
 
 ---
 
-### 9.2 GDPR alignment (baseline)
+### 9.4 GDPR alignment (baseline)
 
 * All applicant-side portal uploads are anchored to `Student Applicant`
 * Authoritative governed metadata lives on `Drive File`, with primary subject **Student Applicant**

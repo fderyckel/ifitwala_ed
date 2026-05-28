@@ -81,6 +81,16 @@ Current blocking inputs:
 - required recommendations
 - health clearance only when `School.require_health_profile_for_approval = 1`
 
+Profile completeness is limited to identity, language, residency, and home-address fields required for promotion. Target program/grade intent is read from the server-owned `program` / `program_offering` application context, not from a family-entered `applying_grade_level` field.
+
+Current optional family context on `Student Applicant` includes:
+
+- previous learning context
+- learning and access support disclosures
+- student strengths, interests, activities, achievements, motivation, relationship notes, and student voice
+
+These optional context fields help admissions staff and future teachers prepare for the student, but they do not block applicant profile completeness and must not be treated as admissions-decision requirements by themselves.
+
 Recommendation blockers are surfaced to applicants as status-only progress. They are not part of the applicant document upload workflow.
 
 Current non-blocking input:
@@ -127,6 +137,7 @@ Runtime effects:
 - copy Applicant Health Profile into `Student Patient`
 - copy approved submission-backed admissions evidence into new student-owned governed files
 - copy applicant image into the student image slot only when media consent exists
+- create reviewable `Student Insight Note` rows from optional family-provided learning/access context, strengths, interests, achievements, and relationship starters when those fields are present
 - optionally auto-hydrate a draft `Program Enrollment Request` from the accepted `Applicant Enrollment Plan`
 - set `Student Applicant.student`
 - transition applicant status to `Promoted`

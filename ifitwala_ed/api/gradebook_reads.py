@@ -6,6 +6,8 @@ from __future__ import annotations
 import frappe
 from frappe import _
 
+from ifitwala_ed.students.doctype.student_insight_note.student_insight_note import build_student_insight_summaries
+
 
 def get_grid(api, filters=None, **kwargs):
     from ifitwala_ed.assessment import task_feedback_service
@@ -123,7 +125,10 @@ def get_grid(api, filters=None, **kwargs):
     student_ids = [row.get("student") for row in outcomes if row.get("student")]
     student_map = api._get_student_display_map(student_ids)
     student_meta_map = api._get_student_meta_map(student_ids)
+    student_insight_map = build_student_insight_summaries(student_ids)
     students = api._build_student_payload(student_ids, student_map, student_meta_map)
+    for student in students:
+        student["insight_summary"] = student_insight_map.get(student.get("student"))
 
     criteria_outcome_ids = {
         row.get("name")
@@ -220,6 +225,7 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
     student_id = outcome_doc.get("student")
     student_meta = api._get_student_meta_map([student_id]).get(student_id, {}) if student_id else {}
     student_display = api._get_student_display_map([student_id]).get(student_id, student_id) if student_id else None
+    student_insight = build_student_insight_summaries([student_id]).get(student_id) if student_id else None
 
     outcome_criteria = api._get_outcome_criteria_map({outcome_id}).get(outcome_id, [])
 
@@ -349,6 +355,7 @@ def get_drawer(api, outcome_id: str, submission_id: str | None = None, version: 
             or student_id,
             "student_id": student_meta.get("student_id"),
             "student_image": student_meta.get("student_image"),
+            "insight_summary": student_insight,
         },
         "outcome": {
             "outcome_id": outcome_doc.get("name"),
@@ -611,6 +618,7 @@ def get_task_gradebook(api, task: str):
     student_ids = [row.get("student") for row in outcomes if row.get("student")]
     student_display_map = api._get_student_display_map(student_ids)
     student_meta_map = api._get_student_meta_map(student_ids)
+    student_insight_map = build_student_insight_summaries(student_ids)
 
     students_payload = []
     for outcome in outcomes:
@@ -660,6 +668,7 @@ def get_task_gradebook(api, task: str):
                 ),
                 "student_id": meta.get("student_id"),
                 "student_image": meta.get("student_image"),
+                "insight_summary": student_insight_map.get(student_id),
                 "status": outcome.get("grading_status"),
                 "procedural_status": outcome.get("procedural_status"),
                 "submission_status": outcome.get("submission_status"),

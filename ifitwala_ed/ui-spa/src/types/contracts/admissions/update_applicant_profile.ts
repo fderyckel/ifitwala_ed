@@ -28,6 +28,7 @@ export type Response = {
   options: {
     genders: string[]
     residency_statuses: string[]
+    learning_support_statuses?: string[]
     languages: Array<{ value: string; label: string }>
     countries: Array<{ value: string; label: string }>
     guardian_relationships?: string[]

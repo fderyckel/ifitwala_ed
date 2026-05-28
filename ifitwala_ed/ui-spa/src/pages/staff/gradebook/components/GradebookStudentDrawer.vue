@@ -47,9 +47,12 @@
 							<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
 								Grading Drawer
 							</p>
-							<h2 class="truncate text-lg font-semibold text-ink">
-								{{ drawer.student.student_name || 'Student' }}
-							</h2>
+							<div class="flex min-w-0 flex-wrap items-center gap-2">
+								<h2 class="min-w-0 truncate text-lg font-semibold text-ink">
+									{{ drawer.student.student_name || 'Student' }}
+								</h2>
+								<StudentInsightNoteButton :summary="drawer.student.insight_summary" />
+							</div>
 							<p class="truncate text-sm text-ink/55">
 								{{ drawer.delivery.title }}
 								<span v-if="drawer.student.student_id"> · {{ drawer.student.student_id }}</span>
@@ -1263,6 +1266,7 @@ import { computed, reactive, ref, watch } from 'vue';
 import { Badge, FeatherIcon, FormControl, Spinner } from 'frappe-ui';
 
 import AttachmentPreviewCard from '@/components/attachments/AttachmentPreviewCard.vue';
+import StudentInsightNoteButton from '@/components/student/StudentInsightNoteButton.vue';
 import type { CommentBankScopeMode } from '@/types/contracts/gradebook/comment_bank';
 import type {
 	FeedbackIntent,

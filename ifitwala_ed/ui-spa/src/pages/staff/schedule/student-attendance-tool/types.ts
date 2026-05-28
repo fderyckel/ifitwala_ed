@@ -7,6 +7,8 @@
 // - They must NOT be imported by services
 // ------------------------------------------------------------
 
+import type { StudentInsightSummary } from '@/types/contracts/studentInsight'
+
 export type BlockKey = number
 
 export interface StudentRosterEntry {
@@ -19,6 +21,7 @@ export interface StudentRosterEntry {
 	birthday_today?: boolean
 	birthday_label?: string | null
 	medical_info?: string | null
+	insight_summary?: StudentInsightSummary | null
 
 	// UI-composed state
 	blocks: BlockKey[]

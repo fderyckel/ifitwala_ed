@@ -1,0 +1,303 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "STIN-.YY.-.MM.-.####",
+ "creation": "2026-05-28 20:03:44.000000",
+ "default_view": "List",
+ "description": "Reviewable, time-aware notes that help staff understand a student's current learning, access, wellbeing, strengths, interests, achievements, and relationship starters.",
+ "doctype": "DocType",
+ "documentation": "https://ifitwala.com/docs/en/student-insight-note",
+ "engine": "InnoDB",
+ "field_order": [
+  "context_section",
+  "student",
+  "student_name",
+  "category",
+  "status",
+  "column_break_context",
+  "source",
+  "source_student_applicant",
+  "visibility",
+  "effective_from",
+  "review_on",
+  "scope_section",
+  "school",
+  "organization",
+  "note_section",
+  "summary",
+  "system_section",
+  "source_key"
+ ],
+ "fields": [
+  {
+   "fieldname": "context_section",
+   "fieldtype": "Section Break",
+   "label": "Context"
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Student",
+   "options": "Student",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "student.student_full_name",
+   "fieldname": "student_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Student Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Category",
+   "options": "Learning Support\nAccess\nWellbeing\nStrength\nInterest\nAchievement\nRelationship Starter",
+   "reqd": 1
+  },
+  {
+   "default": "Active",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Active\nNeeds Review\nArchived",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_context",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "System",
+   "fieldname": "source",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Source",
+   "options": "Family\nAdmissions\nTeacher\nCounselor\nLearning Support\nSystem",
+   "reqd": 1
+  },
+  {
+   "fieldname": "source_student_applicant",
+   "fieldtype": "Link",
+   "label": "Source Student Applicant",
+   "options": "Student Applicant",
+   "read_only": 1
+  },
+  {
+   "default": "Teachers",
+   "fieldname": "visibility",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Visibility",
+   "options": "Teachers\nLearning Support\nCounselor\nAdmissions/Admin",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "effective_from",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Effective From",
+   "reqd": 1
+  },
+  {
+   "fieldname": "review_on",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Review On"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "scope_section",
+   "fieldtype": "Section Break",
+   "label": "Scope"
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School",
+   "read_only": 1
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Organization",
+   "options": "Organization",
+   "read_only": 1
+  },
+  {
+   "fieldname": "note_section",
+   "fieldtype": "Section Break",
+   "label": "Note"
+  },
+  {
+   "fieldname": "summary",
+   "fieldtype": "Text",
+   "in_preview": 1,
+   "label": "Summary",
+   "reqd": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "system_section",
+   "fieldtype": "Section Break",
+   "label": "System"
+  },
+  {
+   "fieldname": "source_key",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Source Key",
+   "no_copy": 1,
+   "read_only": 1,
+   "unique": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-05-28 20:03:44.000000",
+ "modified_by": "Administrator",
+ "module": "Students",
+ "name": "Student Insight Note",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Assistant",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Instructor",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Academic Staff",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Pastoral Lead",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Learning Support",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Counselor",
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "search_fields": "student,student_name,category,status,source",
+ "show_name_in_global_search": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "student_name",
+ "track_changes": 1
+}

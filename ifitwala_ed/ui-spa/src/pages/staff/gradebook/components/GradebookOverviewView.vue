@@ -153,9 +153,12 @@
 											class="h-10 w-10 rounded-full border border-white bg-white object-cover shadow-sm"
 										/>
 										<div class="min-w-0">
-											<p class="truncate text-sm font-semibold text-ink">
-												{{ student.student_name }}
-											</p>
+											<div class="flex min-w-0 flex-wrap items-center gap-2">
+												<p class="min-w-0 truncate text-sm font-semibold text-ink">
+													{{ student.student_name }}
+												</p>
+												<StudentInsightNoteButton :summary="student.insight_summary" />
+											</div>
 											<p v-if="student.student_id" class="text-xs text-ink/50">
 												{{ student.student_id }}
 											</p>
@@ -205,6 +208,7 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { Badge, FeatherIcon, FormControl, Spinner, toast } from 'frappe-ui';
 import { createGradebookService } from '@/lib/services/gradebook/gradebookService';
+import StudentInsightNoteButton from '@/components/student/StudentInsightNoteButton.vue';
 import type { GroupSummary } from '@/types/contracts/gradebook/fetch_groups';
 import type { Delivery, Response as GetGridResponse } from '@/types/contracts/gradebook/get_grid';
 import {

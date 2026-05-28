@@ -1,7 +1,7 @@
 {
  "app": "ifitwala_ed",
  "charts": [],
- "content": "[{\"id\":\"acctHeader\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Accounting</span>\",\"col\":12}},{\"id\":\"acctSalesInvoice\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sales Invoice\",\"col\":3}},{\"id\":\"acctPaymentEntry\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Payment Entry\",\"col\":3}},{\"id\":\"acctAccountHolder\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Account Holder\",\"col\":3}},{\"id\":\"acctStatementRun\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Statement Of Accounts Run\",\"col\":3}},{\"id\":\"acctSpacer\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"acctBilling\",\"type\":\"card\",\"data\":{\"card_name\":\"Billing & Receipts\",\"col\":3}},{\"id\":\"acctSetup\",\"type\":\"card\",\"data\":{\"card_name\":\"Setup & Pricing\",\"col\":3}},{\"id\":\"acctCollections\",\"type\":\"card\",\"data\":{\"card_name\":\"Collections & Reconciliation\",\"col\":3}},{\"id\":\"acctReports\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports & Ledger\",\"col\":3}}]",
+ "content": "[{\"id\":\"acctHeader\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Accounting</span>\",\"col\":12}},{\"id\":\"acctSalesInvoice\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sales Invoice\",\"col\":3}},{\"id\":\"acctPaymentEntry\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Payment Entry\",\"col\":3}},{\"id\":\"acctAccountHolder\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Account Holder\",\"col\":3}},{\"id\":\"acctStatementRun\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Statement Of Accounts Run\",\"col\":3}},{\"id\":\"acctSpacer\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"acctBilling\",\"type\":\"card\",\"data\":{\"card_name\":\"Billing & Receipts\",\"col\":3}},{\"id\":\"acctProgramBilling\",\"type\":\"card\",\"data\":{\"card_name\":\"Program Billing\",\"col\":3}},{\"id\":\"acctSetup\",\"type\":\"card\",\"data\":{\"card_name\":\"Setup & Pricing\",\"col\":3}},{\"id\":\"acctCollections\",\"type\":\"card\",\"data\":{\"card_name\":\"Collections & Reconciliation\",\"col\":3}},{\"id\":\"acctReports\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports & Ledger\",\"col\":3}}]",
  "creation": "2026-04-05 20:56:24.950416",
  "custom_blocks": [],
  "docstatus": 0,
@@ -18,7 +18,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Billing & Receipts",
-   "link_count": 6,
+   "link_count": 4,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -66,6 +66,35 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+   "label": "Program Billing",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Billable Offering",
+   "link_count": 0,
+   "link_to": "Billable Offering",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program Billing Plan",
+   "link_count": 0,
+   "link_to": "Program Billing Plan",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "Billing Schedule",
    "link_count": 0,
    "link_to": "Billing Schedule",
@@ -87,7 +116,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Setup & Pricing",
-   "link_count": 9,
+   "link_count": 7,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -128,26 +157,6 @@
    "label": "Chart of Accounts",
    "link_count": 0,
    "link_to": "Account",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Billable Offering",
-   "link_count": 0,
-   "link_to": "Billable Offering",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Program Billing Plan",
-   "link_count": 0,
-   "link_to": "Program Billing Plan",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -311,7 +320,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-04-11 12:00:00.000000",
+ "modified": "2026-05-28 19:14:33.000000",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Accounting",

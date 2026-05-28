@@ -637,6 +637,7 @@ async function loadRoster() {
 				birthday_today: !!s.birthday_today,
 				birthday_label: s.birthday_label || null,
 				medical_info: s.medical_info || null,
+				insight_summary: s.insight_summary || null,
 				blocks: blocks.value,
 				attendance,
 				remarks,

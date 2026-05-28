@@ -15,9 +15,11 @@ from frappe.utils import format_datetime, get_datetime, get_link_to_form, getdat
 from ifitwala_ed.admission.admission_utils import (
     ADMISSIONS_ROLES,
     READ_LIKE_PERMISSION_TYPES,
+    build_admissions_feedback_note_scope_exists_sql,
     build_admissions_file_scope_exists_sql,
     build_open_applicant_review_access_exists_sql,
     has_open_applicant_review_access,
+    has_scoped_admissions_feedback_note_access,
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
 )
@@ -352,6 +354,15 @@ def get_permission_query_conditions(user: str | None = None) -> str | None:
         if staff_condition != "1=0":
             conditions.append(f"({staff_condition})")
 
+    feedback_note_reader_condition = build_admissions_feedback_note_scope_exists_sql(
+        user=user,
+        student_applicant_expr_sql="`tabApplicant Interview`.`student_applicant`",
+    )
+    if feedback_note_reader_condition is None:
+        return None
+    if feedback_note_reader_condition != "1=0":
+        conditions.append(f"({feedback_note_reader_condition})")
+
     escaped_user = frappe.db.escape(user)
     interviewer_condition = (
         "exists ("
@@ -395,6 +406,8 @@ def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bo
 
     if op in READ_LIKE_PERMISSION_TYPES and doc:
         student_applicant = _resolve_interview_student_applicant(doc)
+        if has_scoped_admissions_feedback_note_access(user=user, student_applicant=student_applicant):
+            return True
         if has_open_applicant_review_access(user=user, student_applicant=student_applicant):
             return True
 
@@ -840,6 +853,16 @@ def _assert_interview_workspace_permission(
     if (
         student_applicant
         and not require_write
+        and has_scoped_admissions_feedback_note_access(
+            user=current_user,
+            student_applicant=student_applicant,
+        )
+    ):
+        return
+
+    if (
+        student_applicant
+        and not require_write
         and has_open_applicant_review_access(
             user=current_user,
             student_applicant=student_applicant,
@@ -1014,7 +1037,6 @@ def _get_applicant_workspace_context(student_applicant: str) -> dict:
             "state",
             "postal_code",
             "country",
-            "applying_grade_level",
             "previous_school_name",
             "previous_grade_level",
             "previous_curriculum",
@@ -1023,6 +1045,20 @@ def _get_applicant_workspace_context(student_applicant: str) -> dict:
             "previous_language_of_instruction",
             "previous_school_year_completed",
             "previous_school_notes",
+            "learning_support_status",
+            "learning_needs",
+            "effective_supports",
+            "existing_support_plans",
+            "social_emotional_needs",
+            "physical_access_needs",
+            "family_support_priorities",
+            "student_strengths",
+            "student_interests",
+            "student_activities",
+            "student_achievements",
+            "student_motivators",
+            "student_relationship_notes",
+            "student_voice_notes",
             "submitted_at",
             "creation",
             "modified",
@@ -1059,7 +1095,6 @@ def _get_applicant_workspace_context(student_applicant: str) -> dict:
             "postal_code": row.get("postal_code"),
             "country": row.get("country"),
         },
-        "applying_grade_level": row.get("applying_grade_level"),
         "previous_school": {
             "school_name": row.get("previous_school_name"),
             "grade_level": row.get("previous_grade_level"),
@@ -1069,6 +1104,24 @@ def _get_applicant_workspace_context(student_applicant: str) -> dict:
             "language_of_instruction": row.get("previous_language_of_instruction"),
             "school_year_completed": row.get("previous_school_year_completed"),
             "notes": row.get("previous_school_notes"),
+        },
+        "learning_access": {
+            "support_status": row.get("learning_support_status"),
+            "learning_needs": row.get("learning_needs"),
+            "supports_that_help": row.get("effective_supports"),
+            "existing_plans": row.get("existing_support_plans"),
+            "social_emotional_needs": row.get("social_emotional_needs"),
+            "physical_access_needs": row.get("physical_access_needs"),
+            "family_priorities": row.get("family_support_priorities"),
+        },
+        "student_insight": {
+            "strengths": row.get("student_strengths"),
+            "interests": row.get("student_interests"),
+            "activities": row.get("student_activities"),
+            "achievements": row.get("student_achievements"),
+            "motivators": row.get("student_motivators"),
+            "relationship_notes": row.get("student_relationship_notes"),
+            "student_voice": row.get("student_voice_notes"),
         },
         "submitted_at": row.get("submitted_at"),
         "created_on": row.get("creation"),
@@ -1457,6 +1510,7 @@ def _load_interviews_for_applicant_workspace(*, student_applicant: str) -> list[
 
 
 def _load_feedback_panel_for_workspace(*, interview_name: str) -> dict:
+    student_applicant = (frappe.db.get_value("Applicant Interview", interview_name, "student_applicant") or "").strip()
     interviewer_users = frappe.get_all(
         "Applicant Interviewer",
         filters={
@@ -1498,10 +1552,16 @@ def _load_feedback_panel_for_workspace(*, interview_name: str) -> dict:
         )
     )
     user_names = _user_display_map(all_users)
+    current_user = (frappe.session.user or "").strip()
+    has_note_reader_access = has_scoped_admissions_feedback_note_access(
+        user=current_user,
+        student_applicant=student_applicant,
+    )
 
     panel = []
     for user in all_users:
         row = by_user.get(user) or {}
+        can_view_note_details = bool(user == current_user or has_note_reader_access)
         panel.append(
             {
                 "name": row.get("name"),
@@ -1510,10 +1570,15 @@ def _load_feedback_panel_for_workspace(*, interview_name: str) -> dict:
                 "feedback_status": row.get("feedback_status") or "Pending",
                 "submitted_on": row.get("submitted_on"),
                 "modified": row.get("modified"),
+                "can_view_notes": can_view_note_details,
+                "strengths": row.get("strengths") if can_view_note_details else None,
+                "concerns": row.get("concerns") if can_view_note_details else None,
+                "shared_values": row.get("shared_values") if can_view_note_details else None,
+                "other_notes": row.get("other_notes") if can_view_note_details else None,
+                "recommendation": row.get("recommendation") if can_view_note_details else None,
             }
         )
 
-    current_user = (frappe.session.user or "").strip()
     my_row = by_user.get(current_user) or {}
     my_feedback = {
         "name": my_row.get("name"),
@@ -1531,8 +1596,8 @@ def _load_feedback_panel_for_workspace(*, interview_name: str) -> dict:
     return {
         "panel": panel,
         "my_feedback": my_feedback,
-        "can_edit": _is_interview_privileged_user(current_user)
-        or _is_interviewer_on_interview(user=current_user, interview_name=interview_name),
+        "can_edit": _is_interviewer_on_interview(user=current_user, interview_name=interview_name),
+        "can_view_notes": has_note_reader_access or any(row.get("interviewer_user") == current_user for row in rows),
         "allowed_statuses": sorted(INTERVIEW_FEEDBACK_STATUS),
     }
 

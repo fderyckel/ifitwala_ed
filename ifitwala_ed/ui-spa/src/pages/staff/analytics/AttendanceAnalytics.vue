@@ -8,9 +8,10 @@ import KpiRow from '@/components/analytics/KpiRow.vue';
 import StatsTile from '@/components/analytics/StatsTile.vue';
 import DateRangePills from '@/components/filters/DateRangePills.vue';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
-import { SIGNAL_ATTENDANCE_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 import { createAttendanceAnalyticsService } from '@/lib/services/attendance/attendanceAnalyticsService';
 import { createStudentAttendanceService } from '@/lib/services/studentAttendance/studentAttendanceService';
+import { __ } from '@/lib/i18n';
+import { SIGNAL_ATTENDANCE_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 
 import type {
 	AttendanceBaseParams,
@@ -88,12 +89,12 @@ const filters = reactive<{
 
 const preset = ref<WindowPreset>('term');
 const presetItems: Array<{ label: string; value: WindowPreset }> = [
-	{ label: 'Term', value: 'term' },
-	{ label: 'Today', value: 'today' },
-	{ label: '1W', value: 'last_week' },
-	{ label: '2W', value: 'last_2_weeks' },
-	{ label: '1M', value: 'last_month' },
-	{ label: '3M', value: 'last_3_months' },
+	{ label: __('Term'), value: 'term' },
+	{ label: __('Today'), value: 'today' },
+	{ label: __('1W'), value: 'last_week' },
+	{ label: __('2W'), value: 'last_2_weeks' },
+	{ label: __('1M'), value: 'last_month' },
+	{ label: __('3M'), value: 'last_3_months' },
 ];
 
 const isInstructor = computed(() => roleClass.value === 'instructor');
@@ -101,10 +102,10 @@ const isCounselor = computed(() => roleClass.value === 'counselor');
 const isAdmin = computed(() => roleClass.value === 'admin');
 
 const roleHeading = computed(() => {
-	if (isInstructor.value) return 'Instructor Lens';
-	if (isCounselor.value) return 'Counselor / Pastoral Lens';
-	if (isAdmin.value) return 'Academic Admin Lens';
-	return 'Role Lens';
+	if (isInstructor.value) return __('Instructor Lens');
+	if (isCounselor.value) return __('Counselor / Pastoral Lens');
+	if (isAdmin.value) return __('Academic Admin Lens');
+	return __('Role Lens');
 });
 
 const kpiItems = computed(() => {
@@ -117,10 +118,10 @@ const kpiItems = computed(() => {
 	const unexplainedRate = oneDecimal((kpis.unexplained_absent_sessions / expected) * 100);
 	const attendanceRate = oneDecimal(Number(kpis.attendance_rate || 0));
 	return [
-		{ id: 'attendance_rate', label: 'Attendance Rate', value: `${attendanceRate}%` },
-		{ id: 'absence_rate', label: 'Absence Rate', value: `${absenceRate}%` },
-		{ id: 'late_rate', label: 'Late Rate', value: `${lateRate}%` },
-		{ id: 'unexplained_rate', label: 'Unexplained Rate', value: `${unexplainedRate}%` },
+		{ id: 'attendance_rate', label: __('Attendance Rate'), value: `${attendanceRate}%` },
+		{ id: 'absence_rate', label: __('Absence Rate'), value: `${absenceRate}%` },
+		{ id: 'late_rate', label: __('Late Rate'), value: `${lateRate}%` },
+		{ id: 'unexplained_rate', label: __('Unexplained Rate'), value: `${unexplainedRate}%` },
 		{ id: 'expected_sessions', label: 'Expected Sessions', value: kpis.expected_sessions },
 	];
 });
@@ -140,7 +141,9 @@ const heatmapOption = computed<ChartOption>(() => {
 	const yRaw = data.axis.y;
 	const xIndex = new Map(x.map((value, index) => [value, index]));
 	const yIndex = new Map(yRaw.map((value, index) => [value, index]));
-	const yLabels = yRaw.map(value => (filters.whole_day === 1 ? 'Whole Day' : `Block ${value}`));
+	const yLabels = yRaw.map(value =>
+		filters.whole_day === 1 ? __('Whole Day') : __('Block {0}', [value])
+	);
 
 	const seriesData = data.cells
 		.map(cell => {
@@ -180,7 +183,7 @@ const heatmapOption = computed<ChartOption>(() => {
 			top: 'middle',
 			itemHeight: 140,
 			itemWidth: 12,
-			text: ['High', 'Low'],
+			text: [__('High'), __('Low')],
 			inRange: {
 				color: ['#dff4ea', '#97d7b8', '#53b587', '#1f8d5b'],
 			},
@@ -194,8 +197,8 @@ const heatmapOption = computed<ChartOption>(() => {
 				return [
 					x[xIdx] || '',
 					yLabels[yIdx] || '',
-					`${ratio}% integrity`,
-					`${present}/${expected} present`,
+					__('{0}% integrity', [ratio]),
+					__('{0}/{1} present', [present, expected]),
 				].join('<br>');
 			},
 		},
@@ -681,9 +684,9 @@ onBeforeUnmount(() => {
 	<div class="analytics-shell attendance-analytics-shell">
 		<header class="page-header">
 			<div class="page-header__intro">
-				<h1 class="type-h1 text-canopy">Attendance Analytics</h1>
+				<h1 class="type-h1 text-canopy">{{ __('Attendance Analytics') }}</h1>
 				<p class="type-meta text-slate-token/80">
-					Pattern-first attendance intelligence with role-aware framing.
+					{{ __('Pattern-first attendance intelligence with role-aware framing.') }}
 				</p>
 			</div>
 			<div class="page-header__actions">
@@ -692,13 +695,13 @@ onBeforeUnmount(() => {
 					:items="presetItems"
 					@update:model-value="applyPreset"
 				/>
-				<StatsTile :label="roleHeading" :value="meta?.window_source || 'window'" tone="info" />
+				<StatsTile :label="roleHeading" :value="meta?.window_source || __('window')" tone="info" />
 			</div>
 		</header>
 
 		<FiltersBar>
 			<div class="flex w-48 flex-col gap-1">
-				<label class="type-label">School</label>
+				<label class="type-label">{{ __('School') }}</label>
 				<select
 					v-model="filters.school"
 					class="h-9 rounded-md border border-slate-200 px-2"
@@ -711,13 +714,13 @@ onBeforeUnmount(() => {
 			</div>
 
 			<div class="flex w-48 flex-col gap-1">
-				<label class="type-label">Program</label>
+				<label class="type-label">{{ __('Program') }}</label>
 				<select
 					v-model="filters.program"
 					class="h-9 rounded-md border border-slate-200 px-2"
 					:disabled="isLoading"
 				>
-					<option :value="null">All</option>
+					<option :value="null">{{ __('All') }}</option>
 					<option v-for="program in programs" :key="program.name" :value="program.name">
 						{{ program.program_name || program.name }}
 					</option>
@@ -725,13 +728,13 @@ onBeforeUnmount(() => {
 			</div>
 
 			<div class="flex w-48 flex-col gap-1">
-				<label class="type-label">Student Group</label>
+				<label class="type-label">{{ __('Student Group') }}</label>
 				<select
 					v-model="filters.student_group"
 					class="h-9 rounded-md border border-slate-200 px-2"
 					:disabled="isLoading"
 				>
-					<option :value="null">All</option>
+					<option :value="null">{{ __('All') }}</option>
 					<option v-for="group in studentGroups" :key="group.name" :value="group.name">
 						{{ group.student_group_name || group.name }}
 					</option>
@@ -739,7 +742,7 @@ onBeforeUnmount(() => {
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">From Date</label>
+				<label class="type-label">{{ __('From Date') }}</label>
 				<input
 					v-model="filters.start_date"
 					type="date"
@@ -749,7 +752,7 @@ onBeforeUnmount(() => {
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">To Date</label>
+				<label class="type-label">{{ __('To Date') }}</label>
 				<input
 					v-model="filters.end_date"
 					type="date"
@@ -759,18 +762,18 @@ onBeforeUnmount(() => {
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Calendar Range</label>
+				<label class="type-label">{{ __('Calendar Range') }}</label>
 				<button
 					type="button"
 					class="h-9 rounded-md border border-slate-200 px-3 text-xs text-slate-700 hover:bg-slate-50"
 					@click="clearCalendarRange"
 				>
-					Clear Custom Range
+					{{ __('Clear Custom Range') }}
 				</button>
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Attendance Mode</label>
+				<label class="type-label">{{ __('Attendance Mode') }}</label>
 				<div class="flex items-center gap-2">
 					<button
 						type="button"
@@ -782,7 +785,7 @@ onBeforeUnmount(() => {
 						"
 						@click="filters.whole_day = 1"
 					>
-						Whole Day
+						{{ __('Whole Day') }}
 					</button>
 					<button
 						type="button"
@@ -794,14 +797,14 @@ onBeforeUnmount(() => {
 						"
 						@click="filters.whole_day = 0"
 					>
-						By Block
+						{{ __('By Block') }}
 					</button>
 				</div>
 			</div>
 
 			<label class="mt-5 inline-flex items-center gap-2 text-xs text-slate-700">
 				<input v-model="filters.activity_only" :true-value="1" :false-value="0" type="checkbox" />
-				Activities Lens
+				{{ __('Activities Lens') }}
 			</label>
 		</FiltersBar>
 
@@ -820,17 +823,21 @@ onBeforeUnmount(() => {
 		</div>
 
 		<section class="analytics-grid attendance-analytics-grid">
-			<AnalyticsCard title="Universal KPIs" :interactive="false" class="analytics-card--wide">
+			<AnalyticsCard
+				:title="__('Universal KPIs')"
+				:interactive="false"
+				class="analytics-card--wide"
+			>
 				<template #body>
 					<KpiRow :items="kpiItems" :clickable="false" />
 					<div class="mt-3 flex flex-wrap items-center gap-2">
 						<StatsTile
-							label="Trend vs previous window"
+							:label="__('Trend vs previous window')"
 							:value="overview?.trend?.delta ?? 0"
 							:tone="trendTone"
 						/>
 						<StatsTile
-							label="Previous attendance rate"
+							:label="__('Previous attendance rate')"
 							:value="overview?.trend?.previous_rate ?? 0"
 						/>
 					</div>
@@ -838,28 +845,30 @@ onBeforeUnmount(() => {
 			</AnalyticsCard>
 
 			<AnalyticsCard
-				title="Block / Day Integrity"
+				:title="__('Block / Day Integrity')"
 				:interactive="false"
 				class="analytics-card--wide"
 			>
 				<template #body>
 					<AnalyticsChart v-if="Object.keys(heatmapOption).length" :option="heatmapOption" />
-					<p v-else class="analytics-empty">No attendance cells for the selected scope.</p>
+					<p v-else class="analytics-empty">
+						{{ __('No attendance cells for the selected scope.') }}
+					</p>
 				</template>
 			</AnalyticsCard>
 		</section>
 
 		<section v-if="isInstructor" class="space-y-4">
 			<header>
-				<h2 class="type-h3 text-canopy">Teachers: This Week Focus</h2>
+				<h2 class="type-h3 text-canopy">{{ __('Teachers: This Week Focus') }}</h2>
 				<p class="type-body mt-1 text-slate-token/75">
-					Patterns, exceptions, and turnaround signals for your groups.
+					{{ __('Patterns, exceptions, and turnaround signals for your groups.') }}
 				</p>
 			</header>
 
 			<div class="analytics-grid attendance-analytics-grid">
 				<AnalyticsCard
-					title="My Groups Attendance Snapshot"
+					:title="__('My Groups Attendance Snapshot')"
 					:interactive="false"
 					class="analytics-card--wide"
 				>
@@ -875,7 +884,7 @@ onBeforeUnmount(() => {
 										{{ group.student_group_abbreviation || group.student_group_name }}
 									</p>
 									<span class="text-[11px] text-slate-500">{{
-										group.group_based_on || 'Group'
+										group.group_based_on || __('Group')
 									}}</span>
 								</div>
 								<div class="mt-2 grid grid-cols-4 gap-2 text-xs text-slate-700">
@@ -884,34 +893,34 @@ onBeforeUnmount(() => {
 										<p class="font-semibold">{{ group.expected }}</p>
 									</div>
 									<div>
-										<p class="text-slate-500">Present</p>
+										<p class="text-slate-500">{{ __('Present') }}</p>
 										<p class="font-semibold">{{ group.present }}</p>
 									</div>
 									<div>
-										<p class="text-slate-500">Absent</p>
+										<p class="text-slate-500">{{ __('Absent') }}</p>
 										<p class="font-semibold">{{ group.absent }}</p>
 									</div>
 									<div>
-										<p class="text-slate-500">Late</p>
+										<p class="text-slate-500">{{ __('Late') }}</p>
 										<p class="font-semibold">{{ group.late }}</p>
 									</div>
 								</div>
 							</article>
 						</div>
-						<p v-else class="analytics-empty">No instructor groups in this scope.</p>
+						<p v-else class="analytics-empty">{{ __('No instructor groups in this scope.') }}</p>
 					</template>
 				</AnalyticsCard>
 
-				<AnalyticsCard title="Students with Emerging Patterns" :interactive="false">
+				<AnalyticsCard :title="__('Students with Emerging Patterns')" :interactive="false">
 					<template #body>
 						<div v-if="myGroups?.emerging_patterns?.length" class="max-h-72 overflow-auto">
 							<table class="w-full text-left text-xs">
 								<thead class="text-slate-500">
 									<tr>
-										<th class="py-1">Student</th>
-										<th class="py-1">Abs</th>
-										<th class="py-1">Late</th>
-										<th class="py-1">Block1</th>
+										<th class="py-1">{{ __('Student') }}</th>
+										<th class="py-1">{{ __('Abs') }}</th>
+										<th class="py-1">{{ __('Late') }}</th>
+										<th class="py-1">{{ __('Block1') }}</th>
 									</tr>
 								</thead>
 								<tbody>
@@ -928,11 +937,13 @@ onBeforeUnmount(() => {
 								</tbody>
 							</table>
 						</div>
-						<p v-else class="analytics-empty">No emerging risk pattern in this window.</p>
+						<p v-else class="analytics-empty">
+							{{ __('No emerging risk pattern in this window.') }}
+						</p>
 					</template>
 				</AnalyticsCard>
 
-				<AnalyticsCard title="Today / This Week Exceptions" :interactive="false">
+				<AnalyticsCard :title="__('Today / This Week Exceptions')" :interactive="false">
 					<template #body>
 						<ul
 							v-if="myGroups?.exceptions?.length"
@@ -956,11 +967,13 @@ onBeforeUnmount(() => {
 								<p class="mt-1 text-slate-500">{{ item.student_group_abbreviation }}</p>
 							</li>
 						</ul>
-						<p v-else class="analytics-empty">No missing, absent, or late exceptions today.</p>
+						<p v-else class="analytics-empty">
+							{{ __('No missing, absent, or late exceptions today.') }}
+						</p>
 					</template>
 				</AnalyticsCard>
 
-				<AnalyticsCard title="Back on Track" :interactive="false">
+				<AnalyticsCard :title="__('Back on Track')" :interactive="false">
 					<template #body>
 						<ul v-if="myGroups?.improving_trends?.length" class="space-y-2 text-xs">
 							<li
@@ -974,7 +987,7 @@ onBeforeUnmount(() => {
 								</p>
 							</li>
 						</ul>
-						<p v-else class="analytics-empty">No turnaround student in this window.</p>
+						<p v-else class="analytics-empty">{{ __('No turnaround student in this window.') }}</p>
 					</template>
 				</AnalyticsCard>
 			</div>
@@ -982,14 +995,14 @@ onBeforeUnmount(() => {
 
 		<section v-if="isCounselor || isAdmin" class="space-y-4">
 			<header>
-				<h2 class="type-h3 text-canopy">Risk & Wellbeing Signals</h2>
+				<h2 class="type-h3 text-canopy">{{ __('Risk & Wellbeing Signals') }}</h2>
 				<p class="type-body mt-1 text-slate-token/75">
-					Decline detection, unexplained absences, and positive turnaround.
+					{{ __('Decline detection, unexplained absences, and positive turnaround.') }}
 				</p>
 			</header>
 
 			<div class="analytics-grid attendance-analytics-grid">
-				<AnalyticsCard title="Chronic Absence Radar" :interactive="false">
+				<AnalyticsCard :title="__('Chronic Absence Radar')" :interactive="false">
 					<template #body>
 						<AnalyticsChart
 							v-if="Object.keys(riskBucketsOption).length"
@@ -1000,25 +1013,35 @@ onBeforeUnmount(() => {
 							v-if="Object.keys(riskBucketsOption).length"
 							class="mt-2 text-[11px] text-slate-500"
 						>
-							Click a bucket bar to show student details.
+							{{ __('Click a bucket bar to show student details.') }}
 						</p>
 						<details
 							v-if="Object.keys(riskBucketsOption).length"
 							class="mt-2 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-xs text-slate-700"
 						>
 							<summary class="cursor-pointer font-medium text-slate-800">
-								What do these buckets mean?
+								{{ __('What do these buckets mean?') }}
 							</summary>
 							<ul class="mt-2 space-y-1">
-								<li>Critical: attendance rate &lt; {{ activeRiskThresholds.critical }}%</li>
 								<li>
-									Warning: attendance rate &gt;= {{ activeRiskThresholds.critical }}% and &lt;
-									{{ activeRiskThresholds.warning }}%
+									{{ __('Critical: attendance rate < {0}%', [activeRiskThresholds.critical]) }}
 								</li>
-								<li>OK: attendance rate &gt;= {{ activeRiskThresholds.warning }}%</li>
+								<li>
+									{{
+										__('Warning: attendance rate >= {0}% and < {1}%', [
+											activeRiskThresholds.critical,
+											activeRiskThresholds.warning,
+										])
+									}}
+								</li>
+								<li>
+									{{ __('OK: attendance rate >= {0}%', [activeRiskThresholds.warning]) }}
+								</li>
 							</ul>
 							<p class="mt-2 text-[11px] text-slate-500">
-								Only students with expected sessions in the selected window are bucketed.
+								{{
+									__('Only students with expected sessions in the selected window are bucketed.')
+								}}
 							</p>
 						</details>
 						<p v-else class="analytics-empty">No risk distribution available for this scope.</p>
@@ -1026,7 +1049,7 @@ onBeforeUnmount(() => {
 				</AnalyticsCard>
 
 				<template v-if="isCounselor">
-					<AnalyticsCard title="Top Critical" :interactive="false">
+					<AnalyticsCard :title="__('Top Critical')" :interactive="false">
 						<template #body>
 							<ul
 								v-if="risk?.top_critical?.length"
@@ -1039,16 +1062,21 @@ onBeforeUnmount(() => {
 								>
 									<p class="font-medium text-ink">{{ item.student_name }}</p>
 									<p class="mt-1 text-slate-600">
-										Rate {{ item.attendance_rate }}% • Abs {{ item.absent_count }} • Late
-										{{ item.late_count }}
+										{{
+											__('Rate {0}% • Abs {1} • Late {2}', [
+												item.attendance_rate,
+												item.absent_count,
+												item.late_count,
+											])
+										}}
 									</p>
 								</li>
 							</ul>
-							<p v-else class="analytics-empty">No critical student in this window.</p>
+							<p v-else class="analytics-empty">{{ __('No critical student in this window.') }}</p>
 						</template>
 					</AnalyticsCard>
 
-					<AnalyticsCard title="Block vs Day Mismatch" :interactive="false">
+					<AnalyticsCard :title="__('Block vs Day Mismatch')" :interactive="false">
 						<template #body>
 							<ul
 								v-if="risk?.mismatch_students?.length"
@@ -1060,14 +1088,16 @@ onBeforeUnmount(() => {
 									class="rounded-lg border border-slate-200 px-2 py-2"
 								>
 									<p class="font-medium text-ink">{{ item.student_name }}</p>
-									<p class="mt-1 text-slate-600">{{ item.mismatch_days }} mismatch day(s)</p>
+									<p class="mt-1 text-slate-600">
+										{{ __('{0} mismatch day(s)', [item.mismatch_days]) }}
+									</p>
 								</li>
 							</ul>
-							<p v-else class="analytics-empty">No day/block mismatch detected.</p>
+							<p v-else class="analytics-empty">{{ __('No day/block mismatch detected.') }}</p>
 						</template>
 					</AnalyticsCard>
 
-					<AnalyticsCard title="Back on Track" :interactive="false">
+					<AnalyticsCard :title="__('Back on Track')" :interactive="false">
 						<template #body>
 							<ul v-if="risk?.improving_trends?.length" class="space-y-2 text-xs">
 								<li
@@ -1077,19 +1107,27 @@ onBeforeUnmount(() => {
 								>
 									<p class="font-medium text-leaf">{{ item.student_name }}</p>
 									<p class="mt-1 text-slate-700">
-										{{ item.previous_rate }}% -> {{ item.current_rate }}% ({{ item.delta }} pts)
+										{{
+											__('{0}% -> {1}% ({2} pts)', [
+												item.previous_rate,
+												item.current_rate,
+												item.delta,
+											])
+										}}
 									</p>
 								</li>
 							</ul>
-							<p v-else class="analytics-empty">No improving trend in this window.</p>
+							<p v-else class="analytics-empty">{{ __('No improving trend in this window.') }}</p>
 						</template>
 					</AnalyticsCard>
 				</template>
 
-				<AnalyticsCard v-else title="Student Details" :interactive="false">
+				<AnalyticsCard v-else :title="__('Student Details')" :interactive="false">
 					<template #body>
 						<div v-if="selectedRiskBucketRows.length" class="space-y-2 text-xs">
-							<p class="type-label text-slate-600">{{ selectedRiskBucketLabel }} bucket preview</p>
+							<p class="type-label text-slate-600">
+								{{ __('{0} bucket preview', [selectedRiskBucketLabel]) }}
+							</p>
 							<ul class="max-h-48 space-y-2 overflow-auto">
 								<li
 									v-for="item in selectedRiskBucketRows.slice(0, 8)"
@@ -1098,8 +1136,13 @@ onBeforeUnmount(() => {
 								>
 									<p class="font-medium text-ink">{{ item.student_name }}</p>
 									<p class="mt-1 text-slate-600">
-										Rate {{ item.attendance_rate }}% • Abs {{ item.absent_count }} • Late
-										{{ item.late_count }}
+										{{
+											__('Rate {0}% • Abs {1} • Late {2}', [
+												item.attendance_rate,
+												item.absent_count,
+												item.late_count,
+											])
+										}}
 									</p>
 								</li>
 							</ul>
@@ -1108,7 +1151,7 @@ onBeforeUnmount(() => {
 							No students found in the {{ selectedRiskBucketLabel }} bucket for current filters.
 						</p>
 						<p v-else class="analytics-empty">
-							Click a radar bar to inspect student names for that bucket.
+							{{ __('Click a radar bar to inspect student names for that bucket.') }}
 						</p>
 					</template>
 				</AnalyticsCard>
@@ -1116,16 +1159,16 @@ onBeforeUnmount(() => {
 
 			<AnalyticsCard
 				v-if="isCounselor"
-				title="Context Sparkline"
+				:title="__('Context Sparkline')"
 				:interactive="false"
 				class="analytics-card--wide"
 			>
 				<template #body>
 					<div class="flex flex-wrap items-end gap-3">
 						<div class="flex min-w-64 flex-col gap-1">
-							<label class="type-label">Risk Student</label>
+							<label class="type-label">{{ __('Risk Student') }}</label>
 							<select v-model="contextStudent" class="h-9 rounded-md border border-slate-200 px-2">
-								<option value="">Select student</option>
+								<option value="">{{ __('Select student') }}</option>
 								<option
 									v-for="item in contextStudentOptions"
 									:key="item.student"
@@ -1141,34 +1184,34 @@ onBeforeUnmount(() => {
 							:disabled="contextLoading"
 							@click="loadContextSparkline"
 						>
-							{{ contextLoading ? 'Loading context...' : 'Load Context' }}
+							{{ contextLoading ? 'Loading context...' : __('Load Context') }}
 						</button>
 					</div>
 
 					<div v-if="contextData" class="mt-4 grid gap-4 md:grid-cols-3">
 						<div>
-							<p class="type-label mb-1">Attendance Signal</p>
+							<p class="type-label mb-1">{{ __('Attendance Signal') }}</p>
 							<AnalyticsChart
 								v-if="Object.keys(attendanceContextOption).length"
 								:option="attendanceContextOption"
 							/>
-							<p v-else class="analytics-empty">No attendance points.</p>
+							<p v-else class="analytics-empty">{{ __('No attendance points.') }}</p>
 						</div>
 						<div>
-							<p class="type-label mb-1">Academic Standing (Task Outcomes)</p>
+							<p class="type-label mb-1">{{ __('Academic Standing (Task Outcomes)') }}</p>
 							<AnalyticsChart
 								v-if="Object.keys(academicContextOption).length"
 								:option="academicContextOption"
 							/>
-							<p v-else class="analytics-empty">No academic points.</p>
+							<p v-else class="analytics-empty">{{ __('No academic points.') }}</p>
 						</div>
 						<div>
-							<p class="type-label mb-1">Behavior / Follow-Up (Student Logs)</p>
+							<p class="type-label mb-1">{{ __('Behavior / Follow-Up (Student Logs)') }}</p>
 							<AnalyticsChart
 								v-if="Object.keys(behaviourContextOption).length"
 								:option="behaviourContextOption"
 							/>
-							<p v-else class="analytics-empty">No behavior points.</p>
+							<p v-else class="analytics-empty">{{ __('No behavior points.') }}</p>
 						</div>
 					</div>
 				</template>
@@ -1177,15 +1220,15 @@ onBeforeUnmount(() => {
 
 		<section v-if="isAdmin" class="space-y-4">
 			<header>
-				<h2 class="type-h3 text-canopy">Operational Compliance</h2>
+				<h2 class="type-h3 text-canopy">{{ __('Operational Compliance') }}</h2>
 				<p class="type-body mt-1 text-slate-token/75">
-					School/program health, attendance method reliability, and code governance.
+					{{ __('School/program health, attendance method reliability, and code governance.') }}
 				</p>
 			</header>
 
 			<div class="analytics-grid attendance-analytics-grid">
 				<AnalyticsCard
-					title="Attendance Compliance Overview"
+					:title="__('Attendance Compliance Overview')"
 					:interactive="false"
 					class="analytics-card--wide"
 				>
@@ -1194,11 +1237,11 @@ onBeforeUnmount(() => {
 							<table class="w-full text-left text-xs">
 								<thead class="text-slate-500">
 									<tr>
-										<th class="py-1">School</th>
-										<th class="py-1">Program</th>
+										<th class="py-1">{{ __('School') }}</th>
+										<th class="py-1">{{ __('Program') }}</th>
 										<th class="py-1">Expected</th>
-										<th class="py-1">Present</th>
-										<th class="py-1">Rate</th>
+										<th class="py-1">{{ __('Present') }}</th>
+										<th class="py-1">{{ __('Rate') }}</th>
 									</tr>
 								</thead>
 								<tbody>
@@ -1208,7 +1251,7 @@ onBeforeUnmount(() => {
 										class="border-t border-slate-100"
 									>
 										<td class="py-1.5">{{ row.school_label }}</td>
-										<td class="py-1.5">{{ row.program || 'General' }}</td>
+										<td class="py-1.5">{{ row.program || __('General') }}</td>
 										<td class="py-1.5">{{ row.expected_sessions }}</td>
 										<td class="py-1.5">{{ row.present_sessions }}</td>
 										<td class="py-1.5">{{ row.attendance_rate }}%</td>
@@ -1216,27 +1259,29 @@ onBeforeUnmount(() => {
 								</tbody>
 							</table>
 						</div>
-						<p v-else class="analytics-empty">No compliance rows in this window.</p>
+						<p v-else class="analytics-empty">
+							{{ __('No compliance rows in this window.') }}
+						</p>
 					</template>
 				</AnalyticsCard>
 
-				<AnalyticsCard title="Attendance Method Mix" :interactive="false">
+				<AnalyticsCard :title="__('Attendance Method Mix')" :interactive="false">
 					<template #body>
 						<AnalyticsChart v-if="Object.keys(methodMixOption).length" :option="methodMixOption" />
 						<p v-else class="analytics-empty">No method mix available.</p>
 					</template>
 				</AnalyticsCard>
 
-				<AnalyticsCard title="Codes Usage Audit" :interactive="false">
+				<AnalyticsCard :title="__('Codes Usage Audit')" :interactive="false">
 					<template #body>
 						<div v-if="codeUsage?.codes?.length" class="max-h-72 overflow-auto">
 							<table class="w-full text-left text-xs">
 								<thead class="text-slate-500">
 									<tr>
-										<th class="py-1">Code</th>
-										<th class="py-1">Count</th>
-										<th class="py-1">Share</th>
-										<th class="py-1">Present</th>
+										<th class="py-1">{{ __('Code') }}</th>
+										<th class="py-1">{{ __('Count') }}</th>
+										<th class="py-1">{{ __('Share') }}</th>
+										<th class="py-1">{{ __('Present') }}</th>
 									</tr>
 								</thead>
 								<tbody>
@@ -1248,18 +1293,22 @@ onBeforeUnmount(() => {
 										<td class="py-1.5">{{ row.attendance_code_name }}</td>
 										<td class="py-1.5">{{ row.count }}</td>
 										<td class="py-1.5">{{ row.usage_share }}%</td>
-										<td class="py-1.5">{{ row.count_as_present ? 'Yes' : 'No' }}</td>
+										<td class="py-1.5">{{ row.count_as_present ? __('Yes') : __('No') }}</td>
 									</tr>
 								</tbody>
 							</table>
 						</div>
-						<p v-else class="analytics-empty">No code usage rows in this window.</p>
+						<p v-else class="analytics-empty">
+							{{ __('No code usage rows in this window.') }}
+						</p>
 					</template>
 				</AnalyticsCard>
 			</div>
 		</section>
 
-		<p v-if="isLoading" class="analytics-empty">Refreshing attendance analytics...</p>
+		<p v-if="isLoading" class="analytics-empty">
+			{{ __('Refreshing attendance analytics...') }}
+		</p>
 	</div>
 </template>
 

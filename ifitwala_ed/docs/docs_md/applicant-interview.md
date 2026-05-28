@@ -3,8 +3,8 @@ title: "Applicant Interview: Interview Event Record"
 slug: applicant-interview
 category: Admission
 doc_order: 8
-version: "1.10.0"
-last_change_date: "2026-05-26"
+version: "1.11.0"
+last_change_date: "2026-05-28"
 summary: "Record admissions interview events, participants, room/calendar projection, and operational context while keeping interviewer opinions in Applicant Interview Feedback."
 seo_title: "Applicant Interview: Interview Event Record"
 seo_description: "Use Applicant Interview to schedule and manage interview events while storing per-interviewer opinions in Applicant Interview Feedback."
@@ -73,7 +73,7 @@ You should have:
 
 ## Permission Matrix
 
-Admissions and academic admin roles manage interview records in applicant scope. Listed interviewers can read assigned interview rows and write only their own feedback through the feedback workflow.
+Admissions and academic admin roles manage interview records in applicant scope. Listed interviewers can read assigned interview rows and write only their own feedback through the feedback workflow. Scoped admissions users, counselors, academic admins, and note owners can read saved interview feedback notes without receiving feedback edit controls unless they are assigned interviewers.
 
 | Role | Read | Write | Create | Delete | Notes |
 |---|---|---|---|---|---|
@@ -89,7 +89,8 @@ Runtime rules:
 - non-admissions employees listed in `interviewers` can read only assigned interview rows
 - delegated overall-application reviewers with an open assignment can open interview workspace payloads read-only
 - parent interview editing stays staff-managed
-- interviewer writes happen only through Applicant Interview Feedback
+- interviewer writes happen only through Applicant Interview Feedback, and only for the assigned interviewer's own row
+- non-assigned scoped readers see saved notes read-only in the workspace instead of disabled feedback fields
 - records are blocked when linked applicant is `Rejected` or `Promoted`
 
 ## Practical Examples
@@ -204,6 +205,7 @@ Interview count is tracked and appears in readiness summaries, but the current r
 - Unique index enforced in feedback controller
 - Fields: strengths, concerns, shared values, other notes, recommendation, status
 - SPA writes through `save_my_interview_feedback(...)`
+- SPA renders editable notes only for assigned interviewers; scoped admissions, counselor, academic admin, and note-owner readers see saved notes read-only.
 - No combined interview judgment is stored on the parent record.
 
 ### Key Hooks and Readiness Nuance

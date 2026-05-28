@@ -21,6 +21,7 @@ from ifitwala_ed.schedule.attendance_utils import (
     resolve_student_group_schedule_name,
 )
 from ifitwala_ed.schedule.schedule_utils import get_weekend_days_for_calendar
+from ifitwala_ed.students.doctype.student_insight_note.student_insight_note import build_student_insight_summaries
 from ifitwala_ed.utilities.school_tree import _is_adminish, get_school_lineage, get_user_default_school
 
 # Roles that can see all groups in their allowed school scope
@@ -429,8 +430,14 @@ def fetch_attendance_tool_roster_context(student_group: str, attendance_date: st
     if not selected_date:
         frappe.throw(_("Attendance Date is required."))
 
+    roster = fetch_students(group_name, start=0, page_length=500)
+    students = roster.get("students") or []
+    insight_map = build_student_insight_summaries([row.get("student") for row in students])
+    for row in students:
+        row["insight_summary"] = insight_map.get(row.get("student"))
+
     return {
-        "roster": fetch_students(group_name, start=0, page_length=500),
+        "roster": roster,
         "prev_map": previous_status_map(group_name, selected_date),
         "existing_map": fetch_existing_attendance(group_name, selected_date),
         "blocks": fetch_blocks_for_day(group_name, selected_date),

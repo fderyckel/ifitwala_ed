@@ -77,7 +77,6 @@ export interface InterviewWorkspaceApplicant {
 		postal_code?: string | null
 		country?: string | null
 	}
-	applying_grade_level?: string | null
 	previous_school?: {
 		school_name?: string | null
 		grade_level?: string | null
@@ -87,6 +86,24 @@ export interface InterviewWorkspaceApplicant {
 		language_of_instruction?: string | null
 		school_year_completed?: string | null
 		notes?: string | null
+	}
+	learning_access?: {
+		support_status?: string | null
+		learning_needs?: string | null
+		supports_that_help?: string | null
+		existing_plans?: string | null
+		social_emotional_needs?: string | null
+		physical_access_needs?: string | null
+		family_priorities?: string | null
+	}
+	student_insight?: {
+		strengths?: string | null
+		interests?: string | null
+		activities?: string | null
+		achievements?: string | null
+		motivators?: string | null
+		relationship_notes?: string | null
+		student_voice?: string | null
 	}
 	submitted_at?: string | null
 	created_on?: string | null
@@ -378,6 +395,12 @@ export interface InterviewWorkspaceFeedbackPanelRow {
 	feedback_status?: InterviewFeedbackStatus
 	submitted_on?: string | null
 	modified?: string | null
+	can_view_notes?: boolean
+	strengths?: string | null
+	concerns?: string | null
+	shared_values?: string | null
+	other_notes?: string | null
+	recommendation?: string | null
 }
 
 export interface InterviewWorkspaceMyFeedback {
@@ -397,6 +420,7 @@ export interface InterviewWorkspaceFeedbackPayload {
 	panel: InterviewWorkspaceFeedbackPanelRow[]
 	my_feedback: InterviewWorkspaceMyFeedback
 	can_edit: boolean
+	can_view_notes?: boolean
 	allowed_statuses: InterviewFeedbackStatus[]
 }
 

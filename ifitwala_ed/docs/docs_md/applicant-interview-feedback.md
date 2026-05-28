@@ -3,8 +3,8 @@ title: "Applicant Interview Feedback: Per-Interviewer Notes"
 slug: applicant-interview-feedback
 category: Admission
 doc_order: 9
-version: "1.4.0"
-last_change_date: "2026-05-21"
+version: "1.5.0"
+last_change_date: "2026-05-28"
 summary: "Capture each interviewer's structured notes and recommendation for one admissions interview without overwriting other panel members."
 seo_title: "Applicant Interview Feedback"
 seo_description: "Use Applicant Interview Feedback for per-interviewer admissions notes linked to Applicant Interview with Draft/Submitted status and row-level access control."
@@ -26,9 +26,9 @@ It is the only canonical place for interviewer opinion. The parent interview sto
 
 ## Before You Write Feedback
 
-You should be listed as an interviewer on the parent Applicant Interview, or have an admissions/academic admin role with scoped access.
+You must be listed as an interviewer on the parent Applicant Interview to write or submit feedback.
 
-On Desk, listed interviewers can use `Open My Feedback` from the parent interview. In the SPA workspace, the interface presents this as `Interview Notes` so staff do not need to think about the separate storage row.
+On Desk, listed interviewers can use `Open My Feedback` from the parent interview. In the SPA workspace, the interface presents this as `Interview Notes` so staff do not need to think about the separate storage row. Scoped admissions users, counselors, academic admins, and the note owner can read saved notes when the workspace exposes them, but they do not get the editor unless they are assigned interviewers.
 
 ## Information You Manage
 
@@ -63,12 +63,13 @@ On Desk, listed interviewers can use `Open My Feedback` from the parent intervie
 
 | Role / Actor | Read | Write | Create | Delete | Notes |
 |---|---|---|---|---|---|
-| `System Manager` | Yes | Yes | Yes | Yes | Scoped administrative access |
-| `Academic Admin` | Yes | Yes | Yes | Yes | Scoped to applicant organization/school visibility |
-| `Admission Manager` | Yes | Yes | Yes | Yes | Scoped to applicant organization/school visibility |
-| `Admission Officer` | Yes | Yes | Yes | Yes | Scoped to applicant organization/school visibility |
+| `System Manager` | Yes | No | No | No | Scoped administrative read access; feedback submission remains interviewer-owned |
+| `Academic Admin` | Yes | No | No | No | Scoped to applicant organization/school visibility |
+| `Admission Manager` | Yes | No | No | No | Scoped to applicant organization/school visibility |
+| `Admission Officer` | Yes | No | No | No | Scoped to applicant organization/school visibility |
+| `Counselor` | Yes | No | No | No | Read-only within school scope |
 | Listed interviewer | Yes | Yes | Yes | No | Own feedback row only; must be listed on the interview |
-| `Curriculum Coordinator` / `Counselor` | No broad access | No broad access | No broad access | No | Can act only when listed as interviewer |
+| `Curriculum Coordinator` | No broad access | No broad access | No broad access | No | Can act only when listed as interviewer |
 
 ## Practical Examples
 
@@ -122,13 +123,16 @@ Downgrade from `Submitted` to `Draft` is blocked for non-privileged users.
 - Unique pair: `(applicant_interview, interviewer_user)`.
 - `student_applicant` is auto-synced from interview.
 - Non-privileged users can only create/edit their own row.
-- User must be listed in `Applicant Interview.interviewers` to access/edit.
+- User must be listed in `Applicant Interview.interviewers` to create/edit.
+- Scoped admissions users, counselors, academic admins, and the note owner can read saved notes without receiving edit controls.
 - Downgrade `Submitted -> Draft` is blocked for non-privileged users.
 - Parent `Applicant Interview` fields are not used to store panel opinion or a combined interview judgment.
 
 ### Surface Usage
 
 - Used by `AdmissionsWorkspaceOverlay` opened from Staff calendar or Admissions Cockpit.
+- The SPA hides the editable note form unless the current user is assigned to the interview.
+- Read-only note cards remain visible to scoped admissions, counselor, academic admin, and note-owner readers.
 - Desk `Open My Feedback` opens the current user's existing feedback row or starts a prefilled draft.
 - Workspace APIs:
   - `get_interview_workspace(interview=...)`

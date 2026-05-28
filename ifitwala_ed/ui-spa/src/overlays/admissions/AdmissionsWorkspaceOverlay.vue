@@ -191,12 +191,6 @@
 												</p>
 											</div>
 											<div>
-												<p class="type-caption text-ink/65">{{ __('Applying Grade Level') }}</p>
-												<p class="type-body-strong text-ink">
-													{{ workspaceApplicant?.applying_grade_level || '—' }}
-												</p>
-											</div>
-											<div>
 												<p class="type-caption text-ink/65">{{ __('Program Intent') }}</p>
 												<p class="type-body-strong text-ink">
 													{{ workspaceApplicant?.program || '—' }}
@@ -256,11 +250,35 @@
 									</article>
 
 									<article class="interview-card">
-										<h3 class="type-h3 text-ink">{{ __('Previous School') }}</h3>
+										<h3 class="type-h3 text-ink">{{ __('Previous Learning Context') }}</h3>
 										<div class="mt-3 grid gap-3 sm:grid-cols-2">
 											<div v-for="field in previousSchoolFields" :key="field.label">
 												<p class="type-caption text-ink/65">{{ field.label }}</p>
 												<p class="type-body text-ink break-words">{{ field.value }}</p>
+											</div>
+										</div>
+									</article>
+
+									<article class="interview-card">
+										<h3 class="type-h3 text-ink">{{ __('Learning and Access Support') }}</h3>
+										<div class="mt-3 grid gap-3 sm:grid-cols-2">
+											<div v-for="field in learningAccessFields" :key="field.label">
+												<p class="type-caption text-ink/65">{{ field.label }}</p>
+												<p class="type-body text-ink break-words whitespace-pre-wrap">
+													{{ field.value }}
+												</p>
+											</div>
+										</div>
+									</article>
+
+									<article class="interview-card">
+										<h3 class="type-h3 text-ink">{{ __('Student Strengths and Interests') }}</h3>
+										<div class="mt-3 grid gap-3 sm:grid-cols-2">
+											<div v-for="field in studentInsightFields" :key="field.label">
+												<p class="type-caption text-ink/65">{{ field.label }}</p>
+												<p class="type-body text-ink break-words whitespace-pre-wrap">
+													{{ field.value }}
+												</p>
 											</div>
 										</div>
 									</article>
@@ -442,34 +460,37 @@
 
 										<article class="interview-card">
 											<h3 class="type-h3 text-ink">{{ __('Interview Notes') }}</h3>
-											<p class="type-caption text-ink/65 mt-1">
+											<p v-if="canEdit" class="type-caption text-ink/65 mt-1">
 												{{
 													__(
 														'Your notes are saved separately per interviewer to avoid edit collisions.'
 													)
 												}}
 											</p>
+											<p v-else class="type-caption text-ink/65 mt-1">
+												{{ __('Interview notes are shown read-only for team context.') }}
+											</p>
 
 											<div
-												v-if="formError"
+												v-if="canEdit && formError"
 												class="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 type-caption text-rose-900"
 											>
 												{{ formError }}
 											</div>
 											<div
-												v-if="saveNotice"
+												v-if="canEdit && saveNotice"
 												class="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 type-caption text-emerald-900"
 											>
 												{{ saveNotice }}
 											</div>
 
-											<div class="mt-3 space-y-3">
+											<div v-if="canEdit" class="mt-3 space-y-3">
 												<label class="block space-y-1">
 													<span class="type-caption text-ink/70">{{ __('Recommendation') }}</span>
 													<select
 														v-model="formRecommendation"
 														class="if-field"
-														:disabled="!canEdit || submitting"
+														:disabled="submitting"
 													>
 														<option value="">{{ __('Select recommendation') }}</option>
 														<option
@@ -488,7 +509,7 @@
 														v-model="formStrengths"
 														class="if-field"
 														rows="3"
-														:disabled="!canEdit || submitting"
+														:disabled="submitting"
 													></textarea>
 												</label>
 
@@ -498,7 +519,7 @@
 														v-model="formConcerns"
 														class="if-field"
 														rows="3"
-														:disabled="!canEdit || submitting"
+														:disabled="submitting"
 													></textarea>
 												</label>
 
@@ -508,7 +529,7 @@
 														v-model="formSharedValues"
 														class="if-field"
 														rows="3"
-														:disabled="!canEdit || submitting"
+														:disabled="submitting"
 													></textarea>
 												</label>
 
@@ -518,16 +539,19 @@
 														v-model="formOtherNotes"
 														class="if-field"
 														rows="4"
-														:disabled="!canEdit || submitting"
+														:disabled="submitting"
 													></textarea>
 												</label>
 											</div>
 
-											<div class="mt-4 flex flex-wrap items-center justify-end gap-2">
+											<div
+												v-if="canEdit"
+												class="mt-4 flex flex-wrap items-center justify-end gap-2"
+											>
 												<button
 													type="button"
 													class="if-button if-button--secondary"
-													:disabled="!canEdit || submitting"
+													:disabled="submitting"
 													@click="saveDraft"
 												>
 													{{ submitting ? __('Saving…') : __('Save Notes') }}
@@ -535,15 +559,46 @@
 												<button
 													type="button"
 													class="if-button if-button--primary"
-													:disabled="!canEdit || submitting"
+													:disabled="submitting"
 													@click="submitFeedback"
 												>
 													{{ submitting ? __('Submitting…') : __('Submit Notes') }}
 												</button>
 											</div>
-											<p v-if="!canEdit" class="type-caption text-ink/60 mt-3">
-												{{ __('You are not assigned to add notes for this interview.') }}
-											</p>
+											<div v-else class="mt-3 space-y-3">
+												<div
+													v-if="!visibleFeedbackNotes.length"
+													class="rounded-xl border border-border/60 bg-slate-50 px-3 py-3 type-caption text-ink/65"
+												>
+													{{ __('No interview notes have been saved yet.') }}
+												</div>
+												<template v-else>
+													<section
+														v-for="note in visibleFeedbackNotes"
+														:key="note.name || note.interviewer_user"
+														class="rounded-xl border border-border/60 bg-white px-3 py-3"
+													>
+														<div class="flex flex-wrap items-center justify-between gap-2">
+															<h4 class="type-body-strong text-ink">
+																{{ note.interviewer_name || note.interviewer_user }}
+															</h4>
+															<span
+																class="type-caption rounded-full bg-sky/20 px-2 py-0.5 text-ink/70"
+															>
+																{{ note.feedback_status || __('Draft') }}
+															</span>
+														</div>
+														<dl class="mt-2 space-y-2">
+															<div v-for="field in feedbackNoteFields(note)" :key="field.label">
+																<dt class="type-caption text-ink/60">{{ field.label }}</dt>
+																<dd class="type-body text-ink whitespace-pre-line">
+																	{{ field.value }}
+																</dd>
+															</div>
+														</dl>
+													</section>
+												</template>
+											</div>
 										</article>
 									</template>
 
@@ -1569,6 +1624,7 @@ import type {
 	ApplicantWorkspaceRequirementRow,
 	ApplicantWorkspaceUploadedRow,
 	ApplicantWorkspaceResponse,
+	InterviewWorkspaceFeedbackPanelRow,
 	InterviewWorkspaceInterview,
 	InterviewWorkspaceGuardian,
 	InterviewWorkspaceResponse,
@@ -1598,6 +1654,7 @@ type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 
 type WorkspaceMode = 'interview' | 'applicant' | 'guardian';
 type GuardianDetailField = { label: string; value: string };
+type FeedbackNoteField = { label: string; value: string };
 
 function emptyApplicantDocumentReview(): ApplicantWorkspaceDocumentReview {
 	return {
@@ -1696,6 +1753,48 @@ const previousSchoolFields = computed(() => {
 			value: displayValue(previousSchool.school_year_completed),
 		},
 		{ label: __('Notes'), value: displayValue(previousSchool.notes) },
+	];
+});
+const learningAccessFields = computed(() => {
+	const learningAccess = workspaceApplicant.value?.learning_access || {};
+	return [
+		{
+			label: __('Support Sharing Preference'),
+			value: displayValue(learningAccess.support_status),
+		},
+		{
+			label: __('Learning Needs or Differences'),
+			value: displayValue(learningAccess.learning_needs),
+		},
+		{ label: __('Supports That Help'), value: displayValue(learningAccess.supports_that_help) },
+		{ label: __('Existing Plans or Reports'), value: displayValue(learningAccess.existing_plans) },
+		{
+			label: __('Social and Emotional Needs'),
+			value: displayValue(learningAccess.social_emotional_needs),
+		},
+		{
+			label: __('Physical or Access Needs'),
+			value: displayValue(learningAccess.physical_access_needs),
+		},
+		{
+			label: __('Family Priorities for Support'),
+			value: displayValue(learningAccess.family_priorities),
+		},
+	];
+});
+const studentInsightFields = computed(() => {
+	const studentInsight = workspaceApplicant.value?.student_insight || {};
+	return [
+		{ label: __('Strengths and Qualities'), value: displayValue(studentInsight.strengths) },
+		{ label: __('Hobbies and Interests'), value: displayValue(studentInsight.interests) },
+		{ label: __('Activities and Service'), value: displayValue(studentInsight.activities) },
+		{
+			label: __('Achievements and Recognition'),
+			value: displayValue(studentInsight.achievements),
+		},
+		{ label: __('Motivation and Engagement'), value: displayValue(studentInsight.motivators) },
+		{ label: __('Relationship Notes'), value: displayValue(studentInsight.relationship_notes) },
+		{ label: __('Student Voice'), value: displayValue(studentInsight.student_voice) },
 	];
 });
 const workspaceTimeline = computed(
@@ -1957,6 +2056,11 @@ const interviewWindowLabel = computed(() => {
 const canEdit = computed(() =>
 	Boolean(isInterviewMode.value && workspace.value?.feedback?.can_edit)
 );
+const visibleFeedbackNotes = computed<InterviewWorkspaceFeedbackPanelRow[]>(() =>
+	(workspace.value?.feedback?.panel || []).filter(
+		member => Boolean(member?.can_view_notes) && hasFeedbackNoteContent(member)
+	)
+);
 const timelineRows = computed(() =>
 	workspaceTimeline.value.map(row => ({
 		...row,
@@ -1983,6 +2087,25 @@ function displayValue(value: unknown, fallback = '—') {
 
 function booleanValue(value: unknown) {
 	return Boolean(value) ? 'Yes' : 'No';
+}
+
+function feedbackNoteFields(note: InterviewWorkspaceFeedbackPanelRow): FeedbackNoteField[] {
+	return [
+		{ label: __('Recommendation'), value: note?.recommendation },
+		{ label: __('Strengths'), value: note?.strengths },
+		{ label: __('Concerns'), value: note?.concerns },
+		{ label: __('Shared Values'), value: note?.shared_values },
+		{ label: __('Other Notes'), value: note?.other_notes },
+	]
+		.map(field => ({
+			label: field.label,
+			value: String(field.value || '').trim(),
+		}))
+		.filter(field => Boolean(field.value));
+}
+
+function hasFeedbackNoteContent(note: InterviewWorkspaceFeedbackPanelRow) {
+	return feedbackNoteFields(note).length > 0;
 }
 
 function clearRuntimeMessages() {

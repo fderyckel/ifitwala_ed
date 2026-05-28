@@ -208,65 +208,70 @@
 									"
 								/>
 							</div>
-							<button
-								type="button"
-								class="w-full rounded-xl px-1 text-left transition"
-								:data-gradebook-student="student.student"
-								:class="selectedOutcomeId === student.task_student ? 'bg-sky/10' : ''"
-								@click="openStudent(student)"
-							>
-								<div class="flex items-start gap-3">
-									<img
-										:src="student.student_image || DEFAULT_STUDENT_IMAGE"
-										alt=""
-										class="h-11 w-11 rounded-full border border-white bg-white object-cover shadow-sm"
-										loading="lazy"
-										@error="onImgError"
-									/>
-									<div class="min-w-0 flex-1">
-										<div class="flex items-start justify-between gap-3">
-											<div class="min-w-0">
-												<p class="truncate text-sm font-semibold text-ink">
-													{{ student.student_name }}
-												</p>
-												<p class="truncate text-xs text-ink/50">
-													{{ student.student_id || student.student }}
-												</p>
+							<div class="flex min-w-0 flex-1 items-start gap-2">
+								<button
+									type="button"
+									class="min-w-0 flex-1 rounded-xl px-1 text-left transition"
+									:data-gradebook-student="student.student"
+									:class="selectedOutcomeId === student.task_student ? 'bg-sky/10' : ''"
+									@click="openStudent(student)"
+								>
+									<div class="flex items-start gap-3">
+										<img
+											:src="student.student_image || DEFAULT_STUDENT_IMAGE"
+											alt=""
+											class="h-11 w-11 rounded-full border border-white bg-white object-cover shadow-sm"
+											loading="lazy"
+											@error="onImgError"
+										/>
+										<div class="min-w-0 flex-1">
+											<div class="flex items-start justify-between gap-3">
+												<div class="min-w-0">
+													<p class="truncate text-sm font-semibold text-ink">
+														{{ student.student_name }}
+													</p>
+													<p class="truncate text-xs text-ink/50">
+														{{ student.student_id || student.student }}
+													</p>
+												</div>
+												<FeatherIcon
+													name="chevron-right"
+													class="mt-0.5 h-4 w-4 shrink-0 text-ink/30"
+												/>
 											</div>
-											<FeatherIcon
-												name="chevron-right"
-												class="mt-0.5 h-4 w-4 shrink-0 text-ink/30"
-											/>
-										</div>
 
-										<div class="mt-3 grid gap-1 text-sm text-ink/65">
-											<p>Status: {{ student.status || '—' }}</p>
-											<p v-if="student.submission_status">
-												Submission: {{ student.submission_status }}
-											</p>
-											<p v-if="student.procedural_status">
-												Procedural: {{ student.procedural_status }}
-											</p>
-											<p>{{ studentResultSummary(student) }}</p>
-										</div>
+											<div class="mt-3 grid gap-1 text-sm text-ink/65">
+												<p>Status: {{ student.status || '—' }}</p>
+												<p v-if="student.submission_status">
+													Submission: {{ student.submission_status }}
+												</p>
+												<p v-if="student.procedural_status">
+													Procedural: {{ student.procedural_status }}
+												</p>
+												<p>{{ studentResultSummary(student) }}</p>
+											</div>
 
-										<div class="mt-3 flex flex-wrap gap-2">
-											<Badge v-if="student.has_new_submission" variant="subtle" theme="orange">
-												New evidence
-											</Badge>
-											<Badge v-if="student.visible_to_student" variant="subtle" theme="green">
-												Released
-											</Badge>
-											<Badge
-												v-if="student.has_submission && !student.has_new_submission"
-												variant="subtle"
-											>
-												Evidence linked
-											</Badge>
+											<div class="mt-3 flex flex-wrap gap-2">
+												<Badge v-if="student.has_new_submission" variant="subtle" theme="orange">
+													New evidence
+												</Badge>
+												<Badge v-if="student.visible_to_student" variant="subtle" theme="green">
+													Released
+												</Badge>
+												<Badge
+													v-if="student.has_submission && !student.has_new_submission"
+													variant="subtle"
+												>
+													Evidence linked
+												</Badge>
+											</div>
 										</div>
 									</div>
+								</button>
+								<div class="pt-1.5">
+									<StudentInsightNoteButton :summary="student.insight_summary" />
 								</div>
-							</button>
+							</div>
 						</div>
 					</div>
 				</section>
@@ -328,6 +333,7 @@ import type {
 import type { Request as UpdateTaskStudentRequest } from '@/types/contracts/gradebook/update_task_student';
 import GradebookQuizManualReview from './GradebookQuizManualReview.vue';
 import GradebookStudentDrawer from './GradebookStudentDrawer.vue';
+import StudentInsightNoteButton from '@/components/student/StudentInsightNoteButton.vue';
 import {
 	DEFAULT_STUDENT_IMAGE,
 	booleanNegativeLabel,

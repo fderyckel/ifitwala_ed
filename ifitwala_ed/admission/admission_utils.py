@@ -20,6 +20,11 @@ from ifitwala_ed.utilities.school_tree import get_descendant_schools
 ADMISSIONS_ROLES = {"Admission Manager", "Admission Officer"}
 ADMISSIONS_FILE_STAFF_ROLES = ADMISSIONS_ROLES | {"Academic Admin", "System Manager"}
 ADMISSIONS_WORKSPACE_ROLES = ADMISSIONS_FILE_STAFF_ROLES
+ADMISSIONS_FEEDBACK_NOTE_READER_ROLES = ADMISSIONS_ROLES | {
+    "Academic Admin",
+    "Counselor",
+    "System Manager",
+}
 READ_LIKE_PERMISSION_TYPES = {"read", "report", "export", "print", "email"}
 APPLICANT_REVIEW_TARGET_APPLICATION = "Student Applicant"
 
@@ -684,6 +689,16 @@ def is_admissions_workspace_user(user: str | None = None) -> bool:
     return bool(roles & ADMISSIONS_WORKSPACE_ROLES)
 
 
+def is_admissions_feedback_note_reader_user(user: str | None = None) -> bool:
+    resolved_user = (user or frappe.session.user or "").strip()
+    if not resolved_user or resolved_user == "Guest":
+        return False
+    if resolved_user == "Administrator":
+        return True
+    roles = set(frappe.get_roles(resolved_user))
+    return bool(roles & ADMISSIONS_FEEDBACK_NOTE_READER_ROLES)
+
+
 def has_open_overall_application_review_access(*, user: str | None = None, student_applicant: str | None) -> bool:
     applicant_name = (student_applicant or "").strip()
     return has_open_applicant_review_access(
@@ -874,6 +889,66 @@ def build_admissions_file_scope_exists_sql(*, user: str | None = None, student_a
     )
 
 
+def _get_counselor_feedback_note_school_scope(user: str | None) -> set[str]:
+    resolved_user = (user or frappe.session.user or "").strip()
+    if not resolved_user or resolved_user == "Guest":
+        return set()
+
+    roles = set(frappe.get_roles(resolved_user))
+    if "Counselor" not in roles:
+        return set()
+
+    employee = _safe_active_employee_scope_row(resolved_user)
+    school = (employee or {}).get("school")
+    if not school:
+        return set()
+
+    return {(value or "").strip() for value in (get_descendant_schools(school) or []) if (value or "").strip()}
+
+
+def build_admissions_feedback_note_scope_exists_sql(
+    *,
+    user: str | None = None,
+    student_applicant_expr_sql: str,
+) -> str | None:
+    resolved_user = (user or frappe.session.user or "").strip()
+    if not resolved_user or resolved_user == "Guest":
+        return "1=0"
+    if resolved_user == "Administrator":
+        return None
+
+    roles = set(frappe.get_roles(resolved_user))
+    if not (roles & ADMISSIONS_FEEDBACK_NOTE_READER_ROLES):
+        return "1=0"
+
+    conditions: list[str] = []
+    if roles & ADMISSIONS_FILE_STAFF_ROLES:
+        staff_condition = build_admissions_file_scope_exists_sql(
+            user=resolved_user,
+            student_applicant_expr_sql=student_applicant_expr_sql,
+        )
+        if staff_condition is None:
+            return None
+        if staff_condition != "1=0":
+            conditions.append(f"({staff_condition})")
+
+    counselor_schools = _get_counselor_feedback_note_school_scope(resolved_user)
+    school_values = _scope_values_to_sql(counselor_schools)
+    if school_values:
+        conditions.append(
+            "("
+            "EXISTS ("
+            "SELECT 1 "
+            "FROM `tabStudent Applicant` sa "
+            f"WHERE sa.name = {student_applicant_expr_sql} "
+            f"AND sa.school IN ({school_values})"
+            ")"
+            ")"
+        )
+
+    return " OR ".join(conditions) if conditions else "1=0"
+
+
 def _get_effective_student_schools(*, student: str | None, applicant_school: str | None) -> set[str]:
     effective_schools: set[str] = set()
     school_name = (applicant_school or "").strip()
@@ -947,6 +1022,39 @@ def has_scoped_staff_access_to_student_applicant(
             return False
 
     return True
+
+
+def has_scoped_admissions_feedback_note_access(
+    *,
+    user: str | None = None,
+    student_applicant: str | None,
+) -> bool:
+    resolved_user = (user or frappe.session.user or "").strip()
+    applicant_name = (student_applicant or "").strip()
+    if not resolved_user or resolved_user == "Guest" or not applicant_name:
+        return False
+    if resolved_user == "Administrator":
+        return True
+
+    roles = set(frappe.get_roles(resolved_user))
+    if not (roles & ADMISSIONS_FEEDBACK_NOTE_READER_ROLES):
+        return False
+
+    if roles & ADMISSIONS_FILE_STAFF_ROLES:
+        if has_scoped_staff_access_to_student_applicant(
+            user=resolved_user,
+            student_applicant=applicant_name,
+        ):
+            return True
+
+    if "Counselor" not in roles:
+        return False
+
+    applicant_school = (frappe.db.get_value("Student Applicant", applicant_name, "school") or "").strip()
+    if not applicant_school:
+        return False
+
+    return applicant_school in _get_counselor_feedback_note_school_scope(resolved_user)
 
 
 def normalize_email_value(email: str | None) -> str:
@@ -1623,10 +1731,6 @@ def from_inquiry_invite(
                 existing_applicant.applicant_email = inquiry_email
                 changed = True
 
-            if inquiry.get("grade_level_interest") and not existing_applicant.get("applying_grade_level"):
-                existing_applicant.applying_grade_level = inquiry.get("grade_level_interest")
-                changed = True
-
             if changed:
                 existing_applicant.save(ignore_permissions=True)
 
@@ -1668,7 +1772,6 @@ def from_inquiry_invite(
                 "program": inquiry.get("program"),
                 "academic_year": inquiry.get("academic_year"),
                 "term": inquiry.get("term"),
-                "applying_grade_level": inquiry.get("grade_level_interest"),
                 # Traceability
                 "inquiry": inquiry.name,
                 # Contact anchor

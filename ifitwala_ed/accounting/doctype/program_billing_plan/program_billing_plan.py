@@ -28,11 +28,26 @@ class ProgramBillingPlan(Document):
             frappe.throw(_("Program Offering must belong to the same Organization as the Billing Plan."))
 
     def _validate_academic_year_membership(self):
-        if not frappe.db.exists(
-            "Program Offering Academic Year",
-            {"parent": self.program_offering, "parenttype": "Program Offering", "academic_year": self.academic_year},
-        ):
-            frappe.throw(_("Academic Year must be part of the selected Program Offering."))
+        academic_years = _get_program_offering_academic_year_names(self.program_offering)
+        if not academic_years:
+            frappe.throw(
+                _("Program Offering must define at least one Academic Year before Billing Plans can be saved.")
+            )
+
+        if self.academic_year:
+            if self.academic_year not in academic_years:
+                frappe.throw(_("Academic Year must be part of the selected Program Offering."))
+            return
+
+        if len(academic_years) == 1:
+            self.academic_year = academic_years[0]
+            return
+
+        frappe.throw(
+            _("Please choose an Academic Year from this Program Offering: {academic_years}.").format(
+                academic_years=", ".join(academic_years)
+            )
+        )
 
     def _validate_components(self):
         if not self.components:
@@ -110,6 +125,79 @@ class ProgramBillingPlan(Document):
             frappe.throw(
                 _("Only one active Program Billing Plan is allowed for this Program Offering and Academic Year.")
             )
+
+
+def _get_program_offering_academic_year_names(program_offering: str | None) -> list[str]:
+    return [
+        row["academic_year"]
+        for row in _get_program_offering_academic_year_rows(program_offering)
+        if row.get("academic_year")
+    ]
+
+
+def _get_program_offering_academic_year_rows(program_offering: str | None) -> list[dict]:
+    if not program_offering:
+        return []
+
+    rows = frappe.get_all(
+        "Program Offering Academic Year",
+        filters={"parent": program_offering, "parenttype": "Program Offering"},
+        fields=["academic_year", "idx"],
+        order_by="idx asc",
+    )
+    academic_year_names = [row.get("academic_year") for row in rows if row.get("academic_year")]
+    if not academic_year_names:
+        return []
+
+    year_meta = {
+        row.name: row
+        for row in frappe.get_all(
+            "Academic Year",
+            filters={"name": ["in", academic_year_names]},
+            fields=["name", "academic_year_name", "year_start_date", "year_end_date"],
+        )
+    }
+
+    out = []
+    for row in rows:
+        academic_year = row.get("academic_year")
+        if not academic_year:
+            continue
+        meta = year_meta.get(academic_year)
+        out.append(
+            {
+                "academic_year": academic_year,
+                "academic_year_name": meta.academic_year_name if meta else academic_year,
+                "year_start_date": meta.year_start_date if meta else None,
+                "year_end_date": meta.year_end_date if meta else None,
+            }
+        )
+    return out
+
+
+def _can_read_offering_academic_years_for_billing(program_offering: str, organization: str | None) -> bool:
+    if frappe.has_permission("Program Offering", ptype="read", doc=program_offering):
+        return True
+
+    can_use_billing_plan = frappe.has_permission("Program Billing Plan", ptype="create") or frappe.has_permission(
+        "Program Billing Plan", ptype="write"
+    )
+    if not can_use_billing_plan or not organization:
+        return False
+
+    school = frappe.db.get_value("Program Offering", program_offering, "school")
+    return bool(school and get_school_organization(school) == organization)
+
+
+@frappe.whitelist()
+def get_program_offering_academic_years(program_offering: str | None, organization: str | None = None) -> list[dict]:
+    if not program_offering:
+        return []
+
+    if not _can_read_offering_academic_years_for_billing(program_offering, organization):
+        frappe.throw(_("Not permitted to read Program Offering Academic Years."), frappe.PermissionError)
+
+    return _get_program_offering_academic_year_rows(program_offering)
 
 
 @frappe.whitelist()

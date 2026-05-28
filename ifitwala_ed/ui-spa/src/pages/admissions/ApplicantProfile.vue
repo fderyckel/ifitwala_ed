@@ -416,18 +416,8 @@
 			</div>
 
 			<div class="admissions-card admissions-card--plain">
-				<p class="type-body-strong text-ink">{{ __('Previous school') }}</p>
+				<p class="type-body-strong text-ink">{{ __('Previous learning context') }}</p>
 				<div class="mt-4 grid gap-4 md:grid-cols-2">
-					<label class="block">
-						<span class="type-caption text-ink/60">{{ __('Applying grade level') }}</span>
-						<input
-							v-model="profile.applying_grade_level"
-							type="text"
-							class="admissions-input mt-1"
-							:disabled="isReadOnly || saving"
-						/>
-					</label>
-
 					<label class="block">
 						<span class="type-caption text-ink/60">{{ __('Previous grade level') }}</span>
 						<input
@@ -510,6 +500,165 @@
 						<span class="type-caption text-ink/60">{{ __('Notes') }}</span>
 						<textarea
 							v-model="profile.previous_school_notes"
+							class="admissions-input mt-1 min-h-24"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+				</div>
+			</div>
+
+			<div class="admissions-card admissions-card--plain">
+				<div>
+					<p class="type-body-strong text-ink">{{ __('Learning and access support') }}</p>
+					<p class="mt-1 type-caption text-ink/60">
+						{{
+							__(
+								'Share anything that helps the school plan a welcoming, accessible start for the student.'
+							)
+						}}
+					</p>
+				</div>
+				<div class="mt-4 grid gap-4 md:grid-cols-2">
+					<label class="block md:col-span-2">
+						<span class="type-caption text-ink/60">{{ __('Support sharing preference') }}</span>
+						<select
+							v-model="profile.learning_support_status"
+							class="admissions-input mt-1"
+							:disabled="isReadOnly || saving"
+						>
+							<option value="">{{ __('Select') }}</option>
+							<option
+								v-for="item in options.learning_support_statuses || []"
+								:key="`learning-support-${item}`"
+								:value="item"
+							>
+								{{ item }}
+							</option>
+						</select>
+					</label>
+
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('Learning needs or differences') }}</span>
+						<textarea
+							v-model="profile.learning_needs"
+							class="admissions-input mt-1 min-h-28"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('Supports that help') }}</span>
+						<textarea
+							v-model="profile.effective_supports"
+							class="admissions-input mt-1 min-h-28"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('Existing plans or reports') }}</span>
+						<textarea
+							v-model="profile.existing_support_plans"
+							class="admissions-input mt-1 min-h-24"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('Social and emotional needs') }}</span>
+						<textarea
+							v-model="profile.social_emotional_needs"
+							class="admissions-input mt-1 min-h-24"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('Physical or access needs') }}</span>
+						<textarea
+							v-model="profile.physical_access_needs"
+							class="admissions-input mt-1 min-h-24"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('Family priorities for support') }}</span>
+						<textarea
+							v-model="profile.family_support_priorities"
+							class="admissions-input mt-1 min-h-24"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+				</div>
+			</div>
+
+			<div class="admissions-card admissions-card--plain">
+				<div>
+					<p class="type-body-strong text-ink">{{ __('Student strengths and interests') }}</p>
+					<p class="mt-1 type-caption text-ink/60">
+						{{ __('Help teachers know the student as a person before the first conversation.') }}
+					</p>
+				</div>
+				<div class="mt-4 grid gap-4 md:grid-cols-2">
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('Strengths and qualities') }}</span>
+						<textarea
+							v-model="profile.student_strengths"
+							class="admissions-input mt-1 min-h-24"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('Hobbies and interests') }}</span>
+						<textarea
+							v-model="profile.student_interests"
+							class="admissions-input mt-1 min-h-24"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('Activities and service') }}</span>
+						<textarea
+							v-model="profile.student_activities"
+							class="admissions-input mt-1 min-h-24"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('Achievements and recognition') }}</span>
+						<textarea
+							v-model="profile.student_achievements"
+							class="admissions-input mt-1 min-h-24"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('Motivation and engagement') }}</span>
+						<textarea
+							v-model="profile.student_motivators"
+							class="admissions-input mt-1 min-h-24"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('Relationship notes') }}</span>
+						<textarea
+							v-model="profile.student_relationship_notes"
+							class="admissions-input mt-1 min-h-24"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block md:col-span-2">
+						<span class="type-caption text-ink/60">{{ __('Student voice') }}</span>
+						<textarea
+							v-model="profile.student_voice_notes"
 							class="admissions-input mt-1 min-h-24"
 							:disabled="isReadOnly || saving"
 						/>
@@ -956,7 +1105,6 @@ function createEmptyProfile(): ApplicantProfile {
 		state: '',
 		postal_code: '',
 		country: '',
-		applying_grade_level: '',
 		previous_school_name: '',
 		previous_grade_level: '',
 		previous_curriculum: '',
@@ -965,6 +1113,20 @@ function createEmptyProfile(): ApplicantProfile {
 		previous_language_of_instruction: '',
 		previous_school_year_completed: '',
 		previous_school_notes: '',
+		learning_support_status: '',
+		learning_needs: '',
+		effective_supports: '',
+		existing_support_plans: '',
+		social_emotional_needs: '',
+		physical_access_needs: '',
+		family_support_priorities: '',
+		student_strengths: '',
+		student_interests: '',
+		student_activities: '',
+		student_achievements: '',
+		student_motivators: '',
+		student_relationship_notes: '',
+		student_voice_notes: '',
 	};
 }
 
@@ -972,6 +1134,7 @@ function createEmptyOptions(): ApplicantProfileResponse['options'] {
 	return {
 		genders: [],
 		residency_statuses: [],
+		learning_support_statuses: [],
 		languages: [],
 		countries: [],
 		guardian_relationships: [],
@@ -1284,7 +1447,6 @@ async function saveProfile() {
 			state: profile.value.state || '',
 			postal_code: profile.value.postal_code || '',
 			country: profile.value.country || '',
-			applying_grade_level: profile.value.applying_grade_level || '',
 			previous_school_name: profile.value.previous_school_name || '',
 			previous_grade_level: profile.value.previous_grade_level || '',
 			previous_curriculum: profile.value.previous_curriculum || '',
@@ -1293,6 +1455,20 @@ async function saveProfile() {
 			previous_language_of_instruction: profile.value.previous_language_of_instruction || '',
 			previous_school_year_completed: profile.value.previous_school_year_completed || '',
 			previous_school_notes: profile.value.previous_school_notes || '',
+			learning_support_status: profile.value.learning_support_status || '',
+			learning_needs: profile.value.learning_needs || '',
+			effective_supports: profile.value.effective_supports || '',
+			existing_support_plans: profile.value.existing_support_plans || '',
+			social_emotional_needs: profile.value.social_emotional_needs || '',
+			physical_access_needs: profile.value.physical_access_needs || '',
+			family_support_priorities: profile.value.family_support_priorities || '',
+			student_strengths: profile.value.student_strengths || '',
+			student_interests: profile.value.student_interests || '',
+			student_activities: profile.value.student_activities || '',
+			student_achievements: profile.value.student_achievements || '',
+			student_motivators: profile.value.student_motivators || '',
+			student_relationship_notes: profile.value.student_relationship_notes || '',
+			student_voice_notes: profile.value.student_voice_notes || '',
 		};
 		const currentGuardians = guardianRowsForSubmit(guardians.value);
 		if (

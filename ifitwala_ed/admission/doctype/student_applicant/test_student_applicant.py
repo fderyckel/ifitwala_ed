@@ -228,16 +228,21 @@ class TestStudentApplicant(FrappeTestCase):
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Applicant Interview", recent_interview.name))
-        recent_feedback = frappe.get_doc(
-            {
-                "doctype": "Applicant Interview Feedback",
-                "applicant_interview": recent_interview.name,
-                "student_applicant": applicant.name,
-                "interviewer_user": interviewer_user.name,
-                "feedback_status": "Submitted",
-                "strengths": "Clear communication",
-            }
-        ).insert(ignore_permissions=True)
+        current_user = frappe.session.user
+        frappe.set_user(interviewer_user.name)
+        try:
+            recent_feedback = frappe.get_doc(
+                {
+                    "doctype": "Applicant Interview Feedback",
+                    "applicant_interview": recent_interview.name,
+                    "student_applicant": applicant.name,
+                    "interviewer_user": interviewer_user.name,
+                    "feedback_status": "Submitted",
+                    "strengths": "Clear communication",
+                }
+            ).insert()
+        finally:
+            frappe.set_user(current_user)
         self._created.append(("Applicant Interview Feedback", recent_feedback.name))
 
         payload = applicant.has_required_interviews()
@@ -937,7 +942,6 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertIn("City", payload.get("missing") or [])
         self.assertIn("Postal Code", payload.get("missing") or [])
         self.assertIn("Country", payload.get("missing") or [])
-        self.assertIn("Applying Grade Level", payload.get("missing") or [])
         self.assertNotIn("Joining Date", payload.get("missing") or [])
 
     def test_readiness_snapshot_does_not_block_on_health_when_school_setting_disabled(self):
@@ -1142,6 +1146,63 @@ class TestStudentApplicant(FrappeTestCase):
         self.assertEqual(student.cohort, cohort)
         self.assertEqual(student.student_house, student_house)
         self.assertEqual(student.anchor_school, applicant.school)
+
+    def test_promotion_creates_reviewable_student_insight_notes(self):
+        applicant = self._create_student_applicant(
+            student_date_of_birth="2014-01-01",
+            student_gender="Female",
+            student_joining_date=frappe.utils.nowdate(),
+            learning_support_status="Support details provided",
+            learning_needs="Benefits from chunked instructions.",
+            effective_supports="Preview vocabulary before new units.",
+            student_interests="Robotics and sketching.",
+            student_achievements="Regional coding finalist.",
+        )
+        self._create_applicant_health_profile(applicant.name)
+
+        applicant.db_set("application_status", "Invited", update_modified=False)
+        applicant.reload()
+        applicant.mark_in_progress()
+        applicant.submit_application()
+        applicant.mark_under_review()
+        applicant.db_set("application_status", "Approved", update_modified=False)
+        applicant.reload()
+
+        student_name = applicant.promote_to_student()
+        self._created.append(("Student", student_name))
+        note_rows = frappe.get_all(
+            "Student Insight Note",
+            filters={"student": student_name},
+            fields=[
+                "name",
+                "category",
+                "visibility",
+                "source",
+                "source_student_applicant",
+                "summary",
+                "status",
+                "review_on",
+            ],
+            order_by="category asc",
+        )
+        for row in note_rows:
+            self._created.append(("Student Insight Note", row.name))
+
+        self.assertTrue(note_rows)
+        self.assertTrue(all(row.source == "Family" for row in note_rows))
+        self.assertTrue(all(row.source_student_applicant == applicant.name for row in note_rows))
+        self.assertTrue(all(row.status == "Active" for row in note_rows))
+        self.assertTrue(all(row.review_on for row in note_rows))
+
+        by_category = {row.category: row for row in note_rows}
+        self.assertIn("Learning Support", by_category)
+        self.assertIn("Relationship Starter", by_category)
+        self.assertIn("Achievement", by_category)
+        self.assertEqual(by_category["Learning Support"].visibility, "Learning Support")
+        self.assertEqual(by_category["Relationship Starter"].visibility, "Teachers")
+        self.assertIn("Benefits from chunked instructions.", by_category["Learning Support"].summary)
+        self.assertIn("Robotics and sketching.", by_category["Relationship Starter"].summary)
+        self.assertIn("Regional coding finalist.", by_category["Achievement"].summary)
 
     def test_misconfigured_required_document_type_is_still_required_in_readiness(self):
         code = f"misconfigured_req_{frappe.generate_hash(length=6)}"

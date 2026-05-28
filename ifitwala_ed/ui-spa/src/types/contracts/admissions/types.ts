@@ -112,7 +112,6 @@ export type ApplicantProfile = {
   state?: string | null
   postal_code?: string | null
   country?: string | null
-  applying_grade_level?: string | null
   previous_school_name?: string | null
   previous_grade_level?: string | null
   previous_curriculum?: string | null
@@ -121,6 +120,20 @@ export type ApplicantProfile = {
   previous_language_of_instruction?: string | null
   previous_school_year_completed?: string | null
   previous_school_notes?: string | null
+  learning_support_status?: string | null
+  learning_needs?: string | null
+  effective_supports?: string | null
+  existing_support_plans?: string | null
+  social_emotional_needs?: string | null
+  physical_access_needs?: string | null
+  family_support_priorities?: string | null
+  student_strengths?: string | null
+  student_interests?: string | null
+  student_activities?: string | null
+  student_achievements?: string | null
+  student_motivators?: string | null
+  student_relationship_notes?: string | null
+  student_voice_notes?: string | null
 }
 
 export type ApplicantGuardianProfile = {
