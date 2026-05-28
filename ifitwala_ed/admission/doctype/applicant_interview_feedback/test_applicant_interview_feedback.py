@@ -80,12 +80,12 @@ class TestApplicantInterviewFeedback(FrappeTestCase):
                 }
             ).insert()
 
-    def test_employee_interviewer_can_lookup_missing_feedback_before_create(self):
-        self._ensure_role("Employee")
-        interviewer = self._create_user("feedback-employee-interviewer", roles=["Employee"])
-        self._create_employee(interviewer, first_name="Employee", last_name="Interviewer")
-        outsider = self._create_user("feedback-employee-outsider", roles=["Employee"])
-        self._create_employee(outsider, first_name="Employee", last_name="Outsider")
+    def test_instructor_interviewer_can_lookup_missing_feedback_before_create(self):
+        self._ensure_role("Instructor")
+        interviewer = self._create_user("feedback-instructor-interviewer", roles=["Instructor"])
+        self._create_employee(interviewer, first_name="Instructor", last_name="Interviewer")
+        outsider = self._create_user("feedback-instructor-outsider", roles=["Instructor"])
+        self._create_employee(outsider, first_name="Instructor", last_name="Outsider")
 
         interview = frappe.get_doc(
             {

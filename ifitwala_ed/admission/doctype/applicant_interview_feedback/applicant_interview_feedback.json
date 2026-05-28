@@ -149,7 +149,7 @@
   {
    "create": 1,
    "read": 1,
-   "role": "Employee",
+   "role": "Instructor",
    "write": 1
   },
   {
