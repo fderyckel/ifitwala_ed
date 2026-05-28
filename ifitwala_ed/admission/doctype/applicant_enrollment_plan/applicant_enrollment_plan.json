@@ -9,6 +9,7 @@
   "section_break_identity",
   "student_applicant",
   "student",
+  "column_break_zhca",
   "organization",
   "school",
   "section_break_plan",
@@ -16,14 +17,17 @@
   "term",
   "program",
   "program_offering",
-  "courses",
+  "column_break_vn8i",
   "committee_notes",
   "offer_message",
+  "section_break_a73s",
+  "courses",
   "section_break_offer",
   "status",
-  "offer_expires_on",
   "offer_sent_on",
   "offer_sent_by",
+  "offer_expires_on",
+  "column_break_bbnn",
   "offer_accepted_on",
   "offer_accepted_by",
   "offer_declined_on",
@@ -299,12 +303,28 @@
    "label": "Hydrated By",
    "options": "User",
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_zhca",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_a73s",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_vn8i",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_bbnn",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-26 13:06:23.000000",
+ "modified": "2026-05-28 15:48:46.807385",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Applicant Enrollment Plan",
