@@ -246,6 +246,8 @@ class TestApplicantEnrollmentPlanDepositBridge(IfitwalaEdTestSuite):
             }
         )
         plan.insert(ignore_permissions=True)
+        plan.reload()
+        self.assertEqual(plan.applicant_full_name, f"Deposit Middle {ctx['applicant'].last_name}")
         return plan
 
     def _make_applicant(self, *, organization, school, academic_year, program, program_offering):
@@ -254,6 +256,7 @@ class TestApplicantEnrollmentPlanDepositBridge(IfitwalaEdTestSuite):
                 {
                     "doctype": "Student Applicant",
                     "first_name": "Deposit",
+                    "middle_name": "Middle",
                     "last_name": f"Applicant {frappe.generate_hash(length=6)}",
                     "organization": organization,
                     "school": school,

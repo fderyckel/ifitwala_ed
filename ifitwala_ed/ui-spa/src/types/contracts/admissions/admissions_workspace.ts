@@ -65,9 +65,29 @@ export interface InterviewWorkspaceApplicant {
 	program?: string | null
 	program_offering?: string | null
 	academic_year?: string | null
+	term?: string | null
 	applicant_email?: string | null
 	student_date_of_birth?: string | null
 	student_gender?: string | null
+	address?: {
+		address_line1?: string | null
+		address_line2?: string | null
+		city?: string | null
+		state?: string | null
+		postal_code?: string | null
+		country?: string | null
+	}
+	applying_grade_level?: string | null
+	previous_school?: {
+		school_name?: string | null
+		grade_level?: string | null
+		curriculum?: string | null
+		city?: string | null
+		country?: string | null
+		language_of_instruction?: string | null
+		school_year_completed?: string | null
+		notes?: string | null
+	}
 	submitted_at?: string | null
 	created_on?: string | null
 	updated_on?: string | null

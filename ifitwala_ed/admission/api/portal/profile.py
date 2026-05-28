@@ -35,6 +35,21 @@ APPLICANT_PROFILE_FIELDS = (
     "student_nationality",
     "student_second_nationality",
     "residency_status",
+    "address_line1",
+    "address_line2",
+    "city",
+    "state",
+    "postal_code",
+    "country",
+    "applying_grade_level",
+    "previous_school_name",
+    "previous_grade_level",
+    "previous_curriculum",
+    "previous_school_city",
+    "previous_school_country",
+    "previous_language_of_instruction",
+    "previous_school_year_completed",
+    "previous_school_notes",
 )
 
 APPLICANT_PROFILE_REQUIRED_FIELD_LABELS = (
@@ -44,6 +59,11 @@ APPLICANT_PROFILE_REQUIRED_FIELD_LABELS = (
     ("student_first_language", "First Language"),
     ("student_nationality", "Nationality"),
     ("residency_status", "Residency Status"),
+    ("address_line1", "Address Line 1"),
+    ("city", "City"),
+    ("postal_code", "Postal Code"),
+    ("country", "Country"),
+    ("applying_grade_level", "Applying Grade Level"),
 )
 
 APPLICANT_PROFILE_GENDER_OPTIONS = ("Female", "Male", "Other")
@@ -204,6 +224,21 @@ def update_applicant_profile_impl(
     student_nationality: str | None = None,
     student_second_nationality: str | None = None,
     residency_status: str | None = None,
+    address_line1: str | None = None,
+    address_line2: str | None = None,
+    city: str | None = None,
+    state: str | None = None,
+    postal_code: str | None = None,
+    country: str | None = None,
+    applying_grade_level: str | None = None,
+    previous_school_name: str | None = None,
+    previous_grade_level: str | None = None,
+    previous_curriculum: str | None = None,
+    previous_school_city: str | None = None,
+    previous_school_country: str | None = None,
+    previous_language_of_instruction: str | None = None,
+    previous_school_year_completed: str | None = None,
+    previous_school_notes: str | None = None,
     guardians=None,
 ):
     user = _require_admissions_applicant()
@@ -250,6 +285,43 @@ def update_applicant_profile_impl(
         ).strip(),
         "residency_status": _as_text(
             applicant.get("residency_status") if residency_status is None else residency_status
+        ).strip(),
+        "address_line1": _as_text(applicant.get("address_line1") if address_line1 is None else address_line1).strip(),
+        "address_line2": _as_text(applicant.get("address_line2") if address_line2 is None else address_line2).strip(),
+        "city": _as_text(applicant.get("city") if city is None else city).strip(),
+        "state": _as_text(applicant.get("state") if state is None else state).strip(),
+        "postal_code": _as_text(applicant.get("postal_code") if postal_code is None else postal_code).strip(),
+        "country": _as_text(applicant.get("country") if country is None else country).strip(),
+        "applying_grade_level": _as_text(
+            applicant.get("applying_grade_level") if applying_grade_level is None else applying_grade_level
+        ).strip(),
+        "previous_school_name": _as_text(
+            applicant.get("previous_school_name") if previous_school_name is None else previous_school_name
+        ).strip(),
+        "previous_grade_level": _as_text(
+            applicant.get("previous_grade_level") if previous_grade_level is None else previous_grade_level
+        ).strip(),
+        "previous_curriculum": _as_text(
+            applicant.get("previous_curriculum") if previous_curriculum is None else previous_curriculum
+        ).strip(),
+        "previous_school_city": _as_text(
+            applicant.get("previous_school_city") if previous_school_city is None else previous_school_city
+        ).strip(),
+        "previous_school_country": _as_text(
+            applicant.get("previous_school_country") if previous_school_country is None else previous_school_country
+        ).strip(),
+        "previous_language_of_instruction": _as_text(
+            applicant.get("previous_language_of_instruction")
+            if previous_language_of_instruction is None
+            else previous_language_of_instruction
+        ).strip(),
+        "previous_school_year_completed": _as_text(
+            applicant.get("previous_school_year_completed")
+            if previous_school_year_completed is None
+            else previous_school_year_completed
+        ).strip(),
+        "previous_school_notes": _as_text(
+            applicant.get("previous_school_notes") if previous_school_notes is None else previous_school_notes
         ).strip(),
     }
 

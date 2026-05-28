@@ -4,13 +4,9 @@
 	<div class="admissions-page">
 		<header class="page-header">
 			<div class="page-header__intro">
-				<h1 class="type-h1 text-ink">{{ __('Course choices') }}</h1>
+				<h1 class="type-h1 text-ink">{{ pageTitle }}</h1>
 				<p class="type-meta text-ink/70">
-					{{
-						__(
-							'Choose optional courses from your program offering. Required courses stay visible for reference, and enrollment baskets show which requirement group each course can satisfy.'
-						)
-					}}
+					{{ pageDescription }}
 				</p>
 			</div>
 			<div class="page-header__actions">
@@ -18,7 +14,7 @@
 					:to="buildRouteLocation('admissions-status')"
 					class="if-button if-button--secondary"
 				>
-					{{ __('Review offer') }}
+					{{ source === 'applicant_intent' ? __('Review application') : __('Review offer') }}
 				</RouterLink>
 			</div>
 		</header>
@@ -59,7 +55,13 @@
 					<p class="mt-1 type-body text-ink">{{ plan?.academic_year || __('—') }}</p>
 				</div>
 				<div class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft">
-					<p class="type-caption text-ink/60">{{ __('Optional choices saved') }}</p>
+					<p class="type-caption text-ink/60">
+						{{
+							source === 'applicant_intent'
+								? __('Optional intent saved')
+								: __('Optional choices saved')
+						}}
+					</p>
 					<p class="mt-1 type-body text-ink">
 						{{
 							__('{0} of {1}', [
@@ -84,11 +86,7 @@
 					class="type-body-strong"
 					:class="validation?.ready_for_offer_response ? 'text-emerald-900' : 'text-amber-900'"
 				>
-					{{
-						validation?.ready_for_offer_response
-							? __('Course choices are ready for offer response')
-							: __('Course choices still need attention')
-					}}
+					{{ validation?.ready_for_offer_response ? readyHeading : attentionHeading }}
 				</p>
 				<p
 					class="mt-1 type-caption whitespace-pre-wrap"
@@ -104,11 +102,13 @@
 				v-if="!summary?.has_plan"
 				class="rounded-2xl border border-border/70 bg-white px-4 py-4 shadow-soft"
 			>
-				<p class="type-body-strong text-ink">{{ __('No enrollment offer yet') }}</p>
+				<p class="type-body-strong text-ink">{{ __('No course intent available yet') }}</p>
 				<p class="mt-1 type-caption text-ink/60">
 					{{
 						summary?.message ||
-						__('Course choices will appear once admissions sends your enrollment offer.')
+						__(
+							'Course intent will appear once admissions records a Program Offering for this application.'
+						)
 					}}
 				</p>
 			</div>
@@ -124,7 +124,7 @@
 							<p class="mt-1 type-caption text-ink/60">
 								{{
 									__(
-										'These courses are part of your program offering and stay locked by admissions.'
+										'These courses are part of the program offering and stay locked by admissions.'
 									)
 								}}
 							</p>
@@ -334,17 +334,13 @@
 						:disabled="!canEditChoices || saving || !summary?.has_courses"
 						@click="saveChoices"
 					>
-						{{ saving ? __('Saving…') : __('Save choices') }}
+						{{ saving ? __('Saving…') : saveButtonLabel }}
 					</button>
 					<p v-if="hasUnsavedChanges" class="type-caption text-amber-800">
 						{{ __('You have unsaved course-choice changes.') }}
 					</p>
 					<p v-else class="type-caption text-ink/55">
-						{{
-							canEditChoices
-								? __('Save before returning to your offer response.')
-								: __('Course choices are read-only right now.')
-						}}
+						{{ canEditChoices ? saveHelpMessage : readOnlyMessage }}
 					</p>
 				</div>
 			</template>
@@ -387,6 +383,11 @@ const successMessage = ref('');
 const plan = computed(() => payload.value?.plan || null);
 const summary = computed(() => payload.value?.summary || null);
 const validation = computed(() => payload.value?.validation || null);
+const source = computed(
+	() =>
+		payload.value?.source ||
+		(summary.value?.is_applicant_intent ? 'applicant_intent' : 'enrollment_offer')
+);
 const requiredBasketGroups = computed(() => payload.value?.required_basket_groups || []);
 const canEditChoices = computed(() => Boolean(plan.value?.can_edit_choices));
 const hasUnsavedChanges = computed(() =>
@@ -399,8 +400,49 @@ const requiredCourses = computed(() => sections.value.required_courses);
 const basketSections = computed(() => sections.value.basket_sections);
 const ungroupedCourses = computed(() => sections.value.ungrouped_courses);
 
+const pageTitle = computed(() =>
+	source.value === 'applicant_intent' ? __('Course intent') : __('Course choices')
+);
+const pageDescription = computed(() =>
+	source.value === 'applicant_intent'
+		? __(
+				'Tell admissions which optional courses you hope to take. Required courses stay visible for reference, and admissions will review intent before sending an offer.'
+			)
+		: __(
+				'Choose optional courses from your program offering. Required courses stay visible for reference, and enrollment baskets show which requirement group each course can satisfy.'
+			)
+);
+const readyHeading = computed(() =>
+	source.value === 'applicant_intent'
+		? __('Course intent is saved for admissions review')
+		: __('Course choices are ready for offer response')
+);
+const attentionHeading = computed(() =>
+	source.value === 'applicant_intent'
+		? __('Course intent still needs attention')
+		: __('Course choices still need attention')
+);
+const readOnlyMessage = computed(() =>
+	source.value === 'applicant_intent'
+		? __('Course intent is read-only right now.')
+		: __('Course choices are read-only right now.')
+);
+const saveButtonLabel = computed(() =>
+	source.value === 'applicant_intent' ? __('Save intent') : __('Save choices')
+);
+const saveHelpMessage = computed(() =>
+	source.value === 'applicant_intent'
+		? __('Save so admissions can review your intended courses.')
+		: __('Save before returning to your offer response.')
+);
+
 const validationMessage = computed(() => {
 	if (validation.value?.ready_for_offer_response) {
+		if (source.value === 'applicant_intent') {
+			return canEditChoices.value
+				? __('Your course intent satisfies the current basket rules and is visible to admissions.')
+				: __('The saved course intent satisfies the current basket rules.');
+		}
 		return canEditChoices.value
 			? __(
 					'Your saved course choices satisfy the current basket rules. You can return to the offer page when ready.'
@@ -411,7 +453,10 @@ const validationMessage = computed(() => {
 	const reasons = validation.value?.reasons || [];
 	if (reasons.length) return reasons.join('\n');
 	return (
-		summary.value?.message || __('Save your course selections before responding to the offer.')
+		summary.value?.message ||
+		(source.value === 'applicant_intent'
+			? __('Save your intended course selections before submitting the application.')
+			: __('Save your course selections before responding to the offer.'))
 	);
 });
 
@@ -504,19 +549,25 @@ function handleChoiceRankInput(courseName: string, event: Event) {
 
 async function saveChoices() {
 	if (!plan.value) {
-		actionError.value = __('No enrollment plan is available yet.');
+		actionError.value = __('No course intent context is available yet.');
 		return;
 	}
 	if (!canEditChoices.value) {
-		actionError.value = __('Course choices are read-only right now.');
+		actionError.value = readOnlyMessage.value;
 		return;
 	}
 	if (!summary.value?.has_courses) {
-		actionError.value = __('No program-offering courses are configured for this offer.');
+		actionError.value =
+			source.value === 'applicant_intent'
+				? __('No program-offering courses are configured for this application intent.')
+				: __('No program-offering courses are configured for this offer.');
 		return;
 	}
 	if (!hasUnsavedChanges.value) {
-		actionError.value = __('No course-choice changes to save.');
+		actionError.value =
+			source.value === 'applicant_intent'
+				? __('No course-intent changes to save.')
+				: __('No course-choice changes to save.');
 		return;
 	}
 	if (!currentApplicantName.value) {
@@ -535,7 +586,10 @@ async function saveChoices() {
 		payload.value = response;
 		savedRows.value = cloneRows(response.courses || []);
 		formRows.value = cloneRows(response.courses || []);
-		successMessage.value = __('Course choices saved.');
+		successMessage.value =
+			source.value === 'applicant_intent'
+				? __('Course intent saved.')
+				: __('Course choices saved.');
 	} catch (err) {
 		actionError.value = err instanceof Error ? err.message : __('Unable to save course choices.');
 	} finally {

@@ -139,6 +139,21 @@ STUDENT_PROFILE_FIELDS = (
     "student_nationality",
     "student_second_nationality",
     "residency_status",
+    "address_line1",
+    "address_line2",
+    "city",
+    "state",
+    "postal_code",
+    "country",
+    "applying_grade_level",
+    "previous_school_name",
+    "previous_grade_level",
+    "previous_curriculum",
+    "previous_school_city",
+    "previous_school_country",
+    "previous_language_of_instruction",
+    "previous_school_year_completed",
+    "previous_school_notes",
 )
 
 STUDENT_PROFILE_REQUIRED_FIELD_LABELS = (
@@ -148,6 +163,11 @@ STUDENT_PROFILE_REQUIRED_FIELD_LABELS = (
     ("student_first_language", "First Language"),
     ("student_nationality", "Nationality"),
     ("residency_status", "Residency Status"),
+    ("address_line1", "Address Line 1"),
+    ("city", "City"),
+    ("postal_code", "Postal Code"),
+    ("country", "Country"),
+    ("applying_grade_level", "Applying Grade Level"),
 )
 
 

@@ -1623,6 +1623,10 @@ def from_inquiry_invite(
                 existing_applicant.applicant_email = inquiry_email
                 changed = True
 
+            if inquiry.get("grade_level_interest") and not existing_applicant.get("applying_grade_level"):
+                existing_applicant.applying_grade_level = inquiry.get("grade_level_interest")
+                changed = True
+
             if changed:
                 existing_applicant.save(ignore_permissions=True)
 
@@ -1664,6 +1668,7 @@ def from_inquiry_invite(
                 "program": inquiry.get("program"),
                 "academic_year": inquiry.get("academic_year"),
                 "term": inquiry.get("term"),
+                "applying_grade_level": inquiry.get("grade_level_interest"),
                 # Traceability
                 "inquiry": inquiry.name,
                 # Contact anchor

@@ -25,6 +25,8 @@
   "program_offering",
   "cohort",
   "student_house",
+  "course_intent_section",
+  "course_intents",
   "applicant_status_section",
   "application_status",
   "applicant_email",
@@ -46,6 +48,24 @@
   "student_nationality",
   "student_second_nationality",
   "residency_status",
+  "address_section",
+  "address_line1",
+  "address_line2",
+  "city",
+  "state",
+  "postal_code",
+  "country",
+  "previous_school_section",
+  "applying_grade_level",
+  "previous_school_name",
+  "previous_grade_level",
+  "previous_curriculum",
+  "column_break_previous_school",
+  "previous_school_city",
+  "previous_school_country",
+  "previous_language_of_instruction",
+  "previous_school_year_completed",
+  "previous_school_notes",
   "guardians_section",
   "guardians",
   "billing_section",
@@ -282,6 +302,17 @@
    "options": "Program Offering"
   },
   {
+   "fieldname": "course_intent_section",
+   "fieldtype": "Section Break",
+   "label": "Course Intent"
+  },
+  {
+   "fieldname": "course_intents",
+   "fieldtype": "Table",
+   "label": "Course Intent",
+   "options": "Student Applicant Course Intent"
+  },
+  {
    "fieldname": "profile_section",
    "fieldtype": "Section Break",
    "label": "Student Profile (Promotion Data)"
@@ -348,6 +379,97 @@
    "options": "Local Resident\nExpat Resident\nBoarder\nOther"
   },
   {
+   "fieldname": "address_section",
+   "fieldtype": "Section Break",
+   "label": "Applicant Address"
+  },
+  {
+   "fieldname": "address_line1",
+   "fieldtype": "Data",
+   "label": "Address Line 1"
+  },
+  {
+   "fieldname": "address_line2",
+   "fieldtype": "Data",
+   "label": "Address Line 2"
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "label": "City"
+  },
+  {
+   "fieldname": "state",
+   "fieldtype": "Data",
+   "label": "State / Province"
+  },
+  {
+   "fieldname": "postal_code",
+   "fieldtype": "Data",
+   "label": "Postal Code"
+  },
+  {
+   "fieldname": "country",
+   "fieldtype": "Link",
+   "label": "Country",
+   "options": "Country"
+  },
+  {
+   "fieldname": "previous_school_section",
+   "fieldtype": "Section Break",
+   "label": "Previous School"
+  },
+  {
+   "fieldname": "applying_grade_level",
+   "fieldtype": "Data",
+   "label": "Applying Grade Level"
+  },
+  {
+   "fieldname": "previous_school_name",
+   "fieldtype": "Data",
+   "label": "Previous School Name"
+  },
+  {
+   "fieldname": "previous_grade_level",
+   "fieldtype": "Data",
+   "label": "Previous Grade Level"
+  },
+  {
+   "fieldname": "previous_curriculum",
+   "fieldtype": "Data",
+   "label": "Previous Curriculum"
+  },
+  {
+   "fieldname": "column_break_previous_school",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "previous_school_city",
+   "fieldtype": "Data",
+   "label": "Previous School City"
+  },
+  {
+   "fieldname": "previous_school_country",
+   "fieldtype": "Link",
+   "label": "Previous School Country",
+   "options": "Country"
+  },
+  {
+   "fieldname": "previous_language_of_instruction",
+   "fieldtype": "Data",
+   "label": "Previous Language of Instruction"
+  },
+  {
+   "fieldname": "previous_school_year_completed",
+   "fieldtype": "Data",
+   "label": "Previous School Year Completed"
+  },
+  {
+   "fieldname": "previous_school_notes",
+   "fieldtype": "Small Text",
+   "label": "Previous School Notes"
+  },
+  {
    "fieldname": "title",
    "fieldtype": "Data",
    "hidden": 1,
@@ -379,7 +501,7 @@
  "image_field": "applicant_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-26 13:06:23.000000",
+ "modified": "2026-05-28 17:00:00.000000",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Student Applicant",

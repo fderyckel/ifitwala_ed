@@ -342,6 +342,181 @@
 				</div>
 			</div>
 
+			<div class="admissions-card admissions-card--plain">
+				<p class="type-body-strong text-ink">{{ __('Address') }}</p>
+				<div class="mt-4 grid gap-4 md:grid-cols-2">
+					<label class="block md:col-span-2">
+						<span class="type-caption text-ink/60">{{ __('Address line 1') }}</span>
+						<input
+							v-model="profile.address_line1"
+							type="text"
+							class="admissions-input mt-1"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block md:col-span-2">
+						<span class="type-caption text-ink/60">{{ __('Address line 2') }}</span>
+						<input
+							v-model="profile.address_line2"
+							type="text"
+							class="admissions-input mt-1"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('City') }}</span>
+						<input
+							v-model="profile.city"
+							type="text"
+							class="admissions-input mt-1"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('State / Province') }}</span>
+						<input
+							v-model="profile.state"
+							type="text"
+							class="admissions-input mt-1"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('Postal code') }}</span>
+						<input
+							v-model="profile.postal_code"
+							type="text"
+							class="admissions-input mt-1"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('Country') }}</span>
+						<select
+							v-model="profile.country"
+							class="admissions-input mt-1"
+							:disabled="isReadOnly || saving"
+						>
+							<option value="">{{ __('Select') }}</option>
+							<option
+								v-for="item in options.countries"
+								:key="`address-country-${item.value}`"
+								:value="item.value"
+							>
+								{{ item.label }}
+							</option>
+						</select>
+					</label>
+				</div>
+			</div>
+
+			<div class="admissions-card admissions-card--plain">
+				<p class="type-body-strong text-ink">{{ __('Previous school') }}</p>
+				<div class="mt-4 grid gap-4 md:grid-cols-2">
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('Applying grade level') }}</span>
+						<input
+							v-model="profile.applying_grade_level"
+							type="text"
+							class="admissions-input mt-1"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('Previous grade level') }}</span>
+						<input
+							v-model="profile.previous_grade_level"
+							type="text"
+							class="admissions-input mt-1"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block md:col-span-2">
+						<span class="type-caption text-ink/60">{{ __('Previous school name') }}</span>
+						<input
+							v-model="profile.previous_school_name"
+							type="text"
+							class="admissions-input mt-1"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('Previous curriculum') }}</span>
+						<input
+							v-model="profile.previous_curriculum"
+							type="text"
+							class="admissions-input mt-1"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('Language of instruction') }}</span>
+						<input
+							v-model="profile.previous_language_of_instruction"
+							type="text"
+							class="admissions-input mt-1"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('Previous school city') }}</span>
+						<input
+							v-model="profile.previous_school_city"
+							type="text"
+							class="admissions-input mt-1"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('Previous school country') }}</span>
+						<select
+							v-model="profile.previous_school_country"
+							class="admissions-input mt-1"
+							:disabled="isReadOnly || saving"
+						>
+							<option value="">{{ __('Select') }}</option>
+							<option
+								v-for="item in options.countries"
+								:key="`previous-country-${item.value}`"
+								:value="item.value"
+							>
+								{{ item.label }}
+							</option>
+						</select>
+					</label>
+
+					<label class="block">
+						<span class="type-caption text-ink/60">{{ __('School year completed') }}</span>
+						<input
+							v-model="profile.previous_school_year_completed"
+							type="text"
+							class="admissions-input mt-1"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+
+					<label class="block md:col-span-2">
+						<span class="type-caption text-ink/60">{{ __('Notes') }}</span>
+						<textarea
+							v-model="profile.previous_school_notes"
+							class="admissions-input mt-1 min-h-24"
+							:disabled="isReadOnly || saving"
+						/>
+					</label>
+				</div>
+			</div>
+
 			<div v-if="guardiansEnabled" class="admissions-card admissions-card--plain">
 				<div class="flex flex-wrap items-start justify-between gap-3">
 					<div>
@@ -775,6 +950,21 @@ function createEmptyProfile(): ApplicantProfile {
 		student_nationality: '',
 		student_second_nationality: '',
 		residency_status: '',
+		address_line1: '',
+		address_line2: '',
+		city: '',
+		state: '',
+		postal_code: '',
+		country: '',
+		applying_grade_level: '',
+		previous_school_name: '',
+		previous_grade_level: '',
+		previous_curriculum: '',
+		previous_school_city: '',
+		previous_school_country: '',
+		previous_language_of_instruction: '',
+		previous_school_year_completed: '',
+		previous_school_notes: '',
 	};
 }
 
@@ -1088,6 +1278,21 @@ async function saveProfile() {
 			student_nationality: profile.value.student_nationality || '',
 			student_second_nationality: profile.value.student_second_nationality || '',
 			residency_status: profile.value.residency_status || '',
+			address_line1: profile.value.address_line1 || '',
+			address_line2: profile.value.address_line2 || '',
+			city: profile.value.city || '',
+			state: profile.value.state || '',
+			postal_code: profile.value.postal_code || '',
+			country: profile.value.country || '',
+			applying_grade_level: profile.value.applying_grade_level || '',
+			previous_school_name: profile.value.previous_school_name || '',
+			previous_grade_level: profile.value.previous_grade_level || '',
+			previous_curriculum: profile.value.previous_curriculum || '',
+			previous_school_city: profile.value.previous_school_city || '',
+			previous_school_country: profile.value.previous_school_country || '',
+			previous_language_of_instruction: profile.value.previous_language_of_instruction || '',
+			previous_school_year_completed: profile.value.previous_school_year_completed || '',
+			previous_school_notes: profile.value.previous_school_notes || '',
 		};
 		const currentGuardians = guardianRowsForSubmit(guardians.value);
 		if (

@@ -1,8 +1,37 @@
 // ifitwala_ed/admission/doctype/applicant_enrollment_plan/applicant_enrollment_plan.js
 
+function sync_applicant_full_name(frm) {
+	if (!frm.doc.student_applicant) {
+		frm.set_value("applicant_full_name", "");
+		return;
+	}
+
+	frappe.db
+		.get_value("Student Applicant", frm.doc.student_applicant, ["first_name", "middle_name", "last_name"])
+		.then((res) => {
+			const applicant = res?.message || {};
+			const fullName = [applicant.first_name, applicant.middle_name, applicant.last_name]
+				.map((part) => String(part || "").trim())
+				.filter(Boolean)
+				.join(" ");
+
+			if (frm.doc.applicant_full_name !== fullName) {
+				frm.set_value("applicant_full_name", fullName);
+			}
+		});
+}
+
 frappe.ui.form.on("Applicant Enrollment Plan", {
 	refresh(frm) {
-		if (!frm.doc || frm.is_new()) {
+		if (!frm.doc) {
+			return;
+		}
+
+		if (frm.doc.student_applicant && !frm.doc.applicant_full_name) {
+			sync_applicant_full_name(frm);
+		}
+
+		if (frm.is_new()) {
 			return;
 		}
 
@@ -81,5 +110,9 @@ frappe.ui.form.on("Applicant Enrollment Plan", {
 				frappe.set_route("Form", "Program Enrollment Request", frm.doc.program_enrollment_request);
 			}, __("Actions"));
 		}
+	},
+
+	student_applicant(frm) {
+		sync_applicant_full_name(frm);
 	},
 });

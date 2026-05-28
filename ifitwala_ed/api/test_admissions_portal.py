@@ -11,6 +11,9 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan import (
+    ensure_applicant_enrollment_plan,
+)
 from ifitwala_ed.api import admissions_portal as admissions_portal_api
 from ifitwala_ed.api.admissions_portal import (
     _derive_next_actions,
@@ -1122,6 +1125,85 @@ class TestSubmitApplication(FrappeTestCase):
         self.assertEqual(
             rows_by_course.get(context["optional_course"].name, {}).get("basket_groups"),
             [humanities_group, sciences_group],
+        )
+
+    def test_get_applicant_enrollment_choices_exposes_editable_applicant_intent_before_offer(self):
+        humanities_group = f"Group 3 Humanities {frappe.generate_hash(length=6)}"
+        context = self._create_offer_plan(
+            status="Draft",
+            optional_course_basket_groups=[humanities_group],
+        )
+        self.applicant.db_set("application_status", "In Progress", update_modified=False)
+
+        frappe.set_user(self.applicant_user)
+        payload = get_applicant_enrollment_choices(student_applicant=self.applicant.name)
+
+        self.assertEqual(payload.get("source"), "applicant_intent")
+        self.assertTrue((payload.get("plan") or {}).get("can_edit_choices"))
+        rows_by_course = {row.get("course"): row for row in (payload.get("courses") or [])}
+        self.assertIn(context["optional_course"].name, rows_by_course)
+
+    def test_update_applicant_enrollment_choices_persists_applicant_intent_before_offer(self):
+        humanities_group = f"Group 3 Humanities {frappe.generate_hash(length=6)}"
+        context = self._create_offer_plan(
+            status="Draft",
+            optional_course_basket_groups=[humanities_group],
+        )
+        self.applicant.db_set("application_status", "In Progress", update_modified=False)
+
+        frappe.set_user(self.applicant_user)
+        payload = update_applicant_enrollment_choices(
+            student_applicant=self.applicant.name,
+            courses=[
+                {
+                    "course": context["optional_course"].name,
+                    "applied_basket_group": humanities_group,
+                    "choice_rank": 1,
+                }
+            ],
+        )
+
+        self.assertTrue(payload.get("ok"))
+        self.assertEqual(payload.get("source"), "applicant_intent")
+        self.applicant.reload()
+        rows_by_course = {row.course: row for row in self.applicant.get("course_intents") or []}
+        self.assertEqual(
+            (rows_by_course[context["optional_course"].name].applied_basket_group or "").strip(),
+            humanities_group,
+        )
+        self.assertEqual(rows_by_course[context["optional_course"].name].choice_rank, 1)
+
+    def test_applicant_enrollment_plan_seeds_from_applicant_course_intent(self):
+        humanities_group = f"Group 3 Humanities {frappe.generate_hash(length=6)}"
+        context = self._create_offer_plan(
+            status="Draft",
+            optional_course_basket_groups=[humanities_group],
+        )
+        frappe.delete_doc(
+            "Applicant Enrollment Plan",
+            context["plan"].name,
+            force=1,
+            ignore_permissions=True,
+        )
+        self.applicant.db_set("application_status", "In Progress", update_modified=False)
+
+        frappe.set_user(self.applicant_user)
+        update_applicant_enrollment_choices(
+            student_applicant=self.applicant.name,
+            courses=[
+                {
+                    "course": context["optional_course"].name,
+                    "applied_basket_group": humanities_group,
+                }
+            ],
+        )
+
+        frappe.set_user("Administrator")
+        plan = ensure_applicant_enrollment_plan(self.applicant.name)
+        rows_by_course = {row.course: row for row in plan.get("courses") or []}
+        self.assertEqual(
+            (rows_by_course[context["optional_course"].name].applied_basket_group or "").strip(),
+            humanities_group,
         )
 
     def test_update_applicant_enrollment_choices_persists_selection_and_required_group_resolution(self):

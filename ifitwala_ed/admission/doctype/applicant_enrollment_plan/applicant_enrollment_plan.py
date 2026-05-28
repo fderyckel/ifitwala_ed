@@ -29,6 +29,14 @@ STAFF_ROLES = {
     "Administrator",
 }
 PORTAL_ROLE = "Admissions Applicant"
+APPLICANT_INTENT_EDITABLE_STATUSES = {"Invited", "In Progress", "Missing Info"}
+FAMILY_FACING_OFFER_STATUSES = {
+    "Offer Sent",
+    "Offer Accepted",
+    "Offer Declined",
+    "Offer Expired",
+    "Hydrated",
+}
 DEPOSIT_INVOICE_ROLES = {
     "Admission Manager",
     "System Manager",
@@ -107,6 +115,70 @@ def _normalize_plan_rows(rows) -> list[dict]:
     return normalized
 
 
+def _rows_to_store_for_offering(program_offering: str, courses: list[dict] | None) -> list[dict]:
+    if not program_offering:
+        frappe.throw(_("Program Offering is required before course choices can be updated."))
+
+    seen_courses = set()
+    duplicate_courses = set()
+    for row in courses or []:
+        course = ((row or {}).get("course") or "").strip()
+        if not course:
+            continue
+        if course in seen_courses:
+            duplicate_courses.add(course)
+            continue
+        seen_courses.add(course)
+    if duplicate_courses:
+        frappe.throw(
+            _("Each selected course can only be submitted once: {courses}.").format(
+                courses=", ".join(sorted(duplicate_courses))
+            )
+        )
+
+    submitted_rows = _normalize_plan_rows(courses or [])
+    submitted_by_course = {row["course"]: row for row in submitted_rows}
+    offering_semantics = get_offering_course_semantics(program_offering)
+    allowed_courses = set(offering_semantics.keys())
+    unknown_courses = sorted(course for course in submitted_by_course if course not in allowed_courses)
+    if unknown_courses:
+        frappe.throw(
+            _("One or more selected courses are not part of this Program Offering: {courses}.").format(
+                courses=", ".join(unknown_courses)
+            )
+        )
+
+    rows_to_store = []
+    for course, semantics in offering_semantics.items():
+        submitted = submitted_by_course.get(course)
+        if semantics.get("required"):
+            if not submitted:
+                continue
+            if not (submitted.get("applied_basket_group") or submitted.get("choice_rank") is not None):
+                continue
+            rows_to_store.append(
+                {
+                    "course": course,
+                    "applied_basket_group": submitted.get("applied_basket_group") or "",
+                    "choice_rank": submitted.get("choice_rank"),
+                }
+            )
+            continue
+
+        if not submitted:
+            continue
+
+        rows_to_store.append(
+            {
+                "course": course,
+                "applied_basket_group": submitted.get("applied_basket_group") or "",
+                "choice_rank": submitted.get("choice_rank"),
+            }
+        )
+
+    return rows_to_store
+
+
 def _get_required_offering_basket_groups(program_offering: str) -> list[str]:
     if not program_offering:
         return []
@@ -135,6 +207,18 @@ def _get_required_offering_basket_groups(program_offering: str) -> list[str]:
 
 def _as_clean_text(value) -> str:
     return str(value or "").strip()
+
+
+def _compose_applicant_full_name(applicant_row: dict) -> str:
+    return " ".join(
+        part
+        for part in (
+            _as_clean_text(applicant_row.get("first_name")),
+            _as_clean_text(applicant_row.get("middle_name")),
+            _as_clean_text(applicant_row.get("last_name")),
+        )
+        if part
+    )
 
 
 def _as_money(value) -> float:
@@ -386,14 +470,53 @@ def get_effective_applicant_enrollment_plan_rows(plan: "ApplicantEnrollmentPlan"
     return effective_rows
 
 
-def get_applicant_enrollment_choice_state(plan: "ApplicantEnrollmentPlan") -> dict:
-    offering_name = (plan.program_offering or "").strip()
+def _choice_state_from_rows(
+    *,
+    source: str,
+    name: str,
+    status: str,
+    academic_year: str = "",
+    term: str = "",
+    program: str = "",
+    program_offering: str = "",
+    offer_expires_on=None,
+    rows=None,
+    can_edit_choices: bool = False,
+) -> dict:
+    offering_name = (program_offering or "").strip()
     offering_semantics = get_offering_course_semantics(offering_name) if offering_name else {}
-    explicit_rows = _normalize_plan_rows(plan.get("courses") or [])
+    explicit_rows = _normalize_plan_rows(rows or [])
     explicit_by_course = {row["course"]: row for row in explicit_rows}
-    effective_rows = get_effective_applicant_enrollment_plan_rows(plan)
-    effective_by_course = {row["course"]: row for row in effective_rows}
+    effective_rows = []
+    effective_by_course = {}
     required_basket_groups = _get_required_offering_basket_groups(offering_name)
+
+    for row in explicit_rows:
+        course = row.get("course")
+        if not course or (offering_semantics and course not in offering_semantics):
+            continue
+        semantics = offering_semantics.get(course) or {}
+        normalized = {
+            "course": course,
+            "required": 1 if semantics.get("required") else 0,
+            "applied_basket_group": (row.get("applied_basket_group") or "").strip(),
+            "choice_rank": _normalize_choice_rank(row.get("choice_rank")),
+        }
+        effective_rows.append(normalized)
+        effective_by_course[course] = normalized
+
+    for course, semantics in offering_semantics.items():
+        if not semantics.get("required") or course in effective_by_course:
+            continue
+        normalized = {
+            "course": course,
+            "required": 1,
+            "applied_basket_group": "",
+            "choice_rank": None,
+        }
+        effective_rows.append(normalized)
+        effective_by_course[course] = normalized
+
     basket_result = (
         evaluate_basket_selection(program_offering=offering_name, requested_courses=effective_rows)
         if offering_name
@@ -447,29 +570,30 @@ def get_applicant_enrollment_choice_state(plan: "ApplicantEnrollmentPlan") -> di
 
     basket_status = (basket_result.get("status") or "").strip() or None
     ready_for_offer_response = basket_status in {"ok", "not_configured"}
-    can_edit_choices = (plan.status or "").strip() == "Offer Sent"
 
     return {
+        "source": source,
         "plan": {
-            "name": plan.name,
-            "status": (plan.status or "").strip(),
-            "academic_year": (plan.academic_year or "").strip(),
-            "term": (plan.term or "").strip(),
-            "program": (plan.program or "").strip(),
+            "name": name,
+            "status": (status or "").strip(),
+            "academic_year": (academic_year or "").strip(),
+            "term": (term or "").strip(),
+            "program": (program or "").strip(),
             "program_offering": offering_name,
-            "offer_expires_on": plan.offer_expires_on,
-            "can_edit_choices": can_edit_choices,
-            "can_respond_to_offer": can_edit_choices,
+            "offer_expires_on": offer_expires_on,
+            "can_edit_choices": bool(can_edit_choices),
+            "can_respond_to_offer": source == "enrollment_offer" and bool(can_edit_choices),
         },
         "summary": {
             "has_plan": True,
             "has_courses": bool(courses),
             "has_selectable_courses": any(not bool(row.get("required")) for row in courses),
-            "can_edit_choices": can_edit_choices,
+            "can_edit_choices": bool(can_edit_choices),
             "ready_for_offer_response": ready_for_offer_response,
             "required_course_count": required_count,
             "optional_course_count": optional_count,
             "selected_optional_count": selected_optional_count,
+            "is_applicant_intent": source == "applicant_intent",
         },
         "validation": {
             "status": basket_status,
@@ -483,6 +607,52 @@ def get_applicant_enrollment_choice_state(plan: "ApplicantEnrollmentPlan") -> di
         "required_basket_groups": required_basket_groups,
         "courses": courses,
     }
+
+
+def get_applicant_enrollment_choice_state(plan: "ApplicantEnrollmentPlan") -> dict:
+    can_edit_choices = (plan.status or "").strip() == "Offer Sent"
+    return _choice_state_from_rows(
+        source="enrollment_offer",
+        name=plan.name,
+        status=plan.status,
+        academic_year=plan.academic_year,
+        term=plan.term,
+        program=plan.program,
+        program_offering=plan.program_offering,
+        offer_expires_on=plan.offer_expires_on,
+        rows=plan.get("courses") or [],
+        can_edit_choices=can_edit_choices,
+    )
+
+
+def get_student_applicant_course_intent_state(applicant) -> dict:
+    application_status = (getattr(applicant, "application_status", "") or "").strip()
+    can_edit_choices = application_status in APPLICANT_INTENT_EDITABLE_STATUSES
+    return _choice_state_from_rows(
+        source="applicant_intent",
+        name=getattr(applicant, "name", ""),
+        status=application_status,
+        academic_year=getattr(applicant, "academic_year", ""),
+        term=getattr(applicant, "term", ""),
+        program=getattr(applicant, "program", ""),
+        program_offering=getattr(applicant, "program_offering", ""),
+        rows=applicant.get("course_intents") or [],
+        can_edit_choices=can_edit_choices,
+    )
+
+
+def update_student_applicant_course_intents(applicant, *, user: str, courses: list[dict] | None = None) -> dict:
+    if (getattr(applicant, "applicant_user", "") or "").strip() != user:
+        frappe.throw(_("You do not have permission to update course intent."), frappe.PermissionError)
+    if (getattr(applicant, "application_status", "") or "").strip() not in APPLICANT_INTENT_EDITABLE_STATUSES:
+        frappe.throw(_("Course intent can only be updated while the application is editable."))
+    if not (getattr(applicant, "program_offering", "") or "").strip():
+        frappe.throw(_("Program Offering is required before course intent can be updated."))
+
+    applicant.set("course_intents", _rows_to_store_for_offering(applicant.program_offering, courses or []))
+    applicant.save(ignore_permissions=True)
+    applicant.reload()
+    return get_student_applicant_course_intent_state(applicant)
 
 
 class ApplicantEnrollmentPlan(Document):
@@ -506,6 +676,9 @@ class ApplicantEnrollmentPlan(Document):
             self.student_applicant,
             [
                 "name",
+                "first_name",
+                "middle_name",
+                "last_name",
                 "organization",
                 "school",
                 "academic_year",
@@ -527,6 +700,7 @@ class ApplicantEnrollmentPlan(Document):
         return applicant_row
 
     def _sync_from_applicant(self, applicant_row: dict):
+        self.applicant_full_name = _compose_applicant_full_name(applicant_row)
         self.organization = applicant_row.get("organization")
         self.school = applicant_row.get("school")
         self.student = applicant_row.get("student") or None
@@ -980,67 +1154,7 @@ class ApplicantEnrollmentPlan(Document):
         self._ensure_portal_offer_actor(user)
         if (self.status or "").strip() != "Offer Sent":
             frappe.throw(_("Course choices can only be updated while the offer is open."))
-        if not self.program_offering:
-            frappe.throw(_("Program Offering is required before course choices can be updated."))
-
-        seen_courses = set()
-        duplicate_courses = set()
-        for row in courses or []:
-            course = ((row or {}).get("course") or "").strip()
-            if not course:
-                continue
-            if course in seen_courses:
-                duplicate_courses.add(course)
-                continue
-            seen_courses.add(course)
-        if duplicate_courses:
-            frappe.throw(
-                _("Each selected course can only be submitted once: {courses}.").format(
-                    courses=", ".join(sorted(duplicate_courses))
-                )
-            )
-
-        submitted_rows = _normalize_plan_rows(courses or [])
-        submitted_by_course = {row["course"]: row for row in submitted_rows}
-        offering_semantics = get_offering_course_semantics(self.program_offering)
-        allowed_courses = set(offering_semantics.keys())
-        unknown_courses = sorted(course for course in submitted_by_course if course not in allowed_courses)
-        if unknown_courses:
-            frappe.throw(
-                _("One or more selected courses are not part of this Program Offering: {courses}.").format(
-                    courses=", ".join(unknown_courses)
-                )
-            )
-
-        rows_to_store = []
-        for course, semantics in offering_semantics.items():
-            submitted = submitted_by_course.get(course)
-            if semantics.get("required"):
-                if not submitted:
-                    continue
-                if not (submitted.get("applied_basket_group") or submitted.get("choice_rank") is not None):
-                    continue
-                rows_to_store.append(
-                    {
-                        "course": course,
-                        "applied_basket_group": submitted.get("applied_basket_group") or "",
-                        "choice_rank": submitted.get("choice_rank"),
-                    }
-                )
-                continue
-
-            if not submitted:
-                continue
-
-            rows_to_store.append(
-                {
-                    "course": course,
-                    "applied_basket_group": submitted.get("applied_basket_group") or "",
-                    "choice_rank": submitted.get("choice_rank"),
-                }
-            )
-
-        self.set("courses", rows_to_store)
+        self.set("courses", _rows_to_store_for_offering(self.program_offering, courses or []))
         self.save(ignore_permissions=True)
         self.reload()
         return get_applicant_enrollment_choice_state(self)
@@ -1136,6 +1250,9 @@ def ensure_applicant_enrollment_plan(student_applicant: str) -> ApplicantEnrollm
             "term": applicant.term,
             "program": applicant.program,
             "program_offering": applicant.program_offering,
+            "courses": _rows_to_store_for_offering(applicant.program_offering, applicant.get("course_intents") or [])
+            if applicant.program_offering
+            else [],
         }
     )
     doc.insert(ignore_permissions=True)

@@ -106,6 +106,21 @@ export type ApplicantProfile = {
   student_nationality?: string | null
   student_second_nationality?: string | null
   residency_status?: string | null
+  address_line1?: string | null
+  address_line2?: string | null
+  city?: string | null
+  state?: string | null
+  postal_code?: string | null
+  country?: string | null
+  applying_grade_level?: string | null
+  previous_school_name?: string | null
+  previous_grade_level?: string | null
+  previous_curriculum?: string | null
+  previous_school_city?: string | null
+  previous_school_country?: string | null
+  previous_language_of_instruction?: string | null
+  previous_school_year_completed?: string | null
+  previous_school_notes?: string | null
 }
 
 export type ApplicantGuardianProfile = {

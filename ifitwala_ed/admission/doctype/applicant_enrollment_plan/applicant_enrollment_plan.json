@@ -8,6 +8,7 @@
  "field_order": [
   "section_break_identity",
   "student_applicant",
+  "applicant_full_name",
   "student",
   "column_break_zhca",
   "organization",
@@ -64,6 +65,13 @@
    "label": "Student Applicant",
    "options": "Student Applicant",
    "reqd": 1
+  },
+  {
+   "fieldname": "applicant_full_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Applicant Full Name",
+   "read_only": 1
   },
   {
    "fieldname": "student",

@@ -18,6 +18,7 @@ export type ApplicantEnrollmentChoiceCourse = {
 }
 
 export type Response = {
+  source?: 'none' | 'applicant_intent' | 'enrollment_offer' | string
   plan: {
     name: string
     status: string
@@ -39,6 +40,7 @@ export type Response = {
     optional_course_count: number
     selected_optional_count: number
     message?: string | null
+    is_applicant_intent?: boolean
   }
   validation: {
     status?: string | null
