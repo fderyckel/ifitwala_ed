@@ -17,12 +17,15 @@ STUDENT_LOG_DOCTYPE = "Student Log"
 FOLLOW_UP_DOCTYPE = "Student Log Follow Up"
 INQUIRY_DOCTYPE = "Inquiry"
 APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE = ASSIGNMENT_DOCTYPE
+APPLICANT_INTERVIEW_DOCTYPE = "Applicant Interview"
+APPLICANT_INTERVIEW_FEEDBACK_DOCTYPE = "Applicant Interview Feedback"
 POLICY_VERSION_DOCTYPE = "Policy Version"
 
 ACTION_STUDENT_LOG_SUBMIT = "student_log.follow_up.act.submit"
 ACTION_STUDENT_LOG_REVIEW = "student_log.follow_up.review.decide"
 ACTION_INQUIRY_FIRST_CONTACT = "inquiry.follow_up.act.first_contact"
 ACTION_APPLICANT_REVIEW_SUBMIT = "applicant_review.assignment.decide"
+ACTION_APPLICANT_INTERVIEW_FEEDBACK_SUBMIT = "applicant_interview.feedback.submit"
 ACTION_POLICY_STAFF_SIGN = "policy_acknowledgement.staff.sign"
 
 # Focus action types (v1)
@@ -31,6 +34,7 @@ ACTION_MODE = {
     ACTION_STUDENT_LOG_REVIEW: "author",
     ACTION_INQUIRY_FIRST_CONTACT: "assignee",
     ACTION_APPLICANT_REVIEW_SUBMIT: "assignee",
+    ACTION_APPLICANT_INTERVIEW_FEEDBACK_SUBMIT: "assignee",
     ACTION_POLICY_STAFF_SIGN: "assignee",
 }
 

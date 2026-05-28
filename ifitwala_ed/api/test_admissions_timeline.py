@@ -111,7 +111,7 @@ class TestAdmissionsTimeline(FrappeTestCase):
         try:
             frappe.set_user("Administrator")
             with patch(
-                "ifitwala_ed.api.admissions_timeline.get_admissions_thread_summaries_for_applicants",
+                "ifitwala_ed.admission.api.timeline.context.get_admissions_thread_summaries_for_applicants",
                 return_value={
                     applicant.name: {
                         "thread_name": "COMM-TIMELINE-0001",

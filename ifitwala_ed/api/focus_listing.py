@@ -9,11 +9,13 @@ from frappe import _
 from ifitwala_ed.admission.admission_utils import is_admissions_workspace_user
 from ifitwala_ed.admission.applicant_review_workflow import TARGET_DOCUMENT_ITEM
 from ifitwala_ed.api.focus_shared import (
+    ACTION_APPLICANT_INTERVIEW_FEEDBACK_SUBMIT,
     ACTION_APPLICANT_REVIEW_SUBMIT,
     ACTION_INQUIRY_FIRST_CONTACT,
     ACTION_POLICY_STAFF_SIGN,
     ACTION_STUDENT_LOG_REVIEW,
     ACTION_STUDENT_LOG_SUBMIT,
+    APPLICANT_INTERVIEW_DOCTYPE,
     APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE,
     INQUIRY_DOCTYPE,
     POLICY_VERSION_DOCTYPE,
@@ -454,7 +456,115 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
         )
 
     # ------------------------------------------------------------
-    # E) Staff policy signature action items (ToDo -> Policy Version)
+    # E) Admissions interview feedback action items
+    # ------------------------------------------------------------
+    interview_rows = frappe.db.sql(
+        """
+        select
+            ai.name as interview_name,
+            ai.student_applicant,
+            ai.interview_type,
+            ai.mode,
+            ai.interview_date,
+            ai.interview_start,
+            ai.interview_end,
+            ai.school_event,
+            sa.first_name,
+            sa.middle_name,
+            sa.last_name,
+            sa.school,
+            sa.program_offering,
+            feedback.name as feedback_name,
+            feedback.feedback_status,
+            feedback.submitted_on
+        from `tabApplicant Interview` ai
+        join `tabApplicant Interviewer` interviewer
+          on interviewer.parent = ai.name
+         and interviewer.parenttype = 'Applicant Interview'
+         and interviewer.parentfield = 'interviewers'
+         and interviewer.interviewer = %(user)s
+        join `tabStudent Applicant` sa
+          on sa.name = ai.student_applicant
+        left join `tabApplicant Interview Feedback` feedback
+          on feedback.applicant_interview = ai.name
+         and feedback.interviewer_user = %(user)s
+        where ai.docstatus < 2
+          and (%(open_only)s = 0 or ifnull(feedback.feedback_status, 'Draft') != 'Submitted')
+        order by
+            case when ai.interview_start is null then 1 else 0 end asc,
+            ai.interview_start asc,
+            ai.interview_date asc,
+            ai.modified desc
+        limit %(limit)s offset %(offset)s
+        """,
+        {
+            "user": user,
+            "open_only": open_only,
+            "limit": limit,
+            "offset": offset,
+        },
+        as_dict=True,
+    )
+
+    for row in interview_rows:
+        interview_name = (row.get("interview_name") or "").strip()
+        if not interview_name:
+            continue
+
+        applicant_name = _applicant_display_name_from_row(row)
+        due_source = row.get("interview_start") or row.get("interview_date")
+        due = str(frappe.utils.getdate(due_source)) if due_source else None
+        scheduled_label = None
+        if row.get("interview_start"):
+            scheduled_label = frappe.utils.format_datetime(row.get("interview_start"))
+        elif row.get("interview_date"):
+            scheduled_label = str(row.get("interview_date"))
+        badge = _badge_from_due_date(due)
+        subtitle_parts = [applicant_name]
+        if scheduled_label:
+            subtitle_parts.append(scheduled_label)
+        if row.get("school"):
+            subtitle_parts.append(row.get("school"))
+
+        items.append(
+            {
+                "id": build_focus_item_id(
+                    "applicant_interview",
+                    APPLICANT_INTERVIEW_DOCTYPE,
+                    interview_name,
+                    ACTION_APPLICANT_INTERVIEW_FEEDBACK_SUBMIT,
+                    user,
+                ),
+                "kind": "action",
+                "title": "Interview feedback",
+                "subtitle": " • ".join(part for part in subtitle_parts if part),
+                "badge": badge,
+                "priority": 88,
+                "due_date": due,
+                "action_type": ACTION_APPLICANT_INTERVIEW_FEEDBACK_SUBMIT,
+                "reference_doctype": APPLICANT_INTERVIEW_DOCTYPE,
+                "reference_name": interview_name,
+                "payload": {
+                    "applicant_name": applicant_name,
+                    "student_applicant": row.get("student_applicant"),
+                    "school": row.get("school"),
+                    "program_offering": row.get("program_offering"),
+                    "interview_type": row.get("interview_type"),
+                    "mode": row.get("mode"),
+                    "interview_date": str(row.get("interview_date")) if row.get("interview_date") else None,
+                    "interview_start": str(row.get("interview_start")) if row.get("interview_start") else None,
+                    "interview_end": str(row.get("interview_end")) if row.get("interview_end") else None,
+                    "school_event": row.get("school_event"),
+                    "feedback_name": row.get("feedback_name"),
+                    "feedback_status": row.get("feedback_status") or "Pending",
+                    "submitted_on": str(row.get("submitted_on")) if row.get("submitted_on") else None,
+                },
+                "permissions": {"can_open": True},
+            }
+        )
+
+    # ------------------------------------------------------------
+    # F) Staff policy signature action items (ToDo -> Policy Version)
     # ------------------------------------------------------------
     active_employee = _active_employee_row(user)
     if active_employee:

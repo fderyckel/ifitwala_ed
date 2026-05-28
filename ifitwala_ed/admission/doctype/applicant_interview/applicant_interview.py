@@ -111,9 +111,18 @@ class ApplicantInterview(Document):
         # Frappe calls on_update during insert as well; avoid duplicate insert-time audit rows.
         if getattr(self.flags, "in_insert", False):
             return
-        if not self.get_doc_before_save():
+        before = self.get_doc_before_save()
+        if not before:
             return
+        self._sync_linked_school_event_projection_if_needed(before)
         self._add_audit_comment("Interview updated")
+
+    def _sync_linked_school_event_projection_if_needed(self, before):
+        if not (self.school_event or "").strip():
+            return
+        if not _school_event_projection_changed(self, before):
+            return
+        _sync_school_event_projection_for_interview(self)
 
     def _validate_permissions(self):
         _assert_manage_interview_permission(
@@ -1799,6 +1808,82 @@ def _create_school_event_for_interview(
     school_event.insert()
 
     return school_event
+
+
+def _school_event_projection_changed(interview_doc: ApplicantInterview, before_doc: Document) -> bool:
+    tracked_fields = ("student_applicant", "interview_start", "interview_end", "location", "school_event")
+    for fieldname in tracked_fields:
+        if _projection_compare_value(interview_doc.get(fieldname)) != _projection_compare_value(
+            before_doc.get(fieldname)
+        ):
+            return True
+
+    current_users = _normalized_interviewer_rows(interview_doc.get("interviewers") or [])
+    before_users = _normalized_interviewer_rows(before_doc.get("interviewers") or [])
+    return current_users != before_users
+
+
+def _projection_compare_value(value) -> str:
+    if value is None:
+        return ""
+    return str(value)
+
+
+def _sync_school_event_projection_for_interview(interview_doc: ApplicantInterview) -> None:
+    school_event_name = (interview_doc.school_event or "").strip()
+    if not school_event_name:
+        return
+    if not frappe.db.exists("School Event", school_event_name):
+        frappe.throw(
+            _("Linked School Event {school_event} was not found.").format(school_event=school_event_name),
+            frappe.DoesNotExistError,
+        )
+
+    if not interview_doc.interview_start or not interview_doc.interview_end:
+        frappe.throw(
+            _("Scheduled interviews must keep Interview Start and Interview End while a calendar event is linked."),
+            title=_("Missing Interview Time"),
+        )
+
+    interviewer_users = _normalized_interviewer_rows(interview_doc.get("interviewers") or [])
+    _assert_users_exist_and_enabled(interviewer_users)
+    _resolve_employee_rows_for_users(interviewer_users)
+
+    applicant_row = frappe.db.get_value(
+        "Student Applicant",
+        interview_doc.student_applicant,
+        ["name", "first_name", "middle_name", "last_name", "school"],
+        as_dict=True,
+    )
+    if not applicant_row:
+        frappe.throw(
+            _("Student Applicant {student_applicant} was not found.").format(
+                student_applicant=interview_doc.student_applicant
+            ),
+            frappe.DoesNotExistError,
+        )
+
+    school_event = frappe.get_doc("School Event", school_event_name)
+    school_event.subject = _("Admission Interview - {applicant}").format(
+        applicant=_applicant_display_name(applicant_row)
+    )
+    school_event.event_category = "Appointment"
+    school_event.all_day = 0
+    school_event.starts_on = interview_doc.interview_start
+    school_event.ends_on = interview_doc.interview_end
+    school_event.school = applicant_row.get("school")
+    school_event.location = (interview_doc.location or "").strip() or None
+    school_event.reference_type = INTERVIEW_EVENT_REFERENCE_TYPE
+    school_event.reference_name = interview_doc.name
+
+    school_event.set("audience", [])
+    school_event.append("audience", {"audience_type": "Custom Users"})
+    school_event.set("participants", [])
+    for user in interviewer_users:
+        school_event.append("participants", {"participant": user})
+
+    school_event.flags.ignore_permissions = True
+    school_event.save(ignore_permissions=True)
 
 
 def _applicant_display_name(applicant_row: frappe._dict) -> str:

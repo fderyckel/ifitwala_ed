@@ -13,6 +13,7 @@ from ifitwala_ed.admission.doctype.applicant_interview.applicant_interview impor
     schedule_applicant_interview,
 )
 from ifitwala_ed.api.file_access import download_admissions_file
+from ifitwala_ed.api.focus import get_focus_context, list_focus_items
 from ifitwala_ed.api.recommendation_intake import (
     create_recommendation_request,
     get_recommendation_review_payload,
@@ -176,6 +177,103 @@ class TestApplicantInterview(FrappeTestCase):
         )
 
         self.assertEqual(employee.user_id, interviewer.name)
+
+    def test_linked_school_event_syncs_when_interviewer_panel_changes(self):
+        interviewer_one = self._create_user("panel_one")
+        employee_one = self._create_employee(interviewer_one, first_name="Panel", last_name="One")
+        interviewer_two = self._create_user("panel_two")
+        employee_two = self._create_employee(interviewer_two, first_name="Panel", last_name="Two")
+        room = self._create_location("panel-sync-room")
+
+        payload = schedule_applicant_interview(
+            student_applicant=self.applicant.name,
+            interview_start="2030-05-02 10:00:00",
+            duration_minutes=45,
+            primary_interviewer=interviewer_one.name,
+            interviewer_users=[interviewer_one.name],
+            interview_type="Student",
+            mode="In Person",
+            location=room.name,
+        )
+        self.assertTrue(payload.get("ok"))
+        self._created.append(("School Event", payload.get("school_event")))
+        self._created.append(("Applicant Interview", payload.get("interview")))
+
+        interview = frappe.get_doc("Applicant Interview", payload.get("interview"))
+        interview.append("interviewers", {"interviewer": interviewer_two.name})
+        interview.save(ignore_permissions=True)
+
+        school_event = frappe.get_doc("School Event", payload.get("school_event"))
+        participants = sorted(row.participant for row in school_event.participants)
+        self.assertEqual(participants, sorted([interviewer_one.name, interviewer_two.name]))
+        self.assertEqual(school_event.reference_type, "Applicant Interview")
+        self.assertEqual(school_event.reference_name, interview.name)
+        self.assertEqual(school_event.location, room.name)
+
+        for employee in (employee_one, employee_two):
+            self.assertTrue(
+                frappe.db.exists(
+                    "Employee Booking",
+                    {
+                        "source_doctype": "School Event",
+                        "source_name": school_event.name,
+                        "employee": employee.name,
+                    },
+                )
+            )
+
+    def test_assigned_interviewer_gets_focus_item_until_feedback_submitted(self):
+        interviewer = self._create_user("focus_interviewer")
+        self._create_employee(interviewer, first_name="Focus", last_name="Interviewer")
+        outsider = self._create_user("focus_outsider")
+        self._create_employee(outsider, first_name="Focus", last_name="Outsider")
+
+        interview = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview",
+                "student_applicant": self.applicant.name,
+                "interview_date": "2030-06-18",
+                "interview_start": "2030-06-18 09:00:00",
+                "interview_end": "2030-06-18 09:30:00",
+                "interview_type": "Student",
+                "interviewers": [{"interviewer": interviewer.name}],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Interview", interview.name))
+
+        frappe.set_user(outsider.name)
+        outsider_items = list_focus_items(open_only=1, limit=50, offset=0)
+        self.assertFalse(any(row.get("reference_name") == interview.name for row in outsider_items))
+
+        frappe.set_user(interviewer.name)
+        items = list_focus_items(open_only=1, limit=50, offset=0)
+        focus_item = next(
+            (
+                row
+                for row in items
+                if row.get("reference_name") == interview.name
+                and row.get("action_type") == "applicant_interview.feedback.submit"
+            ),
+            None,
+        )
+        self.assertIsNotNone(focus_item)
+        self.assertEqual(focus_item.get("reference_doctype"), "Applicant Interview")
+        self.assertEqual((focus_item.get("payload") or {}).get("student_applicant"), self.applicant.name)
+
+        context = get_focus_context(focus_item_id=focus_item.get("id"))
+        self.assertEqual(context.get("reference_name"), interview.name)
+        self.assertEqual((context.get("interview_feedback") or {}).get("interview"), interview.name)
+
+        feedback_payload = save_my_interview_feedback(
+            interview=interview.name,
+            strengths="Clear and thoughtful answers.",
+            feedback_status="Submitted",
+        )
+        if feedback_payload.get("feedback_name"):
+            self._created.append(("Applicant Interview Feedback", feedback_payload.get("feedback_name")))
+
+        items_after = list_focus_items(open_only=1, limit=50, offset=0)
+        self.assertFalse(any(row.get("reference_name") == interview.name for row in items_after))
 
     def test_schedule_applicant_interview_returns_conflicts_with_suggestions(self):
         interviewer = self._create_user("conflict")

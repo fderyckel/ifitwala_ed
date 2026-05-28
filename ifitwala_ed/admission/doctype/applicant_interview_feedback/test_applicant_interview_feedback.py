@@ -1,6 +1,7 @@
 # ifitwala_ed/admission/doctype/applicant_interview_feedback/test_applicant_interview_feedback.py
 
 import frappe
+from frappe.client import get_value
 from frappe.tests.utils import FrappeTestCase
 
 
@@ -78,6 +79,70 @@ class TestApplicantInterviewFeedback(FrappeTestCase):
                     "strengths": "Attempt",
                 }
             ).insert()
+
+    def test_employee_interviewer_can_lookup_missing_feedback_before_create(self):
+        self._ensure_role("Employee")
+        interviewer = self._create_user("feedback-employee-interviewer", roles=["Employee"])
+        self._create_employee(interviewer, first_name="Employee", last_name="Interviewer")
+        outsider = self._create_user("feedback-employee-outsider", roles=["Employee"])
+        self._create_employee(outsider, first_name="Employee", last_name="Outsider")
+
+        interview = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview",
+                "student_applicant": self.applicant.name,
+                "interview_date": "2030-07-02",
+                "interview_start": "2030-07-02 10:00:00",
+                "interview_end": "2030-07-02 10:30:00",
+                "interview_type": "Student",
+                "interviewers": [{"interviewer": interviewer.name}],
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Applicant Interview", interview.name))
+
+        frappe.set_user(interviewer.name)
+
+        missing = get_value(
+            "Applicant Interview Feedback",
+            "name",
+            filters={
+                "applicant_interview": interview.name,
+                "interviewer_user": interviewer.name,
+            },
+        )
+        self.assertEqual(missing, {})
+
+        doc = frappe.get_doc(
+            {
+                "doctype": "Applicant Interview Feedback",
+                "applicant_interview": interview.name,
+                "interviewer_user": interviewer.name,
+                "feedback_status": "Draft",
+                "strengths": "Ready to learn",
+            }
+        ).insert()
+        self._created.append(("Applicant Interview Feedback", doc.name))
+
+        existing = get_value(
+            "Applicant Interview Feedback",
+            "name",
+            filters={
+                "applicant_interview": interview.name,
+                "interviewer_user": interviewer.name,
+            },
+        )
+        self.assertEqual(existing.get("name"), doc.name)
+
+        frappe.set_user(outsider.name)
+        hidden = get_value(
+            "Applicant Interview Feedback",
+            "name",
+            filters={
+                "applicant_interview": interview.name,
+                "interviewer_user": interviewer.name,
+            },
+        )
+        self.assertEqual(hidden, {})
 
     def _create_organization(self) -> str:
         doc = frappe.get_doc(

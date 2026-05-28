@@ -42,9 +42,9 @@ class TestAdmissionsCommunicationSummaries(FrappeTestCase):
             return []
 
         with (
-            patch("ifitwala_ed.api.admissions_communication.frappe.get_all", side_effect=fake_get_all),
+            patch("ifitwala_ed.admission.api.communication.summaries.frappe.get_all", side_effect=fake_get_all),
             patch(
-                "ifitwala_ed.api.admissions_communication.frappe.db.sql",
+                "ifitwala_ed.admission.api.communication.summaries.frappe.db.sql",
                 return_value=[
                     {
                         "org_communication": "COMM-0001",
@@ -81,9 +81,9 @@ class TestAdmissionsCommunicationSummaries(FrappeTestCase):
             return []
 
         with (
-            patch("ifitwala_ed.api.admissions_communication.frappe.get_all", side_effect=fake_get_all),
+            patch("ifitwala_ed.admission.api.communication.summaries.frappe.get_all", side_effect=fake_get_all),
             patch(
-                "ifitwala_ed.api.admissions_communication.frappe.db.sql",
+                "ifitwala_ed.admission.api.communication.summaries.frappe.db.sql",
                 return_value=[
                     {
                         "org_communication": "COMM-0002",
@@ -117,9 +117,9 @@ class TestAdmissionsCommunicationSummaries(FrappeTestCase):
             return []
 
         with (
-            patch("ifitwala_ed.api.admissions_communication.frappe.get_all", side_effect=fake_get_all),
+            patch("ifitwala_ed.admission.api.communication.summaries.frappe.get_all", side_effect=fake_get_all),
             patch(
-                "ifitwala_ed.api.admissions_communication.frappe.db.sql",
+                "ifitwala_ed.admission.api.communication.summaries.frappe.db.sql",
                 return_value=[
                     {
                         "org_communication": "COMM-0003",
@@ -145,14 +145,14 @@ class TestAdmissionsCommunicationSummaries(FrappeTestCase):
 class TestAdmissionsCommunicationAuthGuards(FrappeTestCase):
     def test_session_user_treats_none_literal_as_unauthenticated(self):
         with patch(
-            "ifitwala_ed.api.admissions_communication.frappe.session",
+            "ifitwala_ed.admission.api.communication.context.frappe.session",
             SimpleNamespace(user="None"),
         ):
             self.assertEqual(_session_user(), "")
 
     def test_require_actor_context_rejects_invalid_session_user(self):
         with patch(
-            "ifitwala_ed.api.admissions_communication.frappe.session",
+            "ifitwala_ed.admission.api.communication.context.frappe.session",
             SimpleNamespace(user="None"),
         ):
             with self.assertRaises(frappe.PermissionError):
@@ -169,15 +169,15 @@ class TestAdmissionsCommunicationAuthGuards(FrappeTestCase):
     def test_require_actor_context_allows_linked_family_workspace_user(self):
         with (
             patch(
-                "ifitwala_ed.api.admissions_communication.frappe.session",
+                "ifitwala_ed.admission.api.communication.context.frappe.session",
                 SimpleNamespace(user="family@example.com"),
             ),
             patch(
-                "ifitwala_ed.api.admissions_communication.frappe.get_roles",
+                "ifitwala_ed.admission.api.communication.context.frappe.get_roles",
                 return_value=["Admissions Family"],
             ),
             patch(
-                "ifitwala_ed.api.admissions_communication._resolve_student_applicant_row",
+                "ifitwala_ed.admission.api.communication.context._resolve_student_applicant_row",
                 return_value={
                     "name": "APP-0001",
                     "organization": "ORG-1",
@@ -186,7 +186,7 @@ class TestAdmissionsCommunicationAuthGuards(FrappeTestCase):
                 },
             ),
             patch(
-                "ifitwala_ed.api.admissions_communication._ensure_applicant_match",
+                "ifitwala_ed.admission.api.communication.context._ensure_applicant_match",
                 return_value={"name": "APP-0001"},
             ) as ensure_match_mock,
         ):
@@ -200,15 +200,15 @@ class TestAdmissionsCommunicationAuthGuards(FrappeTestCase):
     def test_require_actor_context_rejects_unlinked_family_workspace_user(self):
         with (
             patch(
-                "ifitwala_ed.api.admissions_communication.frappe.session",
+                "ifitwala_ed.admission.api.communication.context.frappe.session",
                 SimpleNamespace(user="family@example.com"),
             ),
             patch(
-                "ifitwala_ed.api.admissions_communication.frappe.get_roles",
+                "ifitwala_ed.admission.api.communication.context.frappe.get_roles",
                 return_value=["Admissions Family"],
             ),
             patch(
-                "ifitwala_ed.api.admissions_communication._resolve_student_applicant_row",
+                "ifitwala_ed.admission.api.communication.context._resolve_student_applicant_row",
                 return_value={
                     "name": "APP-0001",
                     "organization": "ORG-1",
@@ -217,7 +217,7 @@ class TestAdmissionsCommunicationAuthGuards(FrappeTestCase):
                 },
             ),
             patch(
-                "ifitwala_ed.api.admissions_communication._ensure_applicant_match",
+                "ifitwala_ed.admission.api.communication.context._ensure_applicant_match",
                 side_effect=frappe.PermissionError("You do not have permission to access this Applicant."),
             ),
         ):
@@ -231,8 +231,8 @@ class TestAdmissionsCommunicationCanonicalWriters(FrappeTestCase):
         fake_doc.insert = MagicMock()
 
         with (
-            patch("ifitwala_ed.api.admissions_communication.frappe.db.exists", return_value=False),
-            patch("ifitwala_ed.api.admissions_communication.frappe.new_doc", return_value=fake_doc),
+            patch("ifitwala_ed.admission.api.communication.threads.frappe.db.exists", return_value=False),
+            patch("ifitwala_ed.admission.api.communication.threads.frappe.new_doc", return_value=fake_doc),
         ):
             thread_name = admissions_communication._create_thread(
                 context_doctype="Student Applicant",
@@ -275,12 +275,12 @@ class TestAdmissionsCommunicationCanonicalWriters(FrappeTestCase):
         try:
             with (
                 patch(
-                    "ifitwala_ed.api.admissions_communication._get_thread_name",
+                    "ifitwala_ed.admission.api.communication.threads._get_thread_name",
                     side_effect=[None, None],
                 ),
-                patch("ifitwala_ed.api.admissions_communication.frappe.cache", return_value=fake_cache),
+                patch("ifitwala_ed.admission.api.communication.threads.frappe.cache", return_value=fake_cache),
                 patch(
-                    "ifitwala_ed.api.admissions_communication._create_thread",
+                    "ifitwala_ed.admission.api.communication.threads._create_thread",
                     side_effect=fake_create_thread,
                 ),
             ):
@@ -323,14 +323,14 @@ class TestAdmissionsCommunicationCanonicalWriters(FrappeTestCase):
         }
 
         with (
-            patch("ifitwala_ed.api.admissions_communication._require_actor_context", return_value=actor_ctx),
-            patch("ifitwala_ed.api.admissions_communication._get_or_create_thread", return_value="COMM-0001"),
+            patch("ifitwala_ed.admission.api.communication.messages._require_actor_context", return_value=actor_ctx),
+            patch("ifitwala_ed.admission.api.communication.messages._get_or_create_thread", return_value="COMM-0001"),
             patch(
-                "ifitwala_ed.api.admissions_communication.create_interaction_entry",
+                "ifitwala_ed.admission.api.communication.messages.create_interaction_entry",
                 return_value=latest_row,
             ) as create_entry_mock,
             patch(
-                "ifitwala_ed.api.admissions_communication.get_latest_org_communication_entry_for_user",
+                "ifitwala_ed.admission.api.communication.messages.get_latest_org_communication_entry_for_user",
                 return_value=latest_row,
             ),
         ):
@@ -372,14 +372,14 @@ class TestAdmissionsCommunicationCanonicalWriters(FrappeTestCase):
         }
 
         with (
-            patch("ifitwala_ed.api.admissions_communication._require_actor_context", return_value=actor_ctx),
-            patch("ifitwala_ed.api.admissions_communication._get_or_create_thread", return_value="COMM-0002"),
+            patch("ifitwala_ed.admission.api.communication.messages._require_actor_context", return_value=actor_ctx),
+            patch("ifitwala_ed.admission.api.communication.messages._get_or_create_thread", return_value="COMM-0002"),
             patch(
-                "ifitwala_ed.api.admissions_communication.create_interaction_entry",
+                "ifitwala_ed.admission.api.communication.messages.create_interaction_entry",
                 return_value=latest_row,
             ) as create_entry_mock,
             patch(
-                "ifitwala_ed.api.admissions_communication.get_latest_org_communication_entry_for_user",
+                "ifitwala_ed.admission.api.communication.messages.get_latest_org_communication_entry_for_user",
                 return_value=latest_row,
             ),
         ):
@@ -410,10 +410,14 @@ class TestAdmissionsCommunicationCanonicalWriters(FrappeTestCase):
         }
 
         with (
-            patch("ifitwala_ed.api.admissions_communication._require_actor_context", return_value=actor_ctx),
-            patch("ifitwala_ed.api.admissions_communication._get_thread_name", return_value="COMM-0001"),
-            patch("ifitwala_ed.api.admissions_communication.now_datetime", return_value=read_at),
-            patch("ifitwala_ed.api.admissions_communication.upsert_org_communication_read_receipt") as mark_read_mock,
+            patch(
+                "ifitwala_ed.admission.api.communication.read_receipts._require_actor_context", return_value=actor_ctx
+            ),
+            patch("ifitwala_ed.admission.api.communication.read_receipts._get_thread_name", return_value="COMM-0001"),
+            patch("ifitwala_ed.admission.api.communication.read_receipts.now_datetime", return_value=read_at),
+            patch(
+                "ifitwala_ed.admission.api.communication.read_receipts.upsert_org_communication_read_receipt"
+            ) as mark_read_mock,
         ):
             result = admissions_communication.mark_admissions_case_thread_read(
                 context_doctype="Student Applicant",

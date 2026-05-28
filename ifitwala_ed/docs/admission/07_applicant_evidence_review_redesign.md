@@ -119,7 +119,7 @@ Staff surface split is now explicit and role-based:
 - non-admissions reviewers continue to use Focus for `Applicant Document Item` assignments
 - delegated `Student Applicant` final reviewers stay in Focus for their decision action, but Focus now exposes an `Admissions Workspace` launch so they can inspect the same applicant brief, documents, recommendations, guardians, and interview context without gaining Desk applicant access
 - applicant workspace guardian rows are drill-in actions that open a stacked guardian-details overlay with the captured `Student Applicant Guardian` intake fields
-- assigned interviewers, including non-admissions staff, use the same `AdmissionsWorkspaceOverlay` from the interview event route so interview prep, applicant brief, evidence, and in-panel feedback stay in one overlay
+- assigned interviewers, including non-admissions staff, use the same `AdmissionsWorkspaceOverlay` from the interview event route or Focus feedback item so interview prep, applicant brief, evidence, and in-panel feedback stay in one overlay
 - delegated final reviewers can drill from applicant workspace into interview workspace read-only, including governed interview-context file links, without gaining Desk interview permission
 - evidence and recommendation file actions in the workspace open the governed server URL directly from the overlay so staff are not left on inert text links
 - admissions-workspace users are intentionally blocked from document-item Focus actions to avoid duplicate mental models

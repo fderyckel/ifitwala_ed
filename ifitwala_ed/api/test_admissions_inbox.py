@@ -106,7 +106,7 @@ class TestAdmissionsInbox(FrappeTestCase):
         try:
             frappe.set_user("Administrator")
             with patch(
-                "ifitwala_ed.api.admissions_inbox.get_admissions_thread_summaries_for_applicants",
+                "ifitwala_ed.admission.api.inbox.context.get_admissions_thread_summaries_for_applicants",
                 return_value={
                     applicant.name: {
                         "thread_name": "COMM-0001",

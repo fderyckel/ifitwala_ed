@@ -4,7 +4,7 @@ import type { AttachmentPreviewItem } from '@/types/contracts/attachments/shared
 
 export type Request = {
   focus_item_id?: string | null
-  reference_doctype?: 'Student Log' | 'Inquiry' | 'Applicant Review Assignment' | 'Policy Version' | null
+  reference_doctype?: 'Student Log' | 'Inquiry' | 'Applicant Interview' | 'Applicant Review Assignment' | 'Policy Version' | null
   reference_name?: string | null
   action_type?: string | null
 }
@@ -12,7 +12,7 @@ export type Request = {
 export type Response = {
   focus_item_id?: string | null
   action_type?: string | null
-  reference_doctype: 'Student Log' | 'Inquiry' | 'Applicant Review Assignment' | 'Policy Version'
+  reference_doctype: 'Student Log' | 'Inquiry' | 'Applicant Interview' | 'Applicant Review Assignment' | 'Policy Version'
   reference_name: string
   mode: 'assignee' | 'author'
   log: {
@@ -101,6 +101,22 @@ export type Response = {
       decided_by?: string | null
       decided_on?: string | null
     }>
+  } | null
+  interview_feedback?: {
+    interview: string
+    student_applicant: string
+    applicant_name?: string | null
+    school?: string | null
+    program_offering?: string | null
+    interview_type?: string | null
+    mode?: string | null
+    interview_date?: string | null
+    interview_start?: string | null
+    interview_end?: string | null
+    school_event?: string | null
+    feedback_name?: string | null
+    feedback_status?: string | null
+    submitted_on?: string | null
   } | null
   policy_signature?: {
     acknowledgement_clauses?: Array<{

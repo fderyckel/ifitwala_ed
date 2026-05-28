@@ -421,6 +421,7 @@ const hasVisibleQuickActions = computed(
 const overlay = useOverlayStack();
 const focusLoading = ref(false);
 const focusItems = ref<FocusItem[]>([]);
+const ACTION_APPLICANT_INTERVIEW_FEEDBACK = 'applicant_interview.feedback.submit';
 
 /**
  * Refresh focus (deduped + lightly throttled)
@@ -612,6 +613,19 @@ function openFocusItem(item: FocusItem) {
 			title: 'Not available',
 			text: 'You do not have access to open this item.',
 			icon: 'info',
+		});
+		return;
+	}
+
+	if (
+		item.action_type === ACTION_APPLICANT_INTERVIEW_FEEDBACK &&
+		item.reference_doctype === 'Applicant Interview' &&
+		item.reference_name
+	) {
+		overlay.open('admissions-workspace', {
+			mode: 'interview',
+			interview: item.reference_name,
+			schoolEvent: item.payload?.school_event || null,
 		});
 		return;
 	}

@@ -116,6 +116,10 @@ Used by:
 									@done="onWorkflowDone"
 									@request-refresh="reload"
 								/>
+								<ApplicantInterviewFeedbackAction
+									v-else-if="isApplicantInterviewFeedbackAction && ctx"
+									:context="ctx"
+								/>
 								<StaffPolicyAcknowledgeAction
 									v-else-if="isStaffPolicyAcknowledgeAction && ctx"
 									:focus-item-id="resolvedFocusItemId"
@@ -175,6 +179,7 @@ import { Button, FeatherIcon } from 'frappe-ui';
 import StudentLogFollowUpAction from '@/components/focus/StudentLogFollowUpAction.vue';
 import InquiryFollowUpAction from '@/components/focus/InquiryFollowUpAction.vue';
 import ApplicantReviewAssignmentAction from '@/components/focus/ApplicantReviewAssignmentAction.vue';
+import ApplicantInterviewFeedbackAction from '@/components/focus/ApplicantInterviewFeedbackAction.vue';
 import StaffPolicyAcknowledgeAction from '@/components/focus/StaffPolicyAcknowledgeAction.vue';
 import { createFocusService } from '@/lib/services/focus/focusService';
 
@@ -255,6 +260,9 @@ const headerTitle = computed(() => {
 	if (referenceDoctype.value === 'Inquiry') {
 		return 'Inquiry follow-up';
 	}
+	if (referenceDoctype.value === 'Applicant Interview') {
+		return 'Interview feedback';
+	}
 	if (referenceDoctype.value === 'Applicant Review Assignment') {
 		const targetType = ctx.value?.review_assignment?.target_type;
 		if (targetType === 'Applicant Document Item') return 'Evidence review';
@@ -277,6 +285,7 @@ const headerSubtitle = computed(() => {
 const headerKicker = computed(() => {
 	if (referenceDoctype.value === 'Student Log') return 'Student wellbeing';
 	if (referenceDoctype.value === 'Inquiry') return 'Admissions';
+	if (referenceDoctype.value === 'Applicant Interview') return 'Admissions interview';
 	if (referenceDoctype.value === 'Applicant Review Assignment') return 'Admissions review';
 	if (referenceDoctype.value === 'Policy Version') return 'Compliance';
 	return 'Focus';
@@ -302,6 +311,12 @@ const isApplicantReviewAction = computed(() => {
 	if (referenceDoctype.value !== 'Applicant Review Assignment') return false;
 	if (!actionType.value) return false;
 	return actionType.value === 'applicant_review.assignment.decide';
+});
+
+const isApplicantInterviewFeedbackAction = computed(() => {
+	if (referenceDoctype.value !== 'Applicant Interview') return false;
+	if (!actionType.value) return false;
+	return actionType.value === 'applicant_interview.feedback.submit';
 });
 
 const isStaffPolicyAcknowledgeAction = computed(() => {

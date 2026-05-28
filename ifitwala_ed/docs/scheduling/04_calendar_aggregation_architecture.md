@@ -196,7 +196,7 @@ School Events are included when:
 
 These visibility rules are source-owned and must not be flattened into one generic “calendar access” check.
 
-Admission Visit calendar clicks open the admissions visit overlay instead of the generic School Event details overlay. The Admission Visit remains the workflow source; the School Event is only the calendar projection. Reschedule, cancellation, completed/no-show status, and explicit staff-inform actions must go through the Admission Visit workflow endpoints so Employee Booking, Location Booking, CRM activity, and staff calendar invalidation stay aligned.
+Admission Visit calendar clicks open the admissions visit overlay instead of the generic School Event details overlay. Applicant Interview calendar clicks open the admissions interview workspace instead of the generic School Event details overlay. The Admission Visit or Applicant Interview remains the workflow source; the School Event is only the calendar projection. Reschedule, cancellation, completed/no-show status, panel changes, and explicit staff-inform actions must go through the owning workflow so Employee Booking, Location Booking, CRM activity where applicable, and staff calendar invalidation stay aligned.
 
 ### 3.4 Caching
 

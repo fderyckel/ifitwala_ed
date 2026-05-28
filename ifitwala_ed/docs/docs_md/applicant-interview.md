@@ -3,8 +3,8 @@ title: "Applicant Interview: Interview Event Record"
 slug: applicant-interview
 category: Admission
 doc_order: 8
-version: "1.9.0"
-last_change_date: "2026-05-21"
+version: "1.10.0"
+last_change_date: "2026-05-26"
 summary: "Record admissions interview events, participants, room/calendar projection, and operational context while keeping interviewer opinions in Applicant Interview Feedback."
 seo_title: "Applicant Interview: Interview Event Record"
 seo_description: "Use Applicant Interview to schedule and manage interview events while storing per-interviewer opinions in Applicant Interview Feedback."
@@ -26,6 +26,7 @@ Interview scheduling, calendar projection, room/employee conflict checks, staff 
 - **Scheduling can check conflicts.** The Schedule Interview flow creates the interview and calendar artifacts together.
 - **Interviewers have personal feedback rows.** Notes do not collide in one shared parent field.
 - **Staff can open interview workspace from context.** Calendar and Admissions Cockpit entry points lead back to the applicant/interview workspace.
+- **Interviewers see pending feedback in Focus.** Listed interviewers get a Focus item until their own feedback is submitted.
 - **Readiness summaries can show interview completion.** The applicant record can show interview count and feedback completion status.
 
 ## Before You Schedule Interviews
@@ -63,7 +64,7 @@ You should have:
     Scheduling creates Applicant Interview, linked School Event, Employee Booking rows, and Location Booking when a room is selected.
   </Step>
   <Step title="Run the interview">
-    Staff use the workspace from calendar or cockpit to see applicant context and interview details.
+    Staff use the workspace from calendar, cockpit, or Focus to see applicant context and interview details.
   </Step>
   <Step title="Capture feedback">
     Each listed interviewer saves their own Applicant Interview Feedback row as Draft or Submitted.
@@ -179,6 +180,7 @@ Interview count is tracked and appears in readiness summaries, but the current r
   - `location = <room>` when selected
   - audience row `Custom Users`
   - participants = selected interviewer users
+- Linked School Event projection is resynced when scheduled interview time, room, applicant, or interviewer panel changes.
 
 ### Desk and Workspace Surfaces
 
@@ -187,6 +189,7 @@ Interview count is tracked and appears in readiness summaries, but the current r
 - Form script filters `interviewers.interviewer` to users with role `Employee`.
 - Form script defaults new docs to current date and appends current session user to interviewer rows when missing.
 - `Open My Feedback` appears only to listed interviewers and routes to existing/prefilled Applicant Interview Feedback.
+- StaffHome Focus shows `applicant_interview.feedback.submit` for listed interviewers until their own feedback is `Submitted`.
 - Student Applicant readiness uses `has_required_interviews()`.
 - Create/update posts audit comments onto applicant timeline.
 - Admissions cockpit cards expose Schedule Interview, latest interview context, and open action.

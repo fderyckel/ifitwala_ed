@@ -81,9 +81,25 @@ vi.mock('@/components/focus/FocusListCard.vue', () => ({
 		props: {
 			title: { type: String, default: '' },
 			meta: { type: String, default: '' },
+			items: { type: Array, default: () => [] },
 		},
-		setup(props) {
-			return () => h('div', { 'data-testid': 'focus-list-card' }, `${props.title} ${props.meta}`.trim());
+		emits: ['open'],
+		setup(props, { emit }) {
+			return () =>
+				h('div', { 'data-testid': 'focus-list-card' }, [
+					h('span', {}, `${props.title} ${props.meta}`.trim()),
+					...(props.items as any[]).map(item =>
+						h(
+							'button',
+							{
+								type: 'button',
+								'data-testid': `focus-item-${item.reference_name}`,
+								onClick: () => emit('open', item),
+							},
+							item.title
+						)
+					),
+				]);
 		},
 	}),
 }));
@@ -199,8 +215,8 @@ describe('StaffHome', () => {
 		expect(exploreLinks?.textContent || '').toContain('Room Utilization');
 		expect(document.body.textContent || '').not.toContain('View all analytics');
 
-		const createTaskButton = Array.from(exploreLinks?.querySelectorAll('button') || []).find(button =>
-			(button.textContent || '').includes('Create task')
+		const createTaskButton = Array.from(exploreLinks?.querySelectorAll('button') || []).find(
+			button => (button.textContent || '').includes('Create task')
 		);
 		createTaskButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flushUi();
@@ -281,6 +297,46 @@ describe('StaffHome', () => {
 		const analyticsCategories = document.querySelector('.staff-home__analytics-category-grid');
 		expect(analyticsCategories?.textContent || '').toContain('Policy Acknowledgments');
 		expect(analyticsCategories?.textContent || '').toContain('Forms & Signatures');
+	});
+
+	it('opens interview feedback focus items directly in the admissions workspace', async () => {
+		getStaffHomeHeaderMock.mockResolvedValue({
+			first_name: 'Mali',
+			full_name: 'Mali Bangkok',
+			capabilities: {},
+		});
+		listFocusItemsMock.mockResolvedValue([
+			{
+				id: 'applicant_interview::Applicant Interview::INT-0001::applicant_interview.feedback.submit::mali@example.com',
+				kind: 'action',
+				title: 'Interview feedback',
+				subtitle: 'Interview Applicant',
+				action_type: 'applicant_interview.feedback.submit',
+				reference_doctype: 'Applicant Interview',
+				reference_name: 'INT-0001',
+				payload: {
+					school_event: 'SE-0001',
+				},
+				permissions: {
+					can_open: true,
+				},
+			},
+		]);
+
+		mountStaffHome();
+		await flushUi();
+
+		document
+			.querySelector('[data-testid="focus-item-INT-0001"]')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flushUi();
+
+		expect(overlayOpenMock).toHaveBeenCalledWith('admissions-workspace', {
+			mode: 'interview',
+			interview: 'INT-0001',
+			schoolEvent: 'SE-0001',
+		});
+		expect(overlayOpenMock).not.toHaveBeenCalledWith('focus-router', expect.anything());
 	});
 
 	it('keeps create communication visible but disabled when org scope is missing', async () => {

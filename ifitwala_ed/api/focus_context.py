@@ -17,7 +17,9 @@ from ifitwala_ed.api.focus_actions_applicant_review import (
     build_applicant_review_file_open_url,
 )
 from ifitwala_ed.api.focus_shared import (
+    ACTION_APPLICANT_INTERVIEW_FEEDBACK_SUBMIT,
     ACTION_POLICY_STAFF_SIGN,
+    APPLICANT_INTERVIEW_DOCTYPE,
     APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE,
     FOLLOW_UP_DOCTYPE,
     INQUIRY_DOCTYPE,
@@ -201,6 +203,82 @@ def get_focus_context(
                 "sla_status": inquiry_doc.sla_status,
             },
             "follow_ups": [],
+        }
+
+    if reference_doctype == APPLICANT_INTERVIEW_DOCTYPE:
+        if action_type and action_type != ACTION_APPLICANT_INTERVIEW_FEEDBACK_SUBMIT:
+            frappe.throw(_("Unsupported interview focus action."), frappe.ValidationError)
+
+        if not frappe.db.exists(
+            "Applicant Interviewer",
+            {
+                "parent": reference_name,
+                "parenttype": APPLICANT_INTERVIEW_DOCTYPE,
+                "parentfield": "interviewers",
+                "interviewer": frappe.session.user,
+            },
+        ):
+            frappe.throw(_("You are not assigned to this interview."), frappe.PermissionError)
+
+        interview_doc = frappe.get_doc(APPLICANT_INTERVIEW_DOCTYPE, reference_name)
+        if not frappe.has_permission(APPLICANT_INTERVIEW_DOCTYPE, ptype="read", doc=interview_doc):
+            frappe.throw(_("You are not permitted to view this interview."), frappe.PermissionError)
+
+        applicant_row = frappe.db.get_value(
+            "Student Applicant",
+            interview_doc.student_applicant,
+            [
+                "name",
+                "first_name",
+                "middle_name",
+                "last_name",
+                "school",
+                "program_offering",
+            ],
+            as_dict=True,
+        )
+        if not applicant_row:
+            frappe.throw(_("The linked Student Applicant was not found."), frappe.DoesNotExistError)
+
+        feedback_row = frappe.db.get_value(
+            "Applicant Interview Feedback",
+            {
+                "applicant_interview": reference_name,
+                "interviewer_user": frappe.session.user,
+            },
+            ["name", "feedback_status", "submitted_on"],
+            as_dict=True,
+        )
+
+        return {
+            "focus_item_id": focus_item_id,
+            "action_type": action_type or ACTION_APPLICANT_INTERVIEW_FEEDBACK_SUBMIT,
+            "reference_doctype": APPLICANT_INTERVIEW_DOCTYPE,
+            "reference_name": reference_name,
+            "mode": "assignee",
+            "log": None,
+            "inquiry": None,
+            "follow_ups": [],
+            "review_assignment": None,
+            "policy_signature": None,
+            "interview_feedback": {
+                "interview": reference_name,
+                "student_applicant": interview_doc.student_applicant,
+                "applicant_name": _applicant_display_name_from_row(applicant_row),
+                "school": applicant_row.get("school"),
+                "program_offering": applicant_row.get("program_offering"),
+                "interview_type": interview_doc.interview_type,
+                "mode": interview_doc.mode,
+                "interview_date": str(interview_doc.interview_date) if interview_doc.interview_date else None,
+                "interview_start": str(interview_doc.interview_start) if interview_doc.interview_start else None,
+                "interview_end": str(interview_doc.interview_end) if interview_doc.interview_end else None,
+                "school_event": interview_doc.school_event,
+                "feedback_name": feedback_row.get("name") if feedback_row else None,
+                "feedback_status": feedback_row.get("feedback_status") if feedback_row else None,
+                "submitted_on": str(feedback_row.get("submitted_on"))
+                if feedback_row and feedback_row.get("submitted_on")
+                else None,
+            },
         }
 
     if reference_doctype == APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE:
@@ -520,6 +598,8 @@ def get_focus_context(
         }
 
     frappe.throw(
-        _("Only Student Log, Inquiry, Applicant Review Assignment, and Policy Version focus items are supported."),
+        _(
+            "Only Student Log, Inquiry, Applicant Interview, Applicant Review Assignment, and Policy Version focus items are supported."
+        ),
         frappe.ValidationError,
     )

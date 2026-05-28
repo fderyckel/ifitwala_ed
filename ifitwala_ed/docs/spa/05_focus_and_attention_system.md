@@ -162,6 +162,7 @@ Example action types:
 * `student_log.follow_up.review.decide` → mounts `StudentLogReviewOutcome.vue` (author mode)
 * `inquiry.follow_up.act.first_contact` → mounts `InquiryFollowUpAction.vue` (assignee mode)
 * `applicant_review.assignment.decide` → mounts `ApplicantReviewAssignmentAction.vue` (assignee mode)
+* `applicant_interview.feedback.submit` → opens the admissions interview workspace for the assigned interviewer
 * `policy_acknowledgement.staff.sign` → mounts `StaffPolicyAcknowledgeAction.vue` (assignee mode)
   * includes typed full-name signature + legal attestation before submit
 
@@ -196,6 +197,7 @@ Returns a single `FocusItem` if the list payload does not include enough header 
 Completion is **not** performed by `focus.complete()` in v1.
 
 * The SPA calls the workflow endpoint (Student Log Follow Up submit, Inquiry mark_contacted, etc.).
+* Interview feedback completion stays in `save_my_interview_feedback(...)`; Focus only routes the assigned interviewer to the workspace.
 * The Focus list reflects the new state automatically.
 
 This keeps “server is authoritative” intact and prevents Focus from becoming a workflow engine.

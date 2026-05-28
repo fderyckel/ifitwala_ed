@@ -5,6 +5,7 @@ import {
 	SIGNAL_ADMISSIONS_COCKPIT_INVALIDATE,
 	SIGNAL_ADMISSIONS_INBOX_INVALIDATE,
 	SIGNAL_CALENDAR_INVALIDATE,
+	SIGNAL_FOCUS_INVALIDATE,
 	uiSignals,
 } from '@/lib/uiSignals'
 
@@ -67,6 +68,7 @@ export async function scheduleApplicantInterview(
 	) as ScheduleApplicantInterviewResponse
 	if (response?.ok) {
 		uiSignals.emit(SIGNAL_CALENDAR_INVALIDATE)
+		uiSignals.emit(SIGNAL_FOCUS_INVALIDATE)
 		uiSignals.emit(SIGNAL_ADMISSIONS_COCKPIT_INVALIDATE)
 	}
 	return response
@@ -186,10 +188,15 @@ export async function getRecommendationReviewPayload(payload: {
 export async function saveMyInterviewFeedback(
 	payload: SaveMyInterviewFeedbackRequest
 ): Promise<SaveMyInterviewFeedbackResponse> {
-	return api(
+	const response = await api(
 		'ifitwala_ed.admission.doctype.applicant_interview.applicant_interview.save_my_interview_feedback',
 		payload
-	) as Promise<SaveMyInterviewFeedbackResponse>
+	) as SaveMyInterviewFeedbackResponse
+	if (response?.ok) {
+		uiSignals.emit(SIGNAL_FOCUS_INVALIDATE)
+		uiSignals.emit(SIGNAL_ADMISSIONS_COCKPIT_INVALIDATE)
+	}
+	return response
 }
 
 export async function reviewApplicantDocumentSubmission(

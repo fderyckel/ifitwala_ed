@@ -320,6 +320,76 @@ class TestPortalCalendar(FrappeTestCase):
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0].id, "school_event::SE-0002")
 
+    def test_applicant_interview_school_events_are_participant_only(self):
+        tzinfo = _system_tzinfo()
+        window_start = tzinfo.localize(datetime(2026, 1, 7, 8, 0, 0))
+        window_end = tzinfo.localize(datetime(2026, 1, 7, 12, 0, 0))
+
+        event_row = frappe._dict(
+            {
+                "name": "SE-INTERVIEW-1",
+                "subject": "Admission Interview",
+                "starts_on": window_start,
+                "ends_on": tzinfo.localize(datetime(2026, 1, 7, 9, 0, 0)),
+                "all_day": 0,
+                "location": "Interview Room",
+                "color": "#059669",
+                "school": self.parent_school,
+                "reference_type": "Applicant Interview",
+                "reference_name": "INTERVIEW-001",
+                "participant_name": None,
+            }
+        )
+
+        def fake_get_all(doctype, filters=None, fields=None, limit=None):
+            if doctype == "School Event Audience":
+                return [
+                    {
+                        "parent": "SE-INTERVIEW-1",
+                        "audience_type": "All Employees",
+                        "team": None,
+                    }
+                ]
+            self.fail(f"Unexpected get_all call: doctype={doctype!r}")
+
+        with (
+            patch(
+                "ifitwala_ed.api.calendar_staff_feed._resolve_employee_for_user",
+                return_value={"name": "EMP-0001", "school": self.child_school},
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_staff_feed.get_ancestor_schools",
+                return_value=[self.child_school, self.parent_school],
+            ),
+            patch("ifitwala_ed.api.calendar_staff_feed.frappe.db.sql", return_value=[event_row]),
+            patch("ifitwala_ed.api.calendar_staff_feed.frappe.get_all", side_effect=fake_get_all),
+            patch("ifitwala_ed.api.calendar_staff_feed.frappe.get_roles", return_value=["Employee"]),
+            patch("ifitwala_ed.api.calendar_staff_feed.get_user_membership", return_value={"teams": set()}),
+        ):
+            events = _collect_school_events("staff@example.com", window_start, window_end, tzinfo)
+
+        self.assertEqual(events, [])
+
+        participant_row = frappe._dict(dict(event_row, participant_name="Staff User"))
+        with (
+            patch(
+                "ifitwala_ed.api.calendar_staff_feed._resolve_employee_for_user",
+                return_value={"name": "EMP-0001", "school": self.child_school},
+            ),
+            patch(
+                "ifitwala_ed.api.calendar_staff_feed.get_ancestor_schools",
+                return_value=[self.child_school, self.parent_school],
+            ),
+            patch("ifitwala_ed.api.calendar_staff_feed.frappe.db.sql", return_value=[participant_row]),
+            patch("ifitwala_ed.api.calendar_staff_feed.frappe.get_all", return_value=[]),
+            patch("ifitwala_ed.api.calendar_staff_feed.frappe.get_roles", return_value=["Employee"]),
+            patch("ifitwala_ed.api.calendar_staff_feed.get_user_membership", return_value={"teams": set()}),
+        ):
+            participant_events = _collect_school_events("staff@example.com", window_start, window_end, tzinfo)
+
+        self.assertEqual(len(participant_events), 1)
+        self.assertEqual(participant_events[0].meta.get("reference_type"), "Applicant Interview")
+
     def test_staff_calendar_school_events_include_team_audience_via_employee_membership(self):
         user = self._create_user()
         employee = self._create_employee(self.child_school, professional_email=user.name)

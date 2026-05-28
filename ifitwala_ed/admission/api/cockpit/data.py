@@ -18,7 +18,7 @@ from ifitwala_ed.admission.api.cockpit.enrollment_plan import (
 )
 from ifitwala_ed.admission.api.cockpit.readiness import _build_readiness_batch, _empty_readiness_snapshot
 from ifitwala_ed.admission.api.cockpit.urls import _doc_url
-from ifitwala_ed.api.admissions_communication import get_admissions_thread_summaries_for_applicants
+from ifitwala_ed.admission.api.communication.summaries import get_admissions_thread_summaries_for_applicants
 from ifitwala_ed.utilities.employee_utils import get_schools_for_organization_scope
 from ifitwala_ed.utilities.school_tree import get_descendant_schools
 
