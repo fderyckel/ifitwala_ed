@@ -18,6 +18,7 @@ declare module 'vue' {
     AnalyticsCard: typeof import('./src/components/analytics/AnalyticsCard.vue')['default']
     AnalyticsChart: typeof import('./src/components/analytics/AnalyticsChart.vue')['default']
     AnalyticsTextPreview: typeof import('./src/components/analytics/AnalyticsTextPreview.vue')['default']
+    ApplicantInterviewFeedbackAction: typeof import('./src/components/focus/ApplicantInterviewFeedbackAction.vue')['default']
     ApplicantReviewAssignmentAction: typeof import('./src/components/focus/ApplicantReviewAssignmentAction.vue')['default']
     AttachmentPreviewCard: typeof import('./src/components/attachments/AttachmentPreviewCard.vue')['default']
     ClassEventModal: typeof import('./src/components/calendar/ClassEventModal.vue')['default']
