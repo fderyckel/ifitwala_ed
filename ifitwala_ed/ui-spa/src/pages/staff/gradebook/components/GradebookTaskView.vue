@@ -6,10 +6,13 @@
 		<div class="border-b border-border/50 bg-gray-50/50 px-6 py-4">
 			<div class="flex flex-wrap items-center justify-between gap-4">
 				<div class="space-y-1">
-					<h2 class="text-lg font-semibold text-ink">Task Workspace</h2>
+					<h2 class="text-lg font-semibold text-ink">{{ __('Task Workspace') }}</h2>
 					<p class="max-w-2xl text-sm text-ink/60">
-						Open one student at a time in the grading drawer. Evidence review, marking, official
-						result, and release stay in one workflow.
+						{{
+							__(
+								'Open one student at a time in the grading drawer. Evidence review, marking, official result, and release stay in one workflow.'
+							)
+						}}
 					</p>
 				</div>
 
@@ -17,12 +20,14 @@
 					<Badge v-if="taskModeBadge(gradebook.task)" variant="subtle">
 						{{ taskModeBadge(gradebook.task) }}
 					</Badge>
-					<Badge variant="subtle">Students {{ gradebook.students.length }}</Badge>
+					<Badge variant="subtle">
+						{{ __('Students {0}', [gradebook.students.length]) }}
+					</Badge>
 					<Badge v-if="newEvidenceCount" variant="subtle" theme="orange">
-						New evidence {{ newEvidenceCount }}
+						{{ __('New evidence {0}', [newEvidenceCount]) }}
 					</Badge>
 					<Badge v-if="releasedCount" variant="subtle" theme="green">
-						Released {{ releasedCount }}
+						{{ __('Released {0}', [releasedCount]) }}
 					</Badge>
 				</div>
 			</div>
@@ -34,7 +39,7 @@
 				class="flex h-full flex-col items-center justify-center gap-3 pt-20"
 			>
 				<Spinner class="h-8 w-8 text-canopy" />
-				<p class="text-sm text-ink/50">Loading gradebook...</p>
+				<p class="text-sm text-ink/50">{{ __('Loading gradebook...') }}</p>
 			</div>
 
 			<div
@@ -44,16 +49,18 @@
 				<div class="rounded-full bg-gray-100 p-4">
 					<FeatherIcon name="check-square" class="h-8 w-8 text-ink/30" />
 				</div>
-				<p class="text-lg font-medium text-ink">No Task Selected</p>
-				<p class="max-w-xs text-sm">Choose a task from the left panel to begin grading.</p>
+				<p class="text-lg font-medium text-ink">{{ __('No Task Selected') }}</p>
+				<p class="max-w-xs text-sm">
+					{{ __('Choose a task from the left panel to begin grading.') }}
+				</p>
 			</div>
 
 			<div
 				v-else-if="!gradebook.students.length"
 				class="flex h-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border/60 bg-gray-50/30 p-12 text-center text-ink/60"
 			>
-				<p class="text-lg font-medium text-ink">No Students Assigned</p>
-				<p class="max-w-xs text-sm">This task has no students in the roster.</p>
+				<p class="text-lg font-medium text-ink">{{ __('No Students Assigned') }}</p>
+				<p class="max-w-xs text-sm">{{ __('This task has no students in the roster.') }}</p>
 			</div>
 
 			<GradebookQuizManualReview
@@ -67,7 +74,7 @@
 						<div class="flex flex-wrap items-start justify-between gap-3">
 							<div>
 								<h3 class="text-sm font-semibold uppercase tracking-[0.16em] text-ink/45">
-									{{ hasEvidenceInbox ? 'Evidence Inbox' : 'Student Roster' }}
+									{{ hasEvidenceInbox ? __('Evidence Inbox') : __('Student Roster') }}
 								</h3>
 								<p class="mt-1 text-sm text-ink/60">
 									{{ evidenceIntroLabel }}
@@ -75,10 +82,12 @@
 							</div>
 							<div class="flex flex-col items-end gap-2">
 								<div class="text-right text-xs text-ink/45">
-									<p>{{ visibleStudents.length }} shown</p>
-									<p v-if="hasEvidenceInbox">{{ gradebook.students.length }} total students</p>
+									<p>{{ __('{0} shown', [visibleStudents.length]) }}</p>
+									<p v-if="hasEvidenceInbox">
+										{{ __('{0} total students', [gradebook.students.length]) }}
+									</p>
 									<p v-if="gradebook.task?.due_date">
-										Due {{ formatDate(gradebook.task?.due_date) }}
+										{{ __('Due {0}', [formatDate(gradebook.task?.due_date)]) }}
 									</p>
 								</div>
 								<div class="flex flex-wrap justify-end gap-2">
@@ -99,7 +108,7 @@
 										data-select-unreleased
 										@click="selectAllUnreleased"
 									>
-										Select unreleased
+										{{ __('Select unreleased') }}
 									</button>
 									<button
 										v-if="selectedBatchOutcomeIds.length"
@@ -108,7 +117,7 @@
 										:disabled="publishBusy"
 										@click="clearBatchSelection"
 									>
-										Clear
+										{{ __('Clear') }}
 									</button>
 									<button
 										type="button"
@@ -117,7 +126,7 @@
 										data-release-selected
 										@click="releaseSelectedOutcomes"
 									>
-										Release selected
+										{{ __('Release selected') }}
 										<span v-if="selectedReleasableOutcomeIds.length">
 											({{ selectedReleasableOutcomeIds.length }})
 										</span>
@@ -132,11 +141,18 @@
 							<div class="flex flex-wrap items-center justify-between gap-3">
 								<div class="space-y-1">
 									<p class="text-sm font-semibold text-ink">
-										Mark {{ batchCompletionEligibleStudents.length }} shown students complete?
+										{{
+											__('Mark {0} shown students complete?', [
+												batchCompletionEligibleStudents.length,
+											])
+										}}
 									</p>
 									<p class="text-xs text-ink/60">
-										You can still open individual students and mark exceptions incomplete. Released
-										outcomes will not be changed.
+										{{
+											__(
+												'You can still open individual students and mark exceptions incomplete. Released outcomes will not be changed.'
+											)
+										}}
 									</p>
 								</div>
 								<div class="flex items-center gap-2">
@@ -146,7 +162,7 @@
 										:disabled="batchCompletionBusy"
 										@click="closeBatchCompletionConfirm"
 									>
-										Cancel
+										{{ __('Cancel') }}
 									</button>
 									<button
 										type="button"
@@ -155,7 +171,7 @@
 										data-confirm-mark-shown-complete
 										@click="markShownComplete"
 									>
-										{{ batchCompletionBusy ? 'Marking...' : 'Confirm complete' }}
+										{{ batchCompletionBusy ? __('Marking...') : __('Confirm complete') }}
 									</button>
 								</div>
 							</div>
@@ -187,7 +203,7 @@
 							v-if="!visibleStudents.length"
 							class="rounded-2xl border border-dashed border-border/70 bg-gray-50/40 p-6 text-center text-sm text-ink/60"
 						>
-							No students match this evidence filter.
+							{{ __('No students match this evidence filter.') }}
 						</div>
 						<div
 							v-for="student in visibleStudents"
@@ -241,28 +257,28 @@
 											</div>
 
 											<div class="mt-3 grid gap-1 text-sm text-ink/65">
-												<p>Status: {{ student.status || '—' }}</p>
+												<p>{{ __('Status: {0}', [student.status || '—']) }}</p>
 												<p v-if="student.submission_status">
-													Submission: {{ student.submission_status }}
+													{{ __('Submission: {0}', [student.submission_status]) }}
 												</p>
 												<p v-if="student.procedural_status">
-													Procedural: {{ student.procedural_status }}
+													{{ __('Procedural: {0}', [student.procedural_status]) }}
 												</p>
 												<p>{{ studentResultSummary(student) }}</p>
 											</div>
 
 											<div class="mt-3 flex flex-wrap gap-2">
 												<Badge v-if="student.has_new_submission" variant="subtle" theme="orange">
-													New evidence
+													{{ __('New evidence') }}
 												</Badge>
 												<Badge v-if="student.visible_to_student" variant="subtle" theme="green">
-													Released
+													{{ __('Released') }}
 												</Badge>
 												<Badge
 													v-if="student.has_submission && !student.has_new_submission"
 													variant="subtle"
 												>
-													Evidence linked
+													{{ __('Evidence linked') }}
 												</Badge>
 											</div>
 										</div>
@@ -318,6 +334,7 @@
 import { computed, nextTick, reactive, ref, watch } from 'vue';
 import { Badge, FeatherIcon, Spinner, toast } from 'frappe-ui';
 
+import { __ } from '@/lib/i18n';
 import { createGradebookService } from '@/lib/services/gradebook/gradebookService';
 import type { CommentBankScopeMode } from '@/types/contracts/gradebook/comment_bank';
 import type { Response as BatchMarkCompletionResponse } from '@/types/contracts/gradebook/batch_mark_completion';
@@ -411,19 +428,19 @@ const evidenceCounts = computed(() => ({
 }));
 const activeEvidenceFilter = ref<EvidenceFilter>('all');
 const evidenceFilterOptions = computed(() => [
-	{ id: 'all' as EvidenceFilter, label: 'All', count: evidenceCounts.value.all },
+	{ id: 'all' as EvidenceFilter, label: __('All'), count: evidenceCounts.value.all },
 	{
 		id: 'new_evidence' as EvidenceFilter,
-		label: 'New Evidence',
+		label: __('New Evidence'),
 		count: evidenceCounts.value.new_evidence,
 	},
-	{ id: 'missing' as EvidenceFilter, label: 'Missing', count: evidenceCounts.value.missing },
+	{ id: 'missing' as EvidenceFilter, label: __('Missing'), count: evidenceCounts.value.missing },
 	{
 		id: 'submitted' as EvidenceFilter,
-		label: 'Submitted',
+		label: __('Submitted'),
 		count: evidenceCounts.value.submitted,
 	},
-	{ id: 'late' as EvidenceFilter, label: 'Late', count: evidenceCounts.value.late },
+	{ id: 'late' as EvidenceFilter, label: __('Late'), count: evidenceCounts.value.late },
 ]);
 const visibleStudents = computed(() => {
 	const rows = [...gradebook.students];
@@ -463,12 +480,12 @@ const batchCompletionReleasedBlockedCount = computed(() => {
 		.length;
 });
 const batchCompletionButtonLabel = computed(() => {
-	if (batchCompletionBusy.value) return 'Marking...';
+	if (batchCompletionBusy.value) return __('Marking...');
 	if (batchCompletionEligibleStudents.value.length) {
-		return `Mark shown complete (${batchCompletionEligibleStudents.value.length})`;
+		return __('Mark shown complete ({0})', [batchCompletionEligibleStudents.value.length]);
 	}
-	if (batchCompletionReleasedBlockedCount.value) return 'Unrelease to mark complete';
-	return 'All shown complete';
+	if (batchCompletionReleasedBlockedCount.value) return __('Unrelease to mark complete');
+	return __('All shown complete');
 });
 const unreleasedOutcomeIds = computed(() =>
 	gradebook.students
@@ -489,18 +506,20 @@ const canGoNext = computed(
 		selectedVisibleIndex.value < visibleStudents.value.length - 1
 );
 const evidenceIntroLabel = computed(() => {
-	if (!gradebook.task?.title) return 'Task';
+	if (!gradebook.task?.title) return __('Task');
 	if (!hasEvidenceInbox.value) return gradebook.task.title;
-	return `${gradebook.task.title} · new evidence first, then late, missing, and submitted work.`;
+	return __('{0} · new evidence first, then late, missing, and submitted work.', [
+		gradebook.task.title,
+	]);
 });
 const sequenceLabel = computed(() => {
 	if (!drawer.value || selectedVisibleIndex.value < 0 || visibleStudents.value.length < 2) {
 		return null;
 	}
 	if (hasEvidenceInbox.value) {
-		return `Inbox ${selectedVisibleIndex.value + 1} of ${visibleStudents.value.length}`;
+		return __('Inbox {0} of {1}', [selectedVisibleIndex.value + 1, visibleStudents.value.length]);
 	}
-	return `Student ${selectedVisibleIndex.value + 1} of ${visibleStudents.value.length}`;
+	return __('Student {0} of {1}', [selectedVisibleIndex.value + 1, visibleStudents.value.length]);
 });
 
 function showToast(title: string, appearance: 'danger' | 'success' | 'warning' = 'danger') {
@@ -572,7 +591,7 @@ async function loadGradebook(taskName: string) {
 	} catch (error) {
 		console.error('Failed to load gradebook', error);
 		if (gradebookLoadVersion.value === version) {
-			showDangerToast('Could not load gradebook');
+			showDangerToast(__('Could not load gradebook'));
 		}
 	} finally {
 		if (gradebookLoadVersion.value === version) {
@@ -605,7 +624,7 @@ async function loadDrawer(
 		console.error('Failed to load drawer', error);
 		if (drawerLoadVersion.value === version) {
 			drawer.value = null;
-			drawerErrorMessage.value = 'Could not load grading details for this student.';
+			drawerErrorMessage.value = __('Could not load grading details for this student.');
 		}
 	} finally {
 		if (drawerLoadVersion.value === version) {
@@ -903,11 +922,11 @@ async function saveDrawerMarking(updates: UpdateTaskStudentRequest['updates']) {
 				feedback: hasOwnUpdateKey(updates, 'feedback') ? (updates.feedback ?? null) : undefined,
 			});
 		}
-		showSuccessToast('Marking saved.');
+		showSuccessToast(__('Marking saved.'));
 		await loadDrawer(selectedOutcomeId.value, currentDrawerSelection());
 	} catch (error) {
 		console.error('Failed to save marking', error);
-		showDangerToast('Could not save marking changes');
+		showDangerToast(__('Could not save marking changes'));
 	} finally {
 		markingBusy.value = false;
 	}
@@ -934,11 +953,11 @@ async function saveFeedbackDraft(payload: {
 	feedbackBusy.value = true;
 	try {
 		await gradebookService.saveFeedbackDraft(payload);
-		showSuccessToast('Feedback draft saved.');
+		showSuccessToast(__('Feedback draft saved.'));
 		await refreshCurrentSelection(currentDrawerSelection());
 	} catch (error) {
 		console.error('Failed to save feedback draft', error);
-		showDangerToast('Could not save feedback draft');
+		showDangerToast(__('Could not save feedback draft'));
 	} finally {
 		feedbackBusy.value = false;
 	}
@@ -965,10 +984,10 @@ async function saveFeedbackThreadReply(payload: {
 	try {
 		const response = await gradebookService.saveFeedbackThreadReply(payload);
 		upsertDrawerThread(response.thread);
-		showSuccessToast('Reply saved.');
+		showSuccessToast(__('Reply saved.'));
 	} catch (error) {
 		console.error('Failed to save feedback thread reply', error);
-		showDangerToast('Could not save reply');
+		showDangerToast(__('Could not save reply'));
 	} finally {
 		threadBusy.value = false;
 	}
@@ -984,11 +1003,11 @@ async function saveFeedbackThreadState(payload: {
 		const response = await gradebookService.saveFeedbackThreadState(payload);
 		upsertDrawerThread(response.thread);
 		showSuccessToast(
-			payload.thread_status === 'resolved' ? 'Thread resolved.' : 'Thread reopened.'
+			payload.thread_status === 'resolved' ? __('Thread resolved.') : __('Thread reopened.')
 		);
 	} catch (error) {
 		console.error('Failed to update feedback thread state', error);
-		showDangerToast('Could not update thread state');
+		showDangerToast(__('Could not update thread state'));
 	} finally {
 		threadBusy.value = false;
 	}
@@ -1004,11 +1023,11 @@ async function saveFeedbackCommentBankEntry(payload: {
 	commentBankBusy.value = true;
 	try {
 		await gradebookService.saveFeedbackCommentBankEntry(payload);
-		showSuccessToast('Reusable comment saved.');
+		showSuccessToast(__('Reusable comment saved.'));
 		await refreshCurrentSelection(currentDrawerSelection());
 	} catch (error) {
 		console.error('Failed to save reusable comment', error);
-		showDangerToast('Could not save this reusable comment');
+		showDangerToast(__('Could not save this reusable comment'));
 	} finally {
 		commentBankBusy.value = false;
 	}
@@ -1023,11 +1042,11 @@ async function saveFeedbackPublication(payload: {
 	publicationBusy.value = true;
 	try {
 		await gradebookService.saveFeedbackPublication(payload);
-		showSuccessToast('Publication state saved.');
+		showSuccessToast(__('Publication state saved.'));
 		await refreshCurrentSelection(currentDrawerSelection());
 	} catch (error) {
 		console.error('Failed to save feedback publication state', error);
-		showDangerToast('Could not save publication state');
+		showDangerToast(__('Could not save publication state'));
 	} finally {
 		publicationBusy.value = false;
 	}
@@ -1062,15 +1081,15 @@ async function runModeratorAction(payload: {
 		}
 		const successMessage =
 			payload.action === 'Return to Grader'
-				? 'Outcome returned to grader.'
+				? __('Outcome returned to grader.')
 				: payload.action === 'Adjust'
-					? 'Moderation adjustment applied.'
-					: 'Outcome approved by moderator.';
+					? __('Moderation adjustment applied.')
+					: __('Outcome approved by moderator.');
 		showSuccessToast(successMessage);
 		await loadDrawer(selectedOutcomeId.value, currentDrawerSelection());
 	} catch (error) {
 		console.error('Failed to apply moderation action', error);
-		showDangerToast('Could not apply moderation action');
+		showDangerToast(__('Could not apply moderation action'));
 	} finally {
 		moderationBusy.value = false;
 	}
@@ -1092,11 +1111,11 @@ async function markSubmissionSeen() {
 	submissionSeenBusy.value = true;
 	try {
 		await gradebookService.markNewSubmissionSeen({ outcome: selectedOutcomeId.value });
-		showSuccessToast('New evidence badge cleared.');
+		showSuccessToast(__('New evidence badge cleared.'));
 		await refreshCurrentSelection();
 	} catch (error) {
 		console.error('Failed to mark new submission seen', error);
-		showDangerToast('Could not update new evidence state');
+		showDangerToast(__('Could not update new evidence state'));
 	} finally {
 		submissionSeenBusy.value = false;
 	}
@@ -1107,11 +1126,11 @@ async function publishOutcome() {
 	publishBusy.value = true;
 	try {
 		await gradebookService.publishOutcomes({ outcome_ids: [selectedOutcomeId.value] });
-		showSuccessToast('Outcome released.');
+		showSuccessToast(__('Outcome released.'));
 		await refreshCurrentSelection();
 	} catch (error) {
 		console.error('Failed to publish outcome', error);
-		showDangerToast('Could not release this outcome');
+		showDangerToast(__('Could not release this outcome'));
 	} finally {
 		publishBusy.value = false;
 	}
@@ -1122,11 +1141,11 @@ async function unpublishOutcome() {
 	publishBusy.value = true;
 	try {
 		await gradebookService.unpublishOutcomes({ outcome_ids: [selectedOutcomeId.value] });
-		showSuccessToast('Outcome unreleased.');
+		showSuccessToast(__('Outcome unreleased.'));
 		await refreshCurrentSelection();
 	} catch (error) {
 		console.error('Failed to unpublish outcome', error);
-		showDangerToast('Could not unrelease this outcome');
+		showDangerToast(__('Could not unrelease this outcome'));
 	} finally {
 		publishBusy.value = false;
 	}
@@ -1140,7 +1159,7 @@ async function exportFeedbackPdf() {
 			drawer.value?.feedback_artifact?.open_url || drawer.value?.feedback_artifact?.preview_url;
 		if (currentArtifactUrl) {
 			window.open(currentArtifactUrl, '_blank', 'noopener,noreferrer');
-			showSuccessToast('Opened the latest feedback PDF.');
+			showSuccessToast(__('Opened the latest feedback PDF.'));
 			return;
 		}
 		const response = await gradebookService.exportFeedbackPdf({
@@ -1149,16 +1168,16 @@ async function exportFeedbackPdf() {
 		});
 		const targetUrl = response.artifact?.open_url || response.artifact?.preview_url;
 		if (!targetUrl) {
-			throw new Error('Missing feedback artifact URL');
+			throw new Error(__('Missing feedback artifact URL'));
 		}
 		if (drawer.value) {
 			drawer.value.feedback_artifact = response.artifact;
 		}
 		window.open(targetUrl, '_blank', 'noopener,noreferrer');
-		showSuccessToast('Feedback PDF prepared.');
+		showSuccessToast(__('Feedback PDF prepared.'));
 	} catch (error) {
 		console.error('Failed to export feedback PDF', error);
-		showDangerToast('Could not prepare the feedback PDF');
+		showDangerToast(__('Could not prepare the feedback PDF'));
 	} finally {
 		exportBusy.value = false;
 	}
@@ -1189,7 +1208,7 @@ function selectAllUnreleased() {
 
 function openBatchCompletionConfirm() {
 	if (!batchCompletionEligibleStudents.value.length) {
-		showToast('No shown incomplete students can be marked complete.', 'warning');
+		showToast(__('No shown incomplete students can be marked complete.'), 'warning');
 		return;
 	}
 	batchCompletionConfirmOpen.value = true;
@@ -1200,12 +1219,12 @@ function closeBatchCompletionConfirm() {
 }
 
 function batchCompletionMessage(response: BatchMarkCompletionResponse) {
-	const parts = [`Marked ${response.updated_count} complete.`];
+	const parts = [__('Marked {0} complete.', [response.updated_count])];
 	if (response.already_complete_count) {
-		parts.push(`${response.already_complete_count} already complete.`);
+		parts.push(__('{0} already complete.', [response.already_complete_count]));
 	}
 	if (response.skipped_published_count) {
-		parts.push(`${response.skipped_published_count} released unchanged.`);
+		parts.push(__('{0} released unchanged.', [response.skipped_published_count]));
 	}
 	return parts.join(' ');
 }
@@ -1214,7 +1233,7 @@ async function markShownComplete() {
 	const taskName = gradebook.task?.name;
 	const outcomeIds = batchCompletionEligibleStudents.value.map(student => student.task_student);
 	if (!taskName || !outcomeIds.length) {
-		showToast('No shown incomplete students can be marked complete.', 'warning');
+		showToast(__('No shown incomplete students can be marked complete.'), 'warning');
 		return;
 	}
 
@@ -1245,7 +1264,7 @@ async function markShownComplete() {
 		}
 	} catch (error) {
 		console.error('Failed to mark shown students complete', error);
-		showDangerToast('Could not mark shown students complete');
+		showDangerToast(__('Could not mark shown students complete'));
 	} finally {
 		batchCompletionBusy.value = false;
 	}
@@ -1258,7 +1277,7 @@ function setEvidenceFilter(filter: EvidenceFilter) {
 async function releaseSelectedOutcomes() {
 	const outcomeIds = selectedReleasableOutcomeIds.value;
 	if (!outcomeIds.length) {
-		showToast('Select at least one unreleased student.', 'warning');
+		showToast(__('Select at least one unreleased student.'), 'warning');
 		return;
 	}
 
@@ -1267,8 +1286,8 @@ async function releaseSelectedOutcomes() {
 		await gradebookService.publishOutcomes({ outcome_ids: outcomeIds });
 		showSuccessToast(
 			outcomeIds.length === 1
-				? 'Selected outcome released.'
-				: `Released ${outcomeIds.length} outcomes.`
+				? __('Selected outcome released.')
+				: __('Released {0} outcomes.', [outcomeIds.length])
 		);
 		clearBatchSelection();
 		if (!props.taskName) return;
@@ -1278,7 +1297,7 @@ async function releaseSelectedOutcomes() {
 		}
 	} catch (error) {
 		console.error('Failed to release selected outcomes', error);
-		showDangerToast('Could not release the selected outcomes');
+		showDangerToast(__('Could not release the selected outcomes'));
 	} finally {
 		publishBusy.value = false;
 	}
@@ -1286,7 +1305,7 @@ async function releaseSelectedOutcomes() {
 
 function studentResultSummary(student: StudentRow) {
 	if (isPointsTask(gradebook.task)) {
-		return `Score ${formatPoints(student.mark_awarded)}`;
+		return __('Score {0}', [formatPoints(student.mark_awarded)]);
 	}
 	if (showsBooleanResult(gradebook.task)) {
 		return student.complete
@@ -1295,14 +1314,14 @@ function studentResultSummary(student: StudentRow) {
 	}
 	if (isCriteriaTask(gradebook.task)) {
 		if (gradebook.task?.rubric_scoring_strategy === 'Separate Criteria') {
-			return `${student.criteria_scores.length} criteria tracked`;
+			return __('{0} criteria tracked', [student.criteria_scores.length]);
 		}
-		return `Total ${formatPoints(student.mark_awarded)}`;
+		return __('Total {0}', [formatPoints(student.mark_awarded)]);
 	}
 	if (showMaxPointsPill(gradebook.task)) {
-		return `Score ${formatPoints(student.mark_awarded)}`;
+		return __('Score {0}', [formatPoints(student.mark_awarded)]);
 	}
-	return student.feedback ? 'Comment saved' : 'No result yet';
+	return student.feedback ? __('Comment saved') : __('No result yet');
 }
 
 function isLateEvidence(student: StudentRow) {

@@ -13,7 +13,7 @@
 			isMobileOpen ? 'portal-sidebar--mobile-open' : 'portal-sidebar--mobile-closed',
 			isRailExpanded ? 'portal-sidebar--expanded' : 'portal-sidebar--collapsed',
 		]"
-		aria-label="Portal navigation"
+		:aria-label="__('Portal navigation')"
 	>
 		<div class="flex h-full flex-col">
 			<div class="portal-sidebar__brand">
@@ -33,8 +33,8 @@
 
 			<div class="portal-sidebar__content">
 				<div>
-					<h3 class="portal-sidebar__section type-label">Menu</h3>
-					<nav class="mt-2 space-y-1" aria-label="Menu">
+					<h3 class="portal-sidebar__section type-label">{{ __('Menu') }}</h3>
+					<nav class="mt-2 space-y-1" :aria-label="__('Menu')">
 						<RouterLink
 							v-for="item in menuItems"
 							:key="item.label"
@@ -57,7 +57,7 @@
 								{{ badgeLabel(badgeCount(item)) }}
 							</span>
 							<span v-if="badgeCount(item)" class="sr-only">
-								{{ badgeCount(item) }} unread communications
+								{{ __('{0} unread communications', [badgeCount(item)]) }}
 							</span>
 							<span class="portal-sidebar__tooltip type-caption" aria-hidden="true">{{
 								item.label
@@ -67,8 +67,8 @@
 				</div>
 
 				<div v-if="switchItems.length">
-					<h3 class="portal-sidebar__section type-label">Switch Portal</h3>
-					<nav class="mt-2 space-y-1" aria-label="Switch portal">
+					<h3 class="portal-sidebar__section type-label">{{ __('Switch Portal') }}</h3>
+					<nav class="mt-2 space-y-1" :aria-label="__('Switch portal')">
 						<RouterLink
 							v-for="item in switchItems"
 							:key="item.label"
@@ -90,8 +90,8 @@
 				</div>
 
 				<div>
-					<h3 class="portal-sidebar__section type-label">Account</h3>
-					<nav class="mt-2 space-y-1" aria-label="Account">
+					<h3 class="portal-sidebar__section type-label">{{ __('Account') }}</h3>
+					<nav class="mt-2 space-y-1" :aria-label="__('Account')">
 						<a
 							v-for="item in accountItems"
 							:key="item.label"
@@ -124,7 +124,7 @@
 					type="button"
 					class="portal-sidebar__toggle type-button-label"
 					:aria-expanded="isRailExpanded ? 'true' : 'false'"
-					:aria-label="isRailExpanded ? 'Collapse navigation' : 'Expand navigation'"
+					:aria-label="isRailExpanded ? __('Collapse navigation') : __('Expand navigation')"
 					@click="emit('toggle-rail')"
 				>
 					<FeatherIcon
@@ -133,10 +133,10 @@
 						:class="{ 'rotate-180': isRailExpanded }"
 					/>
 					<span class="portal-sidebar__label" aria-hidden="true">{{
-						isRailExpanded ? 'Collapse' : 'Expand'
+						isRailExpanded ? __('Collapse') : __('Expand')
 					}}</span>
 					<span class="sr-only">{{
-						isRailExpanded ? 'Collapse navigation' : 'Expand navigation'
+						isRailExpanded ? __('Collapse navigation') : __('Expand navigation')
 					}}</span>
 				</button>
 			</div>
@@ -149,6 +149,8 @@ import { computed } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 import { RouterLink } from 'vue-router';
 import { FeatherIcon } from 'frappe-ui';
+
+import { __ } from '@/lib/i18n';
 
 type PortalSection = 'student' | 'guardian';
 
@@ -191,34 +193,34 @@ const hasStudentPortal = computed(() => portalRoles.value.includes('student'));
 const hasGuardianPortal = computed(() => portalRoles.value.includes('guardian'));
 
 const studentMenu: MenuItem[] = [
-	{ label: 'Courses', icon: 'book-open', to: { name: 'student-courses' } },
-	{ label: 'Policies', icon: 'shield', to: { name: 'student-policies' } },
-	{ label: 'Forms & Signatures', icon: 'edit-3', to: { name: 'student-consents' } },
-	{ label: 'Portfolio & Journal', icon: 'layers', to: { name: 'student-portfolio' } },
+	{ label: __('Courses'), icon: 'book-open', to: { name: 'student-courses' } },
+	{ label: __('Policies'), icon: 'shield', to: { name: 'student-policies' } },
+	{ label: __('Forms & Signatures'), icon: 'edit-3', to: { name: 'student-consents' } },
+	{ label: __('Portfolio & Journal'), icon: 'layers', to: { name: 'student-portfolio' } },
 	{
-		label: 'Communications',
+		label: __('Communications'),
 		icon: 'message-square',
 		to: { name: 'student-communications' },
 		badge: 'unread-communications',
 	},
-	{ label: 'Activities', icon: 'star', to: { name: 'student-activities' } },
-	{ label: 'Student Log', icon: 'file-text', to: { name: 'student-logs' } },
+	{ label: __('Activities'), icon: 'star', to: { name: 'student-activities' } },
+	{ label: __('Student Log'), icon: 'file-text', to: { name: 'student-logs' } },
 ];
 
 const guardianMenu: MenuItem[] = [
 	{
-		label: 'Communications',
+		label: __('Communications'),
 		icon: 'message-square',
 		to: { name: 'guardian-communications' },
 		badge: 'unread-communications',
 	},
-	{ label: 'Attendance', icon: 'calendar', to: { name: 'guardian-attendance' } },
-	{ label: 'Activities', icon: 'star', to: { name: 'guardian-activities' } },
-	{ label: 'Monitoring', icon: 'file-text', to: { name: 'guardian-monitoring' } },
-	{ label: 'Finance', icon: 'credit-card', to: { name: 'guardian-finance' } },
-	{ label: 'Policies', icon: 'shield', to: { name: 'guardian-policies' } },
-	{ label: 'Forms & Signatures', icon: 'edit-3', to: { name: 'guardian-consents' } },
-	{ label: 'Showcase Portfolio', icon: 'layers', to: { name: 'guardian-portfolio' } },
+	{ label: __('Attendance'), icon: 'calendar', to: { name: 'guardian-attendance' } },
+	{ label: __('Activities'), icon: 'star', to: { name: 'guardian-activities' } },
+	{ label: __('Monitoring'), icon: 'file-text', to: { name: 'guardian-monitoring' } },
+	{ label: __('Finance'), icon: 'credit-card', to: { name: 'guardian-finance' } },
+	{ label: __('Policies'), icon: 'shield', to: { name: 'guardian-policies' } },
+	{ label: __('Forms & Signatures'), icon: 'edit-3', to: { name: 'guardian-consents' } },
+	{ label: __('Showcase Portfolio'), icon: 'layers', to: { name: 'guardian-portfolio' } },
 ];
 
 const menuItems = computed<MenuItem[]>(() => {
@@ -236,22 +238,30 @@ const menuItems = computed<MenuItem[]>(() => {
 const switchItems = computed<MenuItem[]>(() => {
 	const items: MenuItem[] = [];
 	if (props.activeSection !== 'student' && hasStudentPortal.value) {
-		items.push({ label: 'Go to Student Portal', icon: 'book-open', to: { name: 'student-home' } });
+		items.push({
+			label: __('Go to Student Portal'),
+			icon: 'book-open',
+			to: { name: 'student-home' },
+		});
 	}
 	if (props.activeSection !== 'guardian' && hasGuardianPortal.value) {
-		items.push({ label: 'Go to Guardian Portal', icon: 'users', to: { name: 'guardian-home' } });
+		items.push({
+			label: __('Go to Guardian Portal'),
+			icon: 'users',
+			to: { name: 'guardian-home' },
+		});
 	}
 	return items;
 });
 
 const sidebarLabel = computed(() => {
-	if (props.activeSection === 'guardian') return 'Guardian Portal';
-	return 'Student Portal';
+	if (props.activeSection === 'guardian') return __('Guardian Portal');
+	return __('Student Portal');
 });
 
 const homeLabel = computed(() => {
-	if (props.activeSection === 'guardian') return 'Family Snapshot';
-	return 'Student Home';
+	if (props.activeSection === 'guardian') return __('Family Snapshot');
+	return __('Student Home');
 });
 
 const homeLink = computed<RouteLocationRaw>(() => {
@@ -260,8 +270,8 @@ const homeLink = computed<RouteLocationRaw>(() => {
 });
 
 const accountItems = [
-	{ label: 'Profile', icon: 'user', href: '/desk/user-profile' },
-	{ label: 'Logout', icon: 'log-out', href: '/logout?redirect-to=%2F' },
+	{ label: __('Profile'), icon: 'user', href: '/desk/user-profile' },
+	{ label: __('Logout'), icon: 'log-out', href: '/logout?redirect-to=%2F' },
 ];
 
 function badgeCount(item: MenuItem) {
@@ -276,6 +286,6 @@ function badgeLabel(count: number) {
 function itemAriaLabel(item: MenuItem) {
 	const count = badgeCount(item);
 	if (!count) return item.label;
-	return `${item.label}, ${count} unread communications`;
+	return __('{0}, {1} unread communications', [item.label, count]);
 }
 </script>

@@ -3,7 +3,7 @@
 		<a :href="`/desk/student/${student.student}`" target="_blank" rel="noopener" class="block">
 			<img
 				:src="student.student_image || DEFAULT_IMG"
-				:alt="`Photo of ${student.student_name}`"
+				:alt="__('Photo of {0}', [student.student_name])"
 				loading="lazy"
 				class="h-40 w-full rounded-xl object-cover"
 				@error="onImgError"
@@ -26,10 +26,10 @@
 				v-if="student.has_ssg"
 				type="button"
 				class="ml-1 inline-flex items-center"
-				title="Support guidance available"
+				:title="__('Support guidance available')"
 				@click.stop="emit('open-ssg', student)"
 			>
-				<Badge variant="subtle">SSG</Badge>
+				<Badge variant="subtle">{{ __('SSG') }}</Badge>
 			</button>
 
 			<!-- Medical note icon (generic medical cross in a circle) -->
@@ -37,8 +37,8 @@
 				v-if="student.medical_info"
 				type="button"
 				class="ml-1 inline-flex items-center text-red-600"
-				title="Health note available"
-				aria-label="Health note available"
+				:title="__('Health note available')"
+				:aria-label="__('Health note available')"
 				@click.stop="emit('show-medical', { student, note: student.medical_info })"
 			>
 				<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -52,7 +52,7 @@
 				v-if="isBirthdaySoon"
 				class="ml-1 inline-flex items-center text-amber-500"
 				:title="birthdayTitle"
-				aria-label="Upcoming birthday"
+				:aria-label="__('Upcoming birthday')"
 				>🎂</span
 			>
 		</div>
@@ -67,6 +67,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { Badge } from 'frappe-ui';
+
+import { __ } from '@/lib/i18n';
 
 type StudentRow = {
 	student: string;
@@ -103,8 +105,8 @@ const isBirthdaySoon = computed(() => {
 });
 
 const birthdayTitle = computed(() => {
-	if (props.student.birthday_today) return 'Birthday today';
-	if (props.student.birthday_label) return `Birthday on ${props.student.birthday_label}`;
-	return 'Birthday';
+	if (props.student.birthday_today) return __('Birthday today');
+	if (props.student.birthday_label) return __('Birthday on {0}', [props.student.birthday_label]);
+	return __('Birthday');
 });
 </script>

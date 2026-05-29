@@ -4,16 +4,19 @@
 		<header class="card-surface p-5 sm:p-6">
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 				<div>
-					<p class="type-overline text-ink/60">Guardian Course Selection</p>
-					<h1 class="type-h1 text-ink">Family Course Selection Board</h1>
+					<p class="type-overline text-ink/60">{{ __('Guardian Course Selection') }}</p>
+					<h1 class="type-h1 text-ink">{{ __('Family Course Selection Board') }}</h1>
 					<p class="type-body text-ink/70">
-						See every child’s open program choices in one calm surface, with required rows locked
-						and unresolved decisions clearly marked.
+						{{
+							__(
+								'See every child’s open program choices in one calm surface, with required rows locked and unresolved decisions clearly marked.'
+							)
+						}}
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
 					<RouterLink class="if-button if-button--secondary" :to="{ name: 'guardian-home' }">
-						Back to Home
+						{{ __('Back to Home') }}
 					</RouterLink>
 					<button
 						type="button"
@@ -21,7 +24,7 @@
 						:disabled="loading"
 						@click="loadBoard"
 					>
-						Refresh
+						{{ __('Refresh') }}
 					</button>
 				</div>
 			</div>
@@ -29,37 +32,42 @@
 
 		<section class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Children</p>
+				<p class="mini-kpi-label">{{ __('Children') }}</p>
 				<p class="mini-kpi-value">{{ childrenCount }}</p>
 			</article>
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Open windows</p>
+				<p class="mini-kpi-label">{{ __('Open windows') }}</p>
 				<p class="mini-kpi-value">{{ openWindowCount }}</p>
 			</article>
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Pending selections</p>
+				<p class="mini-kpi-label">{{ __('Pending selections') }}</p>
 				<p class="mini-kpi-value">{{ pendingCount }}</p>
 			</article>
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Submitted</p>
+				<p class="mini-kpi-label">{{ __('Submitted') }}</p>
 				<p class="mini-kpi-value">{{ submittedCount }}</p>
 			</article>
 		</section>
 
 		<section v-if="loading" class="card-surface p-5">
-			<p class="type-body text-ink/70">Loading family course selection board...</p>
+			<p class="type-body text-ink/70">{{ __('Loading family course selection board...') }}</p>
 		</section>
 		<section v-else-if="errorMessage" class="card-surface p-5">
-			<p class="type-body-strong text-flame">Could not load family course selection board.</p>
+			<p class="type-body-strong text-flame">
+				{{ __('Could not load family course selection board.') }}
+			</p>
 			<p class="type-body text-ink/70">{{ errorMessage }}</p>
 		</section>
 
 		<template v-else>
 			<section v-if="!windows.length" class="card-surface p-5">
-				<h2 class="type-h3 text-ink">No active selection windows</h2>
+				<h2 class="type-h3 text-ink">{{ __('No active selection windows') }}</h2>
 				<p class="mt-2 type-body text-ink/70">
-					When the school opens course selections for your family, they will appear here with one
-					row per child.
+					{{
+						__(
+							'When the school opens course selections for your family, they will appear here with one row per child.'
+						)
+					}}
 				</p>
 			</section>
 
@@ -184,7 +192,7 @@ async function loadBoard() {
 		board.value = await getSelfEnrollmentPortalBoard({});
 	} catch (error) {
 		errorMessage.value =
-			error instanceof Error ? error.message : 'Could not load course selection.';
+			error instanceof Error ? error.message : __('Could not load family course selection board.');
 	} finally {
 		loading.value = false;
 	}

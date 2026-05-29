@@ -4,14 +4,14 @@
 	<div class="portal-page">
 		<header class="page-header">
 			<div class="page-header__intro">
-				<h1 class="type-h1 text-ink">Student Logs</h1>
-				<p class="type-meta text-ink/70">Notes shared with you by staff.</p>
+				<h1 class="type-h1 text-ink">{{ __('Student Logs') }}</h1>
+				<p class="type-meta text-ink/70">{{ __('Notes shared with you by staff.') }}</p>
 			</div>
 		</header>
 
 		<!-- Initial loading -->
 		<div v-if="initialLoading" class="card-panel py-10 text-center type-meta text-ink/70">
-			Loading logs…
+			{{ __('Loading logs…') }}
 		</div>
 
 		<!-- Empty state -->
@@ -19,7 +19,7 @@
 			v-else-if="!logs.length"
 			class="card-panel rounded-2xl border-dashed py-10 text-center type-meta text-ink/68"
 		>
-			No logs yet.
+			{{ __('No logs yet.') }}
 		</div>
 
 		<!-- List -->
@@ -51,7 +51,7 @@
 								{{ formatTime(log.time) }}
 							</span>
 						</p>
-						<p class="type-meta">By {{ log.author_name }}</p>
+						<p class="type-meta">{{ __('By {0}', [log.author_name]) }}</p>
 
 						<p v-if="log.preview" class="mt-2 type-body text-ink/80 break-words">
 							{{ log.preview }}
@@ -59,16 +59,16 @@
 					</div>
 
 					<div class="ml-3">
-						<span v-if="log.is_unread" class="chip chip-focus">New</span>
+						<span v-if="log.is_unread" class="chip chip-focus">{{ __('New') }}</span>
 					</div>
 				</div>
 
 				<div v-if="log.follow_up_status" class="mt-2">
 					<span class="chip" :class="statusClass(log.follow_up_status)">
-						Follow-up: {{ log.follow_up_status }}
+						{{ __('Follow-up: {0}', [log.follow_up_status]) }}
 					</span>
 					<span v-if="log.attachment_count" class="chip ml-2">
-						Evidence: {{ log.attachment_count }}
+						{{ __('Evidence: {0}', [log.attachment_count]) }}
 					</span>
 				</div>
 			</button>
@@ -77,8 +77,8 @@
 		<!-- Load more -->
 		<div v-if="hasMore" class="mt-4">
 			<button :disabled="moreLoading" @click="loadMoreLogs" class="if-button if-button--primary">
-				<span v-if="!moreLoading">Load more</span>
-				<span v-else>Loading…</span>
+				<span v-if="!moreLoading">{{ __('Load more') }}</span>
+				<span v-else>{{ __('Loading…') }}</span>
 			</button>
 		</div>
 
@@ -121,7 +121,7 @@
 								tabindex="0"
 								@click="isModalOpen = false"
 							>
-								Close
+								{{ __('Close') }}
 							</button>
 							<div class="if-overlay__body">
 								<div v-if="selectedLog">
@@ -132,12 +132,12 @@
 									<div class="mt-2">
 										<div class="type-meta space-x-4">
 											<span>{{ formatDate(selectedLog.date) }}</span>
-											<span>By: {{ selectedLog.author_name }}</span>
+											<span>{{ __('By: {0}', [selectedLog.author_name]) }}</span>
 										</div>
 										<hr class="my-4 border-[rgb(var(--border-rgb)/0.7)]" />
 
 										<div v-if="modalLoading" class="text-center py-8">
-											<p class="type-body text-ink/70">Loading details...</p>
+											<p class="type-body text-ink/70">{{ __('Loading details...') }}</p>
 										</div>
 										<div
 											v-else
@@ -150,7 +150,7 @@
 											"
 											class="mt-5 space-y-3"
 										>
-											<p class="type-body-strong text-ink">Evidence</p>
+											<p class="type-body-strong text-ink">{{ __('Evidence') }}</p>
 											<template
 												v-for="attachment in selectedLog.attachments"
 												:key="attachment.row_name"
@@ -174,7 +174,7 @@
 									class="if-button if-button--primary w-full justify-center"
 									@click="isModalOpen = false"
 								>
-									Close
+									{{ __('Close') }}
 								</button>
 							</div>
 						</DialogPanel>
@@ -197,6 +197,7 @@ import {
 } from '@headlessui/vue';
 import { apiMethod } from '@/resources/frappe';
 import AttachmentPreviewCard from '@/components/attachments/AttachmentPreviewCard.vue';
+import { __ } from '@/lib/i18n';
 
 const PAGE_LENGTH = 20;
 
@@ -264,7 +265,7 @@ async function fetchLogs() {
 			start: start.value,
 			page_length: PAGE_LENGTH,
 		});
-		if (!Array.isArray(rows)) throw new Error('Unexpected logs response');
+		if (!Array.isArray(rows)) throw new Error(__('Unexpected logs response'));
 
 		logs.value.push(...rows);
 		if (rows.length < PAGE_LENGTH) hasMore.value = false;
@@ -293,12 +294,12 @@ async function openLogDetail(log) {
 				if (row) row.is_unread = false;
 			} catch (markErr) {
 				const message = markErr instanceof Error ? markErr.message : String(markErr || '');
-				toast.error(message || 'Could not update read status.');
+				toast.error(message || __('Could not update read status.'));
 			}
 		}
 	} catch (err) {
 		console.error('Failed to fetch log detail:', err);
-		toast.error('Could not load this log.');
+		toast.error(__('Could not load this log.'));
 		isModalOpen.value = false;
 	} finally {
 		modalLoading.value = false;

@@ -5,9 +5,9 @@
 		<div class="border-b border-border/50 bg-gray-50/50 px-6 py-4">
 			<div class="flex flex-wrap items-center justify-between gap-4">
 				<div class="space-y-1">
-					<h2 class="text-lg font-semibold text-ink">Class Overview</h2>
+					<h2 class="text-lg font-semibold text-ink">{{ __('Class Overview') }}</h2>
 					<p class="max-w-2xl text-sm text-ink/60">
-						Rows are students and columns are recent deliveries for this group.
+						{{ __('Rows are students and columns are recent deliveries for this group.') }}
 					</p>
 				</div>
 
@@ -32,13 +32,15 @@
 							:options="normalizedTaskTypeOptions"
 							option-label="label"
 							option-value="value"
-							placeholder="Task Type"
+							:placeholder="__('Task Type')"
 							:model-value="overviewTaskType"
 							@update:modelValue="onTaskTypeChanged"
 						/>
 					</div>
 
-					<div class="hidden text-xs uppercase tracking-wide text-ink/45 sm:block">Columns</div>
+					<div class="hidden text-xs uppercase tracking-wide text-ink/45 sm:block">
+						{{ __('Columns') }}
+					</div>
 					<FormControl
 						type="select"
 						size="sm"
@@ -60,9 +62,9 @@
 				<div class="rounded-full bg-gray-100 p-4">
 					<FeatherIcon name="layout" class="h-8 w-8 text-ink/30" />
 				</div>
-				<p class="text-lg font-medium text-ink">No Group Selected</p>
+				<p class="text-lg font-medium text-ink">{{ __('No Group Selected') }}</p>
 				<p class="max-w-xs text-sm">
-					Choose a student group first to open the overall gradebook view.
+					{{ __('Choose a student group first to open the overall gradebook view.') }}
 				</p>
 			</div>
 
@@ -71,14 +73,14 @@
 				class="flex h-full flex-col items-center justify-center gap-3 pt-20"
 			>
 				<Spinner class="h-8 w-8 text-canopy" />
-				<p class="text-sm text-ink/50">Loading overview...</p>
+				<p class="text-sm text-ink/50">{{ __('Loading overview...') }}</p>
 			</div>
 
 			<div
 				v-else-if="errorMessage"
 				class="rounded-xl border border-flame/20 bg-flame/5 p-5 text-sm text-ink/70"
 			>
-				<p class="font-semibold text-ink">Overview unavailable</p>
+				<p class="font-semibold text-ink">{{ __('Overview unavailable') }}</p>
 				<p class="mt-1">{{ errorMessage }}</p>
 			</div>
 
@@ -86,17 +88,20 @@
 				v-else-if="!deliveries.length || !students.length"
 				class="flex h-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border/60 bg-gray-50/30 p-12 text-center text-ink/60"
 			>
-				<p class="text-lg font-medium text-ink">Nothing to show yet</p>
+				<p class="text-lg font-medium text-ink">{{ __('Nothing to show yet') }}</p>
 				<p class="max-w-md text-sm">
-					This overview only shows deliveries that match the current group and filters. Try a
-					different group or widen the task filters.
+					{{
+						__(
+							'This overview only shows deliveries that match the current group and filters. Try a different group or widen the task filters.'
+						)
+					}}
 				</p>
 			</div>
 
 			<div v-else class="space-y-4">
 				<div class="flex flex-wrap gap-2">
-					<Badge variant="subtle">Students {{ students.length }}</Badge>
-					<Badge variant="subtle">Deliveries {{ deliveries.length }}</Badge>
+					<Badge variant="subtle">{{ __('Students {0}', [students.length]) }}</Badge>
+					<Badge variant="subtle">{{ __('Deliveries {0}', [deliveries.length]) }}</Badge>
 					<Badge variant="subtle">{{ assessmentScopeLabel }}</Badge>
 					<Badge v-if="overviewTaskType" variant="subtle">{{ overviewTaskType }}</Badge>
 				</div>
@@ -119,7 +124,7 @@
 									<button
 										type="button"
 										class="group w-full rounded-lg px-2 py-1 text-left transition hover:bg-white hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leaf/30"
-										:aria-label="`Open ${delivery.task_title}`"
+										:aria-label="__('Open {0}', [delivery.task_title])"
 										@click="openTaskColumn(delivery.delivery_id)"
 									>
 										<div class="space-y-1">
@@ -131,7 +136,9 @@
 												/>
 											</div>
 											<div class="flex flex-wrap gap-1 text-xs text-ink/55">
-												<span>Due {{ formatDate(delivery.due_date) || '—' }}</span>
+												<span>
+													{{ __('Due {0}', [formatDate(delivery.due_date) || '—']) }}
+												</span>
 												<Badge v-if="taskModeBadge(delivery)" variant="subtle">
 													{{ taskModeBadge(delivery) }}
 												</Badge>
@@ -207,6 +214,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import { Badge, FeatherIcon, FormControl, Spinner, toast } from 'frappe-ui';
+import { __ } from '@/lib/i18n';
 import { createGradebookService } from '@/lib/services/gradebook/gradebookService';
 import StudentInsightNoteButton from '@/components/student/StudentInsightNoteButton.vue';
 import type { GroupSummary } from '@/types/contracts/gradebook/fetch_groups';
@@ -257,25 +265,25 @@ const response = reactive<GetGridResponse>({
 const loadVersion = ref(0);
 
 const limitOptions = [
-	{ label: '8 columns', value: 8 },
-	{ label: '10 columns', value: 10 },
-	{ label: '14 columns', value: 14 },
+	{ label: __('8 columns'), value: 8 },
+	{ label: __('10 columns'), value: 10 },
+	{ label: __('14 columns'), value: 14 },
 ];
 const assessmentScopeOptions: Array<{ label: string; value: AssessmentScope }> = [
-	{ label: 'Graded', value: 'graded' },
-	{ label: 'Not graded', value: 'not_graded' },
-	{ label: 'All', value: 'all' },
+	{ label: __('Graded'), value: 'graded' },
+	{ label: __('Not graded'), value: 'not_graded' },
+	{ label: __('All'), value: 'all' },
 ];
 
 const deliveries = computed(() => response.deliveries || []);
 const students = computed(() => response.students || []);
 const assessmentScopeLabel = computed(() => {
-	if (assessmentScope.value === 'not_graded') return 'Not graded';
-	if (assessmentScope.value === 'all') return 'All work';
-	return 'Graded';
+	if (assessmentScope.value === 'not_graded') return __('Not graded');
+	if (assessmentScope.value === 'all') return __('All work');
+	return __('Graded');
 });
 const normalizedTaskTypeOptions = computed<SelectOption[]>(() => {
-	const options: SelectOption[] = [{ label: 'All Types', value: null }];
+	const options: SelectOption[] = [{ label: __('All Types'), value: null }];
 	const seen = new Set<string>();
 
 	for (const option of props.taskTypeOptions || []) {
@@ -354,8 +362,8 @@ async function loadGrid() {
 		console.error('Failed to load overview grid', error);
 		if (loadVersion.value === version) {
 			clearResponse();
-			errorMessage.value = 'The overview could not be loaded right now.';
-			showToast('Could not load the gradebook overview');
+			errorMessage.value = __('The overview could not be loaded right now.');
+			showToast(__('Could not load the gradebook overview'));
 		}
 	} finally {
 		if (loadVersion.value === version) {
@@ -391,25 +399,27 @@ function primaryLabel(student: string, delivery: Delivery) {
 	}
 	if (isCriteriaTask(delivery)) {
 		if (delivery.rubric_scoring_strategy === 'Separate Criteria') {
-			return cell.official.criteria?.length ? `${cell.official.criteria.length} criteria` : '—';
+			return cell.official.criteria?.length
+				? __('{0} criteria', [cell.official.criteria.length])
+				: '—';
 		}
 		return String(cell.official.score ?? cell.official.grade ?? '—');
 	}
 	if (isBinaryTask(delivery)) {
-		return cell.flags.is_complete ? 'Yes' : 'No';
+		return cell.flags.is_complete ? __('Yes') : __('No');
 	}
 	if (isCompletionTask(delivery)) {
-		return cell.flags.is_complete ? 'Complete' : 'Not complete';
+		return cell.flags.is_complete ? __('Complete') : __('Not complete');
 	}
 	if (delivery.delivery_mode === 'Collect Work') {
-		return cell.flags.has_submission ? 'Submitted' : 'Awaiting';
+		return cell.flags.has_submission ? __('Submitted') : __('Awaiting');
 	}
 	return cell.flags.grading_status || cell.flags.procedural_status || '—';
 }
 
 function secondaryLabel(student: string, delivery: Delivery) {
 	const cell = findCell(student, delivery.delivery_id);
-	if (!cell) return 'No outcome yet';
+	if (!cell) return __('No outcome yet');
 
 	if (isCriteriaTask(delivery) && cell.official.criteria?.length) {
 		const levels = cell.official.criteria
@@ -421,10 +431,10 @@ function secondaryLabel(student: string, delivery: Delivery) {
 	}
 
 	if (delivery.delivery_mode === 'Collect Work') {
-		return cell.flags.procedural_status || cell.flags.grading_status || 'No submission';
+		return cell.flags.procedural_status || cell.flags.grading_status || __('No submission');
 	}
 
-	return cell.flags.grading_status || cell.flags.procedural_status || 'Open task';
+	return cell.flags.grading_status || cell.flags.procedural_status || __('Open task');
 }
 
 function cellBadges(student: string, delivery: Delivery) {
@@ -433,20 +443,20 @@ function cellBadges(student: string, delivery: Delivery) {
 
 	const badges: string[] = [];
 	if (cell.flags.has_new_submission) {
-		badges.push('New Evidence');
+		badges.push(__('New Evidence'));
 	}
 	if (cell.flags.is_published) {
-		badges.push('Released');
+		badges.push(__('Released'));
 	}
 	if (delivery.allow_feedback && cell.official.feedback) {
-		badges.push('Comment');
+		badges.push(__('Comment'));
 	}
 	if (
 		isPointsTask(delivery) &&
 		delivery.max_points !== null &&
 		delivery.max_points !== undefined
 	) {
-		badges.push(`${formatPoints(delivery.max_points)} max`);
+		badges.push(__('{0} max', [formatPoints(delivery.max_points)]));
 	}
 	return badges;
 }

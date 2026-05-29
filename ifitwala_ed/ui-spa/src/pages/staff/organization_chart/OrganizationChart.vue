@@ -3,9 +3,9 @@
 	<div class="staff-shell org-chart-shell">
 		<header class="page-header">
 			<div class="page-header__intro">
-				<h1 class="type-h1 text-canopy">Organization Chart</h1>
+				<h1 class="type-h1 text-canopy">{{ __('Organization Chart') }}</h1>
 				<p class="type-meta text-slate-token/80">
-					Explore reporting lines across your organization.
+					{{ __('Explore reporting lines across your organization.') }}
 				</p>
 			</div>
 		</header>
@@ -13,14 +13,14 @@
 		<section class="org-chart-panel card-surface">
 			<FiltersBar class="org-chart-toolbar">
 				<div class="org-chart-toolbar__filters">
-					<label class="type-label text-slate-600">Organization</label>
+					<label class="type-label text-slate-600">{{ __('Organization') }}</label>
 					<FormControl
 						type="select"
 						size="md"
 						:options="orgOptions"
 						:model-value="selectedOrganization"
 						:disabled="loadingRoots || !orgOptions.length"
-						placeholder="All Organizations"
+						:placeholder="__('All Organizations')"
 						@update:modelValue="onOrganizationSelected"
 					/>
 				</div>
@@ -33,7 +33,7 @@
 						@click="expandAll"
 					>
 						<FeatherIcon name="maximize-2" class="h-4 w-4" />
-						<span>Expand all</span>
+						<span>{{ __('Expand all') }}</span>
 					</button>
 					<button
 						type="button"
@@ -42,7 +42,7 @@
 						@click="collapseAll"
 					>
 						<FeatherIcon name="minimize-2" class="h-4 w-4" />
-						<span>Collapse</span>
+						<span>{{ __('Collapse') }}</span>
 					</button>
 				</div>
 			</FiltersBar>
@@ -59,14 +59,16 @@
 
 			<div v-if="loadingRoots" class="org-chart-empty">
 				<div class="org-chart-empty__spinner"></div>
-				<p class="type-body">Loading organization chart...</p>
+				<p class="type-body">{{ __('Loading organization chart...') }}</p>
 			</div>
 			<div v-else-if="errorMessage" class="org-chart-empty">
 				<p class="type-body">{{ errorMessage }}</p>
 			</div>
 			<div v-else-if="!hasNodes" class="org-chart-empty">
-				<p class="type-body">No staff members found for this organization.</p>
-				<p class="type-caption text-slate-500 mt-1">Try adjusting the organization filter.</p>
+				<p class="type-body">{{ __('No staff members found for this organization.') }}</p>
+				<p class="type-caption text-slate-500 mt-1">
+					{{ __('Try adjusting the organization filter.') }}
+				</p>
 			</div>
 			<div v-else ref="chartStageRef" class="org-chart-stage">
 				<div ref="chartSurfaceRef" class="org-chart-surface">
@@ -145,6 +147,7 @@ import { FeatherIcon, FormControl } from 'frappe-ui';
 
 import OrgChartNodeCard from '@/components/org-chart/OrgChartNodeCard.vue';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
+import { __ } from '@/lib/i18n';
 import {
 	getOrganizationChartChildren,
 	getOrganizationChartContext,
@@ -206,7 +209,7 @@ const expandLimits = computed(() => context.value?.expand_limits ?? null);
 const orgOptions = computed(() => {
 	if (!organizations.value.length) return [];
 	return [
-		{ label: 'All Organizations', value: null },
+		{ label: __('All Organizations'), value: null },
 		...organizations.value.map(org => ({
 			label: org.organization_name || org.name,
 			value: org.name,
@@ -219,12 +222,18 @@ const hasNodes = computed(() => visibleLevels.value.some(level => level.length))
 
 const limitHint = computed(() => {
 	if (!expandLimits.value) return '';
-	return `Expand all shows up to ${expandLimits.value.max_nodes} people or ${expandLimits.value.max_depth} levels.`;
+	return __('Expand all shows up to {0} people or {1} levels.', [
+		expandLimits.value.max_nodes,
+		expandLimits.value.max_depth,
+	]);
 });
 
 const expandedMeta = computed(() => {
 	if (!expandedView.value || !fullTree.value.length) return '';
-	return `Expanded view: ${fullTree.value.length} people across ${fullDepth.value} levels.`;
+	return __('Expanded view: {0} people across {1} levels.', [
+		fullTree.value.length,
+		fullDepth.value,
+	]);
 });
 
 const nodeLookup = computed(() => {
@@ -445,7 +454,7 @@ async function loadContext() {
 		contextReady.value = true;
 		await loadRoots();
 	} catch (error) {
-		errorMessage.value = 'Unable to load organization chart context.';
+		errorMessage.value = __('Unable to load organization chart context.');
 	}
 }
 
@@ -472,7 +481,7 @@ async function loadRoots() {
 			await selectNode(first, 0);
 		}
 	} catch (error) {
-		errorMessage.value = 'Unable to load staff members for this organization.';
+		errorMessage.value = __('Unable to load staff members for this organization.');
 		levels.value = [];
 	} finally {
 		loadingRoots.value = false;
@@ -514,7 +523,7 @@ async function selectNode(node: OrgChartNode, levelIndex: number) {
 		childrenCache.set(node.id, children);
 		levels.value = children.length ? [...trimmedLevels, children] : trimmedLevels;
 	} catch (error) {
-		actionMessage.value = 'Unable to load direct reports for this role.';
+		actionMessage.value = __('Unable to load direct reports for this role.');
 	} finally {
 		loadingChildrenId.value = null;
 		scheduleConnectors();
@@ -546,7 +555,7 @@ async function expandAll() {
 		fullRoots.value = response.roots;
 		fullDepth.value = response.max_depth;
 	} catch (error) {
-		actionMessage.value = 'Unable to expand the organization chart right now.';
+		actionMessage.value = __('Unable to expand the organization chart right now.');
 	} finally {
 		scheduleConnectors();
 	}

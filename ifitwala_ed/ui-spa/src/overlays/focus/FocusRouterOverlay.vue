@@ -60,7 +60,7 @@ Used by:
 									type="button"
 									class="if-overlay__icon-button"
 									@click="requestClose('programmatic')"
-									aria-label="Close"
+									:aria-label="__('Close')"
 								>
 									<FeatherIcon name="x" class="h-4 w-4" />
 								</button>
@@ -80,14 +80,16 @@ Used by:
 
 							<!-- Error -->
 							<div v-else-if="errorText" class="card-panel p-5">
-								<p class="type-body-strong text-ink">Couldn’t open this item</p>
+								<p class="type-body-strong text-ink">{{ __('Couldn’t open this item') }}</p>
 								<p class="mt-2 type-body text-ink/70">
 									{{ errorText }}
 								</p>
 
 								<div class="mt-5 flex flex-wrap justify-end gap-2">
-									<Button variant="ghost" @click="requestClose('programmatic')">Close</Button>
-									<Button variant="solid" @click="reload">Retry</Button>
+									<Button variant="ghost" @click="requestClose('programmatic')">
+										{{ __('Close') }}
+									</Button>
+									<Button variant="solid" @click="reload">{{ __('Retry') }}</Button>
 								</div>
 							</div>
 
@@ -131,14 +133,14 @@ Used by:
 
 								<!-- Not implemented -->
 								<div v-else class="card-panel p-5">
-									<p class="type-body-strong text-ink">Not supported yet</p>
+									<p class="type-body-strong text-ink">{{ __('Not supported yet') }}</p>
 									<p class="mt-2 type-body text-ink/70">
-										This focus action type isn’t wired yet:
+										{{ __('This focus action type isn’t wired yet:') }}
 										<span class="type-meta">{{ actionType }}</span>
 									</p>
 
 									<div class="mt-5 flex justify-end">
-										<Button variant="ghost" @click="requestClose">Close</Button>
+										<Button variant="ghost" @click="requestClose">{{ __('Close') }}</Button>
 									</div>
 								</div>
 							</div>
@@ -149,7 +151,7 @@ Used by:
                ============================================================ -->
 						<footer class="if-overlay__footer justify-between">
 							<p class="type-caption text-ink/60">
-								Focus is a router. Completion happens inside the workflow.
+								{{ __('Focus is a router. Completion happens inside the workflow.') }}
 							</p>
 
 							<div class="hidden md:flex items-center gap-2">
@@ -181,6 +183,7 @@ import InquiryFollowUpAction from '@/components/focus/InquiryFollowUpAction.vue'
 import ApplicantReviewAssignmentAction from '@/components/focus/ApplicantReviewAssignmentAction.vue';
 import ApplicantInterviewFeedbackAction from '@/components/focus/ApplicantInterviewFeedbackAction.vue';
 import StaffPolicyAcknowledgeAction from '@/components/focus/StaffPolicyAcknowledgeAction.vue';
+import { __ } from '@/lib/i18n';
 import { createFocusService } from '@/lib/services/focus/focusService';
 
 import type {
@@ -255,24 +258,24 @@ const resolvedFocusItemId = computed(() => {
 /* HEADER ------------------------------------------------------- */
 const headerTitle = computed(() => {
 	if (referenceDoctype.value === 'Student Log') {
-		return studentLogMode.value === 'assignee' ? 'Follow up' : 'Review outcome';
+		return studentLogMode.value === 'assignee' ? __('Follow up') : __('Review outcome');
 	}
 	if (referenceDoctype.value === 'Inquiry') {
-		return 'Inquiry follow-up';
+		return __('Inquiry follow-up');
 	}
 	if (referenceDoctype.value === 'Applicant Interview') {
-		return 'Interview feedback';
+		return __('Interview feedback');
 	}
 	if (referenceDoctype.value === 'Applicant Review Assignment') {
 		const targetType = ctx.value?.review_assignment?.target_type;
-		if (targetType === 'Applicant Document Item') return 'Evidence review';
-		if (targetType === 'Applicant Health Profile') return 'Health review';
-		return 'Application review';
+		if (targetType === 'Applicant Document Item') return __('Evidence review');
+		if (targetType === 'Applicant Health Profile') return __('Health review');
+		return __('Application review');
 	}
 	if (referenceDoctype.value === 'Policy Version') {
-		return 'Acknowledge policy';
+		return __('Acknowledge policy');
 	}
-	return 'Focus';
+	return __('Focus');
 });
 
 const headerSubtitle = computed(() => {
@@ -283,12 +286,12 @@ const headerSubtitle = computed(() => {
 });
 
 const headerKicker = computed(() => {
-	if (referenceDoctype.value === 'Student Log') return 'Student wellbeing';
-	if (referenceDoctype.value === 'Inquiry') return 'Admissions';
-	if (referenceDoctype.value === 'Applicant Interview') return 'Admissions interview';
-	if (referenceDoctype.value === 'Applicant Review Assignment') return 'Admissions review';
-	if (referenceDoctype.value === 'Policy Version') return 'Compliance';
-	return 'Focus';
+	if (referenceDoctype.value === 'Student Log') return __('Student wellbeing');
+	if (referenceDoctype.value === 'Inquiry') return __('Admissions');
+	if (referenceDoctype.value === 'Applicant Interview') return __('Admissions interview');
+	if (referenceDoctype.value === 'Applicant Review Assignment') return __('Admissions review');
+	if (referenceDoctype.value === 'Policy Version') return __('Compliance');
+	return __('Focus');
 });
 
 /* ROUTING ------------------------------------------------------ */
@@ -337,7 +340,7 @@ function requireFocusItemId(): string {
 	const id = String(props.focusItemId || '').trim();
 	if (!id) {
 		// A+ invariant: ID-only routing. Missing ID is a hard error.
-		throw new Error('Missing focus item id. Please reopen from the Focus list.');
+		throw new Error(__('Missing focus item id. Please reopen from the Focus list.'));
 	}
 	return id;
 }
@@ -361,7 +364,8 @@ async function reload() {
 	} catch (err: any) {
 		loading.value = false;
 		ctx.value = null;
-		const msg = err?.message || 'The server refused this request or the item no longer exists.';
+		const msg =
+			err?.message || __('The server refused this request or the item no longer exists.');
 		errorText.value = String(msg);
 	}
 }
@@ -375,7 +379,8 @@ function emitAfterLeave() {
 	emit('after-leave');
 }
 
-function onDialogClose(_payload: unknown) {
+function onDialogClose(payload: unknown) {
+	void payload;
 	// no-op by design
 }
 

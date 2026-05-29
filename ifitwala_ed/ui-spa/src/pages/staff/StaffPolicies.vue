@@ -3,7 +3,7 @@
 	<div class="analytics-shell space-y-5">
 		<header class="page-header">
 			<div class="page-header__intro">
-				<h1 class="type-h1 text-canopy">Policy Library</h1>
+				<h1 class="type-h1 text-canopy">{{ __('Policy Library') }}</h1>
 				<p class="type-meta text-slate-token/80">
 					{{ subtitleText }}
 				</p>
@@ -12,13 +12,13 @@
 
 		<FiltersBar class="analytics-filters">
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Organization</label>
+				<label class="type-label">{{ __('Organization') }}</label>
 				<select
 					v-model="filters.organization"
 					class="h-9 min-w-[180px] rounded-md border px-2 text-sm"
 					:disabled="loading"
 				>
-					<option value="">Select organization</option>
+					<option value="">{{ __('Select organization') }}</option>
 					<option v-for="org in options.organizations" :key="org" :value="org">
 						{{ org }}
 					</option>
@@ -26,13 +26,13 @@
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">School</label>
+				<label class="type-label">{{ __('School') }}</label>
 				<select
 					v-model="filters.school"
 					class="h-9 min-w-[180px] rounded-md border px-2 text-sm"
 					:disabled="loading || !filters.organization"
 				>
-					<option v-if="canManageAudiences" value="">All schools</option>
+					<option v-if="canManageAudiences" value="">{{ __('All schools') }}</option>
 					<option v-for="school in options.schools" :key="school" :value="school">
 						{{ school }}
 					</option>
@@ -40,7 +40,7 @@
 			</div>
 
 			<div v-if="canManageAudiences" class="flex flex-col gap-1">
-				<label class="type-label">Audience</label>
+				<label class="type-label">{{ __('Audience') }}</label>
 				<select
 					v-model="filters.audience"
 					class="h-9 min-w-[170px] rounded-md border px-2 text-sm"
@@ -63,7 +63,7 @@
 		</div>
 
 		<div v-else-if="loading && !rows.length" class="py-10 text-center text-sm text-slate-500">
-			Loading policy library...
+			{{ __('Loading policy library...') }}
 		</div>
 
 		<div
@@ -79,7 +79,7 @@
 					<div class="min-w-0">
 						<div class="flex flex-wrap items-center gap-2">
 							<p class="type-caption text-slate-500">
-								{{ row.policy_category || 'Policy' }}
+								{{ row.policy_category || __('Policy') }}
 								<span v-if="row.version_label"> · {{ row.version_label }}</span>
 							</p>
 							<span
@@ -94,7 +94,7 @@
 							{{ row.policy_title || row.policy_key || row.policy_version }}
 						</h3>
 						<p class="mt-2 type-meta text-slate-600">
-							{{ row.description || 'No summary provided.' }}
+							{{ row.description || __('No summary provided.') }}
 						</p>
 						<p class="mt-2 type-caption text-slate-500">
 							{{ row.policy_organization || '-' }}
@@ -125,15 +125,15 @@
 
 				<div class="mt-4 flex items-center justify-between gap-3">
 					<p class="type-caption text-slate-500">
-						<span v-if="row.effective_from"
-							>Effective {{ formatLocalizedDate(row.effective_from) }}</span
-						>
-						<span v-else>Effective date not set</span>
+						<span v-if="row.effective_from">{{
+							__('Effective {0}', [formatLocalizedDate(row.effective_from)])
+						}}</span>
+						<span v-else>{{ __('Effective date not set') }}</span>
 						<span v-if="row.effective_to"> → {{ formatLocalizedDate(row.effective_to) }}</span>
 					</p>
 					<div class="flex items-center gap-2">
 						<button type="button" class="if-action" @click="openPolicy(row.policy_version)">
-							Open policy
+							{{ __('Open policy') }}
 						</button>
 						<button
 							v-if="canViewPolicySignatureAnalytics"
@@ -141,7 +141,7 @@
 							class="if-action"
 							@click="openPolicySignatureAnalytics(row)"
 						>
-							Open acknowledgement tracking
+							{{ __('Open acknowledgement tracking') }}
 						</button>
 					</div>
 				</div>
@@ -158,6 +158,7 @@ import FiltersBar from '@/components/filters/FiltersBar.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { formatLocalizedDate, formatLocalizedDateTime } from '@/lib/datetime';
+import { __ } from '@/lib/i18n';
 import { createPolicySignatureService } from '@/lib/services/policySignature/policySignatureService';
 import { getStaffHomeHeader } from '@/lib/services/staff/staffHomeService';
 
@@ -203,16 +204,22 @@ const showStaffStatusMetrics = computed(() => currentAudience.value === 'Staff')
 
 const subtitleText = computed(() => {
 	if (canManageAudiences.value) {
-		return 'Browse active staff, guardian, and student policies in your organization scope and open acknowledgement tracking where needed.';
+		return __(
+			'Browse active staff, guardian, and student policies in your organization scope and open acknowledgement tracking where needed.'
+		);
 	}
-	return 'Review staff policies in your current scope and open policy details or acknowledgement tracking.';
+	return __(
+		'Review staff policies in your current scope and open policy details or acknowledgement tracking.'
+	);
 });
 
 const emptyStateText = computed(() => {
 	if (showStaffStatusMetrics.value) {
-		return 'No active staff policies found for the selected scope.';
+		return __('No active staff policies found for the selected scope.');
 	}
-	return 'No active policies found for the selected organization, school, and audience filters.';
+	return __(
+		'No active policies found for the selected organization, school, and audience filters.'
+	);
 });
 
 const kpis = computed(() => {
@@ -220,38 +227,46 @@ const kpis = computed(() => {
 	if (!counts) return [];
 	if (showStaffStatusMetrics.value) {
 		return [
-			{ id: 'total', label: 'Policies', value: counts.total_policies },
-			{ id: 'informational', label: 'Informational', value: counts.informational },
-			{ id: 'signature_required', label: 'Signature Required', value: counts.signature_required },
-			{ id: 'signed', label: 'Signed', value: counts.signed },
+			{ id: 'total', label: __('Policies'), value: counts.total_policies },
+			{ id: 'informational', label: __('Informational'), value: counts.informational },
+			{
+				id: 'signature_required',
+				label: __('Signature Required'),
+				value: counts.signature_required,
+			},
+			{ id: 'signed', label: __('Signed'), value: counts.signed },
 			{
 				id: 'pending',
-				label: 'Pending/New Version',
+				label: __('Pending/New Version'),
 				value: counts.pending + counts.new_version,
-				hint: `Pending ${counts.pending} · New ${counts.new_version}`,
+				hint: __('Pending {0} · New {1}', [counts.pending, counts.new_version]),
 			},
 		];
 	}
 	return [
-		{ id: 'total', label: 'Policies', value: counts.total_policies },
-		{ id: 'organization_scoped', label: 'Organization-wide', value: counts.organization_scoped },
-		{ id: 'school_scoped', label: 'School-scoped', value: counts.school_scoped },
-		{ id: 'multi_audience', label: 'Multi-audience', value: counts.multi_audience },
+		{ id: 'total', label: __('Policies'), value: counts.total_policies },
+		{
+			id: 'organization_scoped',
+			label: __('Organization-wide'),
+			value: counts.organization_scoped,
+		},
+		{ id: 'school_scoped', label: __('School-scoped'), value: counts.school_scoped },
+		{ id: 'multi_audience', label: __('Multi-audience'), value: counts.multi_audience },
 	];
 });
 
 function audienceLabel(audience: string) {
-	if (audience === 'Guardian') return 'Guardians';
-	if (audience === 'Student') return 'Students';
-	if (audience === 'Staff') return 'Staff';
-	return 'All audiences';
+	if (audience === 'Guardian') return __('Guardians');
+	if (audience === 'Student') return __('Students');
+	if (audience === 'Staff') return __('Staff');
+	return __('All audiences');
 }
 
 function statusLabel(status: PolicyLibraryRow['acknowledgement_status']) {
-	if (status === 'signed') return 'Signed';
-	if (status === 'new_version') return 'New version';
-	if (status === 'pending') return 'Signature pending';
-	return 'Informational';
+	if (status === 'signed') return __('Signed');
+	if (status === 'new_version') return __('New version');
+	if (status === 'pending') return __('Signature pending');
+	return __('Informational');
 }
 
 function statusClass(status: PolicyLibraryRow['acknowledgement_status']) {
@@ -263,11 +278,11 @@ function statusClass(status: PolicyLibraryRow['acknowledgement_status']) {
 
 function workflowLabel(row: PolicyLibraryRow) {
 	const tokens = Array.from(new Set(row.applies_to_tokens || []));
-	if (tokens.length > 1) return `${tokens.length} audiences`;
-	if (!tokens.length) return 'Policy in scope';
-	if (tokens[0] === 'Guardian') return 'Guardian Portal';
-	if (tokens[0] === 'Student') return 'Student Hub';
-	return 'Staff Workspace';
+	if (tokens.length > 1) return __('{0} audiences', [tokens.length]);
+	if (!tokens.length) return __('Policy in scope');
+	if (tokens[0] === 'Guardian') return __('Guardian Portal');
+	if (tokens[0] === 'Student') return __('Student Hub');
+	return __('Staff Workspace');
 }
 
 function workflowClass(row: PolicyLibraryRow) {
@@ -354,7 +369,7 @@ async function refreshPolicyLibrary() {
 		normalizeFiltersFromPayload(response);
 	} catch (err: unknown) {
 		const message =
-			err instanceof Error && err.message ? err.message : 'Unable to load policy library.';
+			err instanceof Error && err.message ? err.message : __('Unable to load policy library.');
 		errorMessage.value = message;
 	} finally {
 		loading.value = false;

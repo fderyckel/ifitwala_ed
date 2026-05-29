@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
+import { __ } from '@/lib/i18n';
 
 import { academicYearScopeLabel, matchesAcademicYearScope } from './academicYearScope';
 import type { HistoryScope, Snapshot, ViewMode } from './types';
@@ -45,18 +46,18 @@ const academicTrendOption = computed(() => {
 	return {
 		grid: { left: 40, right: 10, top: 10, bottom: 40 },
 		tooltip: { trigger: 'axis' },
-		legend: { top: 0, data: ['Overall', 'Task completion'] },
+		legend: { top: 0, data: [__('Overall'), __('Task completion')] },
 		xAxis: { type: 'category', data: filteredAcademicTrend.value.map(item => item.label) },
 		yAxis: { type: 'value', min: 0 },
 		series: [
 			{
-				name: 'Overall',
+				name: __('Overall'),
 				type: 'line',
 				smooth: true,
 				data: filteredAcademicTrend.value.map(item => item.overall_grade_value ?? null),
 			},
 			{
-				name: 'Task completion',
+				name: __('Task completion'),
 				type: 'line',
 				smooth: true,
 				data: filteredAcademicTrend.value.map(item =>
@@ -72,12 +73,12 @@ const attendanceTrendOption = computed(() => {
 	return {
 		grid: { left: 40, right: 10, top: 10, bottom: 40 },
 		tooltip: { trigger: 'axis' },
-		legend: { top: 0, data: ['Attendance %', 'Unexcused absences'] },
+		legend: { top: 0, data: [__('Attendance %'), __('Unexcused absences')] },
 		xAxis: { type: 'category', data: filteredAttendanceTrend.value.map(item => item.label) },
 		yAxis: { type: 'value' },
 		series: [
 			{
-				name: 'Attendance %',
+				name: __('Attendance %'),
 				type: 'line',
 				smooth: true,
 				data: filteredAttendanceTrend.value.map(item =>
@@ -85,7 +86,7 @@ const attendanceTrendOption = computed(() => {
 				),
 			},
 			{
-				name: 'Unexcused absences',
+				name: __('Unexcused absences'),
 				type: 'bar',
 				data: filteredAttendanceTrend.value.map(item => item.unexcused_absences || 0),
 			},
@@ -109,8 +110,10 @@ const reflectionFlags = computed(() => {
 	<section class="card-surface px-4 py-4">
 		<header class="mb-3 flex flex-wrap items-center justify-between gap-3">
 			<div>
-				<h3 class="text-sm font-semibold text-slate-800">History & Reflection</h3>
-				<p class="text-[11px] text-slate-500">Compare years and surface narrative cues.</p>
+				<h3 class="text-sm font-semibold text-slate-800">{{ __('History & Reflection') }}</h3>
+				<p class="text-[11px] text-slate-500">
+					{{ __('Compare years and surface narrative cues.') }}
+				</p>
 			</div>
 			<div class="flex flex-wrap gap-2">
 				<button
@@ -130,20 +133,22 @@ const reflectionFlags = computed(() => {
 		<div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,2fr)]">
 			<div class="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3">
 				<h4 class="text-xs font-semibold uppercase tracking-wide text-slate-600">
-					Academic & task trend
+					{{ __('Academic & task trend') }}
 				</h4>
 				<AnalyticsChart v-if="filteredAcademicTrend.length" :option="academicTrendOption" />
-				<p v-else class="text-xs text-slate-400">No academic history.</p>
+				<p v-else class="text-xs text-slate-400">{{ __('No academic history.') }}</p>
 			</div>
 			<div class="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3">
 				<h4 class="text-xs font-semibold uppercase tracking-wide text-slate-600">
-					Attendance trend
+					{{ __('Attendance trend') }}
 				</h4>
 				<AnalyticsChart v-if="filteredAttendanceTrend.length" :option="attendanceTrendOption" />
-				<p v-else class="text-xs text-slate-400">No attendance history.</p>
+				<p v-else class="text-xs text-slate-400">{{ __('No attendance history.') }}</p>
 			</div>
 			<div class="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3">
-				<h4 class="text-xs font-semibold uppercase tracking-wide text-slate-600">Reflection</h4>
+				<h4 class="text-xs font-semibold uppercase tracking-wide text-slate-600">
+					{{ __('Reflection') }}
+				</h4>
 				<ul class="space-y-2 text-xs text-slate-700">
 					<li
 						v-for="flag in reflectionFlags"
@@ -154,7 +159,9 @@ const reflectionFlags = computed(() => {
 						<p class="text-[11px] text-slate-500">{{ flag.category }}</p>
 					</li>
 				</ul>
-				<p v-if="!reflectionFlags.length" class="text-xs text-slate-400">No reflection prompts.</p>
+				<p v-if="!reflectionFlags.length" class="text-xs text-slate-400">
+					{{ __('No reflection prompts.') }}
+				</p>
 			</div>
 		</div>
 	</section>

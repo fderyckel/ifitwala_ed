@@ -3,15 +3,19 @@
 		<header class="student-hub-hero">
 			<div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
 				<div>
-					<p class="type-overline text-ink/60">Student Hub</p>
-					<h1 class="type-h1 text-ink">My Courses</h1>
+					<p class="type-overline text-ink/60">{{ __('Student Hub') }}</p>
+					<h1 class="type-h1 text-ink">{{ __('My Courses') }}</h1>
 					<p class="type-body text-ink/70">
-						Open the class spaces that are ready and see what is still waiting on release.
+						{{
+							__('Open the class spaces that are ready and see what is still waiting on release.')
+						}}
 					</p>
 				</div>
 
 				<div v-if="!loading && academicYears.length" class="w-full lg:w-auto">
-					<label for="academic-year" class="type-caption text-ink/70">Academic year</label>
+					<label for="academic-year" class="type-caption text-ink/70">
+						{{ __('Academic year') }}
+					</label>
 					<select
 						id="academic-year"
 						v-model="selectedYear"
@@ -28,7 +32,7 @@
 		</header>
 
 		<section v-if="loading" class="student-hub-section">
-			<p class="type-body text-ink/70">Loading courses...</p>
+			<p class="type-body text-ink/70">{{ __('Loading courses...') }}</p>
 		</section>
 
 		<section
@@ -46,16 +50,18 @@
 		</section>
 
 		<section v-else-if="!courses.length" class="student-hub-empty p-10 text-center">
-			<p class="type-body text-ink/70">No courses found for the selected academic year.</p>
+			<p class="type-body text-ink/70">
+				{{ __('No courses found for the selected academic year.') }}
+			</p>
 		</section>
 
 		<section v-else class="student-hub-section student-hub-section--focus space-y-4">
 			<div class="flex items-center justify-between">
 				<div>
-					<p class="type-overline text-ink/60">Learning Spaces</p>
-					<h2 class="type-h3 text-ink">Available courses this year</h2>
+					<p class="type-overline text-ink/60">{{ __('Learning Spaces') }}</p>
+					<h2 class="type-h3 text-ink">{{ __('Available courses this year') }}</h2>
 				</div>
-				<span class="chip">{{ courses.length }} courses</span>
+				<span class="chip">{{ __('{0} courses', [courses.length]) }}</span>
 			</div>
 
 			<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -131,6 +137,7 @@ import { ref, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
 import { FeatherIcon } from 'frappe-ui';
 
+import { __ } from '@/lib/i18n';
 import { getStudentCoursesData } from '@/lib/services/student/studentLearningHubService';
 import type {
 	Response as StudentCoursesDataResponse,
@@ -162,9 +169,9 @@ function courseCardProps(course: StudentCourseCard) {
 }
 
 function courseSourceLabel(source: StudentCourseCard['learning_space']['source']) {
-	if (source === 'class_teaching_plan') return 'Class learning space';
-	if (source === 'course_plan_fallback') return 'Shared course plan';
-	return 'Waiting for release';
+	if (source === 'class_teaching_plan') return __('Class learning space');
+	if (source === 'course_plan_fallback') return __('Shared course plan');
+	return __('Waiting for release');
 }
 
 async function fetchData() {
@@ -194,7 +201,7 @@ async function fetchData() {
 		}
 	} catch (e: unknown) {
 		console.error(e);
-		error.value = 'An unexpected error occurred while fetching courses.';
+		error.value = __('An unexpected error occurred while fetching courses.');
 	} finally {
 		loading.value = false;
 	}

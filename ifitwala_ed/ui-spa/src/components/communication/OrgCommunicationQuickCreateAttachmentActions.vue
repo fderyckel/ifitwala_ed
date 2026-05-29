@@ -2,8 +2,8 @@
 	<div class="space-y-4">
 		<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 			<div class="space-y-1">
-				<p class="type-overline text-ink/55">Attachments</p>
-				<h3 class="type-h3 text-ink">Files and links</h3>
+				<p class="type-overline text-ink/55">{{ __('Attachments') }}</p>
+				<h3 class="type-h3 text-ink">{{ __('Files and links') }}</h3>
 				<p class="type-caption text-ink/65">
 					{{ helpText }}
 				</p>
@@ -15,7 +15,7 @@
 					:disabled="attachmentActionsDisabled"
 					@click="emit('trigger-file-picker')"
 				>
-					Add file
+					{{ __('Add file') }}
 				</button>
 				<button
 					type="button"
@@ -23,7 +23,7 @@
 					:disabled="attachmentActionsDisabled"
 					@click="emit('toggle-link-composer')"
 				>
-					{{ showLinkComposer ? 'Close link' : 'Add link' }}
+					{{ showLinkComposer ? __('Close link') : __('Add link') }}
 				</button>
 			</div>
 		</div>
@@ -47,20 +47,20 @@
 		>
 			<div class="grid grid-cols-1 gap-3">
 				<div class="space-y-1">
-					<label class="type-label">Link URL</label>
+					<label class="type-label">{{ __('Link URL') }}</label>
 					<FormControl
 						v-model="linkDraft.external_url"
 						type="text"
-						placeholder="https://example.com/resource.pdf"
+						:placeholder="LINK_URL_PLACEHOLDER"
 						:disabled="attachmentActionsDisabled"
 					/>
 				</div>
 				<div class="space-y-1">
-					<label class="type-label">Link label</label>
+					<label class="type-label">{{ __('Link label') }}</label>
 					<FormControl
 						v-model="linkDraft.title"
 						type="text"
-						placeholder="Optional display label"
+						:placeholder="__('Optional display label')"
 						:disabled="attachmentActionsDisabled"
 					/>
 				</div>
@@ -72,7 +72,7 @@
 					:disabled="attachmentActionsDisabled"
 					@click="emit('reset-link-draft')"
 				>
-					Cancel
+					{{ __('Cancel') }}
 				</button>
 				<button
 					type="button"
@@ -80,7 +80,7 @@
 					:disabled="attachmentActionsDisabled || !linkDraftReady"
 					@click="emit('submit-link')"
 				>
-					Add link
+					{{ __('Add link') }}
 				</button>
 			</div>
 		</div>
@@ -91,8 +91,11 @@
 import { FormControl } from 'frappe-ui';
 
 import InlineUploadStatus from '@/components/feedback/InlineUploadStatus.vue';
+import { __ } from '@/lib/i18n';
 import type { UploadProgressState } from '@/lib/uploadProgress';
 import type { LinkDraftState } from './orgCommunicationQuickCreateTypes';
+
+const LINK_URL_PLACEHOLDER = 'https://example.com/resource.pdf';
 
 defineProps<{
 	helpText: string;

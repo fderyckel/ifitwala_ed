@@ -2,6 +2,7 @@
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
 import StackedBarChart from '@/components/analytics/StackedBarChart.vue';
 
+import { __ } from '@/lib/i18n';
 import { academicYearScopeLabel } from './academicYearScope';
 import { formatCount } from './formatters';
 import type {
@@ -52,7 +53,7 @@ const emit = defineEmits<{
 				]"
 				@click="emit('update:attendanceKpiSource', 'all_day')"
 			>
-				All-day view
+				{{ __('All-day view') }}
 			</button>
 			<button
 				type="button"
@@ -62,7 +63,7 @@ const emit = defineEmits<{
 				]"
 				@click="emit('update:attendanceKpiSource', 'by_course')"
 			>
-				By course / activity
+				{{ __('By course / activity') }}
 			</button>
 			<div class="ml-auto flex items-center gap-2">
 				<button
@@ -84,18 +85,20 @@ const emit = defineEmits<{
 			<div class="attendance-card palette-card">
 				<header class="attendance-card-header">
 					<div>
-						<h3 class="section-header">Attendance heatmap</h3>
+						<h3 class="section-header">{{ __('Attendance heatmap') }}</h3>
 						<p class="type-meta">
 							{{
 								props.attendanceView === 'all_day'
-									? 'Daily status by code'
-									: 'Course × week patterns'
+									? __('Daily status by code')
+									: __('Course × week patterns')
 							}}
 						</p>
 					</div>
 					<span class="type-chip-muted">
 						{{
-							props.attendanceView === 'all_day' ? 'Whole-day records' : 'Session-level records'
+							props.attendanceView === 'all_day'
+								? __('Whole-day records')
+								: __('Session-level records')
 						}}
 					</span>
 				</header>
@@ -111,19 +114,19 @@ const emit = defineEmits<{
 						"
 						:option="props.byCourseHeatmapOption"
 					/>
-					<p v-else class="type-empty">No attendance data for this scope.</p>
+					<p v-else class="type-empty">{{ __('No attendance data for this scope.') }}</p>
 				</div>
 			</div>
 
 			<div class="attendance-card palette-card">
 				<header class="attendance-card-header">
 					<div>
-						<h3 class="section-header">Attendance by course</h3>
+						<h3 class="section-header">{{ __('Attendance by course') }}</h3>
 						<p class="type-meta">
 							{{
 								props.attendanceView === 'by_course'
-									? 'Sessions by code and course'
-									: 'Switch to “By course” to see breakdown'
+									? __('Sessions by code and course')
+									: __('Switch to “By course” to see breakdown')
 							}}
 						</p>
 					</div>
@@ -134,18 +137,18 @@ const emit = defineEmits<{
 						v-if="props.attendanceView === 'by_course' && props.breakdownRows.length"
 						title=""
 						:series="[
-							{ key: 'present', label: 'Present', color: palette.leaf },
-							{ key: 'excused', label: 'Excused', color: palette.sand },
-							{ key: 'unexcused', label: 'Unexcused', color: palette.flame },
-							{ key: 'late', label: 'Late', color: palette.clay },
+							{ key: 'present', label: __('Present'), color: palette.leaf },
+							{ key: 'excused', label: __('Excused'), color: palette.sand },
+							{ key: 'unexcused', label: __('Unexcused'), color: palette.flame },
+							{ key: 'late', label: __('Late'), color: palette.clay },
 						]"
 						:rows="props.breakdownRows"
 					/>
-					<p v-else class="type-empty">Switch to course view to see breakdown.</p>
+					<p v-else class="type-empty">{{ __('Switch to course view to see breakdown.') }}</p>
 
 					<div class="student-overview-mini-kpi-grid text-xs">
 						<div class="mini-kpi-card min-w-0">
-							<p class="mini-kpi-label">Total days absent</p>
+							<p class="mini-kpi-label">{{ __('Total days absent') }}</p>
 							<p class="mini-kpi-value">
 								{{
 									formatCount(
@@ -156,7 +159,7 @@ const emit = defineEmits<{
 							</p>
 						</div>
 						<div class="mini-kpi-card mini-kpi-card-alert min-w-0">
-							<p class="mini-kpi-label">Unexcused absences</p>
+							<p class="mini-kpi-label">{{ __('Unexcused absences') }}</p>
 							<p class="mini-kpi-value text-[color:rgb(var(--flame-rgb))]">
 								{{ formatCount(props.attendanceSummaryForScope.unexcused) }}
 							</p>
@@ -165,8 +168,8 @@ const emit = defineEmits<{
 							<p class="mini-kpi-label">
 								{{
 									props.displayViewMode === 'student'
-										? 'Most fragile course'
-										: 'Most impacted course'
+										? __('Most fragile course')
+										: __('Most impacted course')
 								}}
 							</p>
 							<p class="mini-kpi-value">
