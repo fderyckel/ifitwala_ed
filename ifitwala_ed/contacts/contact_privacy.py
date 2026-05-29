@@ -15,6 +15,7 @@ from ifitwala_ed.contacts.contact_audit import (
     CHANNEL_EMAIL,
     CHANNEL_MIXED,
     CHANNEL_PHONE,
+    CHANNEL_UNKNOWN,
     RESULT_ALLOWED,
     RESULT_DENIED,
     log_contact_access,
@@ -40,6 +41,7 @@ CONTACT_POINT_ALLOWED_PURPOSES = frozenset(
     }
 )
 GUARDIAN_STUDENT_SUMMARY_CONTACT_POINT_PURPOSE = "school_communication"
+STUDENT_GUARDIAN_CONTACT_REVEAL_WORKFLOW = "student_guardian_contact_reveal"
 
 
 def _clean_data(value: Any) -> str:
@@ -1234,6 +1236,157 @@ def get_masked_guardian_contacts_for_student(
         }
         for row in rows
     ]
+
+
+def _log_student_guardian_contact_reveal_denied(
+    *,
+    student: str | None,
+    guardian: str | None,
+    channel_type: str | None,
+    purpose: str,
+    user: str | None = None,
+    reason: str | None = None,
+) -> None:
+    details = {"reason": reason} if reason else None
+    log_contact_access(
+        access_type=ACCESS_TYPE_DENIED_ATTEMPT,
+        purpose=purpose,
+        workflow=STUDENT_GUARDIAN_CONTACT_REVEAL_WORKFLOW,
+        subject_doctype="Guardian",
+        subject_name=_clean_data(guardian) or None,
+        owner_doctype="Student",
+        owner_name=_clean_data(student) or None,
+        channel_type=_clean_data(channel_type) or CHANNEL_UNKNOWN,
+        result=RESULT_DENIED,
+        details=details,
+        user=user,
+    )
+
+
+def get_raw_guardian_contact_value_for_student(
+    *,
+    student: str | None,
+    guardian: str | None,
+    channel_type: str | None,
+    purpose: str | None,
+    user: str | None = None,
+) -> dict[str, Any]:
+    resolved_purpose = require_purpose(purpose)
+    if resolved_purpose != GUARDIAN_STUDENT_SUMMARY_CONTACT_POINT_PURPOSE:
+        frappe.throw(_("Guardian contact reveal must use the school communication purpose."), frappe.PermissionError)
+
+    resolved_channel = _clean_data(channel_type)
+    if resolved_channel not in {"email", "phone"}:
+        frappe.throw(_("Guardian contact channel must be email or phone."))
+
+    student_name = _clean_data(student)
+    guardian_name = _clean_data(guardian)
+    resolved_user = _clean_data(user) or _clean_data(getattr(frappe.session, "user", ""))
+
+    try:
+        student_doc = _require_student_read_access(student_name, user=resolved_user or None)
+    except Exception:
+        _log_student_guardian_contact_reveal_denied(
+            student=student_name,
+            guardian=guardian_name,
+            channel_type=resolved_channel,
+            purpose=resolved_purpose,
+            user=resolved_user or None,
+            reason="student_read_denied",
+        )
+        raise
+
+    if not guardian_name:
+        _log_student_guardian_contact_reveal_denied(
+            student=student_name,
+            guardian=guardian_name,
+            channel_type=resolved_channel,
+            purpose=resolved_purpose,
+            user=resolved_user or None,
+            reason="missing_guardian",
+        )
+        frappe.throw(_("Guardian is required."), frappe.PermissionError)
+
+    guardian_rows = frappe.get_all(
+        "Student Guardian",
+        filters={
+            "parent": student_doc.name,
+            "parenttype": "Student",
+            "parentfield": "guardians",
+            "guardian": guardian_name,
+        },
+        fields=["guardian", "guardian_name", "relation"],
+        limit=1,
+    )
+    if not guardian_rows:
+        _log_student_guardian_contact_reveal_denied(
+            student=student_doc.name,
+            guardian=guardian_name,
+            channel_type=resolved_channel,
+            purpose=resolved_purpose,
+            user=resolved_user or None,
+            reason="guardian_not_linked_to_student",
+        )
+        frappe.throw(_("Guardian is not linked to this Student."), frappe.PermissionError)
+
+    school = _clean_data(_row_get(student_doc, "anchor_school"))
+    if not school:
+        _log_student_guardian_contact_reveal_denied(
+            student=student_doc.name,
+            guardian=guardian_name,
+            channel_type=resolved_channel,
+            purpose=resolved_purpose,
+            user=resolved_user or None,
+            reason="missing_student_anchor_school",
+        )
+        frappe.throw(
+            _(
+                "Guardian contact cannot be revealed because this Student has no Anchor School. "
+                "Set the Student Anchor School and sync guardian contact points first."
+            ),
+            frappe.PermissionError,
+        )
+
+    points = get_masked_contact_points_for_owner(
+        owner_doctype="Guardian",
+        owner_name=guardian_name,
+        purpose=resolved_purpose,
+        channel_type=resolved_channel,
+        school=school,
+    )
+    points.sort(key=lambda point: (0 if _as_int(point.get("is_primary")) else 1, _clean_data(point.get("name"))))
+    if not points:
+        _log_student_guardian_contact_reveal_denied(
+            student=student_doc.name,
+            guardian=guardian_name,
+            channel_type=resolved_channel,
+            purpose=resolved_purpose,
+            user=resolved_user or None,
+            reason="contact_point_missing",
+        )
+        frappe.throw(
+            _(
+                "Guardian contact is not available for this Student school context. "
+                "Ask an administrator to sync guardian contact points."
+            ),
+            frappe.PermissionError,
+        )
+
+    value = get_raw_contact_point_value(
+        contact_point=_clean_data(points[0].get("name")),
+        purpose=resolved_purpose,
+        workflow=STUDENT_GUARDIAN_CONTACT_REVEAL_WORKFLOW,
+        user=resolved_user or None,
+    )
+    row = guardian_rows[0]
+    return {
+        "student": student_doc.name,
+        "guardian": guardian_name,
+        "guardian_name": _clean_data(_row_get(row, "guardian_name")) or guardian_name,
+        "relation": _clean_data(_row_get(row, "relation")),
+        "channel_type": resolved_channel,
+        "value": value,
+    }
 
 
 def assert_contact_not_protected_for_inquiry_reuse(

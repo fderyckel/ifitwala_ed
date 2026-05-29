@@ -91,14 +91,6 @@ frappe.ui.form.on('Student', {
 		}
 
 		const resolvedSummary = summary || frm.__student_crm_summary || {};
-		if (resolvedSummary.contact) {
-			frm.add_custom_button(
-				__("Contact"),
-				() => frappe.set_route("Form", "Contact", resolvedSummary.contact),
-				__("View")
-			);
-		}
-
 		const addresses = Array.isArray(resolvedSummary.addresses) ? resolvedSummary.addresses : [];
 		if (addresses.length === 1) {
 			frm.add_custom_button(
@@ -666,13 +658,15 @@ function renderStudentCrmSummary(frm, summary) {
 	}
 
 	const contactSummary = summary?.contact_summary || null;
+	const guardianContacts = Array.isArray(summary?.guardian_contacts) ? summary.guardian_contacts : [];
 	const addressSummaries = Array.isArray(summary?.address_summaries) ? summary.address_summaries : [];
 
-	contactWrapper.html(buildStudentContactHtml(contactSummary));
+	contactWrapper.html(buildStudentContactHtml(contactSummary, guardianContacts));
+	bindStudentGuardianContactRevealActions(frm, contactWrapper);
 	addressWrapper.html(buildStudentAddressHtml(addressSummaries));
 }
 
-function buildStudentContactHtml(contactSummary) {
+function buildStudentContactHtml(contactSummary, guardianContacts) {
 	const title = contactSummary?.display_name || __("No linked contact.");
 	const meta = contactSummary?.name && contactSummary.name !== title
 		? `<div class="small text-muted" style="margin-top: 4px;">${frappe.utils.escape_html(contactSummary.name)}</div>`
@@ -716,6 +710,7 @@ function buildStudentContactHtml(contactSummary) {
 			<div style="display: grid; gap: 8px; margin-top: 10px;">
 				${chips.join("")}
 			</div>
+			${buildStudentGuardianContactSection(guardianContacts)}
 		</div>
 	`;
 }
@@ -727,6 +722,101 @@ function buildStudentContactChip(label, value) {
 			<div>${frappe.utils.escape_html(value)}</div>
 		</div>
 	`;
+}
+
+function buildStudentGuardianContactSection(guardianContacts) {
+	const rows = Array.isArray(guardianContacts) ? guardianContacts : [];
+	if (!rows.length) {
+		return `
+			<div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+				<div class="small text-muted">${__("Guardian Contacts")}</div>
+				<div class="text-muted small" style="margin-top: 8px;">${__("No guardian contacts are linked to this Student.")}</div>
+			</div>
+		`;
+	}
+
+	return `
+		<div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+			<div class="small text-muted" style="margin-bottom: 8px;">${__("Guardian Contacts")}</div>
+			<div style="display: grid; gap: 8px;">
+				${rows.map((row) => buildStudentGuardianContactCard(row)).join("")}
+			</div>
+		</div>
+	`;
+}
+
+function buildStudentGuardianContactCard(row) {
+	const guardian = row?.guardian || "";
+	const title = row?.guardian_name || guardian || __("Guardian");
+	const relation = row?.relation ? ` · ${frappe.utils.escape_html(row.relation)}` : "";
+	const email = row?.email || __("No email");
+	const phone = row?.phone || __("No phone");
+
+	return `
+		<div style="${STUDENT_CRM_CARD_STYLE}; display: grid; gap: 8px;">
+			<div>
+				<div style="font-weight: 600;">${frappe.utils.escape_html(title)}${relation}</div>
+			</div>
+			${buildStudentGuardianContactLine(guardian, "email", __("Email"), email, Boolean(row?.email))}
+			${buildStudentGuardianContactLine(guardian, "phone", __("Phone"), phone, Boolean(row?.phone))}
+		</div>
+	`;
+}
+
+function buildStudentGuardianContactLine(guardian, channelType, label, value, canReveal) {
+	const revealButton = canReveal
+		? `
+			<button
+				type="button"
+				class="btn btn-xs btn-default"
+				style="margin-left: 6px;"
+				data-reveal-student-guardian-contact="${frappe.utils.escape_html(guardian)}"
+				data-channel-type="${frappe.utils.escape_html(channelType)}"
+			>
+				${frappe.utils.escape_html(channelType === "email" ? __("Reveal email") : __("Reveal phone"))}
+			</button>
+		`
+		: "";
+
+	return `
+		<div class="small">
+			<span class="text-muted">${frappe.utils.escape_html(label)}:</span>
+			<span>${frappe.utils.escape_html(value)}</span>
+			${revealButton}
+		</div>
+	`;
+}
+
+function bindStudentGuardianContactRevealActions(frm, wrapper) {
+	wrapper.find("[data-reveal-student-guardian-contact]").on("click", function() {
+		const $button = $(this);
+		const guardian = String($button.attr("data-reveal-student-guardian-contact") || "").trim();
+		const channelType = String($button.attr("data-channel-type") || "").trim();
+		if (!frm.doc.name || !guardian || !channelType) {
+			frappe.msgprint(__("Guardian contact selection is missing. Refresh and try again."));
+			return;
+		}
+
+		frappe.call({
+			method: "ifitwala_ed.students.doctype.student.student.reveal_student_guardian_contact_value",
+			args: {
+				student_name: frm.doc.name,
+				guardian,
+				channel_type: channelType,
+			},
+			freeze: true,
+			freeze_message: __("Loading guardian contact..."),
+		}).then((res) => {
+			const payload = res?.message || {};
+			const title = channelType === "email" ? __("Guardian Email") : __("Guardian Phone");
+			frappe.msgprint({
+				title,
+				message: `<div style="font-size: 14px;">${frappe.utils.escape_html(payload.value || "")}</div>`,
+			});
+		}).catch((err) => {
+			frappe.msgprint(err?.message || __("Unable to reveal guardian contact."));
+		});
+	});
 }
 
 function buildStudentAddressHtml(addressSummaries) {

@@ -332,6 +332,140 @@ class TestContactPrivacyService(TestCase):
         self.assertEqual(payload[0]["phone"], "+11 *** *** 3333")
         self.assertEqual([call[0] for call in get_all_calls], ["Student Guardian"])
 
+    def test_student_guardian_reveal_reads_contact_point_and_logs_raw_read(self):
+        with _module() as (contact_privacy, frappe):
+            created_logs: list[dict] = []
+            get_doc_calls: list[tuple] = []
+            student_doc = SimpleNamespace(name="STU-1", anchor_school="SCHOOL-1")
+
+            class _FakeLogDoc:
+                def __init__(self, payload):
+                    self.payload = payload
+                    self.name = "CAL-1"
+                    self.flags = {}
+
+                def insert(self, ignore_permissions=True):
+                    created_logs.append(self.payload)
+                    return self
+
+            class _FakeContactPointDoc:
+                def get(self, fieldname, default=None):
+                    values = {
+                        "purpose": "school_communication",
+                        "disabled": 0,
+                        "value_encrypted": "encrypted-value",
+                        "subject_doctype": "Guardian",
+                        "subject_name": "GRD-1",
+                        "owner_doctype": "Guardian",
+                        "owner_name": "GRD-1",
+                        "organization": "ORG-1",
+                        "school": "SCHOOL-1",
+                        "channel_type": "email",
+                    }
+                    return values.get(fieldname, default)
+
+            def get_doc(*args, **kwargs):
+                get_doc_calls.append(args)
+                if args and isinstance(args[0], dict):
+                    return _FakeLogDoc(args[0])
+                if args == ("Student", "STU-1"):
+                    return student_doc
+                if args == ("Communication Contact Point", "CCP-1"):
+                    return _FakeContactPointDoc()
+                raise AssertionError(f"Unexpected get_doc call: {args!r}")
+
+            def get_all(doctype, **kwargs):
+                if doctype == "Student Guardian":
+                    return [
+                        {
+                            "guardian": "GRD-1",
+                            "guardian_name": "Marie D.",
+                            "relation": "Mother",
+                        }
+                    ]
+                if doctype == "Communication Contact Point":
+                    return [
+                        {
+                            "name": "CCP-1",
+                            "subject_doctype": "Guardian",
+                            "subject_name": "GRD-1",
+                            "channel_type": "email",
+                            "purpose": "school_communication",
+                            "masked_display": "m****@example.com",
+                            "is_primary": 1,
+                        }
+                    ]
+                return []
+
+            frappe.db.exists = lambda doctype, name=None: doctype == "Student" and name == "STU-1"
+            frappe.get_doc = get_doc
+            frappe.get_all = get_all
+            frappe.has_permission = lambda *args, **kwargs: True
+            contact_privacy._decrypt_contact_point_value = lambda value: "marie@example.com"
+
+            payload = contact_privacy.get_raw_guardian_contact_value_for_student(
+                student="STU-1",
+                guardian="GRD-1",
+                channel_type="email",
+                purpose="school_communication",
+                user="teacher@example.com",
+            )
+
+        self.assertEqual(payload["value"], "marie@example.com")
+        self.assertEqual(payload["guardian"], "GRD-1")
+        self.assertFalse(any(call and call[0] == "Contact" for call in get_doc_calls))
+        self.assertEqual(created_logs[0]["access_type"], "raw_read")
+        self.assertEqual(created_logs[0]["workflow"], "student_guardian_contact_reveal")
+        self.assertEqual(created_logs[0]["subject_doctype"], "Guardian")
+        self.assertEqual(created_logs[0]["owner_name"], "GRD-1")
+
+    def test_student_guardian_reveal_denies_unlinked_guardian_before_contact_point_read(self):
+        with _module() as (contact_privacy, frappe):
+            created_logs: list[dict] = []
+            student_doc = SimpleNamespace(name="STU-1", anchor_school="SCHOOL-1")
+
+            class _FakeLogDoc:
+                def __init__(self, payload):
+                    self.payload = payload
+                    self.name = "CAL-1"
+                    self.flags = {}
+
+                def insert(self, ignore_permissions=True):
+                    created_logs.append(self.payload)
+                    return self
+
+            def get_doc(*args, **kwargs):
+                if args and isinstance(args[0], dict):
+                    return _FakeLogDoc(args[0])
+                if args == ("Student", "STU-1"):
+                    return student_doc
+                raise AssertionError(f"Unexpected get_doc call: {args!r}")
+
+            def get_all(doctype, **kwargs):
+                if doctype == "Student Guardian":
+                    return []
+                if doctype == "Communication Contact Point":
+                    raise AssertionError("Unlinked guardian should not reach contact point lookup")
+                return []
+
+            frappe.db.exists = lambda doctype, name=None: doctype == "Student" and name == "STU-1"
+            frappe.get_doc = get_doc
+            frappe.get_all = get_all
+            frappe.has_permission = lambda *args, **kwargs: True
+
+            with self.assertRaises(frappe.PermissionError):
+                contact_privacy.get_raw_guardian_contact_value_for_student(
+                    student="STU-1",
+                    guardian="GRD-OTHER",
+                    channel_type="phone",
+                    purpose="school_communication",
+                    user="teacher@example.com",
+                )
+
+        self.assertEqual(created_logs[0]["access_type"], "denied_attempt")
+        self.assertEqual(created_logs[0]["workflow"], "student_guardian_contact_reveal")
+        self.assertEqual(created_logs[0]["details"], '{"reason":"guardian_not_linked_to_student"}')
+
     def test_family_writeback_rejects_unlinked_contact(self):
         with _module() as (contact_privacy, frappe):
             frappe.db.exists = lambda *args, **kwargs: False

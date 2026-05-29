@@ -163,14 +163,14 @@ API hardening status:
 
 - Admissions invite/contact-option APIs now require both an admissions staff role and scoped access to the target `Student Applicant`; `System Manager` role membership alone does not bypass applicant scope for these contact-sensitive staff actions.
 - Applicant portal profile APIs keep using the canonical applicant/family workspace binding before returning applicant contact prefill or guardian rows.
-- Student Contact lookup and Student Guardian helper endpoints are scoped through `Student` read permission before returning native Contact names or guardian contact rows.
+- Student Contact lookup and Student Guardian helper endpoints are scoped through `Student` read permission before returning native Contact names, guardian contact rows, or Student-page guardian contact reveal values.
 - Family consent write-back does not accept caller-supplied Contact IDs; it resolves Contact rows only from the already authorized student/guardian context.
 - Inquiry-to-Contact creation now blocks reuse of existing native `Contact` rows already linked to protected education records (`Student`, `Guardian`, `Employee`, or `Student Applicant`).
 
 Contact privacy service boundary status:
 
 - `ifitwala_ed/contacts/contact_privacy.py` is the approved current-runtime boundary for the first contact-sensitive workflows.
-- Covered workflows are applicant contact prefill/invite email options, Student CRM contact summaries, Student guardian summaries, family-consent profile contact write-back, and Inquiry protected-contact reuse checks.
+- Covered workflows are applicant contact prefill/invite email options, Student CRM contact summaries, Student guardian summaries, Student-page guardian contact reveal, family-consent profile contact write-back, and Inquiry protected-contact reuse checks.
 - Existing workflow functions still read legacy native `Contact`, `Contact Email`, and `Contact Phone` internally until they are bridged to Contact Point data or retired.
 - Student Guardian summaries now prefer school-scoped Guardian Contact Points when `Student.anchor_school` proves school context, then fall back to masked values from the already scoped `Student Guardian` child rows.
 - Callers must provide a non-empty `purpose`; masked DTOs are the default for Student/Guardian summaries.
@@ -257,7 +257,7 @@ Email: m****@example.com
 Phone: +66 *** *** 1234
 ```
 
-Raw values may be resolved only by named server-side workflows such as emergency contact, admissions follow-up, HR communication, finance payer contact, or approved export.
+Raw values may be resolved only by named server-side workflows such as emergency contact, instructor or staff school communication with linked guardians, admissions follow-up, HR communication, finance payer contact, or approved export.
 
 Each raw-value access must log:
 

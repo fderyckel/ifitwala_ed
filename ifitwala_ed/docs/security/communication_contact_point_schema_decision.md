@@ -1,7 +1,7 @@
 # Communication Contact Point Schema Decision
 
 Status: Approved schema decision; Guardian Contact Point implementation through Guardian native Contact write-path retirement
-Last updated: 2026-05-26
+Last updated: 2026-05-29
 Code refs:
 - `ifitwala_ed/governance/doctype/communication_contact_point/communication_contact_point.json`
 - `ifitwala_ed/governance/doctype/communication_contact_point/communication_contact_point.py`
@@ -16,6 +16,7 @@ Test refs:
 - `ifitwala_ed/governance/doctype/communication_contact_point/test_communication_contact_point.py`
 - `ifitwala_ed/contacts/test_contact_privacy.py`
 - `ifitwala_ed/students/doctype/guardian/test_guardian_unit.py`
+- `ifitwala_ed/students/doctype/student/test_student.py`
 - `ifitwala_ed/students/doctype/student/test_student_unit.py`
 - `ifitwala_ed/api/test_family_consent.py`
 - `ifitwala_ed/utilities/test_staff_scope_fallback_unit.py`
@@ -250,6 +251,7 @@ Existing workflow functions must migrate behind these internals over time:
 ```python
 get_masked_student_contact_summary(...)
 get_masked_guardian_contacts_for_student(...)
+get_raw_guardian_contact_value_for_student(...)
 get_raw_contact_email_options_for_applicant_invite(...)
 get_raw_contact_primary_values_for_portal_context(...)
 update_family_contact_from_portal_context(...)
@@ -285,6 +287,7 @@ Guardian controller note:
 - `Student.after_insert` and `Student.on_update` may call this helper for linked Guardians because `Student.anchor_school` is the verified school context.
 - Family consent Guardian profile write-back may call this helper because the authorized portal context is already bound to a Student and Guardian.
 - `get_masked_guardian_contacts_for_student(...)` may use `Student.anchor_school` as the verified school context for read-side Contact Point lookup. If that school context is missing or no matching Contact Point exists, it must fall back only to the already scoped `Student Guardian` cached email/phone values.
+- `get_raw_guardian_contact_value_for_student(...)` is the Student-page reveal workflow for linked guardians. It must require `Student` read access, verify the Guardian child row, require `Student.anchor_school`, read only the school-scoped Guardian Contact Point for `purpose = school_communication`, and log raw reads through `Contact Access Log`.
 - `backfill_guardian_contact_points` runs after model sync and calls `sync_guardian_contact_points(...)` once for each school resolved from linked Student rows.
 - A Guardian linked to students in multiple schools gets duplicate school-scoped Contact Points. The same normalized value may exist once per `organization + school + purpose + channel`.
 - `organization` and `school` are part of Contact Point identity and primary uniqueness. A primary email in one school must not clear or overwrite the Guardian's primary email in another school.

@@ -7,11 +7,12 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.contacts.contact_privacy import mask_email
+from ifitwala_ed.contacts.contact_privacy import mask_email, mask_phone
 from ifitwala_ed.students.doctype.student.student import (
     get_family_address_link_proposal,
     get_student_crm_summary,
     link_family_address,
+    reveal_student_guardian_contact_value,
 )
 
 
@@ -185,6 +186,47 @@ class TestStudent(FrappeTestCase):
                     "lines": ["1 Test Street", "Bangkok 10110", address.country],
                 }
             ],
+        )
+
+    def test_get_student_crm_summary_includes_masked_guardian_contacts(self):
+        student = self._make_imported_student()
+        guardian = self._make_guardian(email="guardian-summary@example.com")
+        student.append("guardians", {"guardian": guardian.name, "relation": "Mother", "can_consent": 1})
+        student.save(ignore_permissions=True)
+
+        summary = get_student_crm_summary(student.name)
+
+        self.assertEqual(
+            summary.get("guardian_contacts"),
+            [
+                {
+                    "guardian": guardian.name,
+                    "guardian_name": guardian.guardian_full_name,
+                    "relation": "Mother",
+                    "can_consent": 1,
+                    "email": mask_email("guardian-summary@example.com"),
+                    "phone": mask_phone(guardian.guardian_mobile_phone),
+                }
+            ],
+        )
+
+    def test_reveal_student_guardian_contact_value_uses_contact_privacy_boundary(self):
+        with patch(
+            "ifitwala_ed.students.doctype.student.student.get_raw_guardian_contact_value_for_student",
+            return_value={"guardian": "GRD-1", "channel_type": "email", "value": "guardian@example.com"},
+        ) as reveal:
+            payload = reveal_student_guardian_contact_value(
+                student_name="STU-1",
+                guardian="GRD-1",
+                channel_type="email",
+            )
+
+        self.assertEqual(payload["value"], "guardian@example.com")
+        reveal.assert_called_once_with(
+            student="STU-1",
+            guardian="GRD-1",
+            channel_type="email",
+            purpose="school_communication",
         )
 
     def test_family_address_proposal_quietly_skips_without_native_address_write(self):

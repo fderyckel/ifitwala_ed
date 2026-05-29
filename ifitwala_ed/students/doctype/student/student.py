@@ -52,6 +52,7 @@ from ifitwala_ed.accounting.account_holder_utils import validate_account_holder_
 from ifitwala_ed.contacts.contact_privacy import (
     get_masked_guardian_contacts_for_student,
     get_masked_student_contact_summary,
+    get_raw_guardian_contact_value_for_student,
     sync_guardian_contact_points,
 )
 from ifitwala_ed.utilities.employee_utils import get_user_visible_schools
@@ -988,6 +989,10 @@ def get_student_crm_summary(student_name: str) -> dict:
         student.name,
         purpose="student_crm_summary",
     )
+    guardian_contacts = get_masked_guardian_contacts_for_student(
+        student.name,
+        purpose="student_guardian_summary",
+    )
     contact_name = (contact_summary or {}).get("name") or ""
     address_summaries = _build_student_address_summaries(address_names)
     resolved_address_names = [row["name"] for row in address_summaries]
@@ -999,12 +1004,23 @@ def get_student_crm_summary(student_name: str) -> dict:
     return {
         "contact": contact_name if can_open_contact else None,
         "contact_summary": contact_summary,
+        "guardian_contacts": guardian_contacts,
         "has_hidden_contact": bool(contact_summary and not can_open_contact),
         "addresses": readable_addresses,
         "address_summaries": address_summaries,
         "address_count": len(address_summaries),
         "has_hidden_addresses": len(readable_addresses) != len(address_summaries),
     }
+
+
+@frappe.whitelist()
+def reveal_student_guardian_contact_value(student_name: str, guardian: str, channel_type: str) -> dict:
+    return get_raw_guardian_contact_value_for_student(
+        student=student_name,
+        guardian=guardian,
+        channel_type=channel_type,
+        purpose="school_communication",
+    )
 
 
 @frappe.whitelist()
