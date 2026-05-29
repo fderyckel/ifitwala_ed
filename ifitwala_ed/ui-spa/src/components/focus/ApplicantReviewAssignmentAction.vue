@@ -14,10 +14,10 @@
 						<span v-if="assignment?.program_offering"> • {{ assignment.program_offering }}</span>
 					</div>
 					<div v-if="assignment?.assigned_to_role" class="type-meta text-ink/60 mt-1">
-						Assigned role: {{ assignment.assigned_to_role }}
+						{{ __('Assigned role: {0}', [assignment.assigned_to_role]) }}
 					</div>
 					<div v-if="assignment?.assigned_to_user_name" class="type-meta text-ink/60 mt-1">
-						Assigned user: {{ assignment.assigned_to_user_name }}
+						{{ __('Assigned user: {0}', [assignment.assigned_to_user_name]) }}
 					</div>
 				</div>
 
@@ -28,21 +28,26 @@
 						class="if-action"
 						@click="openApplicantWorkspace"
 					>
-						Admissions Workspace
+						{{ __('Admissions Workspace') }}
 					</button>
 					<button v-if="canOpenDesk" type="button" class="if-action" @click="openInDesk">
-						Open in Desk
+						{{ __('Open in Desk') }}
 					</button>
-					<button type="button" class="if-action" @click="requestRefresh">Refresh</button>
+					<button type="button" class="if-action" @click="requestRefresh">
+						{{ __('Refresh') }}
+					</button>
 				</div>
 			</div>
 		</div>
 
 		<div v-if="assignment?.assigned_to_role" class="card-surface p-4">
-			<div class="type-body font-medium">Role queue ownership</div>
+			<div class="type-body font-medium">{{ __('Role queue ownership') }}</div>
 			<p class="mt-2 type-meta text-ink/60">
-				Any {{ assignment.assigned_to_role }} can complete this review. You can take it or assign
-				it.
+				{{
+					__('Any {0} can complete this review. You can take it or assign it.', [
+						assignment.assigned_to_role,
+					])
+				}}
 			</p>
 			<div class="mt-3 flex flex-wrap items-center gap-2">
 				<button
@@ -51,7 +56,7 @@
 					:disabled="busy || !canClaim"
 					@click="claimAssignment"
 				>
-					Take ownership
+					{{ __('Take ownership') }}
 				</button>
 			</div>
 			<div class="mt-3 flex flex-wrap items-center gap-2">
@@ -60,7 +65,7 @@
 					class="if-input min-w-[16rem]"
 					:disabled="busy || !canReassign"
 				>
-					<option value="">Assign to user with role</option>
+					<option value="">{{ __('Assign to user with role') }}</option>
 					<option v-for="row in roleCandidates" :key="row.name" :value="row.name">
 						{{ row.full_name || row.name }}
 					</option>
@@ -71,48 +76,67 @@
 					:disabled="busy || !canReassign || !reassignToUser"
 					@click="reassignAssignment"
 				>
-					Assign
+					{{ __('Assign') }}
 				</button>
 			</div>
 		</div>
 
 		<div v-if="assignment?.preview" class="card-surface p-4">
-			<div class="type-body font-medium">Preview</div>
+			<div class="type-body font-medium">{{ __('Preview') }}</div>
 			<div class="mt-2 space-y-2 type-meta text-ink/60">
 				<div v-if="assignment.target_type === 'Applicant Document Item'">
 					<div>
-						Requirement:
-						{{ assignment.preview.document_label || assignment.preview.document_type }}
+						{{
+							__('Requirement: {0}', [
+								assignment.preview.document_label || assignment.preview.document_type,
+							])
+						}}
 					</div>
 					<div v-if="assignment.preview.item_label">
-						Submission: {{ assignment.preview.item_label || assignment.preview.item_key }}
+						{{
+							__('Submission: {0}', [assignment.preview.item_label || assignment.preview.item_key])
+						}}
 					</div>
-					<div>Current status: {{ assignment.preview.review_status || 'Pending' }}</div>
+					<div>
+						{{ __('Current status: {0}', [assignment.preview.review_status || __('Pending')]) }}
+					</div>
 					<div v-if="assignment.preview.file_url">
 						<button type="button" class="if-button if-button--secondary" @click="openPreviewFile">
-							Open file
+							{{ __('Open file') }}
 						</button>
 					</div>
 				</div>
 
 				<div v-else-if="assignment.target_type === 'Applicant Health Profile'">
-					<div>Current status: {{ assignment.preview.review_status || 'Pending' }}</div>
 					<div>
-						Declaration: {{ assignment.preview.declared_complete ? 'Complete' : 'Pending' }}
+						{{ __('Current status: {0}', [assignment.preview.review_status || __('Pending')]) }}
+					</div>
+					<div>
+						{{
+							__('Declaration: {0}', [
+								assignment.preview.declared_complete ? __('Complete') : __('Pending'),
+							])
+						}}
 					</div>
 				</div>
 
 				<div v-else>
-					<div>Application status: {{ assignment.preview.application_status || 'Unknown' }}</div>
+					<div>
+						{{
+							__('Application status: {0}', [
+								assignment.preview.application_status || __('Unknown'),
+							])
+						}}
+					</div>
 				</div>
 			</div>
 		</div>
 
 		<div class="card-surface p-4">
-			<div class="type-body font-medium">Decision</div>
+			<div class="type-body font-medium">{{ __('Decision') }}</div>
 			<div class="mt-3">
 				<label class="block">
-					<span class="sr-only">Decision select</span>
+					<span class="sr-only">{{ __('Decision select') }}</span>
 					<div
 						class="relative rounded-xl border border-line-soft bg-white shadow-sm transition hover:border-jacaranda/60 focus-within:border-jacaranda focus-within:ring-2 focus-within:ring-jacaranda/25"
 					>
@@ -121,7 +145,7 @@
 							class="w-full appearance-none rounded-xl bg-transparent px-4 py-3 pr-10 text-base text-ink cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
 							:disabled="busy"
 						>
-							<option value="">Select a decision</option>
+							<option value="">{{ __('Select a decision') }}</option>
 							<option v-for="opt in decisionOptions" :key="opt" :value="opt">{{ opt }}</option>
 						</select>
 						<span
@@ -144,7 +168,7 @@
 					v-model="notes"
 					class="if-textarea w-full"
 					rows="5"
-					placeholder="Optional notes"
+					:placeholder="__('Optional notes')"
 					:disabled="busy"
 				/>
 			</div>
@@ -154,20 +178,22 @@
 			</div>
 
 			<div class="mt-4 flex items-center justify-end gap-2">
-				<button type="button" class="if-button if-button--quiet" @click="emitClose">Close</button>
+				<button type="button" class="if-button if-button--quiet" @click="emitClose">
+					{{ __('Close') }}
+				</button>
 				<button
 					type="button"
 					class="if-button if-button--primary"
 					:disabled="busy || submittedOnce"
 					@click="submitDecision"
 				>
-					{{ busy ? 'Saving…' : 'Submit decision' }}
+					{{ busy ? __('Saving...') : __('Submit decision') }}
 				</button>
 			</div>
 		</div>
 
 		<div v-if="previousReviews.length" class="card-surface p-4">
-			<div class="type-body font-medium">Previous reviews</div>
+			<div class="type-body font-medium">{{ __('Previous reviews') }}</div>
 			<div class="mt-3 space-y-2">
 				<div
 					v-for="row in previousReviews"
@@ -175,7 +201,7 @@
 					class="rounded-xl border border-ink/10 p-3"
 				>
 					<div class="type-meta text-ink/60">
-						{{ row.reviewer || 'Reviewer' }} • {{ row.decision || '—' }} •
+						{{ row.reviewer || __('Reviewer') }} • {{ row.decision || '—' }} •
 						{{ formatReviewTimestamp(row.decided_on) }}
 					</div>
 					<div v-if="row.notes" class="type-body mt-1">{{ row.notes }}</div>

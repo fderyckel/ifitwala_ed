@@ -216,6 +216,12 @@ function getTextareaByLabel(labelText: string) {
 	) as HTMLTextAreaElement | null;
 }
 
+function getCheckboxByLabel(labelText: string) {
+	return getLabelElement(labelText)?.querySelector('input[type="checkbox"]') as
+		| HTMLInputElement
+		| null;
+}
+
 function setInputByPlaceholder(placeholder: string, value: string) {
 	const input = document.querySelector(
 		`input[placeholder="${placeholder}"]`
@@ -238,6 +244,11 @@ function updateSelectByLabel(labelText: string, value: string) {
 	if (!select) throw new Error(`Missing select with label: ${labelText}`);
 	select.value = value;
 	select.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+async function waitForDebouncedSearch() {
+	await new Promise(resolve => window.setTimeout(resolve, 320));
+	await flushUi();
 }
 
 afterEach(() => {
@@ -333,6 +344,105 @@ describe('EventQuickCreateOverlay school event publishing', () => {
 });
 
 describe('EventQuickCreateOverlay meeting attendees', () => {
+	it('defaults attendee search to employees and expands only after explicit student or guardian opt-in', async () => {
+		getEventQuickCreateOptionsMock.mockResolvedValue({
+			...baseOptions,
+			can_create_meeting: true,
+			can_create_school_event: false,
+			attendee_kinds: [
+				{ value: 'employee', label: 'Employees' },
+				{ value: 'student', label: 'Students' },
+				{ value: 'guardian', label: 'Guardians' },
+			],
+		});
+		searchMeetingAttendeesMock.mockResolvedValue({ results: [], notes: [] });
+
+		mountOverlay({
+			eventType: 'meeting',
+			lockEventType: true,
+			meetingMode: 'ad_hoc',
+		});
+		await flushUi();
+
+		setInputByPlaceholder('Search by name or email', 'car');
+		await waitForDebouncedSearch();
+
+		expect(searchMeetingAttendeesMock).toHaveBeenLastCalledWith({
+			query: 'car',
+			attendee_kinds: ['employee'],
+			limit: 12,
+		});
+
+		const studentsCheckbox = getCheckboxByLabel('Students');
+		const guardiansCheckbox = getCheckboxByLabel('Guardians');
+		if (!studentsCheckbox || !guardiansCheckbox) throw new Error('Missing invite-scope checkboxes');
+		studentsCheckbox.checked = true;
+		studentsCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+		guardiansCheckbox.checked = true;
+		guardiansCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+		await waitForDebouncedSearch();
+
+		expect(searchMeetingAttendeesMock).toHaveBeenLastCalledWith({
+			query: 'car',
+			attendee_kinds: ['employee', 'student', 'guardian'],
+			limit: 12,
+		});
+		expect(document.body.textContent || '').toContain(
+			'Students and guardians will appear in search and can receive this meeting invite.'
+		);
+	});
+
+	it('blocks submit when a selected student no longer matches the invite scope', async () => {
+		getEventQuickCreateOptionsMock.mockResolvedValue({
+			...baseOptions,
+			can_create_meeting: true,
+			can_create_school_event: false,
+			attendee_kinds: [
+				{ value: 'employee', label: 'Employees' },
+				{ value: 'student', label: 'Students' },
+			],
+		});
+		getMeetingTeamAttendeesMock.mockResolvedValue({
+			team: 'TEAM-1',
+			results: [
+				{
+					value: 'student@example.com',
+					label: 'Student Example',
+					meta: 'ISS',
+					kind: 'student',
+					availability_mode: 'school_schedule',
+				},
+			],
+			notes: [],
+		});
+
+		mountOverlay({
+			eventType: 'meeting',
+			lockEventType: true,
+			meetingMode: 'ad_hoc',
+		});
+		await flushUi();
+
+		setInputByPlaceholder('Family support meeting', 'Private Meeting');
+		const studentsCheckbox = getCheckboxByLabel('Students');
+		if (!studentsCheckbox) throw new Error('Missing Students checkbox');
+		studentsCheckbox.checked = true;
+		studentsCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+		updateSelectByLabel('Bulk-add a team', 'TEAM-1');
+		await flushUi();
+		studentsCheckbox.checked = false;
+		studentsCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+		await flushUi();
+
+		clickButton('Create meeting');
+		await flushUi();
+
+		expect(createMeetingQuickMock).not.toHaveBeenCalled();
+		expect(document.body.textContent || '').toContain(
+			'Remove selected student invitees or re-enable Students before creating the meeting.'
+		);
+	});
+
 	it('bulk-adds team attendees when an ad-hoc meeting team is selected', async () => {
 		getEventQuickCreateOptionsMock.mockResolvedValue({
 			...baseOptions,

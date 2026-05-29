@@ -32,10 +32,14 @@
 					<DialogPanel class="if-overlay__panel if-overlay__panel--xl guardian-calendar-overlay">
 						<header class="guardian-calendar-overlay__header">
 							<div>
-								<p class="type-overline text-ink/60">Guardian Portal</p>
-								<DialogTitle class="type-h2 text-ink">School Calendar</DialogTitle>
+								<p class="type-overline text-ink/60">{{ __('Guardian Portal') }}</p>
+								<DialogTitle class="type-h2 text-ink">{{ __('School Calendar') }}</DialogTitle>
 								<p class="mt-2 type-body text-ink/70">
-									See school holidays and family-relevant school events in one monthly view.
+									{{
+										__(
+											'See school holidays and family-relevant school events in one monthly view.'
+										)
+									}}
 								</p>
 							</div>
 
@@ -47,7 +51,7 @@
 										@click="stepMonth(-1)"
 									>
 										<FeatherIcon name="chevron-left" class="h-4 w-4" />
-										<span>Previous</span>
+										<span>{{ __('Previous') }}</span>
 									</button>
 									<p class="guardian-calendar-overlay__month-label type-body-strong text-ink">
 										{{ monthLabel }}
@@ -57,7 +61,7 @@
 										class="if-button if-button--secondary"
 										@click="stepMonth(1)"
 									>
-										<span>Next</span>
+										<span>{{ __('Next') }}</span>
 										<FeatherIcon name="chevron-right" class="h-4 w-4" />
 									</button>
 								</div>
@@ -69,13 +73,13 @@
 										:disabled="loading"
 										@click="loadSnapshot"
 									>
-										Refresh
+										{{ __('Refresh') }}
 									</button>
 									<button
 										ref="closeBtnEl"
 										type="button"
 										class="if-overlay__icon-button"
-										aria-label="Close school calendar"
+										:aria-label="__('Close school calendar')"
 										@click="emitClose('programmatic')"
 									>
 										<FeatherIcon name="x" class="h-5 w-5" />
@@ -87,9 +91,9 @@
 						<div class="if-overlay__body guardian-calendar-overlay__body">
 							<section class="guardian-calendar-overlay__filters">
 								<label class="space-y-1">
-									<span class="type-caption text-ink/60">Child filter</span>
+									<span class="type-caption text-ink/60">{{ __('Child filter') }}</span>
 									<select v-model="selectedStudent" class="guardian-calendar-overlay__select">
-										<option value="">All linked children</option>
+										<option value="">{{ __('All linked children') }}</option>
 										<option v-for="child in children" :key="child.student" :value="child.student">
 											{{ child.full_name }}
 										</option>
@@ -97,13 +101,13 @@
 								</label>
 
 								<label class="space-y-1">
-									<span class="type-caption text-ink/60">School filter</span>
+									<span class="type-caption text-ink/60">{{ __('School filter') }}</span>
 									<select
 										v-model="selectedSchool"
 										class="guardian-calendar-overlay__select"
 										:disabled="schoolFilterLocked"
 									>
-										<option value="">All family schools</option>
+										<option value="">{{ __('All family schools') }}</option>
 										<option
 											v-for="schoolOption in availableSchools"
 											:key="schoolOption.school"
@@ -116,37 +120,41 @@
 										v-if="schoolFilterLocked && lockedSchoolLabel"
 										class="type-caption text-ink/50"
 									>
-										School is fixed to {{ lockedSchoolLabel }} for the selected child.
+										{{ __('School is fixed to {0} for the selected child.', [lockedSchoolLabel]) }}
 									</p>
 								</label>
 
 								<label class="guardian-calendar-overlay__toggle">
 									<input v-model="includeHolidays" type="checkbox" />
-									<span>Show holidays</span>
+									<span>{{ __('Show holidays') }}</span>
 								</label>
 
 								<label class="guardian-calendar-overlay__toggle">
 									<input v-model="includeSchoolEvents" type="checkbox" />
-									<span>Show school events</span>
+									<span>{{ __('Show school events') }}</span>
 								</label>
 							</section>
 
 							<section class="guardian-calendar-overlay__summary">
-								<span class="chip">Holidays {{ summary.holiday_count }}</span>
-								<span class="chip">School events {{ summary.school_event_count }}</span>
-								<span class="chip">Month {{ monthRangeLabel }}</span>
+								<span class="chip">{{ __('Holidays {0}', [summary.holiday_count]) }}</span>
+								<span class="chip">
+									{{ __('School events {0}', [summary.school_event_count]) }}
+								</span>
+								<span class="chip">{{ __('Month {0}', [monthRangeLabel]) }}</span>
 							</section>
 
 							<section
 								v-if="errorMessage"
 								class="guardian-calendar-overlay__status guardian-calendar-overlay__status--error"
 							>
-								<p class="type-body-strong text-flame">Could not load the school calendar.</p>
+								<p class="type-body-strong text-flame">
+									{{ __('Could not load the school calendar.') }}
+								</p>
 								<p class="mt-2 type-body text-ink/70">{{ errorMessage }}</p>
 							</section>
 
 							<section v-else-if="loading && !snapshot" class="guardian-calendar-overlay__status">
-								<p class="type-body text-ink/70">Loading school calendar...</p>
+								<p class="type-body text-ink/70">{{ __('Loading school calendar...') }}</p>
 							</section>
 
 							<section v-else class="guardian-calendar-overlay__workspace">
@@ -212,7 +220,7 @@
 														:aria-label="dayCountLabel(cell)"
 														@click="showDateDetails(cell.date)"
 													>
-														+{{ cell.hiddenCount }} more
+														{{ __('+{0} more', [cell.hiddenCount]) }}
 													</button>
 												</div>
 											</div>
@@ -228,8 +236,7 @@
 										<div>
 											<h3 class="type-h3 text-ink">{{ selectedDateLabel }}</h3>
 											<p class="mt-1 type-caption text-ink/60">
-												{{ selectedDateItems.length }}
-												{{ selectedDateItems.length === 1 ? 'item' : 'items' }}
+												{{ selectedDateItemCountLabel }}
 											</p>
 										</div>
 										<button
@@ -237,7 +244,7 @@
 											class="if-button if-button--quiet"
 											@click="clearDateDetails"
 										>
-											Close
+											{{ __('Close') }}
 										</button>
 									</div>
 
@@ -246,7 +253,7 @@
 										class="guardian-calendar-overlay__empty-agenda"
 									>
 										<p class="type-body text-ink/70">
-											Nothing is scheduled for this day with the current filters.
+											{{ __('Nothing is scheduled for this day with the current filters.') }}
 										</p>
 									</div>
 
@@ -262,8 +269,8 @@
 														<span class="chip">
 															{{
 																item.kind === 'holiday'
-																	? 'Holiday'
-																	: item.event_category || 'School Event'
+																	? __('Holiday')
+																	: item.event_category || __('School Event')
 															}}
 														</span>
 														<span v-if="itemSchoolLabel(item)" class="chip">
@@ -299,7 +306,7 @@
 													class="if-action shrink-0"
 													@click="openSchoolEvent(item.open_target.name)"
 												>
-													View details
+													{{ __('View details') }}
 												</button>
 											</div>
 										</li>
@@ -326,6 +333,7 @@ import {
 import { FeatherIcon } from 'frappe-ui';
 
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import { __ } from '@/lib/i18n';
 import { getGuardianCalendarOverlay } from '@/lib/services/guardianCalendar/guardianCalendarService';
 import type {
 	GuardianCalendarItem,
@@ -344,7 +352,15 @@ type CalendarCell = {
 	hiddenCount: number;
 };
 
-const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const weekdayLabels = [
+	__('Mon'),
+	__('Tue'),
+	__('Wed'),
+	__('Thu'),
+	__('Fri'),
+	__('Sat'),
+	__('Sun'),
+];
 
 const props = defineProps<{
 	open: boolean;
@@ -405,7 +421,9 @@ const monthLabel = computed(() =>
 	}).format(parseIsoDate(currentMonthStart.value))
 );
 const monthEnd = computed(() => endOfMonth(currentMonthStart.value));
-const monthRangeLabel = computed(() => `${currentMonthStart.value} to ${monthEnd.value}`);
+const monthRangeLabel = computed(() =>
+	__('{0} to {1}', [currentMonthStart.value, monthEnd.value])
+);
 
 const itemsByDate = computed(() => {
 	const out = new Map<string, GuardianCalendarItem[]>();
@@ -469,6 +487,11 @@ const selectedDateLabel = computed(() =>
 	selectedDate.value ? fullDateLabel(selectedDate.value) : ''
 );
 const selectedDateItems = computed(() => itemsByDate.value.get(selectedDate.value) ?? []);
+const selectedDateItemCountLabel = computed(() =>
+	selectedDateItems.value.length === 1
+		? __('{0} item', [selectedDateItems.value.length])
+		: __('{0} items', [selectedDateItems.value.length])
+);
 
 let requestSeq = 0;
 
@@ -499,7 +522,7 @@ async function loadSnapshot() {
 	} catch (error) {
 		if (seq !== requestSeq) return;
 		const message = error instanceof Error ? error.message : String(error || '');
-		errorMessage.value = message || 'Unknown error';
+		errorMessage.value = message || __('Unknown error');
 	} finally {
 		if (seq === requestSeq) {
 			loading.value = false;
@@ -513,7 +536,8 @@ function emitClose(reason: CloseReason) {
 		try {
 			overlay.close(overlayId);
 			return;
-		} catch (_error) {
+		} catch (error) {
+			void error;
 			// fall through to emit fallback
 		}
 	}
@@ -524,7 +548,8 @@ function emitAfterLeave() {
 	emit('after-leave');
 }
 
-function onDialogClose(_payload: unknown) {
+function onDialogClose(payload: unknown) {
+	void payload;
 	// OverlayHost owns close enforcement.
 }
 
@@ -563,14 +588,18 @@ function dayPillClass(item: GuardianCalendarItem) {
 }
 
 function dayCountLabel(cell: CalendarCell): string {
-	return `Show ${cell.items.length} ${cell.items.length === 1 ? 'item' : 'items'} for ${fullDateLabel(cell.date)}`;
+	const itemCount =
+		cell.items.length === 1
+			? __('{0} item', [cell.items.length])
+			: __('{0} items', [cell.items.length]);
+	return __('Show {0} for {1}', [itemCount, fullDateLabel(cell.date)]);
 }
 
 function calendarItemLabel(item: GuardianCalendarItem): string {
 	if (item.open_target?.type === 'school-event') {
-		return `Open details for ${item.title}`;
+		return __('Open details for {0}', [item.title]);
 	}
-	return `Review ${item.title}`;
+	return __('Review {0}', [item.title]);
 }
 
 function itemSchoolLabel(item: GuardianCalendarItem): string {
@@ -579,13 +608,13 @@ function itemSchoolLabel(item: GuardianCalendarItem): string {
 		new Set((item.matched_children || []).map(child => child.school).filter(Boolean))
 	);
 	if (schools.length === 1) return schools[0];
-	if (schools.length > 1) return `${schools.length} schools`;
+	if (schools.length > 1) return __('{0} schools', [schools.length]);
 	return '';
 }
 
 function itemTimeLabel(item: GuardianCalendarItem): string {
 	if (item.kind === 'holiday' || item.all_day) {
-		return 'All day';
+		return __('All day');
 	}
 
 	const startDate = datePart(item.start);
@@ -594,10 +623,10 @@ function itemTimeLabel(item: GuardianCalendarItem): string {
 	const endTime = timePart(item.end);
 
 	if (!startTime && !endTime) {
-		return 'Timed event';
+		return __('Timed event');
 	}
 	if (startDate === endDate) {
-		return `${startTime || 'Start'}${endTime ? ` - ${endTime}` : ''}`;
+		return `${startTime || __('Start')}${endTime ? ` - ${endTime}` : ''}`;
 	}
 	return `${shortDateLabel(startDate)} ${startTime || ''} - ${shortDateLabel(endDate)} ${endTime || ''}`.trim();
 }

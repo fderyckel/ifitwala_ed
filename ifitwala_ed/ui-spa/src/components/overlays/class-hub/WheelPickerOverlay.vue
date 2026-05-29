@@ -39,43 +39,54 @@
 							tabindex="0"
 							@click="emitClose('programmatic')"
 						>
-							Close
+							{{ __('Close') }}
 						</button>
 
 						<div class="if-overlay__header wheel-picker__header">
 							<div class="wheel-picker__headline">
 								<p class="type-overline wheel-picker__eyebrow">{{ sourceLabel }}</p>
-								<DialogTitle as="h2" class="type-h2 text-ink">Pick a student</DialogTitle>
+								<DialogTitle as="h2" class="type-h2 text-ink">
+									{{ __('Pick a student') }}
+								</DialogTitle>
 								<p class="type-caption text-slate-token/70">
-									Choose a student fairly, then move straight into the next classroom action.
+									{{
+										__(
+											'Choose a student fairly, then move straight into the next classroom action.'
+										)
+									}}
 								</p>
 							</div>
 							<button
 								type="button"
 								class="if-overlay__icon-button"
-								aria-label="Close picker"
+								:aria-label="__('Close picker')"
 								@click="emitClose('programmatic')"
 							>
-								<span aria-hidden="true">x</span>
+								<span aria-hidden="true">&times;</span>
 							</button>
 						</div>
 
 						<div class="if-overlay__body wheel-picker__body">
 							<section v-if="viewState === 'loading'" class="wheel-picker__state">
-								<p class="type-body-strong text-ink">Loading your class picker...</p>
+								<p class="type-body-strong text-ink">
+									{{ __('Loading your class picker...') }}
+								</p>
 								<p class="type-body text-slate-token/70">
-									We are checking your live class and preparing the student list.
+									{{ __('We are checking your live class and preparing the student list.') }}
 								</p>
 							</section>
 
 							<section v-else-if="viewState === 'multiple_current'" class="wheel-picker__state">
 								<div class="wheel-picker__state-copy">
 									<p class="type-body-strong text-ink">
-										{{ resolutionMessage || 'Choose the class you want to use.' }}
+										{{ resolutionMessage || __('Choose the class you want to use.') }}
 									</p>
 									<p class="type-body text-slate-token/70">
-										You have more than one live class right now, so the picker needs one class
-										before it can continue.
+										{{
+											__(
+												'You have more than one live class right now, so the picker needs one class before it can continue.'
+											)
+										}}
 									</p>
 								</div>
 								<div class="wheel-picker__option-list">
@@ -92,9 +103,9 @@
 												{{ formatNowLine(context.now) }}
 											</p>
 										</div>
-										<span class="wheel-picker__option-meta"
-											>{{ context.students.length }} students</span
-										>
+										<span class="wheel-picker__option-meta">
+											{{ __('{0} students', [context.students.length]) }}
+										</span>
 									</button>
 								</div>
 							</section>
@@ -102,16 +113,19 @@
 							<section v-else-if="viewState === 'no_current_class'" class="wheel-picker__state">
 								<div class="wheel-picker__state-copy">
 									<p class="type-body-strong text-ink">
-										{{ resolutionMessage || 'No live class is available right now.' }}
+										{{ resolutionMessage || __('No live class is available right now.') }}
 									</p>
 									<p class="type-body text-slate-token/70">
-										Open your next class hub when you are ready, or come back once a class is live
-										on your schedule.
+										{{
+											__(
+												'Open your next class hub when you are ready, or come back once a class is live on your schedule.'
+											)
+										}}
 									</p>
 								</div>
 
 								<div v-if="nextClass" class="wheel-picker__next-class">
-									<p class="type-overline text-slate-token/70">Next class</p>
+									<p class="type-overline text-slate-token/70">{{ __('Next class') }}</p>
 									<p class="type-body-strong text-ink">{{ nextClass.title }}</p>
 									<p class="type-caption text-slate-token/70">
 										{{ formatNowLine(nextClass.now) }}
@@ -121,7 +135,7 @@
 										class="wheel-picker__secondary"
 										@click="openClassHub(nextClass)"
 									>
-										Open next class hub
+										{{ __('Open next class hub') }}
 									</button>
 								</div>
 							</section>
@@ -129,11 +143,14 @@
 							<section v-else-if="viewState === 'unavailable'" class="wheel-picker__state">
 								<div class="wheel-picker__state-copy">
 									<p class="type-body-strong text-ink">
-										{{ resolutionMessage || 'This picker is not available right now.' }}
+										{{ resolutionMessage || __('This picker is not available right now.') }}
 									</p>
 									<p class="type-body text-slate-token/70">
-										Try opening the class hub directly from your schedule, then start the picker
-										there.
+										{{
+											__(
+												'Try opening the class hub directly from your schedule, then start the picker there.'
+											)
+										}}
 									</p>
 								</div>
 							</section>
@@ -141,7 +158,7 @@
 							<section v-else class="wheel-picker__layout">
 								<div class="wheel-picker__stage">
 									<div class="wheel-picker__context-card">
-										<p class="type-overline text-slate-token/70">Class</p>
+										<p class="type-overline text-slate-token/70">{{ __('Class') }}</p>
 										<p class="type-body-strong text-ink">{{ activeContext?.title }}</p>
 										<p class="type-caption text-slate-token/70">
 											{{ activeContext ? formatNowLine(activeContext.now) : '' }}
@@ -155,7 +172,7 @@
 											class="wheel-picker__wheel"
 											:style="wheelStyle"
 											role="img"
-											aria-label="Student picker wheel"
+											:aria-label="__('Student picker wheel')"
 										>
 											<template v-if="wheelSegments.length === 1">
 												<circle cx="50" cy="50" r="48" :fill="wheelSegments[0].color" />
@@ -205,9 +222,9 @@
 											:disabled="spinDisabled"
 											@click="spinWheel"
 										>
-											<span class="type-overline text-amber-100/80">Ready</span>
+											<span class="type-overline text-amber-100/80">{{ __('Ready') }}</span>
 											<span class="type-body-strong text-white">
-												{{ spinning ? 'Picking...' : 'Pick' }}
+												{{ spinning ? __('Picking...') : __('Pick') }}
 											</span>
 										</button>
 
@@ -235,11 +252,13 @@
 									<div class="wheel-picker__control-card">
 										<div class="wheel-picker__stat-row">
 											<div>
-												<p class="type-overline text-slate-token/70">Students ready</p>
+												<p class="type-overline text-slate-token/70">
+													{{ __('Students ready') }}
+												</p>
 												<p class="type-h3 text-ink">
 													{{ availableStudents.length }}
 													<span class="type-caption text-slate-token/60">
-														of {{ totalStudents }}
+														{{ __('of {0}', [totalStudents]) }}
 													</span>
 												</p>
 											</div>
@@ -249,7 +268,7 @@
 												:disabled="!hasRemovedStudents"
 												@click="resetRemovedStudents"
 											>
-												Reset names
+												{{ __('Reset names') }}
 											</button>
 										</div>
 
@@ -259,7 +278,9 @@
 												type="checkbox"
 												class="wheel-picker__checkbox"
 											/>
-											<span class="type-body text-ink">Keep picked names removed until reset</span>
+											<span class="type-body text-ink">
+												{{ __('Keep picked names removed until reset') }}
+											</span>
 										</label>
 
 										<p class="type-caption text-slate-token/70">
@@ -272,7 +293,9 @@
 									</div>
 
 									<div v-if="selectedStudent" class="wheel-picker__selected-card">
-										<p class="type-overline text-emerald-100/80">Selected student</p>
+										<p class="type-overline text-emerald-100/80">
+											{{ __('Selected student') }}
+										</p>
 										<h3 class="type-h2 text-white">{{ selectedStudent.student_name }}</h3>
 										<p class="type-body text-emerald-50/85">{{ selectedStudentHelpText }}</p>
 
@@ -282,14 +305,14 @@
 												class="wheel-picker__primary"
 												@click="openSelectedStudent"
 											>
-												Open student
+												{{ __('Open student') }}
 											</button>
 											<button
 												type="button"
 												class="wheel-picker__primary wheel-picker__primary--soft"
 												@click="openQuickEvidence"
 											>
-												Add evidence
+												{{ __('Add evidence') }}
 											</button>
 											<button
 												v-if="canCreateStudentLog"
@@ -297,7 +320,7 @@
 												class="wheel-picker__primary wheel-picker__primary--soft"
 												@click="openStudentLog"
 											>
-												Add note
+												{{ __('Add note') }}
 											</button>
 											<button
 												type="button"
@@ -305,16 +328,21 @@
 												:disabled="!canSpinAgain"
 												@click="spinAgain"
 											>
-												Spin again
+												{{ __('Spin again') }}
 											</button>
 										</div>
 									</div>
 
 									<div v-else class="wheel-picker__control-card wheel-picker__control-card--muted">
-										<p class="type-body-strong text-ink">Teacher-friendly, student-friendly</p>
+										<p class="type-body-strong text-ink">
+											{{ __('Teacher-friendly, student-friendly') }}
+										</p>
 										<p class="type-body text-slate-token/70">
-											The picker uses a fair random selection, then keeps the next classroom
-											actions one click away.
+											{{
+												__(
+													'The picker uses a fair random selection, then keeps the next classroom actions one click away.'
+												)
+											}}
 										</p>
 									</div>
 								</div>
@@ -327,7 +355,7 @@
 								class="wheel-picker__secondary"
 								@click="emitClose('programmatic')"
 							>
-								Close
+								{{ __('Close') }}
 							</button>
 							<button
 								v-if="activeContext"
@@ -335,7 +363,7 @@
 								class="wheel-picker__secondary"
 								@click="openClassHub(activeContext)"
 							>
-								Open class hub
+								{{ __('Open class hub') }}
 							</button>
 						</div>
 					</DialogPanel>
@@ -358,6 +386,7 @@ import {
 
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { createClassHubService } from '@/lib/classHubService';
+import { __ } from '@/lib/i18n';
 import {
 	buildWheelTargetRotation,
 	clearClassHubWheelPersistence,
@@ -399,7 +428,7 @@ const router = useRouter();
 const service = createClassHubService();
 
 const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 60 }));
-const sourceLabel = computed(() => props.source_label || 'Class Hub');
+const sourceLabel = computed(() => props.source_label || __('Class Hub'));
 
 const viewState = ref<ViewState>('loading');
 const resolutionMessage = ref('');
@@ -505,23 +534,23 @@ const spinDisabled = computed(() => spinning.value || availableStudents.value.le
 const canSpinAgain = computed(() => !spinning.value && availableStudents.value.length > 0);
 
 const wheelFootnote = computed(() => {
-	if (spinning.value) return 'Picking a student now...';
+	if (spinning.value) return __('Picking a student now...');
 	if (!activeContext.value) return '';
-	if (totalStudents.value === 0) return 'No active students are available for this class yet.';
+	if (totalStudents.value === 0) return __('No active students are available for this class yet.');
 	if (availableStudents.value.length === 0)
-		return 'All available names are currently removed. Reset names to continue.';
-	return `${availableStudents.value.length} students are ready for the next fair pick.`;
+		return __('All available names are currently removed. Reset names to continue.');
+	return __('{0} students are ready for the next fair pick.', [availableStudents.value.length]);
 });
 
 const persistenceHelpText = computed(() =>
 	persistentRemoval.value
-		? 'Picked names stay out until you reset the list for this class.'
-		: 'Each pick stays independent, so the same student can appear again later.'
+		? __('Picked names stay out until you reset the list for this class.')
+		: __('Each pick stays independent, so the same student can appear again later.')
 );
 const selectedStudentHelpText = computed(() =>
 	props.class_session
-		? 'Use the next action while the class context is already in place.'
-		: 'Use the next action here, or open the class hub for live session tools.'
+		? __('Use the next action while the class context is already in place.')
+		: __('Use the next action here, or open the class hub for live session tools.')
 );
 
 const labelFontSize = computed(() => {
@@ -678,14 +707,14 @@ async function hydratePicker() {
 		} catch (err) {
 			console.error('[WheelPickerOverlay] resolveCurrentPickerContext failed', err);
 			viewState.value = 'unavailable';
-			resolutionMessage.value = 'The picker could not resolve your current class right now.';
+			resolutionMessage.value = __('The picker could not resolve your current class right now.');
 			return;
 		}
 	}
 
 	if (!props.student_group) {
 		viewState.value = 'unavailable';
-		resolutionMessage.value = 'Open this picker from a class that is already in context.';
+		resolutionMessage.value = __('Open this picker from a class that is already in context.');
 		return;
 	}
 
@@ -721,7 +750,7 @@ function buildContextFromProps(): ClassHubWheelContext {
 		},
 		now: {
 			date_iso: props.now?.date_iso ?? null,
-			date_label: props.now?.date_label || 'Today',
+			date_label: props.now?.date_label || __('Today'),
 			block_number: props.now?.block_number ?? null,
 			block_label: props.now?.block_label ?? null,
 			time_range: props.now?.time_range ?? null,
@@ -754,7 +783,8 @@ function emitClose(reason: CloseReason) {
 	emit('close', reason);
 }
 
-function onDialogClose(_payload: unknown) {
+function onDialogClose(payload: unknown) {
+	void payload;
 	// OverlayHost owns close enforcement.
 }
 
@@ -767,7 +797,7 @@ function resetRemovedStudents() {
 	if (!activeContext.value) return;
 	removedStudentIds.value = [];
 	clearClassHubWheelPersistence(activeContext.value.student_group);
-	pickerMessage.value = 'The full class list is back in the wheel.';
+	pickerMessage.value = __('The full class list is back in the wheel.');
 }
 
 function spinWheel() {
@@ -842,7 +872,9 @@ function openQuickEvidence() {
 function openStudentLog() {
 	if (!selectedStudent.value || !activeContext.value) return;
 	if (!canCreateStudentLog.value) {
-		pickerMessage.value = 'Student notes are not available for your current role in this flow.';
+		pickerMessage.value = __(
+			'Student notes are not available for your current role in this flow.'
+		);
 		return;
 	}
 
@@ -880,9 +912,9 @@ function openClassHub(
 }
 
 function formatNowLine(now?: Partial<ClassHubWheelContext['now']> | null) {
-	if (!now) return 'Class time to be confirmed';
+	if (!now) return __('Class time to be confirmed');
 	const parts = [now.date_label, now.block_label, now.time_range, now.location].filter(Boolean);
-	return parts.length ? parts.join(' | ') : 'Class time to be confirmed';
+	return parts.length ? parts.join(' | ') : __('Class time to be confirmed');
 }
 
 function polarPoint(cx: number, cy: number, radius: number, angleInDegrees: number) {

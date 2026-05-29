@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
+import { __ } from '@/lib/i18n';
 
 import { matchesAcademicYearScope } from './academicYearScope';
 import { formatCount, formatDate } from './formatters';
@@ -84,24 +85,24 @@ const wellbeingSeriesOption = computed(() => {
 	return {
 		grid: { left: 40, right: 10, top: 10, bottom: 40 },
 		tooltip: { trigger: 'axis' },
-		legend: { top: 0, data: ['Logs', 'Referrals', 'Nurse visits'] },
+		legend: { top: 0, data: [__('Logs'), __('Referrals'), __('Nurse visits')] },
 		xAxis: { type: 'category', data: labels },
 		yAxis: { type: 'value' },
 		series: [
 			{
-				name: 'Logs',
+				name: __('Logs'),
 				type: 'bar',
 				stack: 'total',
 				data: series.map(item => item.student_logs || 0),
 			},
 			{
-				name: 'Referrals',
+				name: __('Referrals'),
 				type: 'bar',
 				stack: 'total',
 				data: series.map(item => item.referrals || 0),
 			},
 			{
-				name: 'Nurse visits',
+				name: __('Nurse visits'),
 				type: 'bar',
 				stack: 'total',
 				data: series.map(item => item.nurse_visits || 0),
@@ -154,9 +155,11 @@ function openDeskDoc(doctype?: string | null, name?: string | null) {
 		>
 			<header class="mb-3 flex flex-wrap items-center justify-between gap-3">
 				<div>
-					<h3 class="text-sm font-semibold text-slate-800">Wellbeing timeline</h3>
+					<h3 class="text-sm font-semibold text-slate-800">
+						{{ __('Wellbeing timeline') }}
+					</h3>
 					<p class="text-[11px] text-slate-500">
-						Logs, referrals, nurse visits, and the staff health note.
+						{{ __('Logs, referrals, nurse visits, and the staff health note.') }}
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
@@ -164,20 +167,22 @@ function openDeskDoc(doctype?: string | null, name?: string | null) {
 						v-model="wellbeingFilter"
 						class="h-8 rounded-md border border-slate-200 px-2 text-[11px]"
 					>
-						<option value="all">All</option>
-						<option value="student_log">Logs</option>
-						<option v-if="props.permissions.can_view_referrals" value="referral">Referrals</option>
+						<option value="all">{{ __('All') }}</option>
+						<option value="student_log">{{ __('Logs') }}</option>
+						<option v-if="props.permissions.can_view_referrals" value="referral">
+							{{ __('Referrals') }}
+						</option>
 						<option v-if="props.permissions.can_view_nurse_details" value="nurse_visit">
-							Nurse
+							{{ __('Nurse') }}
 						</option>
 					</select>
 					<select
 						v-model="wellbeingScope"
 						class="h-8 rounded-md border border-slate-200 px-2 text-[11px]"
 					>
-						<option value="current">This academic year</option>
-						<option value="last">Last academic year</option>
-						<option value="all">All academic years</option>
+						<option value="current">{{ __('This academic year') }}</option>
+						<option value="last">{{ __('Last academic year') }}</option>
+						<option value="all">{{ __('All academic years') }}</option>
 					</select>
 				</div>
 			</header>
@@ -195,10 +200,10 @@ function openDeskDoc(doctype?: string | null, name?: string | null) {
 								<span
 									class="rounded-full bg-white px-2 py-0.5 text-[11px] text-slate-500 shadow-sm"
 								>
-									Student Patient
+									{{ __('Student Patient') }}
 								</span>
 								<span v-if="wellbeingHealthNote.updated_on" class="text-[11px] text-slate-500">
-									Updated {{ formatDate(wellbeingHealthNote.updated_on) }}
+									{{ __('Updated {0}', [formatDate(wellbeingHealthNote.updated_on)]) }}
 								</span>
 							</div>
 							<p class="mt-1 text-xs text-slate-600">
@@ -210,13 +215,16 @@ function openDeskDoc(doctype?: string | null, name?: string | null) {
 							class="rounded-full bg-white px-3 py-1 text-[11px] text-slate-600 shadow-sm"
 							@click="openDeskDoc(wellbeingHealthNote.doctype, wellbeingHealthNote.name)"
 						>
-							Open
+							{{ __('Open') }}
 						</button>
 					</div>
 				</div>
 				<p v-if="wellbeingTimelineNeedsScroll" class="mb-2 text-[11px] text-slate-500">
-					Showing the latest 10 items first. Scroll below for older wellbeing activity in this
-					dashboard view.
+					{{
+						__(
+							'Showing the latest 10 items first. Scroll below for older wellbeing activity in this dashboard view.'
+						)
+					}}
 				</p>
 				<div class="space-y-3">
 					<WellbeingTimelineItemCard
@@ -244,7 +252,7 @@ function openDeskDoc(doctype?: string | null, name?: string | null) {
 						v-if="!wellbeingTimelineLead.length && !wellbeingHealthNote"
 						class="text-xs text-slate-400"
 					>
-						No wellbeing items for this scope.
+						{{ __('No wellbeing items for this scope.') }}
 					</div>
 				</div>
 			</div>
@@ -254,28 +262,36 @@ function openDeskDoc(doctype?: string | null, name?: string | null) {
 			class="self-start rounded-2xl border border-slate-200 bg-[rgb(var(--surface-rgb)/0.92)] px-4 py-4 shadow-sm"
 		>
 			<header class="mb-3 flex items-center justify-between">
-				<h3 class="text-sm font-semibold text-slate-800">Support metrics & patterns</h3>
+				<h3 class="text-sm font-semibold text-slate-800">
+					{{ __('Support metrics & patterns') }}
+				</h3>
 			</header>
 			<AnalyticsChart
 				v-if="props.snapshot.wellbeing.metrics.time_series?.length"
 				:option="wellbeingSeriesOption"
 			/>
-			<div v-else class="text-xs text-slate-400">No trend data yet.</div>
+			<div v-else class="text-xs text-slate-400">{{ __('No trend data yet.') }}</div>
 			<div class="student-overview-support-metric-grid mt-3 text-xs text-slate-600">
 				<div class="min-w-0 rounded-lg bg-slate-50/70 px-3 py-2">
-					<p class="text-[11px] uppercase tracking-wide text-slate-500">Open log follow-ups</p>
+					<p class="text-[11px] uppercase tracking-wide text-slate-500">
+						{{ __('Open log follow-ups') }}
+					</p>
 					<p class="text-base font-semibold text-slate-900">
 						{{ formatCount(props.snapshot.wellbeing.metrics.student_logs?.open_followups || 0) }}
 					</p>
 				</div>
 				<div class="min-w-0 rounded-lg bg-slate-50/70 px-3 py-2">
-					<p class="text-[11px] uppercase tracking-wide text-slate-500">Active referrals</p>
+					<p class="text-[11px] uppercase tracking-wide text-slate-500">
+						{{ __('Active referrals') }}
+					</p>
 					<p class="text-base font-semibold text-amber-600">
 						{{ formatCount(props.snapshot.wellbeing.metrics.referrals?.active || 0) }}
 					</p>
 				</div>
 				<div class="min-w-0 rounded-lg bg-slate-50/70 px-3 py-2">
-					<p class="text-[11px] uppercase tracking-wide text-slate-500">Visible nurse visits</p>
+					<p class="text-[11px] uppercase tracking-wide text-slate-500">
+						{{ __('Visible nurse visits') }}
+					</p>
 					<p class="text-base font-semibold text-slate-900">
 						{{ formatCount(props.snapshot.wellbeing.metrics.nurse_visits?.this_term || 0) }}
 					</p>

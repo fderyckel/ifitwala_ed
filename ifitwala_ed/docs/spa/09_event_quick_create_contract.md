@@ -79,7 +79,7 @@ Rules:
 4. `search_meeting_attendees(...)` returns a mixed attendee list with `kind`, `label`, `meta`, and `availability_mode`.
 5. `suggest_meeting_slots(...)` returns ranked exact matches plus fallback slots, server-owned availability notes, and when room-aware ranking is requested, suggested-room metadata on each slot; the request may also constrain ranking by `location_type`.
 6. `suggest_meeting_rooms(...)` returns ranked room suggestions plus room-scope notes and may constrain ranking by `location_type`.
-7. `create_meeting_quick(...)` accepts explicit attendees, optional team context, optional host school, and an idempotency key via `client_request_id`.
+7. `create_meeting_quick(...)` accepts explicit attendees, optional team context, optional host school, explicit `include_students` / `include_guardians` invite-scope guard flags, and an idempotency key via `client_request_id`.
 8. `create_meeting_quick(...)` and `create_school_event_quick(...)` must validate manual location choices through the same shared-location resolver used by room suggestions and Room Utilization.
 9. `create_school_event_quick(...)` remains the canonical quick-create path for school events and continues to use the same overlay shell.
 10. `get_event_quick_create_options()` also returns the companion announcement publish capability so the overlay can explain whether the user may publish a matching `Org Communication` from the same workflow.
@@ -102,13 +102,14 @@ Test refs:
 
 Rules:
 
-1. Ad-hoc meetings are attendee-first: employees, students, and guardians can all be invited directly from the overlay.
+1. Ad-hoc meetings are attendee-first and staff-safe by default: employees appear in attendee search immediately, while students and guardians appear only after the user explicitly enables the matching invite-scope checkbox.
 2. The organizer is always added server-side, even if the attendee list does not include the organizer explicitly.
 3. Ad-hoc meetings require a host school so the meeting remains anchored to school and academic-year metadata even when no team is present.
 4. Team bulk-add in ad-hoc mode only affects the attendee list; the final create payload leaves `team` empty so the meeting stays `Participants Only`.
 5. Team mode submits the `team` field and defaults the meeting visibility scope to `Team & Participants`.
 6. Participant child rows are built server-side from `Meeting Participant` with canonical `participant`, `participant_name`, and optional `employee`.
-7. The overlay must not claim guardian free/busy certainty beyond school-side records; guardian availability is advisory and explicitly labeled as such.
+7. The overlay must block final submit if selected student or guardian invitees no longer match the currently enabled invite scope, and the server must reject student or guardian participants unless `include_students` or `include_guardians` is explicitly set.
+8. The overlay must not claim guardian free/busy certainty beyond school-side records; guardian availability is advisory and explicitly labeled as such.
 
 ## 4. Availability, Rooming, and Concurrency Contract
 

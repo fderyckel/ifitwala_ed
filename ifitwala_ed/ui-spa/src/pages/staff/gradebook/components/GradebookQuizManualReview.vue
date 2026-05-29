@@ -2,10 +2,13 @@
 	<section class="space-y-5 rounded-xl border border-border bg-gray-50/30 p-5">
 		<div class="flex flex-wrap items-start justify-between gap-4">
 			<div class="space-y-1">
-				<h3 class="text-lg font-semibold text-ink">Open-ended Quiz Review</h3>
+				<h3 class="text-lg font-semibold text-ink">{{ __('Open-ended Quiz Review') }}</h3>
 				<p class="max-w-2xl text-sm text-ink/60">
-					Score manually graded quiz responses by question or by student. Each save refreshes the
-					official quiz attempt and outcome state on the server.
+					{{
+						__(
+							'Score manually graded quiz responses by question or by student. Each save refreshes the official quiz attempt and outcome state on the server.'
+						)
+					}}
 				</p>
 			</div>
 			<button
@@ -14,15 +17,23 @@
 				:disabled="savingVisible || !visibleDirtyRows.length"
 				@click="saveVisibleRows"
 			>
-				{{ savingVisible ? 'Saving Visible…' : 'Save Visible' }}
+				{{ savingVisible ? __('Saving Visible...') : __('Save Visible') }}
 			</button>
 		</div>
 
 		<div class="flex flex-wrap gap-2">
-			<Badge variant="subtle">Manual Items {{ review?.summary.manual_item_count || 0 }}</Badge>
-			<Badge variant="subtle">Pending {{ review?.summary.pending_item_count || 0 }}</Badge>
-			<Badge variant="subtle">Students {{ review?.summary.pending_student_count || 0 }}</Badge>
-			<Badge variant="subtle">Attempts {{ review?.summary.pending_attempt_count || 0 }}</Badge>
+			<Badge variant="subtle">
+				{{ __('Manual Items {0}', [review?.summary.manual_item_count || 0]) }}
+			</Badge>
+			<Badge variant="subtle">
+				{{ __('Pending {0}', [review?.summary.pending_item_count || 0]) }}
+			</Badge>
+			<Badge variant="subtle">
+				{{ __('Students {0}', [review?.summary.pending_student_count || 0]) }}
+			</Badge>
+			<Badge variant="subtle">
+				{{ __('Attempts {0}', [review?.summary.pending_attempt_count || 0]) }}
+			</Badge>
 		</div>
 
 		<div class="grid gap-4 lg:grid-cols-[auto_minmax(0,1fr)]">
@@ -33,7 +44,7 @@
 					:class="{ 'if-segmented__item--active': viewMode === 'question' }"
 					@click="setViewMode('question')"
 				>
-					By Question
+					{{ __('By Question') }}
 				</button>
 				<button
 					type="button"
@@ -41,7 +52,7 @@
 					:class="{ 'if-segmented__item--active': viewMode === 'student' }"
 					@click="setViewMode('student')"
 				>
-					By Student
+					{{ __('By Student') }}
 				</button>
 			</div>
 
@@ -57,7 +68,7 @@
 					"
 					:model-value="selectedQuestion"
 					:disabled="loading || !(review?.questions || []).length"
-					placeholder="Select question"
+					:placeholder="__('Select question')"
 					@update:modelValue="onQuestionSelected"
 				/>
 				<FormControl
@@ -71,7 +82,7 @@
 					"
 					:model-value="selectedStudent"
 					:disabled="loading || !(review?.students || []).length"
-					placeholder="Select student"
+					:placeholder="__('Select student')"
 					@update:modelValue="onStudentSelected"
 				/>
 			</div>
@@ -82,17 +93,20 @@
 			class="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border/70 bg-white/70 p-6 text-center"
 		>
 			<Spinner class="h-7 w-7 text-canopy" />
-			<p class="text-sm text-ink/50">Loading open-ended quiz responses...</p>
+			<p class="text-sm text-ink/50">{{ __('Loading open-ended quiz responses...') }}</p>
 		</div>
 
 		<div
 			v-else-if="!(review?.rows || []).length"
 			class="rounded-lg border border-dashed border-border/70 bg-white/70 p-6 text-center text-sm text-ink/60"
 		>
-			<p class="font-medium text-ink">No open-ended quiz responses to review.</p>
+			<p class="font-medium text-ink">{{ __('No open-ended quiz responses to review.') }}</p>
 			<p class="mt-1">
-				This assessed quiz does not currently have submitted manual-grading items in the selected
-				view.
+				{{
+					__(
+						'This assessed quiz does not currently have submitted manual-grading items in the selected view.'
+					)
+				}}
 			</p>
 		</div>
 
@@ -110,15 +124,15 @@
 						<div class="flex flex-wrap items-center gap-2 text-xs text-ink/55">
 							<span>{{ row.student_name }}</span>
 							<span v-if="row.student_id">• {{ row.student_id }}</span>
-							<span>• Attempt {{ row.attempt_number || '—' }}</span>
+							<span>• {{ __('Attempt {0}', [row.attempt_number || '—']) }}</span>
 							<span>• {{ row.attempt_status || '—' }}</span>
 						</div>
 					</div>
 					<div class="flex flex-wrap items-center gap-2">
-						<Badge v-if="row.requires_manual_grading" variant="subtle" theme="orange"
-							>Needs Review</Badge
-						>
-						<Badge v-else variant="subtle" theme="green">Scored</Badge>
+						<Badge v-if="row.requires_manual_grading" variant="subtle" theme="orange">
+							{{ __('Needs Review') }}
+						</Badge>
+						<Badge v-else variant="subtle" theme="green">{{ __('Scored') }}</Badge>
 						<Badge v-if="row.grading_status" variant="subtle">{{ row.grading_status }}</Badge>
 					</div>
 				</div>
@@ -126,7 +140,9 @@
 				<div class="mt-4 grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(16rem,1fr)]">
 					<div class="space-y-4">
 						<div class="space-y-2">
-							<p class="text-xs font-semibold uppercase tracking-wide text-ink/45">Prompt</p>
+							<p class="text-xs font-semibold uppercase tracking-wide text-ink/45">
+								{{ __('Prompt') }}
+							</p>
 							<div
 								class="prose prose-sm max-w-none rounded-lg border border-border/60 bg-gray-50/60 px-4 py-3 text-ink"
 								v-html="row.prompt_html || '<p>No prompt available.</p>'"
@@ -135,7 +151,7 @@
 
 						<div class="space-y-2">
 							<p class="text-xs font-semibold uppercase tracking-wide text-ink/45">
-								Student Response
+								{{ __('Student Response') }}
 							</p>
 							<div class="rounded-lg border border-border/60 bg-white px-4 py-3">
 								<pre class="whitespace-pre-wrap text-sm text-ink">{{ responseLabel(row) }}</pre>
@@ -146,7 +162,7 @@
 					<div class="space-y-4 rounded-lg border border-border/60 bg-gray-50/50 p-4">
 						<div class="space-y-1.5">
 							<label class="block text-xs font-semibold uppercase tracking-wide text-ink/50">
-								Awarded Score
+								{{ __('Awarded Score') }}
 							</label>
 							<FormControl
 								type="number"
@@ -156,19 +172,21 @@
 								:model-value="rowStates[row.item_id]?.awarded_score"
 								@update:modelValue="onScoreChanged(row.item_id, $event)"
 							/>
-							<p class="text-xs text-ink/50">Use 0 to 1 for each manually graded quiz item.</p>
+							<p class="text-xs text-ink/50">
+								{{ __('Use 0 to 1 for each manually graded quiz item.') }}
+							</p>
 						</div>
 
 						<div class="space-y-1 text-xs text-ink/55">
-							<p>Submitted {{ formatDateTime(row.submitted_on) || '—' }}</p>
-							<p>Question #{{ row.position || '—' }}</p>
+							<p>{{ __('Submitted {0}', [formatDateTime(row.submitted_on) || '—']) }}</p>
+							<p>{{ __('Question #{0}', [row.position || '—']) }}</p>
 						</div>
 
 						<div class="flex items-center justify-between border-t border-border/50 pt-3">
-							<Badge v-if="rowStates[row.item_id]?.dirty" variant="subtle" theme="orange"
-								>Unsaved</Badge
-							>
-							<span v-else class="text-xs text-ink/40">Saved</span>
+							<Badge v-if="rowStates[row.item_id]?.dirty" variant="subtle" theme="orange">
+								{{ __('Unsaved') }}
+							</Badge>
+							<span v-else class="text-xs text-ink/40">{{ __('Saved') }}</span>
 							<button
 								type="button"
 								class="if-button if-button--primary"
@@ -179,7 +197,7 @@
 								"
 								@click="saveRow(row.item_id)"
 							>
-								{{ rowStates[row.item_id]?.saving ? 'Saving Score…' : 'Save Score' }}
+								{{ rowStates[row.item_id]?.saving ? __('Saving Score...') : __('Save Score') }}
 							</button>
 						</div>
 					</div>
@@ -192,6 +210,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import { Badge, FormControl, Spinner, toast } from 'frappe-ui';
+import { __ } from '@/lib/i18n';
 import { createGradebookService } from '@/lib/services/gradebook/gradebookService';
 import type {
 	Response as GetTaskQuizManualReviewResponse,
@@ -294,7 +313,7 @@ async function loadReview() {
 	} catch (error) {
 		console.error('Failed to load quiz manual review', error);
 		if (loadVersion.value === version) {
-			showDangerToast('Could not load open-ended quiz review');
+			showDangerToast(__('Could not load open-ended quiz review'));
 			clearState();
 		}
 	} finally {
@@ -334,13 +353,15 @@ function onScoreChanged(itemId: string, value: string | number | null) {
 
 function questionLabel(option: QuizManualQuestionOption) {
 	return option.pending_item_count
-		? `${option.title} (${option.pending_item_count} pending)`
+		? __('{0} ({1} pending)', [option.title, option.pending_item_count])
 		: option.title;
 }
 
 function studentLabel(option: QuizManualStudentOption) {
 	const suffix = option.student_id ? ` • ${option.student_id}` : '';
-	const pending = option.pending_item_count ? ` (${option.pending_item_count} pending)` : '';
+	const pending = option.pending_item_count
+		? __(' ({0} pending)', [option.pending_item_count])
+		: '';
 	return `${option.student_name}${suffix}${pending}`;
 }
 
@@ -348,7 +369,7 @@ function responseLabel(row: QuizManualReviewRow) {
 	const text = (row.response_text || '').trim();
 	if (text) return text;
 	if (row.selected_option_labels.length) return row.selected_option_labels.join(', ');
-	return 'No response submitted.';
+	return __('No response submitted.');
 }
 
 async function setViewMode(mode: 'question' | 'student') {
@@ -398,13 +419,13 @@ async function saveRows(itemIds: string[]) {
 		});
 		showSuccessToast(
 			uniqueIds.size === 1
-				? 'Quiz score saved.'
-				: `Saved ${uniqueIds.size} open-ended quiz scores.`
+				? __('Quiz score saved.')
+				: __('Saved {0} open-ended quiz scores.', [uniqueIds.size])
 		);
 		await loadReview();
 	} catch (error) {
 		console.error('Failed to save quiz manual review', error);
-		showDangerToast('Could not save open-ended quiz scores');
+		showDangerToast(__('Could not save open-ended quiz scores'));
 	} finally {
 		itemIds.forEach(itemId => {
 			const state = rowStates[itemId];

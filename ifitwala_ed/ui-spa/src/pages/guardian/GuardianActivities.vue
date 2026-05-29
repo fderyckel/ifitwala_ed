@@ -4,16 +4,19 @@
 		<header class="card-surface p-5 sm:p-6">
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 				<div>
-					<p class="type-overline text-ink/60">Guardian Activities</p>
-					<h1 class="type-h1 text-ink">Family Activity Board</h1>
+					<p class="type-overline text-ink/60">{{ __('Guardian Activities') }}</p>
+					<h1 class="type-h1 text-ink">{{ __('Family Activity Board') }}</h1>
 					<p class="type-body text-ink/70">
-						Book for multiple children in one flow with transparent capacity, fairness, and
-						billing.
+						{{
+							__(
+								'Book for multiple children in one flow with transparent capacity, fairness, and billing.'
+							)
+						}}
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
 					<RouterLink class="if-button if-button--secondary" :to="{ name: 'guardian-home' }">
-						Back to Home
+						{{ __('Back to Home') }}
 					</RouterLink>
 					<button
 						type="button"
@@ -21,7 +24,7 @@
 						:disabled="loading"
 						@click="loadBoard"
 					>
-						Refresh
+						{{ __('Refresh') }}
 					</button>
 				</div>
 			</div>
@@ -29,40 +32,44 @@
 
 		<section class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Children</p>
+				<p class="mini-kpi-label">{{ __('Children') }}</p>
 				<p class="mini-kpi-value">{{ students.length }}</p>
 			</article>
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Open offerings</p>
+				<p class="mini-kpi-label">{{ __('Open offerings') }}</p>
 				<p class="mini-kpi-value">{{ openNowCount }}</p>
 			</article>
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Active bookings</p>
+				<p class="mini-kpi-label">{{ __('Active bookings') }}</p>
 				<p class="mini-kpi-value">{{ activeBookingCount }}</p>
 			</article>
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Waitlist entries</p>
+				<p class="mini-kpi-label">{{ __('Waitlist entries') }}</p>
 				<p class="mini-kpi-value">{{ waitlistCount }}</p>
 			</article>
 		</section>
 
 		<section v-if="loading" class="card-surface p-5">
-			<p class="type-body text-ink/70">Loading family board...</p>
+			<p class="type-body text-ink/70">{{ __('Loading family board...') }}</p>
 		</section>
 		<section v-else-if="errorMessage" class="card-surface p-5">
-			<p class="type-body-strong text-flame">Could not load family activity board.</p>
+			<p class="type-body-strong text-flame">
+				{{ __('Could not load family activity board.') }}
+			</p>
 			<p class="type-body text-ink/70">{{ errorMessage }}</p>
 		</section>
 
 		<template v-else>
 			<section class="card-surface p-5">
 				<div class="mb-3 flex items-center justify-between gap-3">
-					<h2 class="type-h3 text-ink">Family Booking Summary</h2>
-					<p class="type-caption text-ink/60">One place for all children, low-click flow.</p>
+					<h2 class="type-h3 text-ink">{{ __('Family Booking Summary') }}</h2>
+					<p class="type-caption text-ink/60">
+						{{ __('One place for all children, low-click flow.') }}
+					</p>
 				</div>
 
 				<p v-if="!students.length" class="type-body text-ink/70">
-					No linked students found for this guardian account.
+					{{ __('No linked students found for this guardian account.') }}
 				</p>
 
 				<div v-else class="space-y-3">
@@ -90,13 +97,17 @@
 											{{ offeringTitle(booking.program_offering) }}
 										</p>
 										<p class="type-caption text-ink/70">
-											Section: {{ booking.allocated_student_group || 'Pending assignment' }}
+											{{
+												__('Section: {0}', [
+													booking.allocated_student_group || __('Pending assignment'),
+												])
+											}}
 										</p>
 										<p
 											v-if="showWaitlistPosition && booking.waitlist_position"
 											class="type-caption text-ink/70"
 										>
-											Waitlist position: {{ booking.waitlist_position }}
+											{{ __('Waitlist position: {0}', [booking.waitlist_position]) }}
 										</p>
 									</div>
 									<div class="flex flex-wrap items-center gap-2">
@@ -108,7 +119,7 @@
 											target="_blank"
 											rel="noopener"
 										>
-											View invoice
+											{{ __('View invoice') }}
 										</a>
 										<button
 											v-if="booking.status === 'Offered' || booking.status === 'Waitlisted'"
@@ -117,7 +128,7 @@
 											:disabled="actionLoading[booking.name]"
 											@click="confirmOffer(booking.name)"
 										>
-											Accept spot
+											{{ __('Accept spot') }}
 										</button>
 										<button
 											v-if="canCancel(booking.status)"
@@ -126,7 +137,7 @@
 											:disabled="actionLoading[booking.name]"
 											@click="cancelBooking(booking.name)"
 										>
-											Cancel
+											{{ __('Cancel') }}
 										</button>
 									</div>
 								</div>
@@ -138,12 +149,14 @@
 
 			<section class="space-y-4">
 				<div class="flex items-center justify-between gap-3">
-					<h2 class="type-h3 text-ink">Book New Activities</h2>
-					<p class="type-caption text-ink/60">Select children and submit once per offering.</p>
+					<h2 class="type-h3 text-ink">{{ __('Book New Activities') }}</h2>
+					<p class="type-caption text-ink/60">
+						{{ __('Select children and submit once per offering.') }}
+					</p>
 				</div>
 
 				<p v-if="!offerings.length" class="card-surface p-5 type-body text-ink/70">
-					No activity offerings are open right now.
+					{{ __('No activity offerings are open right now.') }}
 				</p>
 
 				<div v-else class="space-y-4">
@@ -162,18 +175,20 @@
 									>
 										{{
 											embeddedCommsOffering === offering.program_offering
-												? 'Hide updates'
-												: 'Show updates'
+												? __('Hide updates')
+												: __('Show updates')
 										}}
 									</button>
-									<p class="type-caption text-ink/70">Max ranked choices: {{ maxChoices }}</p>
+									<p class="type-caption text-ink/70">
+										{{ __('Max ranked choices: {0}', [maxChoices]) }}
+									</p>
 								</div>
 
 								<div
 									v-if="!canBookOffering(offering)"
 									class="rounded-lg border border-line-soft bg-surface-soft p-3 type-caption text-ink/70"
 								>
-									Booking is not currently open for guardian booking.
+									{{ __('Booking is not currently open for guardian booking.') }}
 								</div>
 
 								<div v-else class="space-y-3">
@@ -202,11 +217,14 @@
 											class="grid gap-2 sm:grid-cols-2"
 										>
 											<label
-												v-for="(_, idx) in rankSlots(offering.program_offering, student.student)"
+												v-for="(choice, idx) in rankSlots(
+													offering.program_offering,
+													student.student
+												)"
 												:key="`${offering.program_offering}-${student.student}-choice-${idx}`"
 												class="flex flex-col gap-1"
 											>
-												<span class="type-label">Choice {{ idx + 1 }}</span>
+												<span class="type-label">{{ __('Choice {0}', [idx + 1]) }}</span>
 												<select
 													v-model="
 														familySelection[offering.program_offering][student.student].choices[
@@ -215,7 +233,7 @@
 													"
 													class="rounded-lg border border-line-soft bg-white px-3 py-2 type-caption text-ink"
 												>
-													<option value="">Select section</option>
+													<option value="">{{ __('Select section') }}</option>
 													<option
 														v-for="section in offering.sections"
 														:key="`${offering.program_offering}-${student.student}-${section.student_group}`"
@@ -239,7 +257,8 @@
 										class="type-caption"
 										:class="row.ok ? 'text-leaf' : 'text-flame'"
 									>
-										{{ row.student || 'Unknown student' }} · {{ row.ok ? 'Booked' : row.error }}
+										{{ row.student || __('Unknown student') }} ·
+										{{ row.ok ? __('Booked') : row.error }}
 									</li>
 								</ul>
 
@@ -251,7 +270,7 @@
 									"
 									@click="submitFamilyBooking(offering.program_offering)"
 								>
-									Submit for selected children
+									{{ __('Submit for selected children') }}
 								</button>
 
 								<ActivityCommunicationPanel
@@ -266,7 +285,7 @@
 
 			<section class="card-surface p-5">
 				<div class="mb-3 flex items-center justify-between gap-3">
-					<h2 class="type-h3 text-ink">Communication Center</h2>
+					<h2 class="type-h3 text-ink">{{ __('Communication Center') }}</h2>
 					<select
 						v-model="centerOffering"
 						class="rounded-lg border border-line-soft bg-white px-3 py-2 type-caption text-ink"
@@ -295,6 +314,7 @@ import ActivityCommunicationPanel from '@/components/activity/ActivityCommunicat
 import ActivityOfferingCard from '@/components/activity/ActivityOfferingCard.vue';
 import ActivityStatusBadge from '@/components/activity/ActivityStatusBadge.vue';
 
+import { __ } from '@/lib/i18n';
 import {
 	cancelActivityBooking,
 	confirmActivityBookingOffer,
@@ -436,7 +456,7 @@ async function loadBoard() {
 		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		errorMessage.value = message || 'Could not load activities.';
+		errorMessage.value = message || __('Could not load activities.');
 	} finally {
 		loading.value = false;
 	}
@@ -450,7 +470,7 @@ function makeIdempotencyKey(student: string, programOffering: string): string {
 async function submitFamilyBooking(programOffering: string) {
 	const selection = familySelection.value[programOffering];
 	if (!selection) {
-		submitError.value[programOffering] = 'Family selection context missing.';
+		submitError.value[programOffering] = __('Family selection context missing.');
 		return;
 	}
 	const requests = Object.entries(selection)
@@ -464,8 +484,9 @@ async function submitFamilyBooking(programOffering: string) {
 		.filter(row => row.choices.length > 0);
 
 	if (!requests.length) {
-		submitError.value[programOffering] =
-			'Select at least one child and one section choice before submitting.';
+		submitError.value[programOffering] = __(
+			'Select at least one child and one section choice before submitting.'
+		);
 		return;
 	}
 
@@ -484,14 +505,14 @@ async function submitFamilyBooking(programOffering: string) {
 			error: row.error || null,
 		}));
 		if (response.ok) {
-			toast.success('Bookings submitted for selected children.');
+			toast.success(__('Bookings submitted for selected children.'));
 		} else {
-			toast.error('Some bookings could not be submitted. Review results below.');
+			toast.error(__('Some bookings could not be submitted. Review results below.'));
 		}
 		await loadBoard();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		submitError.value[programOffering] = message || 'Could not submit family booking.';
+		submitError.value[programOffering] = message || __('Could not submit family booking.');
 	} finally {
 		submitLoading.value[programOffering] = false;
 	}
@@ -501,11 +522,11 @@ async function confirmOffer(bookingName: string) {
 	actionLoading.value[bookingName] = true;
 	try {
 		await confirmActivityBookingOffer({ activity_booking: bookingName });
-		toast.success('Spot accepted.');
+		toast.success(__('Spot accepted.'));
 		await loadBoard();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		toast.error(message || 'Could not accept this offer.');
+		toast.error(message || __('Could not accept this offer.'));
 	} finally {
 		actionLoading.value[bookingName] = false;
 	}
@@ -515,11 +536,11 @@ async function cancelBooking(bookingName: string) {
 	actionLoading.value[bookingName] = true;
 	try {
 		await cancelActivityBooking({ activity_booking: bookingName });
-		toast.success('Booking cancelled.');
+		toast.success(__('Booking cancelled.'));
 		await loadBoard();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		toast.error(message || 'Could not cancel booking.');
+		toast.error(message || __('Could not cancel booking.'));
 	} finally {
 		actionLoading.value[bookingName] = false;
 	}

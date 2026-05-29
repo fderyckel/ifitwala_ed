@@ -10,15 +10,17 @@
 			@click="emit('toggle')"
 		>
 			<div>
-				<p class="type-overline text-ink/60">Course Plan Overview</p>
+				<p class="type-overline text-ink/60">{{ __('Course Plan Overview') }}</p>
 				<h2 class="mt-2 type-h2 text-ink">
 					{{ coursePlanSurface?.course_name || coursePlanSurface?.course }}
 				</h2>
 				<p class="mt-2 type-body text-ink/80">
 					{{
 						collapsed
-							? 'Open the shared plan metadata, summary, and publishing controls.'
-							: 'This shared plan sets the governed backbone every linked class teaching plan uses.'
+							? __('Open the shared plan metadata, summary, and publishing controls.')
+							: __(
+									'This shared plan sets the governed backbone every linked class teaching plan uses.'
+								)
 					}}
 				</p>
 			</div>
@@ -32,28 +34,28 @@
 				<span v-if="coursePlanSurface?.cycle_label" class="chip">
 					{{ coursePlanSurface.cycle_label }}
 				</span>
-				<span class="chip">{{ collapsed ? 'Show' : 'Hide' }}</span>
+				<span class="chip">{{ collapsed ? __('Show') : __('Hide') }}</span>
 			</div>
 		</button>
 
 		<div v-if="!collapsed && canManagePlan" class="mt-6 grid gap-4 lg:grid-cols-2">
 			<label class="block space-y-2">
-				<span class="type-caption text-ink/70">Course Plan Title</span>
+				<span class="type-caption text-ink/70">{{ __('Course Plan Title') }}</span>
 				<input
 					v-model="coursePlanForm.title"
 					type="text"
 					class="if-input w-full"
-					placeholder="e.g. Biology Semester 1 Plan"
+					:placeholder="__('e.g. Biology Semester 1 Plan')"
 				/>
 			</label>
 			<label class="block space-y-2">
-				<span class="type-caption text-ink/70">Academic Year</span>
+				<span class="type-caption text-ink/70">{{ __('Academic Year') }}</span>
 				<select
 					v-model="coursePlanForm.academic_year"
 					class="if-input w-full"
 					:disabled="!academicYearOptions.length"
 				>
-					<option value="">Optional academic year</option>
+					<option value="">{{ __('Optional academic year') }}</option>
 					<option v-for="option in academicYearOptions" :key="option.value" :value="option.value">
 						{{ option.label }}
 					</option>
@@ -61,39 +63,41 @@
 				<p class="type-caption text-ink/60">
 					{{
 						academicYearOptions.length
-							? 'Only Academic Year records in this course school scope are available here.'
-							: 'No Academic Year records are available for this course school yet.'
+							? __('Only Academic Year records in this course school scope are available here.')
+							: __('No Academic Year records are available for this course school yet.')
 					}}
 				</p>
 			</label>
 			<label class="block space-y-2">
-				<span class="type-caption text-ink/70">Cycle Label</span>
+				<span class="type-caption text-ink/70">{{ __('Cycle Label') }}</span>
 				<input
 					v-model="coursePlanForm.cycle_label"
 					type="text"
 					class="if-input w-full"
-					placeholder="e.g. Semester 1"
+					:placeholder="__('e.g. Semester 1')"
 				/>
 			</label>
 			<label class="block space-y-2">
-				<span class="type-caption text-ink/70">Publishing Status</span>
+				<span class="type-caption text-ink/70">{{ __('Publishing Status') }}</span>
 				<select v-model="coursePlanForm.plan_status" class="if-input w-full">
 					<option v-for="option in coursePlanStatusOptions" :key="option" :value="option">
-						{{ option }}
+						{{ coursePlanStatusLabel(option) }}
 					</option>
 				</select>
 			</label>
 			<label class="block space-y-2 lg:col-span-2">
-				<span class="type-caption text-ink/70">Summary</span>
+				<span class="type-caption text-ink/70">{{ __('Summary') }}</span>
 				<PlanningRichTextField
 					v-model="coursePlanForm.summary"
-					placeholder="State the shared purpose, scope, and non-negotiables for this course plan."
+					:placeholder="
+						__('State the shared purpose, scope, and non-negotiables for this course plan.')
+					"
 					min-height-class="min-h-[9rem]"
 				/>
 			</label>
 			<div class="flex justify-end lg:col-span-2">
 				<button type="button" class="if-action" :disabled="pending" @click="emit('save')">
-					{{ pending ? 'Saving...' : 'Save Shared Course Plan' }}
+					{{ pending ? __('Saving...') : __('Save Shared Course Plan') }}
 				</button>
 			</div>
 		</div>
@@ -109,7 +113,7 @@
 				display-class="text-ink/80"
 			/>
 			<p v-else class="type-caption text-ink/70">
-				No shared summary has been captured for this course plan yet.
+				{{ __('No shared summary has been captured for this course plan yet.') }}
 			</p>
 		</div>
 	</section>
@@ -117,6 +121,7 @@
 
 <script setup lang="ts">
 import PlanningRichTextField from '@/components/planning/PlanningRichTextField.vue';
+import { __ } from '@/lib/i18n';
 import {
 	SECTION_IDS,
 	coursePlanStatusOptions,
@@ -138,4 +143,11 @@ const emit = defineEmits<{
 	(e: 'toggle'): void;
 	(e: 'save'): void;
 }>();
+
+function coursePlanStatusLabel(status: string): string {
+	if (status === 'Draft') return __('Draft');
+	if (status === 'Published') return __('Published');
+	if (status === 'Archived') return __('Archived');
+	return status;
+}
 </script>

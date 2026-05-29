@@ -16,6 +16,8 @@ export type Request = {
 	agenda?: string | null
 	visibility_scope?: string | null
 	participants?: MeetingAttendeeInput[] | null
+	include_students?: 0 | 1 | boolean | null
+	include_guardians?: 0 | 1 | boolean | null
 }
 
 export type Response = {

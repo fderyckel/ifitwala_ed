@@ -47,13 +47,13 @@
 							tabindex="0"
 							@click="emitClose('programmatic')"
 						>
-							Close
+							{{ __('Close') }}
 						</button>
 						<div class="meeting-modal__header">
 							<div class="meeting-modal__headline">
-								<p class="meeting-modal__eyebrow type-overline">Class</p>
+								<p class="meeting-modal__eyebrow type-overline">{{ __('Class') }}</p>
 								<DialogTitle as="h3" class="type-h3">
-									{{ data?.title || 'Class' }}
+									{{ data?.title || __('Class') }}
 								</DialogTitle>
 								<p v-if="data?.course_name" class="meeting-modal__time type-meta">
 									{{ data.course_name }}
@@ -61,7 +61,7 @@
 							</div>
 							<button
 								class="if-overlay__icon-button"
-								aria-label="Close class modal"
+								:aria-label="__('Close class modal')"
 								@click="emitClose('programmatic')"
 							>
 								<FeatherIcon name="x" class="h-5 w-5" />
@@ -79,53 +79,55 @@
 							<div v-else-if="error" class="meeting-modal__error">
 								<p class="type-body">{{ error }}</p>
 								<button class="meeting-modal__cta" @click="emitClose('programmatic')">
-									Close
+									{{ __('Close') }}
 								</button>
 							</div>
 
 							<div v-else-if="data">
 								<section class="meeting-modal__meta-grid">
 									<div>
-										<p class="meeting-modal__label type-label">Type</p>
-										<p class="meeting-modal__value type-body">{{ data.class_type || 'Course' }}</p>
+										<p class="meeting-modal__label type-label">{{ __('Type') }}</p>
+										<p class="meeting-modal__value type-body">
+											{{ data.class_type || __('Course') }}
+										</p>
 									</div>
 									<div>
-										<p class="meeting-modal__label type-label">Program</p>
+										<p class="meeting-modal__label type-label">{{ __('Program') }}</p>
 										<p class="meeting-modal__value type-body">{{ data.program || '—' }}</p>
 									</div>
 									<div>
-										<p class="meeting-modal__label type-label">Course</p>
+										<p class="meeting-modal__label type-label">{{ __('Course') }}</p>
 										<p class="meeting-modal__value type-body">{{ courseLabel }}</p>
 									</div>
 									<div>
-										<p class="meeting-modal__label type-label">Cohort</p>
+										<p class="meeting-modal__label type-label">{{ __('Cohort') }}</p>
 										<p class="meeting-modal__value type-body">{{ data.cohort || '—' }}</p>
 									</div>
 								</section>
 
 								<section class="meeting-modal__meta-grid">
 									<div>
-										<p class="meeting-modal__label type-label">Rotation Day</p>
+										<p class="meeting-modal__label type-label">{{ __('Rotation Day') }}</p>
 										<p class="meeting-modal__value type-body">
 											{{
 												data.rotation_day !== null && data.rotation_day !== undefined
-													? `Day ${data.rotation_day}`
+													? __('Day {0}', [data.rotation_day])
 													: '—'
 											}}
 										</p>
 									</div>
 									<div>
-										<p class="meeting-modal__label type-label">Block</p>
+										<p class="meeting-modal__label type-label">{{ __('Block') }}</p>
 										<p class="meeting-modal__value type-body">{{ data.block_label || '—' }}</p>
 									</div>
 									<div>
-										<p class="meeting-modal__label type-label">Location</p>
+										<p class="meeting-modal__label type-label">{{ __('Location') }}</p>
 										<p class="meeting-modal__value type-body">
-											{{ data.location || 'To be announced' }}
+											{{ data.location || __('To be announced') }}
 										</p>
 									</div>
 									<div>
-										<p class="meeting-modal__label type-label">School</p>
+										<p class="meeting-modal__label type-label">{{ __('School') }}</p>
 										<p class="meeting-modal__value type-body">{{ data.school || '—' }}</p>
 									</div>
 								</section>
@@ -133,7 +135,7 @@
 								<section class="meeting-modal__agenda">
 									<header class="meeting-modal__section-heading">
 										<div>
-											<p class="meeting-modal__label type-label">Schedule</p>
+											<p class="meeting-modal__label type-label">{{ __('Schedule') }}</p>
 											<p class="meeting-modal__value type-body" v-if="sessionDateLabel">
 												{{ sessionDateLabel }}
 											</p>
@@ -155,7 +157,7 @@
 										@click="emitClose('programmatic')"
 									>
 										<FeatherIcon name="book-open" class="h-4 w-4" />
-										Open Course
+										{{ __('Open Course') }}
 									</RouterLink>
 
 									<template v-else>
@@ -169,7 +171,7 @@
 											@click="emitPlanSession"
 										>
 											<FeatherIcon name="edit-3" class="h-4 w-4" />
-											Plan This Session
+											{{ __('Plan This Session') }}
 										</button>
 
 										<RouterLink
@@ -179,7 +181,7 @@
 											rel="noreferrer"
 										>
 											<FeatherIcon name="check-square" class="h-4 w-4" />
-											Take Attendance
+											{{ __('Take Attendance') }}
 										</RouterLink>
 
 										<RouterLink
@@ -189,7 +191,7 @@
 											rel="noreferrer"
 										>
 											<FeatherIcon name="book-open" class="h-4 w-4" />
-											Open Gradebook
+											{{ __('Open Gradebook') }}
 										</RouterLink>
 
 										<button
@@ -198,7 +200,7 @@
 											@click="emitCreateAnnouncement"
 										>
 											<FeatherIcon name="message-square" class="h-4 w-4" />
-											Create Announcement
+											{{ __('Create Announcement') }}
 										</button>
 
 										<button
@@ -211,7 +213,7 @@
 											@click="emitCreateTask"
 										>
 											<FeatherIcon name="clipboard" class="h-4 w-4" />
-											Create Task
+											{{ __('Create Task') }}
 										</button>
 									</template>
 								</div>
@@ -244,6 +246,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { api } from '@/lib/client';
+import { __ } from '@/lib/i18n';
 import { getPlanSessionBlockedReason } from '@/lib/planning/planningActionGuards';
 import type { ClassEventDetails } from './classEventTypes';
 
@@ -254,10 +257,12 @@ const props = defineProps<{
 	portalRole?: 'staff' | 'student' | 'guardian';
 }>();
 
-const MISSING_ACTIVE_TASK_PLAN_MESSAGE =
-	'This class needs an active Class Teaching Plan before assigned work can be created. Open Class Planning for this class, create or activate the plan, then try again.';
-const MULTIPLE_ACTIVE_TASK_PLANS_MESSAGE =
-	'This class has more than one active Class Teaching Plan. Open Class Planning for this class, choose the correct plan there, then create the task from that surface.';
+const MISSING_ACTIVE_TASK_PLAN_MESSAGE = __(
+	'This class needs an active Class Teaching Plan before assigned work can be created. Open Class Planning for this class, create or activate the plan, then try again.'
+);
+const MULTIPLE_ACTIVE_TASK_PLANS_MESSAGE = __(
+	'This class has more than one active Class Teaching Plan. Open Class Planning for this class, choose the correct plan there, then create the task from that surface.'
+);
 
 const overlay = useOverlayStack();
 const route = useRoute();
@@ -287,7 +292,9 @@ watch(
 		if (!isOpen) return;
 		if (!eventId) {
 			loading.value = false;
-			error.value = 'Could not determine which class was clicked. Please refresh and try again.';
+			error.value = __(
+				'Could not determine which class was clicked. Please refresh and try again.'
+			);
 			data.value = null;
 			return;
 		}
@@ -308,7 +315,7 @@ watch(
 		} catch (err) {
 			if (seq === requestSeq) {
 				error.value =
-					err instanceof Error ? err.message : 'Unable to load class details right now.';
+					err instanceof Error ? err.message : __('Unable to load class details right now.');
 			}
 		} finally {
 			if (seq === requestSeq) {
@@ -368,7 +375,7 @@ function safeDate(value?: string | null) {
 
 const timeLabel = computed(() => {
 	const start = safeDate(data.value?.start);
-	if (!start) return 'Time to be confirmed';
+	if (!start) return __('Time to be confirmed');
 	const end = safeDate(data.value?.end);
 	const timezone = data.value?.timezone || undefined;
 	const formatter = new Intl.DateTimeFormat(undefined, {
@@ -415,7 +422,7 @@ function emitCreateAnnouncement() {
 		sessionDate: data.value.session_date || null,
 		sessionTimeLabel: timeLabel.value || null,
 		courseLabel: data.value.course_name || data.value.course || null,
-		sourceLabel: 'Class Event',
+		sourceLabel: __('Class Event'),
 	});
 }
 
@@ -465,7 +472,8 @@ const initialFocus = ref<HTMLElement | null>(null);
  * HeadlessUI Dialog @close payload is ambiguous (boolean/undefined).
  * Under A+, ignore it and close only via explicit backdrop/esc/button paths.
  */
-function onDialogClose(_payload: unknown) {
+function onDialogClose(payload: unknown) {
+	void payload;
 	// no-op by design
 }
 

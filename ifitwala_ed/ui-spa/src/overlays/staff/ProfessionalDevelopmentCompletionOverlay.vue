@@ -32,11 +32,11 @@
 					<DialogPanel class="if-overlay__panel">
 						<div class="if-overlay__header px-6 pt-6">
 							<div class="space-y-1">
-								<DialogTitle class="type-h2 text-ink"
-									>Complete Professional Development</DialogTitle
-								>
+								<DialogTitle class="type-h2 text-ink">
+									{{ __('Complete Professional Development') }}
+								</DialogTitle>
 								<p class="type-caption text-ink/60">
-									{{ record?.title || 'Record completion and actual spend.' }}
+									{{ record?.title || __('Record completion and actual spend.') }}
 								</p>
 							</div>
 							<button
@@ -44,7 +44,7 @@
 								type="button"
 								class="if-overlay__icon-button"
 								@click="emitClose('programmatic')"
-								aria-label="Close"
+								:aria-label="__('Close')"
 							>
 								<FeatherIcon name="x" class="h-4 w-4" />
 							</button>
@@ -55,7 +55,9 @@
 								v-if="submitError"
 								class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
 							>
-								<p class="type-body-strong text-rose-900">Completion could not be saved.</p>
+								<p class="type-body-strong text-rose-900">
+									{{ __('Completion could not be saved.') }}
+								</p>
 								<p class="mt-1 type-caption text-rose-900/80 whitespace-pre-wrap">
 									{{ submitError }}
 								</p>
@@ -63,7 +65,7 @@
 
 							<section class="grid gap-4 md:grid-cols-2">
 								<label class="space-y-1">
-									<span class="type-caption text-ink/70">Completion date</span>
+									<span class="type-caption text-ink/70">{{ __('Completion date') }}</span>
 									<input
 										v-model="form.completion_date"
 										type="date"
@@ -72,7 +74,7 @@
 									/>
 								</label>
 								<label class="space-y-1">
-									<span class="type-caption text-ink/70">Actual total</span>
+									<span class="type-caption text-ink/70">{{ __('Actual total') }}</span>
 									<input
 										v-model.number="form.actual_total"
 										type="number"
@@ -86,14 +88,14 @@
 
 							<section class="space-y-2">
 								<div class="flex items-center justify-between">
-									<span class="type-caption text-ink/70">Evidence</span>
+									<span class="type-caption text-ink/70">{{ __('Evidence') }}</span>
 									<button
 										type="button"
 										class="if-action"
 										:disabled="submitting"
 										@click="addEvidence"
 									>
-										Add evidence
+										{{ __('Add evidence') }}
 									</button>
 								</div>
 								<div
@@ -105,19 +107,19 @@
 										v-model="row.evidence_label"
 										class="if-overlay__input"
 										:disabled="submitting"
-										placeholder="Evidence label"
+										:placeholder="__('Evidence label')"
 									/>
 									<input
 										v-model="row.attachment"
 										class="if-overlay__input"
 										:disabled="submitting"
-										placeholder="Attachment URL or file reference"
+										:placeholder="__('Attachment URL or file reference')"
 									/>
 									<input
 										v-model="row.notes"
 										class="if-overlay__input"
 										:disabled="submitting"
-										placeholder="Optional notes"
+										:placeholder="__('Optional notes')"
 									/>
 									<div class="flex justify-end">
 										<button
@@ -126,7 +128,7 @@
 											:disabled="submitting || form.evidence.length === 1"
 											@click="removeEvidence(idx)"
 										>
-											Remove
+											{{ __('Remove') }}
 										</button>
 									</div>
 								</div>
@@ -135,14 +137,14 @@
 							<section class="space-y-2">
 								<label class="flex items-center gap-2 type-caption text-ink/70">
 									<input v-model="form.liquidation_ready" type="checkbox" :disabled="submitting" />
-									<span>Ready for liquidation</span>
+									<span>{{ __('Ready for liquidation') }}</span>
 								</label>
 								<textarea
 									v-model="form.reflection"
 									rows="5"
 									class="if-overlay__input"
 									:disabled="submitting"
-									placeholder="Reflection, impact, and sharing-back notes"
+									:placeholder="__('Reflection, impact, and sharing-back notes')"
 								/>
 							</section>
 						</div>
@@ -153,7 +155,7 @@
 								class="if-button if-button--secondary"
 								@click="emitClose('programmatic')"
 							>
-								Cancel
+								{{ __('Cancel') }}
 							</button>
 							<button
 								type="button"
@@ -161,7 +163,7 @@
 								:disabled="submitting"
 								@click="submitForm"
 							>
-								Save completion
+								{{ __('Save completion') }}
 							</button>
 						</footer>
 					</DialogPanel>
@@ -183,6 +185,7 @@ import { FeatherIcon } from 'frappe-ui';
 import { computed, ref, watch } from 'vue';
 
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import { __ } from '@/lib/i18n';
 import { completeProfessionalDevelopmentRecord } from '@/lib/services/professionalDevelopment/professionalDevelopmentService';
 import { SIGNAL_PROFESSIONAL_DEVELOPMENT_INVALIDATE, uiSignals } from '@/lib/uiSignals';
 
@@ -246,7 +249,8 @@ function emitAfterLeave() {
 	emit('after-leave');
 }
 
-function onDialogClose(_payload: unknown) {
+function onDialogClose(payload: unknown) {
+	void payload;
 	// no-op: close is explicit
 }
 
@@ -281,7 +285,7 @@ async function submitForm() {
 		uiSignals.emit(SIGNAL_PROFESSIONAL_DEVELOPMENT_INVALIDATE);
 		emitClose('programmatic');
 	} catch (error: any) {
-		submitError.value = error?.message || 'Could not save completion.';
+		submitError.value = error?.message || __('Could not save completion.');
 	} finally {
 		submitting.value = false;
 	}

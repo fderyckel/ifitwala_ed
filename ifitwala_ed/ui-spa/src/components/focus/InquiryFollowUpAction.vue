@@ -5,7 +5,8 @@
 			<div class="flex items-start justify-between gap-3">
 				<div class="min-w-0">
 					<div class="type-body font-medium">
-						Inquiry <span v-if="inquiry?.name" class="text-ink/60"> • {{ inquiry?.name }}</span>
+						{{ __('Inquiry') }}
+						<span v-if="inquiry?.name" class="text-ink/60"> • {{ inquiry?.name }}</span>
 					</div>
 					<div class="type-meta text-ink/60 mt-1">
 						<span>{{ subjectName }}</span>
@@ -13,16 +14,20 @@
 						<span v-else-if="inquiry?.organization"> • {{ inquiry?.organization }}</span>
 					</div>
 					<div v-if="inquiry?.type_of_inquiry" class="type-meta text-ink/60 mt-1">
-						Type: {{ inquiry?.type_of_inquiry }}
+						{{ __('Type:') }} {{ inquiry?.type_of_inquiry }}
 					</div>
 					<div v-if="inquiry?.source" class="type-meta text-ink/60 mt-1">
-						Source: {{ inquiry?.source }}
+						{{ __('Source:') }} {{ inquiry?.source }}
 					</div>
 					<div v-if="inquiry?.followup_due_on" class="type-meta text-ink/60 mt-1">
-						Due: {{ formatLocalizedDate(inquiry?.followup_due_on, { includeWeekday: true }) }}
+						{{
+							__('Due: {0}', [
+								formatLocalizedDate(inquiry?.followup_due_on, { includeWeekday: true }),
+							])
+						}}
 					</div>
 					<div v-if="inquiry?.sla_status" class="type-meta text-ink/60 mt-1">
-						SLA: {{ inquiry?.sla_status }}
+						{{ __('SLA:') }} {{ inquiry?.sla_status }}
 					</div>
 				</div>
 
@@ -33,9 +38,11 @@
 						class="if-action"
 						@click="openInDesk(inquiry.name)"
 					>
-						Open in Desk
+						{{ __('Open in Desk') }}
 					</button>
-					<button type="button" class="if-action" @click="requestRefresh">Refresh</button>
+					<button type="button" class="if-action" @click="requestRefresh">
+						{{ __('Refresh') }}
+					</button>
 				</div>
 			</div>
 		</div>
@@ -43,9 +50,9 @@
 		<div class="card-surface p-4 space-y-4">
 			<div class="flex items-start justify-between gap-3">
 				<div>
-					<div class="type-body font-medium">Inquiry details</div>
+					<div class="type-body font-medium">{{ __('Inquiry details') }}</div>
 					<div class="type-meta text-ink/60 mt-1">
-						Review the original inquiry before recording first contact.
+						{{ __('Review the original inquiry before recording first contact.') }}
 					</div>
 				</div>
 				<div class="shrink-0 flex items-center gap-2">
@@ -55,7 +62,7 @@
 						class="if-action"
 						@click="openContactInDesk(inquiry.contact)"
 					>
-						Open contact
+						{{ __('Open contact') }}
 					</button>
 					<button
 						v-else
@@ -64,7 +71,7 @@
 						:disabled="contactBusy"
 						@click="createContact"
 					>
-						{{ contactBusy ? 'Creating…' : 'Create contact' }}
+						{{ contactBusy ? __('Creating…') : __('Create contact') }}
 					</button>
 				</div>
 			</div>
@@ -72,11 +79,11 @@
 			<div class="grid gap-4 md:grid-cols-2">
 				<div class="space-y-3">
 					<div>
-						<div class="type-meta text-ink/60">Name</div>
+						<div class="type-meta text-ink/60">{{ __('Name') }}</div>
 						<div class="type-body mt-1">{{ subjectName }}</div>
 					</div>
 					<div v-if="inquiry?.email">
-						<div class="type-meta text-ink/60">Email</div>
+						<div class="type-meta text-ink/60">{{ __('Email') }}</div>
 						<a
 							:href="`mailto:${inquiry.email}`"
 							class="type-body mt-1 inline-flex text-canopy underline-offset-2 hover:underline"
@@ -85,7 +92,7 @@
 						</a>
 					</div>
 					<div v-if="inquiry?.phone_number">
-						<div class="type-meta text-ink/60">Phone</div>
+						<div class="type-meta text-ink/60">{{ __('Phone') }}</div>
 						<a
 							:href="`tel:${inquiry.phone_number}`"
 							class="type-body mt-1 inline-flex text-canopy underline-offset-2 hover:underline"
@@ -94,23 +101,23 @@
 						</a>
 					</div>
 					<div>
-						<div class="type-meta text-ink/60">Contact</div>
+						<div class="type-meta text-ink/60">{{ __('Contact') }}</div>
 						<div class="type-body mt-1">
-							{{ inquiry?.contact || 'No linked contact yet' }}
+							{{ inquiry?.contact || __('No linked contact yet') }}
 						</div>
 					</div>
 				</div>
 
 				<div class="space-y-2">
-					<div class="type-meta text-ink/60">Message</div>
+					<div class="type-meta text-ink/60">{{ __('Message') }}</div>
 					<div class="rounded-xl border border-ink/10 bg-white px-4 py-3">
 						<p v-if="inquiry?.message" class="type-body whitespace-pre-wrap text-ink">
 							{{ inquiry.message }}
 						</p>
-						<p v-else class="type-meta text-ink/60">No message provided.</p>
+						<p v-else class="type-meta text-ink/60">{{ __('No message provided.') }}</p>
 					</div>
 					<div v-if="inquiry?.next_action_note" class="space-y-2">
-						<div class="type-meta text-ink/60">Next action note</div>
+						<div class="type-meta text-ink/60">{{ __('Next action note') }}</div>
 						<div class="rounded-xl border border-ink/10 bg-white px-4 py-3">
 							<p class="type-body whitespace-pre-wrap text-ink">
 								{{ inquiry.next_action_note }}
@@ -130,13 +137,15 @@
 		</div>
 
 		<div class="card-surface p-4">
-			<div class="type-body font-medium">First contact action</div>
+			<div class="type-body font-medium">{{ __('First contact action') }}</div>
 			<div class="type-meta text-ink/60 mt-1">
-				Mark this inquiry as contacted and close your follow-up ToDo.
+				{{ __('Mark this inquiry as contacted and close your follow-up ToDo.') }}
 			</div>
 
 			<div v-if="!canMarkContacted" class="type-meta text-ink/60 mt-3">
-				Only assigned inquiries in state <b>Assigned</b> can be completed from Focus.
+				{{
+					__('Only assigned inquiries in state {0} can be completed from Focus.', [__('Assigned')])
+				}}
 			</div>
 
 			<div v-if="actionError" class="mt-3 rounded-xl border border-ink/10 bg-white p-3">
@@ -144,14 +153,16 @@
 			</div>
 
 			<div class="mt-4 flex items-center justify-end gap-2">
-				<button type="button" class="if-button if-button--quiet" @click="emitClose">Close</button>
+				<button type="button" class="if-button if-button--quiet" @click="emitClose">
+					{{ __('Close') }}
+				</button>
 				<button
 					type="button"
 					class="if-button if-button--primary"
 					:disabled="busy || submittedOnce || !canMarkContacted"
 					@click="markContacted"
 				>
-					{{ busy ? 'Saving…' : 'Mark contacted' }}
+					{{ busy ? __('Saving…') : __('Mark contacted') }}
 				</button>
 			</div>
 		</div>

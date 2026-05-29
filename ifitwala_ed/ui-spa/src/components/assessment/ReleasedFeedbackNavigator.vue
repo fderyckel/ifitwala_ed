@@ -12,18 +12,24 @@
 				</div>
 				<div class="flex flex-wrap gap-2">
 					<span v-if="detail.feedback?.submission_version" class="chip">
-						Feedback on version {{ detail.feedback.submission_version }}
+						{{ __('Feedback on version {0}', [detail.feedback.submission_version]) }}
 					</span>
-					<span v-if="detail.grade_visible" class="chip chip-focus">Grade released</span>
-					<span v-if="detail.feedback_visible" class="chip chip-warm">Feedback released</span>
+					<span v-if="detail.grade_visible" class="chip chip-focus">
+						{{ __('Grade released') }}
+					</span>
+					<span v-if="detail.feedback_visible" class="chip chip-warm">
+						{{ __('Feedback released') }}
+					</span>
 				</div>
 			</div>
 
 			<div class="mt-4 flex flex-wrap gap-2">
 				<span v-if="detail.official.score != null" class="chip">
-					Score {{ formatScore(detail.official.score) }}
+					{{ __('Score {0}', [formatScore(detail.official.score)]) }}
 				</span>
-				<span v-if="detail.official.grade" class="chip"> Grade {{ detail.official.grade }} </span>
+				<span v-if="detail.official.grade" class="chip">
+					{{ __('Grade {0}', [detail.official.grade]) }}
+				</span>
 				<button
 					v-if="mode === 'student' && detail.feedback_visible"
 					type="button"
@@ -31,7 +37,7 @@
 					:disabled="Boolean(exportBusy)"
 					@click="emit('export-feedback-pdf')"
 				>
-					{{ exportBusy ? 'Preparing…' : exportButtonLabel }}
+					{{ exportBusy ? __('Preparing...') : exportButtonLabel }}
 				</button>
 			</div>
 		</header>
@@ -44,8 +50,8 @@
 				<section class="card-surface p-5">
 					<div class="flex items-center justify-between gap-3">
 						<div>
-							<p class="type-overline text-ink/60">Summary</p>
-							<h2 class="mt-2 type-h3 text-ink">What matters most</h2>
+							<p class="type-overline text-ink/60">{{ __('Summary') }}</p>
+							<h2 class="mt-2 type-h3 text-ink">{{ __('What matters most') }}</h2>
 						</div>
 						<span class="chip">{{ summaryCardCount }}</span>
 					</div>
@@ -64,8 +70,8 @@
 				<section v-if="detail.feedback.priorities.length" class="card-surface p-5">
 					<div class="flex items-center justify-between gap-3">
 						<div>
-							<p class="type-overline text-ink/60">Priorities</p>
-							<h2 class="mt-2 type-h3 text-ink">Start here</h2>
+							<p class="type-overline text-ink/60">{{ __('Priorities') }}</p>
+							<h2 class="mt-2 type-h3 text-ink">{{ __('Start here') }}</h2>
 						</div>
 						<span class="chip">{{ detail.feedback.priorities.length }}</span>
 					</div>
@@ -85,7 +91,9 @@
 										{{ priority.detail }}
 									</p>
 								</div>
-								<span v-if="priority.feedback_item_id" class="chip chip-focus">Open note</span>
+								<span v-if="priority.feedback_item_id" class="chip chip-focus">
+									{{ __('Open note') }}
+								</span>
 							</div>
 						</button>
 					</div>
@@ -94,8 +102,8 @@
 				<section v-if="detail.feedback.rubric_snapshot.length" class="card-surface p-5">
 					<div class="flex items-center justify-between gap-3">
 						<div>
-							<p class="type-overline text-ink/60">Rubric Snapshot</p>
-							<h2 class="mt-2 type-h3 text-ink">Criterion view</h2>
+							<p class="type-overline text-ink/60">{{ __('Rubric Snapshot') }}</p>
+							<h2 class="mt-2 type-h3 text-ink">{{ __('Criterion view') }}</h2>
 						</div>
 						<span class="chip">{{ detail.feedback.rubric_snapshot.length }}</span>
 					</div>
@@ -127,8 +135,8 @@
 				<section class="card-surface p-5">
 					<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
 						<div>
-							<p class="type-overline text-ink/60">Feedback List</p>
-							<h2 class="mt-2 type-h3 text-ink">Review each note</h2>
+							<p class="type-overline text-ink/60">{{ __('Feedback List') }}</p>
+							<h2 class="mt-2 type-h3 text-ink">{{ __('Review each note') }}</h2>
 						</div>
 						<nav class="if-segmented overflow-x-auto pb-1">
 							<button
@@ -160,7 +168,7 @@
 									<div class="min-w-0">
 										<div class="flex flex-wrap gap-2">
 											<span class="chip chip-focus">{{ itemIntentLabel(item.intent) }}</span>
-											<span class="chip">Page {{ item.page }}</span>
+											<span class="chip">{{ __('Page {0}', [item.page]) }}</span>
 											<span
 												v-if="threadByItemId(item.id)?.learner_state !== 'none'"
 												class="chip chip-warm"
@@ -171,11 +179,11 @@
 												v-if="threadByItemId(item.id)?.thread_status === 'resolved'"
 												class="chip"
 											>
-												Resolved
+												{{ __('Resolved') }}
 											</span>
 										</div>
 										<p class="mt-3 type-body text-ink/85">
-											{{ item.comment || 'No comment text yet.' }}
+											{{ item.comment || __('No comment text yet.') }}
 										</p>
 									</div>
 									<span class="chip">{{ itemOrdinal(item.id) }}</span>
@@ -198,10 +206,10 @@
 								>
 									<div class="flex flex-wrap items-center gap-2">
 										<span class="chip">{{
-											message.author_role === 'student' ? 'Student' : 'Instructor'
+											message.author_role === 'student' ? __('Student') : __('Instructor')
 										}}</span>
 										<span class="type-caption text-ink/60">{{
-											message.message_kind === 'clarification' ? 'Clarification' : 'Reply'
+											message.message_kind === 'clarification' ? __('Clarification') : __('Reply')
 										}}</span>
 									</div>
 									<p class="mt-2 type-body text-ink/80">{{ message.body }}</p>
@@ -218,7 +226,7 @@
 									:disabled="stateBusyTarget === item.id"
 									@click="emitLearnerState(item.id, 'understood')"
 								>
-									{{ stateBusyTarget === item.id ? 'Saving...' : 'Mark understood' }}
+									{{ stateBusyTarget === item.id ? __('Saving...') : __('Mark understood') }}
 								</button>
 								<button
 									type="button"
@@ -226,7 +234,7 @@
 									:disabled="stateBusyTarget === item.id"
 									@click="emitLearnerState(item.id, 'acted_on')"
 								>
-									{{ stateBusyTarget === item.id ? 'Saving...' : 'Mark acted on' }}
+									{{ stateBusyTarget === item.id ? __('Saving...') : __('Mark acted on') }}
 								</button>
 							</div>
 
@@ -238,7 +246,7 @@
 									v-model="replyDraftByItem[item.id || '']"
 									rows="3"
 									class="if-textarea"
-									placeholder="Reply to this note or ask for clarification."
+									:placeholder="__('Reply to this note or ask for clarification.')"
 								/>
 								<div class="mt-3 flex flex-wrap gap-2">
 									<button
@@ -249,7 +257,7 @@
 										"
 										@click="emitReply(item.id, 'reply')"
 									>
-										{{ replyBusyTarget === item.id ? 'Sending...' : 'Reply' }}
+										{{ replyBusyTarget === item.id ? __('Sending...') : __('Reply') }}
 									</button>
 									<button
 										type="button"
@@ -259,7 +267,9 @@
 										"
 										@click="emitReply(item.id, 'clarification')"
 									>
-										{{ replyBusyTarget === item.id ? 'Sending...' : 'Ask for clarification' }}
+										{{
+											replyBusyTarget === item.id ? __('Sending...') : __('Ask for clarification')
+										}}
 									</button>
 								</div>
 							</div>
@@ -269,7 +279,9 @@
 							v-if="!filteredItems.length"
 							class="rounded-2xl border border-dashed border-line-soft p-5"
 						>
-							<p class="type-body text-ink/70">No feedback notes match this filter yet.</p>
+							<p class="type-body text-ink/70">
+								{{ __('No feedback notes match this filter yet.') }}
+							</p>
 						</div>
 					</div>
 				</section>
@@ -286,8 +298,11 @@
 
 		<section v-else class="card-surface p-5">
 			<p class="type-body text-ink/75">
-				Your score or grade is visible here, but detailed feedback has not been released on this
-				item.
+				{{
+					__(
+						'Your score or grade is visible here, but detailed feedback has not been released on this item.'
+					)
+				}}
 			</p>
 		</section>
 	</div>
@@ -297,6 +312,7 @@
 import { computed, ref, watch } from 'vue';
 
 import ReleasedFeedbackPdfViewer from '@/components/assessment/ReleasedFeedbackPdfViewer.vue';
+import { __ } from '@/lib/i18n';
 import type { ReleasedFeedbackDetail } from '@/types/contracts/assessment/released_feedback_detail';
 import type {
 	FeedbackPriority,
@@ -337,7 +353,7 @@ const selectedItemId = ref<string | null>(props.detail.feedback?.items[0]?.id ||
 const replyDraftByItem = ref<Record<string, string>>({});
 
 const modeLabel = computed(() =>
-	props.mode === 'student' ? 'Released feedback' : 'Guardian view'
+	props.mode === 'student' ? __('Released feedback') : __('Guardian view')
 );
 const contextLine = computed(() => {
 	const parts = [props.detail.context.course_name, props.detail.context.task_type].filter(Boolean);
@@ -345,31 +361,35 @@ const contextLine = computed(() => {
 });
 const heroMessage = computed(() => {
 	if (props.detail.feedback_visible) {
-		return 'Start with the summary, then work through the priorities and linked notes one at a time.';
+		return __(
+			'Start with the summary, then work through the priorities and linked notes one at a time.'
+		);
 	}
-	return 'The result is visible, but detailed feedback has not been released yet.';
+	return __('The result is visible, but detailed feedback has not been released yet.');
 });
 const exportButtonLabel = computed(() =>
-	props.detail.released_feedback_artifact ? 'Open latest feedback PDF' : 'Prepare feedback PDF'
+	props.detail.released_feedback_artifact
+		? __('Open latest feedback PDF')
+		: __('Prepare feedback PDF')
 );
 const summaryCards = computed(() => {
 	const summary = props.detail.feedback?.summary;
 	if (!summary) return [];
 	return [
-		{ label: 'Overall summary', body: summary.overall },
-		{ label: 'Strengths', body: summary.strengths },
-		{ label: 'Improvements', body: summary.improvements },
-		{ label: 'Next steps', body: summary.next_steps },
+		{ label: __('Overall summary'), body: summary.overall },
+		{ label: __('Strengths'), body: summary.strengths },
+		{ label: __('Improvements'), body: summary.improvements },
+		{ label: __('Next steps'), body: summary.next_steps },
 	].filter(card => card.body);
 });
 const summaryCardCount = computed(() => summaryCards.value.length);
 const filterOptions = computed(() => [
-	{ id: 'all' as const, label: 'All' },
-	{ id: 'strength' as const, label: 'Strengths' },
-	{ id: 'issue' as const, label: 'Issues' },
-	{ id: 'question' as const, label: 'Questions' },
-	{ id: 'next_step' as const, label: 'Next steps' },
-	{ id: 'rubric_evidence' as const, label: 'Rubric evidence' },
+	{ id: 'all' as const, label: __('All') },
+	{ id: 'strength' as const, label: __('Strengths') },
+	{ id: 'issue' as const, label: __('Issues') },
+	{ id: 'question' as const, label: __('Questions') },
+	{ id: 'next_step' as const, label: __('Next steps') },
+	{ id: 'rubric_evidence' as const, label: __('Rubric evidence') },
 ]);
 const filteredItems = computed(() => {
 	const items = props.detail.feedback?.items || [];
@@ -399,17 +419,17 @@ function threadByItemId(itemId?: string | null) {
 }
 
 function itemIntentLabel(intent: string) {
-	if (intent === 'strength') return 'Strength';
-	if (intent === 'question') return 'Question';
-	if (intent === 'next_step') return 'Next step';
-	if (intent === 'rubric_evidence') return 'Rubric evidence';
-	return 'Issue';
+	if (intent === 'strength') return __('Strength');
+	if (intent === 'question') return __('Question');
+	if (intent === 'next_step') return __('Next step');
+	if (intent === 'rubric_evidence') return __('Rubric evidence');
+	return __('Issue');
 }
 
 function learnerStateLabel(state: FeedbackThreadLearnerState) {
-	if (state === 'understood') return 'Understood';
-	if (state === 'acted_on') return 'Acted on';
-	return 'Open';
+	if (state === 'understood') return __('Understood');
+	if (state === 'acted_on') return __('Acted on');
+	return __('Open');
 }
 
 function itemOrdinal(itemId?: string | null) {

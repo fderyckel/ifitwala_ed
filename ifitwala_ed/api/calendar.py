@@ -81,6 +81,8 @@ def create_meeting_quick(
     agenda: str | None = None,
     visibility_scope: str | None = None,
     participants: object | None = None,
+    include_students: object | None = 0,
+    include_guardians: object | None = 0,
     client_request_id: str | None = None,
 ):
     return calendar_quick_create.create_meeting_quick(
@@ -96,6 +98,8 @@ def create_meeting_quick(
         agenda=agenda,
         visibility_scope=visibility_scope,
         participants=participants,
+        include_students=include_students,
+        include_guardians=include_guardians,
         client_request_id=client_request_id,
     )
 

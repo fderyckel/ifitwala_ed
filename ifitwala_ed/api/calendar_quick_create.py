@@ -1483,11 +1483,13 @@ def _assert_students_available_for_meeting(
     organizer_user: str,
     window_start: datetime,
     window_end: datetime,
+    attendee_contexts: list[dict] | None = None,
 ) -> None:
     if not attendees or not window_start or not window_end or window_end <= window_start:
         return
 
-    contexts = [ctx for ctx in _resolve_attendee_contexts(attendees, organizer_user) if ctx.get("kind") == "student"]
+    resolved_contexts = attendee_contexts or _resolve_attendee_contexts(attendees, organizer_user)
+    contexts = [ctx for ctx in resolved_contexts if ctx.get("kind") == "student"]
     if not contexts:
         return
 
@@ -2220,6 +2222,50 @@ def _resolve_meeting_participants(*, organizer_user: str, team: str | None, expl
     return users
 
 
+def _assert_meeting_attendee_scope_flags(
+    *,
+    attendee_rows: list[dict],
+    organizer_user: str,
+    include_students: bool,
+    include_guardians: bool,
+) -> list[dict]:
+    explicit_users = {_safe_text(row.get("user")) for row in attendee_rows if _safe_text(row.get("user"))}
+    explicit_users.discard(_safe_text(organizer_user))
+    if not explicit_users:
+        return []
+
+    contexts = _resolve_attendee_contexts(attendee_rows, organizer_user)
+    blocked_students = []
+    blocked_guardians = []
+    for ctx in contexts:
+        user_id = _safe_text(ctx.get("user"))
+        if user_id not in explicit_users:
+            continue
+        label = _safe_text(ctx.get("label")) or user_id
+        if ctx.get("kind") == "student" and not include_students:
+            blocked_students.append(label)
+        if ctx.get("kind") == "guardian" and not include_guardians:
+            blocked_guardians.append(label)
+
+    messages = []
+    if blocked_students:
+        messages.append(
+            _("Enable Students before inviting student attendees: {students}.").format(
+                students=", ".join(sorted(blocked_students))
+            )
+        )
+    if blocked_guardians:
+        messages.append(
+            _("Enable Guardians before inviting guardian attendees: {guardians}.").format(
+                guardians=", ".join(sorted(blocked_guardians))
+            )
+        )
+    if messages:
+        messages.append(_("This guardrail prevents accidentally inviting students or guardians to a private meeting."))
+        frappe.throw("\n".join(messages), frappe.ValidationError)
+    return contexts
+
+
 def create_meeting_quick(
     *,
     meeting_name: str | None = None,
@@ -2234,6 +2280,8 @@ def create_meeting_quick(
     agenda: str | None = None,
     visibility_scope: str | None = None,
     participants: object | None = None,
+    include_students: object | None = 0,
+    include_guardians: object | None = 0,
     client_request_id: str | None = None,
 ):
     user = frappe.session.user
@@ -2247,6 +2295,8 @@ def create_meeting_quick(
     school_value = _ensure_allowed_school(user, school)
     location_value = _ensure_allowed_location(user, school_value, location)
     request_id = _safe_text(client_request_id)
+    include_student_attendees = _coerce_flag(include_students)
+    include_guardian_attendees = _coerce_flag(include_guardians)
 
     if not request_id:
         frappe.throw(_("client_request_id is required."), frappe.ValidationError)
@@ -2258,6 +2308,12 @@ def create_meeting_quick(
         frappe.throw(_("Start time and end time are required."), frappe.ValidationError)
 
     attendee_rows = _parse_attendee_list(participants)
+    attendee_contexts = _assert_meeting_attendee_scope_flags(
+        attendee_rows=attendee_rows,
+        organizer_user=user,
+        include_students=include_student_attendees,
+        include_guardians=include_guardian_attendees,
+    )
     proposed_date = _coerce_date_required(meeting_date, _("Meeting date"))
     proposed_start_time = _coerce_time_required(start_value, _("Start time"))
     proposed_end_time = _coerce_time_required(end_value, _("End time"))
@@ -2268,6 +2324,7 @@ def create_meeting_quick(
         organizer_user=user,
         window_start=proposed_start,
         window_end=proposed_end,
+        attendee_contexts=attendee_contexts,
     )
     participant_users = [row["user"] for row in attendee_rows if row.get("user")]
     meeting_participants = _resolve_meeting_participants(

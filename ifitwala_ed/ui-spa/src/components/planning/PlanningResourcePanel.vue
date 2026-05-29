@@ -16,7 +16,7 @@
 				'rounded-2xl border border-dashed border-line-soft bg-surface-soft px-4 py-4',
 			]"
 		>
-			<p class="type-body-strong text-ink">Resource sharing is blocked here.</p>
+			<p class="type-body-strong text-ink">{{ __('Resource sharing is blocked here.') }}</p>
 			<p class="mt-1 type-caption text-ink/70">{{ blockedMessage }}</p>
 		</div>
 
@@ -28,7 +28,9 @@
 					'rounded-2xl border border-line-soft bg-surface-soft px-4 py-4',
 				]"
 			>
-				<p class="type-body-strong text-ink">Resources are visible here, but editing is locked.</p>
+				<p class="type-body-strong text-ink">
+					{{ __('Resources are visible here, but editing is locked.') }}
+				</p>
 				<p class="mt-1 type-caption text-ink/70">{{ readOnlyMessageToUse }}</p>
 			</div>
 
@@ -44,7 +46,7 @@
 						:class="{ 'if-segmented__item--active': composerMode === 'link' }"
 						@click="composerMode = 'link'"
 					>
-						Add link
+						{{ __('Add link') }}
 					</button>
 					<button
 						type="button"
@@ -53,20 +55,20 @@
 						:class="{ 'if-segmented__item--active': composerMode === 'file' }"
 						@click="composerMode = 'file'"
 					>
-						Upload file
+						{{ __('Upload file') }}
 					</button>
 				</div>
 
 				<div class="mt-4 grid gap-4 md:grid-cols-2">
 					<div class="space-y-1">
-						<label class="type-label">Title</label>
-						<FormControl v-model="form.title" type="text" placeholder="Resource title" />
+						<label class="type-label">{{ __('Title') }}</label>
+						<FormControl v-model="form.title" type="text" :placeholder="__('Resource title')" />
 						<p v-if="composerMode === 'link'" class="type-caption text-ink/60">
-							Leave this blank to use the link domain as the title.
+							{{ __('Leave this blank to use the link domain as the title.') }}
 						</p>
 					</div>
 					<div class="space-y-1">
-						<label class="type-label">How students use it</label>
+						<label class="type-label">{{ __('How students use it') }}</label>
 						<FormControl
 							v-model="form.modality"
 							type="select"
@@ -79,7 +81,7 @@
 
 				<div class="mt-4 grid gap-4 md:grid-cols-2">
 					<div class="space-y-1">
-						<label class="type-label">Usage role</label>
+						<label class="type-label">{{ __('Usage role') }}</label>
 						<FormControl
 							v-model="form.usage_role"
 							type="select"
@@ -89,28 +91,32 @@
 						/>
 					</div>
 					<div class="space-y-1">
-						<label class="type-label">Teacher note</label>
+						<label class="type-label">{{ __('Teacher note') }}</label>
 						<FormControl
 							v-model="form.placement_note"
 							type="text"
-							placeholder="Optional note students should see"
+							:placeholder="__('Optional note students should see')"
 						/>
 					</div>
 				</div>
 
 				<div class="mt-4 space-y-1">
-					<label class="type-label">Description</label>
+					<label class="type-label">{{ __('Description') }}</label>
 					<FormControl
 						v-model="form.description"
 						type="textarea"
 						:rows="3"
-						placeholder="Optional context for this resource"
+						:placeholder="__('Optional context for this resource')"
 					/>
 				</div>
 
 				<div v-if="composerMode === 'link'" class="mt-4 space-y-1">
-					<label class="type-label">Reference URL</label>
-					<FormControl v-model="form.reference_url" type="text" placeholder="https://..." />
+					<label class="type-label">{{ __('Reference URL') }}</label>
+					<FormControl
+						v-model="form.reference_url"
+						type="text"
+						:placeholder="referenceUrlPlaceholder"
+					/>
 				</div>
 
 				<div v-else class="mt-4 space-y-3">
@@ -122,10 +128,10 @@
 							data-resource-choose-file="true"
 							@click="fileInput?.click()"
 						>
-							Choose file
+							{{ __('Choose file') }}
 						</button>
 						<p class="type-caption text-ink/70">
-							{{ selectedFile?.name || 'No file selected yet.' }}
+							{{ selectedFile?.name || __('No file selected yet.') }}
 						</p>
 					</div>
 					<InlineUploadStatus
@@ -152,11 +158,11 @@
 						{{
 							submitting
 								? composerMode === 'link'
-									? 'Adding…'
-									: 'Uploading…'
+									? __('Adding…')
+									: __('Uploading…')
 								: composerMode === 'link'
-									? 'Add link'
-									: 'Upload file'
+									? __('Add link')
+									: __('Upload file')
 						}}
 					</button>
 				</div>
@@ -193,7 +199,7 @@
 								:disabled="removingPlacement === resource.placement"
 								@click="removeResource(resource.placement)"
 							>
-								{{ removingPlacement === resource.placement ? 'Removing…' : 'Remove' }}
+								{{ removingPlacement === resource.placement ? __('Removing…') : __('Remove') }}
 							</button>
 						</template>
 					</AttachmentPreviewCard>
@@ -209,6 +215,7 @@ import { FormControl, toast } from 'frappe-ui';
 
 import AttachmentPreviewCard from '@/components/attachments/AttachmentPreviewCard.vue';
 import InlineUploadStatus from '@/components/feedback/InlineUploadStatus.vue';
+import { __ } from '@/lib/i18n';
 import type { UploadProgressState } from '@/lib/uploadProgress';
 import {
 	createPlanningReferenceMaterial,
@@ -248,6 +255,7 @@ const emit = defineEmits<{
 	(e: 'changed'): void;
 }>();
 
+const referenceUrlPlaceholder = 'https://...';
 const composerMode = ref<'link' | 'file'>('link');
 const submitting = ref(false);
 const removingPlacement = ref<string | null>(null);
@@ -266,17 +274,17 @@ const form = reactive({
 });
 
 const modalityOptions = [
-	{ label: 'Read', value: 'Read' },
-	{ label: 'Watch', value: 'Watch' },
-	{ label: 'Listen', value: 'Listen' },
-	{ label: 'Use', value: 'Use' },
+	{ label: __('Read'), value: 'Read' },
+	{ label: __('Watch'), value: 'Watch' },
+	{ label: __('Listen'), value: 'Listen' },
+	{ label: __('Use'), value: 'Use' },
 ];
 
 const usageRoleOptions = [
-	{ label: 'Required', value: 'Required' },
-	{ label: 'Reference', value: 'Reference' },
-	{ label: 'Template', value: 'Template' },
-	{ label: 'Example', value: 'Example' },
+	{ label: __('Required'), value: 'Required' },
+	{ label: __('Reference'), value: 'Reference' },
+	{ label: __('Template'), value: 'Template' },
+	{ label: __('Example'), value: 'Example' },
 ];
 
 const hideHeader = computed(() => props.hideHeader);
@@ -291,7 +299,9 @@ const panelSectionOffset = computed(() => (hideHeader.value ? '' : 'mt-5'));
 const readOnlyMessageToUse = computed(
 	() =>
 		props.readOnlyMessage ||
-		'You can review the shared resources here, but only approved staff can edit this planning layer.'
+		__(
+			'You can review the shared resources here, but only approved staff can edit this planning layer.'
+		)
 );
 
 const canSubmit = computed(() => {
@@ -302,7 +312,7 @@ const canSubmit = computed(() => {
 		: Boolean(selectedFile.value) && Boolean(form.title.trim());
 });
 const uploadProgressLabel = computed(() =>
-	selectedFile.value?.name ? `Uploading ${selectedFile.value.name}` : 'Uploading file'
+	selectedFile.value?.name ? __('Uploading {0}', [selectedFile.value.name]) : __('Uploading file')
 );
 
 function resetDraftFields() {
@@ -338,8 +348,8 @@ async function addResource() {
 	if (!canSubmit.value) {
 		errorMessage.value =
 			composerMode.value === 'link'
-				? 'Provide a valid http or https link.'
-				: 'Provide a title and choose a file.';
+				? __('Provide a valid http or https link.')
+				: __('Provide a title and choose a file.');
 		return;
 	}
 
@@ -349,7 +359,7 @@ async function addResource() {
 		if (composerMode.value === 'link') {
 			const referenceUrl = normalizeReferenceUrl(form.reference_url);
 			if (!referenceUrl) {
-				throw new Error('Provide a valid http or https link.');
+				throw new Error(__('Provide a valid http or https link.'));
 			}
 			await createPlanningReferenceMaterial({
 				anchor_doctype: props.anchorDoctype,
@@ -382,10 +392,10 @@ async function addResource() {
 		}
 		resetDraftFields();
 		emit('changed');
-		toast.success('Resource shared successfully.');
+		toast.success(__('Resource shared successfully.'));
 	} catch (error) {
 		const message =
-			error instanceof Error ? error.message : 'Unable to share this resource right now.';
+			error instanceof Error ? error.message : __('Unable to share this resource right now.');
 		errorMessage.value = message;
 		toast.error(message);
 	} finally {
@@ -409,10 +419,10 @@ async function removeResource(placement: string) {
 			placement,
 		});
 		emit('changed');
-		toast.success('Resource removed from this class context.');
+		toast.success(__('Resource removed from this class context.'));
 	} catch (error) {
 		const message =
-			error instanceof Error ? error.message : 'Unable to remove this resource right now.';
+			error instanceof Error ? error.message : __('Unable to remove this resource right now.');
 		errorMessage.value = message;
 		toast.error(message);
 	} finally {

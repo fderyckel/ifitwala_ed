@@ -274,30 +274,45 @@
 										</div>
 
 										<div class="mt-4 space-y-2">
-											<label class="type-label">{{ __('Search people') }}</label>
+											<label class="type-label">{{ __('Invite scope') }}</label>
 											<div class="flex flex-wrap gap-2">
-												<button
-													v-for="kind in attendeeKindOptions"
+												<label
+													v-if="employeeAttendeeKindOption"
+													class="inline-flex items-center gap-2 rounded-full border border-canopy/30 bg-canopy/10 px-3 py-1.5 type-button-label text-canopy"
+												>
+													<input type="checkbox" checked disabled class="h-4 w-4 accent-canopy" />
+													<span>{{ employeeAttendeeKindOption.label }}</span>
+												</label>
+												<label
+													v-for="kind in nonEmployeeInviteScopeOptions"
 													:key="kind.value"
-													type="button"
-													class="rounded-full px-3 py-1.5 type-button-label transition"
+													class="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 type-button-label transition"
 													:class="
 														isAttendeeKindSelected(kind.value)
-															? 'bg-canopy text-white'
-															: 'bg-slate-100 text-slate-token hover:bg-slate-200'
+															? 'border-canopy/40 bg-canopy/10 text-canopy'
+															: 'border-border/70 bg-slate-100 text-slate-token'
 													"
-													:disabled="
-														submitting ||
-														(isLastSelectedKind(kind.value) && isAttendeeKindSelected(kind.value))
-													"
-													@click="toggleAttendeeKind(kind.value)"
 												>
-													{{ kind.label }}
-												</button>
+													<input
+														type="checkbox"
+														class="h-4 w-4 accent-canopy"
+														:checked="isAttendeeKindSelected(kind.value)"
+														:disabled="submitting"
+														@change="toggleNonEmployeeInviteScope(kind.value)"
+													/>
+													<span>{{ kind.label }}</span>
+												</label>
 											</div>
+											<p v-if="attendeeScopeSafetyMessage" class="type-caption text-amber-700">
+												{{ attendeeScopeSafetyMessage }}
+											</p>
+											<p v-if="inviteScopeMismatchMessage" class="type-caption text-rose-700">
+												{{ inviteScopeMismatchMessage }}
+											</p>
 										</div>
 
 										<div class="mt-3 space-y-2">
+											<label class="type-label">{{ __('Search people') }}</label>
 											<FormControl
 												type="text"
 												:model-value="attendeeSearchQuery"
@@ -1293,6 +1308,12 @@ const typeOptions = computed<TypeOption[]>(() => [
 const attendeeKindOptions = computed<AttendeeKindOption[]>(
 	() => options.value?.attendee_kinds || []
 );
+const employeeAttendeeKindOption = computed(() =>
+	attendeeKindOptions.value.find(option => option.value === 'employee') || null
+);
+const nonEmployeeInviteScopeOptions = computed(() =>
+	attendeeKindOptions.value.filter(option => option.value === 'student' || option.value === 'guardian')
+);
 
 const teamSelectOptions = computed<SelectOption[]>(() => [
 	{
@@ -1437,6 +1458,37 @@ const selectedAttendeeInputs = computed<MeetingAttendeeInput[]>(() =>
 		label: attendee.label,
 	}))
 );
+const includeStudentAttendees = computed(() => selectedAttendeeKinds.value.includes('student'));
+const includeGuardianAttendees = computed(() => selectedAttendeeKinds.value.includes('guardian'));
+
+function hasSelectedAttendeesOfKind(kind: MeetingAttendeeKind) {
+	return selectedAttendees.value.some(attendee => attendee.kind === kind);
+}
+
+const attendeeScopeSafetyMessage = computed(() => {
+	if (includeStudentAttendees.value && includeGuardianAttendees.value) {
+		return __(
+			'Students and guardians will appear in search and can receive this meeting invite.'
+		);
+	}
+	if (includeStudentAttendees.value) {
+		return __('Students will appear in search and can receive this meeting invite.');
+	}
+	if (includeGuardianAttendees.value) {
+		return __('Guardians will appear in search and can receive this meeting invite.');
+	}
+	return '';
+});
+
+const inviteScopeMismatchMessage = computed(() => {
+	if (!includeStudentAttendees.value && hasSelectedAttendeesOfKind('student')) {
+		return __('Remove selected student invitees or re-enable Students before creating the meeting.');
+	}
+	if (!includeGuardianAttendees.value && hasSelectedAttendeesOfKind('guardian')) {
+		return __('Remove selected guardian invitees or re-enable Guardians before creating the meeting.');
+	}
+	return '';
+});
 
 const availableSearchResults = computed(() =>
 	attendeeSearchResults.value.filter(attendee => !isSelectedAttendee(attendee.value))
@@ -1787,7 +1839,10 @@ function initializeForms() {
 	schoolEventForm.publish_announcement = false;
 	schoolEventForm.announcement_message = '';
 
-	selectedAttendeeKinds.value = (options.value?.attendee_kinds || []).map(option => option.value);
+	const availableKinds = (options.value?.attendee_kinds || []).map(option => option.value);
+	selectedAttendeeKinds.value = availableKinds.includes('employee')
+		? ['employee']
+		: availableKinds.slice(0, 1);
 }
 
 function initializeActiveType() {
@@ -1887,17 +1942,18 @@ function isAttendeeKindSelected(kind: MeetingAttendeeKind) {
 	return selectedAttendeeKinds.value.includes(kind);
 }
 
-function isLastSelectedKind(kind: MeetingAttendeeKind) {
-	return selectedAttendeeKinds.value.length === 1 && selectedAttendeeKinds.value.includes(kind);
-}
-
-function toggleAttendeeKind(kind: MeetingAttendeeKind) {
+function toggleNonEmployeeInviteScope(kind: MeetingAttendeeKind) {
+	if (kind === 'employee') return;
 	if (isAttendeeKindSelected(kind)) {
-		if (isLastSelectedKind(kind)) return;
 		selectedAttendeeKinds.value = selectedAttendeeKinds.value.filter(value => value !== kind);
 		return;
 	}
-	selectedAttendeeKinds.value = [...selectedAttendeeKinds.value, kind];
+	const next = new Set(selectedAttendeeKinds.value);
+	if (employeeAttendeeKindOption.value) {
+		next.add('employee');
+	}
+	next.add(kind);
+	selectedAttendeeKinds.value = Array.from(next);
 }
 
 function isSelectedAttendee(userId: string) {
@@ -2103,6 +2159,7 @@ function validateMeeting() {
 	if (!selectedAttendees.value.length) {
 		return __('Add at least one attendee before creating the meeting.');
 	}
+	if (inviteScopeMismatchMessage.value) return inviteScopeMismatchMessage.value;
 	if (!meetingForm.date) return __('Meeting date is required.');
 	if (!meetingForm.start_time || !meetingForm.end_time) {
 		return __('Start and end times are required.');
@@ -2382,6 +2439,8 @@ async function submit() {
 				agenda: meetingForm.agenda || null,
 				visibility_scope: effectiveMeetingMode.value === 'team' ? 'Team & Participants' : null,
 				participants: selectedAttendeeInputs.value,
+				include_students: includeStudentAttendees.value ? 1 : 0,
+				include_guardians: includeGuardianAttendees.value ? 1 : 0,
 			});
 		} else {
 			result = await createSchoolEventQuick({

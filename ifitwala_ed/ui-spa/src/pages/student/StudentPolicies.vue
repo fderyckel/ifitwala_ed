@@ -4,10 +4,10 @@
 		<header class="student-hub-hero">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				<div>
-					<p class="type-overline text-ink/60">Student Hub</p>
-					<h1 class="type-h1 text-ink">Student Policies</h1>
+					<p class="type-overline text-ink/60">{{ __('Student Hub') }}</p>
+					<h1 class="type-h1 text-ink">{{ __('Student Policies') }}</h1>
 					<p class="type-body text-ink/70">
-						Review active student policies in scope and acknowledge any pending items.
+						{{ __('Review active student policies in scope and acknowledge any pending items.') }}
 					</p>
 				</div>
 				<button
@@ -16,39 +16,41 @@
 					:disabled="loading"
 					@click="loadOverview"
 				>
-					Refresh
+					{{ __('Refresh') }}
 				</button>
 			</div>
 		</header>
 
 		<section class="grid grid-cols-1 gap-3 sm:grid-cols-3">
 			<article class="student-hub-card student-hub-card--neutral p-4">
-				<p class="type-caption text-ink/65">Total policies</p>
+				<p class="type-caption text-ink/65">{{ __('Total policies') }}</p>
 				<p class="type-h3 text-ink">{{ counts.total_policies }}</p>
 			</article>
 			<article class="student-hub-card student-hub-card--success p-4">
-				<p class="type-caption text-ink/65">Acknowledged</p>
+				<p class="type-caption text-ink/65">{{ __('Acknowledged') }}</p>
 				<p class="type-h3 text-canopy">{{ counts.acknowledged_policies }}</p>
 			</article>
 			<article class="student-hub-card student-hub-card--warm p-4">
-				<p class="type-caption text-ink/65">Pending</p>
+				<p class="type-caption text-ink/65">{{ __('Pending') }}</p>
 				<p class="type-h3 text-clay">{{ counts.pending_policies }}</p>
 			</article>
 		</section>
 
 		<section v-if="loading" class="student-hub-section">
-			<p class="type-body text-ink/70">Loading student policies...</p>
+			<p class="type-body text-ink/70">{{ __('Loading student policies...') }}</p>
 		</section>
 
 		<section v-else-if="errorMessage" class="if-banner if-banner--danger">
-			<p class="if-banner__title type-body-strong text-flame">Could not load student policies.</p>
+			<p class="if-banner__title type-body-strong text-flame">
+				{{ __('Could not load student policies.') }}
+			</p>
 			<p class="if-banner__body type-body">{{ errorMessage }}</p>
 		</section>
 
 		<section v-else-if="!rows.length" class="student-hub-section student-hub-section--support">
-			<p class="type-body-strong text-ink">No active student policies in scope.</p>
+			<p class="type-body-strong text-ink">{{ __('No active student policies in scope.') }}</p>
 			<p class="type-body text-ink/70">
-				There are no active student policy versions to review right now.
+				{{ __('There are no active student policy versions to review right now.') }}
 			</p>
 		</section>
 
@@ -71,7 +73,7 @@
 						</p>
 						<h2 class="type-h3 text-ink">{{ row.policy_title }}</h2>
 						<p class="type-body text-ink/70">
-							{{ row.description || 'No summary provided.' }}
+							{{ row.description || __('No summary provided.') }}
 						</p>
 						<p class="type-caption text-ink/60">
 							{{ row.organization }}<span v-if="row.school"> · {{ row.school }}</span>
@@ -82,10 +84,10 @@
 							class="chip px-3 py-1 type-caption"
 							:class="row.is_acknowledged ? 'chip-success' : 'chip-warm'"
 						>
-							{{ row.is_acknowledged ? 'Acknowledged' : 'Pending acknowledgement' }}
+							{{ row.is_acknowledged ? __('Acknowledged') : __('Pending acknowledgement') }}
 						</p>
 						<p v-if="row.is_acknowledged" class="type-caption text-ink/60">
-							{{ row.acknowledged_at || 'Acknowledged' }}
+							{{ row.acknowledged_at || __('Acknowledged') }}
 						</p>
 					</div>
 				</div>
@@ -94,13 +96,17 @@
 					class="student-hub-card student-hub-card--neutral p-4"
 					:open="!row.is_acknowledged || isFocusedPolicy(row.policy_version)"
 				>
-					<summary class="cursor-pointer type-body-strong text-ink">Open policy text</summary>
+					<summary class="cursor-pointer type-body-strong text-ink">
+						{{ __('Open policy text') }}
+					</summary>
 					<div
 						v-if="row.policy_text"
 						class="policy-richtext portal-richtext prose prose-sm mt-3 max-w-none text-ink/80"
 						v-html="trustedHtml(row.policy_text)"
 					/>
-					<p v-else class="mt-3 type-body text-ink/70">No policy text available.</p>
+					<p v-else class="mt-3 type-body text-ink/70">
+						{{ __('No policy text available.') }}
+					</p>
 				</details>
 
 				<div
@@ -109,9 +115,9 @@
 				>
 					<div v-if="row.acknowledgement_clauses.length" class="space-y-3">
 						<div>
-							<p class="type-body-strong text-ink">Acknowledgement clauses</p>
+							<p class="type-body-strong text-ink">{{ __('Acknowledgement clauses') }}</p>
 							<p class="type-caption text-ink/65">
-								Check every required clause before signing this policy.
+								{{ __('Check every required clause before signing this policy.') }}
 							</p>
 						</div>
 						<div class="space-y-2">
@@ -137,30 +143,34 @@
 							v-if="submitAttempts[row.policy_version] && !hasRequiredClausesChecked(row)"
 							class="type-caption text-flame"
 						>
-							Check every required acknowledgement clause before signing.
+							{{ __('Check every required acknowledgement clause before signing.') }}
 						</p>
 					</div>
 
 					<div class="space-y-3">
 						<div>
-							<p class="type-body-strong text-ink">Electronic signature</p>
+							<p class="type-body-strong text-ink">{{ __('Electronic signature') }}</p>
 							<p class="type-caption text-ink/65">
-								Type your full name exactly as recorded and confirm the legal attestation.
+								{{
+									__('Type your full name exactly as recorded and confirm the legal attestation.')
+								}}
 							</p>
 						</div>
 
 						<p class="type-caption text-ink/70">
-							Expected signer name:
+							{{ __('Expected signer name:') }}
 							<span class="type-body-strong text-ink">{{ row.expected_signature_name }}</span>
 						</p>
 
 						<label class="block space-y-1">
-							<span class="type-caption text-ink/70">Type full name as electronic signature</span>
+							<span class="type-caption text-ink/70">
+								{{ __('Type full name as electronic signature') }}
+							</span>
 							<input
 								:value="typedSignatureByVersion[row.policy_version] || ''"
 								type="text"
 								class="if-input w-full"
-								placeholder="Enter your full name"
+								:placeholder="__('Enter your full name')"
 								:disabled="isRowBusy(row.policy_version)"
 								@input="updateTypedSignature(row.policy_version, $event)"
 							/>
@@ -174,7 +184,7 @@
 							"
 							class="type-caption text-flame"
 						>
-							Typed signature must match exactly: {{ row.expected_signature_name }}
+							{{ __('Typed signature must match exactly: {0}', [row.expected_signature_name]) }}
 						</p>
 
 						<label class="flex items-start gap-2">
@@ -186,8 +196,11 @@
 								@change="toggleAttestation(row.policy_version, $event)"
 							/>
 							<span class="type-caption text-ink/80">
-								I confirm that typing my name is my electronic signature, and I have read,
-								acknowledged, and agree to this policy.
+								{{
+									__(
+										'I confirm that typing my name is my electronic signature, and I have read, acknowledged, and agree to this policy.'
+									)
+								}}
 							</span>
 						</label>
 
@@ -197,7 +210,7 @@
 							"
 							class="type-caption text-flame"
 						>
-							Confirm the legal attestation before signing.
+							{{ __('Confirm the legal attestation before signing.') }}
 						</p>
 					</div>
 
@@ -208,7 +221,9 @@
 							:disabled="isRowBusy(row.policy_version)"
 							@click="acknowledgeRow(row)"
 						>
-							{{ isRowBusy(row.policy_version) ? 'Saving...' : 'Sign and acknowledge policy' }}
+							{{
+								isRowBusy(row.policy_version) ? __('Saving...') : __('Sign and acknowledge policy')
+							}}
 						</button>
 					</div>
 				</div>
@@ -230,6 +245,7 @@ import {
 	acknowledgeStudentPolicy,
 	getStudentPolicyOverview,
 } from '@/lib/services/studentPolicy/studentPolicyService';
+import { __ } from '@/lib/i18n';
 
 import type {
 	Response as StudentPolicyOverview,
@@ -345,7 +361,7 @@ async function loadOverview() {
 		await focusRequestedPolicy();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		errorMessage.value = message || 'Unknown error';
+		errorMessage.value = message || __('Unknown error');
 	} finally {
 		loading.value = false;
 	}
@@ -358,25 +374,25 @@ async function acknowledgeRow(row: StudentPolicyRow) {
 	rowErrors.value[policyVersion] = '';
 
 	if (!typedSignatureByVersion.value[policyVersion]?.trim()) {
-		const message = 'Type your full name to provide your electronic signature.';
+		const message = __('Type your full name to provide your electronic signature.');
 		rowErrors.value[policyVersion] = message;
 		toast.error(message);
 		return;
 	}
 	if (!isTypedSignatureMatch(row)) {
-		const message = `Typed signature must match exactly: ${row.expected_signature_name}`;
+		const message = __('Typed signature must match exactly: {0}', [row.expected_signature_name]);
 		rowErrors.value[policyVersion] = message;
 		toast.error(message);
 		return;
 	}
 	if (!attestationByVersion.value[policyVersion]) {
-		const message = 'Confirm the legal attestation before signing.';
+		const message = __('Confirm the legal attestation before signing.');
 		rowErrors.value[policyVersion] = message;
 		toast.error(message);
 		return;
 	}
 	if (!hasRequiredClausesChecked(row)) {
-		const message = 'Check every required acknowledgement clause before signing.';
+		const message = __('Check every required acknowledgement clause before signing.');
 		rowErrors.value[policyVersion] = message;
 		toast.error(message);
 		return;
@@ -392,14 +408,14 @@ async function acknowledgeRow(row: StudentPolicyRow) {
 		});
 		toast.success(
 			result.status === 'already_acknowledged'
-				? 'Policy was already acknowledged.'
-				: 'Policy acknowledged.'
+				? __('Policy was already acknowledged.')
+				: __('Policy acknowledged.')
 		);
 		await loadOverview();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		rowErrors.value[policyVersion] = message || 'Could not acknowledge this policy.';
-		toast.error(message || 'Could not acknowledge this policy.');
+		rowErrors.value[policyVersion] = message || __('Could not acknowledge this policy.');
+		toast.error(message || __('Could not acknowledge this policy.'));
 	} finally {
 		busyRows.value[policyVersion] = false;
 	}

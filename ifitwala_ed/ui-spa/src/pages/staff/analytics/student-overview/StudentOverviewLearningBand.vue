@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
+import { __ } from '@/lib/i18n';
 
 import { academicYearScopeLabel, matchesAcademicYearScope } from './academicYearScope';
 import { formatDate } from './formatters';
@@ -97,7 +98,10 @@ const completionOption = computed(() => {
 			formatter: (params: any) => {
 				const payload = Array.isArray(params) ? params[0] : params;
 				const row = completionRows[payload.dataIndex];
-				return `${row.course_name || row.course}: ${Math.round((row.completion_rate || 0) * 100)}%`;
+				return __('{0}: {1}%', [
+					row.course_name || row.course,
+					Math.round((row.completion_rate || 0) * 100),
+				]);
 			},
 		},
 		series: [
@@ -128,8 +132,10 @@ function toggleCourse(courseId: string) {
 		<div class="card-surface px-4 py-4">
 			<header class="mb-3 flex items-center justify-between">
 				<div>
-					<h3 class="text-sm font-semibold text-slate-800">Current Courses</h3>
-					<p class="text-[11px] text-slate-500">Tap a course to filter task views.</p>
+					<h3 class="text-sm font-semibold text-slate-800">{{ __('Current Courses') }}</h3>
+					<p class="text-[11px] text-slate-500">
+						{{ __('Tap a course to filter task views.') }}
+					</p>
 				</div>
 			</header>
 			<div class="space-y-2">
@@ -149,7 +155,7 @@ function toggleCourse(courseId: string) {
 							{{ course.course_name || course.course }}
 						</div>
 						<span class="text-[11px] uppercase tracking-wide text-slate-500">
-							{{ course.status || 'current' }}
+							{{ course.status || __('current') }}
 						</span>
 					</div>
 					<div class="mt-1 flex items-center justify-between text-xs text-slate-600">
@@ -157,29 +163,33 @@ function toggleCourse(courseId: string) {
 							course.instructors?.map(instructor => instructor.full_name).join(', ')
 						}}</span>
 						<span v-if="course.completion_rate != null">
-							{{ Math.round((course.completion_rate || 0) * 100) }}% tasks done
+							{{ __('{0}% tasks done', [Math.round((course.completion_rate || 0) * 100)]) }}
 						</span>
 					</div>
 					<div class="text-[11px] text-slate-500">
 						{{
 							course.academic_summary?.latest_grade_label
-								? `Latest: ${course.academic_summary.latest_grade_label}`
+								? __('Latest: {0}', [course.academic_summary.latest_grade_label])
 								: ''
 						}}
 					</div>
 				</div>
-				<div v-if="!courses.length" class="text-xs text-slate-400">No courses found.</div>
+				<div v-if="!courses.length" class="text-xs text-slate-400">
+					{{ __('No courses found.') }}
+				</div>
 			</div>
 		</div>
 
 		<div class="card-surface px-4 py-4">
 			<header class="mb-3 flex flex-wrap items-center justify-between gap-3">
 				<div>
-					<h3 class="text-sm font-semibold text-slate-800">Task Progress</h3>
+					<h3 class="text-sm font-semibold text-slate-800">{{ __('Task Progress') }}</h3>
 					<p class="text-[11px] text-slate-500">
-						Status distribution and completion by course ({{
-							academicYearScopeLabel(taskYearScope)
-						}}).
+						{{
+							__('Status distribution and completion by course ({0}).', [
+								academicYearScopeLabel(taskYearScope),
+							])
+						}}
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
@@ -201,19 +211,23 @@ function toggleCourse(courseId: string) {
 			</header>
 			<div class="grid gap-4 lg:grid-cols-5">
 				<div class="lg:col-span-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
-					<h4 class="text-xs font-semibold uppercase tracking-wide text-slate-600">Task status</h4>
+					<h4 class="text-xs font-semibold uppercase tracking-wide text-slate-600">
+						{{ __('Task status') }}
+					</h4>
 					<AnalyticsChart v-if="statusDonutData.length" :option="taskStatusOption" />
-					<p v-else class="text-xs text-slate-400">No task data.</p>
+					<p v-else class="text-xs text-slate-400">{{ __('No task data.') }}</p>
 				</div>
 				<div class="lg:col-span-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
 					<div class="mb-1 flex items-center justify-between text-xs text-slate-600">
-						<h4 class="font-semibold uppercase tracking-wide">Completion by course</h4>
+						<h4 class="font-semibold uppercase tracking-wide">
+							{{ __('Completion by course') }}
+						</h4>
 						<span class="text-[11px] text-slate-500">
-							{{ selectedCourseRow ? selectedCourseRow.course_name : 'All courses' }}
+							{{ selectedCourseRow ? selectedCourseRow.course_name : __('All courses') }}
 						</span>
 					</div>
 					<AnalyticsChart v-if="filteredCourseCompletion.length" :option="completionOption" />
-					<p v-else class="text-xs text-slate-400">No completion data.</p>
+					<p v-else class="text-xs text-slate-400">{{ __('No completion data.') }}</p>
 				</div>
 			</div>
 		</div>
@@ -221,9 +235,9 @@ function toggleCourse(courseId: string) {
 		<div class="card-surface px-4 py-4">
 			<header class="mb-3 flex items-center justify-between">
 				<div>
-					<h3 class="text-sm font-semibold text-slate-800">Most recent tasks</h3>
+					<h3 class="text-sm font-semibold text-slate-800">{{ __('Most recent tasks') }}</h3>
 					<p class="text-[11px] text-slate-500">
-						Latest {{ recentTasks.length }} items visible to you.
+						{{ __('Latest {0} items visible to you.', [recentTasks.length]) }}
 					</p>
 				</div>
 			</header>
@@ -240,12 +254,12 @@ function toggleCourse(courseId: string) {
 							>
 								{{ task.course_name || task.course }}
 							</span>
-							<span class="text-[11px] text-slate-500">{{ task.status || 'Assigned' }}</span>
+							<span class="text-[11px] text-slate-500">{{ task.status || __('Assigned') }}</span>
 							<span
 								v-if="task.is_overdue || task.is_missed"
 								class="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700"
 							>
-								Overdue
+								{{ __('Overdue') }}
 							</span>
 						</div>
 						<span class="text-[11px] text-slate-500">{{ formatDate(task.due_date) }}</span>
@@ -255,17 +269,19 @@ function toggleCourse(courseId: string) {
 						<span v-if="props.permissions.can_view_task_marks && task.out_of">
 							{{ task.mark_awarded ?? '—' }} / {{ task.out_of }}
 						</span>
-						<span v-else-if="!props.permissions.can_view_task_marks">Marks hidden</span>
+						<span v-else-if="!props.permissions.can_view_task_marks">
+							{{ __('Marks hidden') }}
+						</span>
 						<span
 							v-if="task.visible_to_student === false || task.visible_to_guardian === false"
 							class="ml-2 text-amber-600"
 						>
-							Restricted
+							{{ __('Restricted') }}
 						</span>
 					</div>
 				</div>
 				<div v-if="!recentTasks.length" class="text-xs text-slate-400">
-					No recent tasks in this view.
+					{{ __('No recent tasks in this view.') }}
 				</div>
 			</div>
 		</div>

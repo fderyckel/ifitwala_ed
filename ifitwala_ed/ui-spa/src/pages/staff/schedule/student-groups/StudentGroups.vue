@@ -4,9 +4,13 @@
 		<!-- Header -->
 		<header class="page-header">
 			<div class="page-header__intro">
-				<h1 class="type-h1 text-canopy">Student Group Cards</h1>
+				<h1 class="type-h1 text-canopy">{{ __('Student Group Cards') }}</h1>
 				<p class="type-meta text-slate-token/80">
-					Review the selected group and reload the current student card set from one workspace.
+					{{
+						__(
+							'Review the selected group and reload the current student card set from one workspace.'
+						)
+					}}
 				</p>
 			</div>
 			<div class="page-header__actions">
@@ -16,7 +20,7 @@
 					@click="reloadStudents"
 					:disabled="!filters.student_group || studentsLoading"
 				>
-					{{ studentsLoading ? 'Reloading…' : 'Reload' }}
+					{{ studentsLoading ? __('Reloading...') : __('Reload') }}
 				</button>
 			</div>
 		</header>
@@ -26,19 +30,19 @@
 			<FormControl
 				v-model="filters.program"
 				type="text"
-				placeholder="Program"
+				:placeholder="__('Program')"
 				@update:modelValue="onFilterChanged"
 			/>
 			<FormControl
 				v-model="filters.course"
 				type="text"
-				placeholder="Course"
+				:placeholder="__('Course')"
 				@update:modelValue="onFilterChanged"
 			/>
 			<FormControl
 				v-model="filters.cohort"
 				type="text"
-				placeholder="Cohort"
+				:placeholder="__('Cohort')"
 				@update:modelValue="onFilterChanged"
 			/>
 
@@ -49,7 +53,7 @@
 				option-label="label"
 				option-value="value"
 				v-model="filters.student_group"
-				placeholder="Student Group"
+				:placeholder="__('Student Group')"
 				@update:modelValue="onGroupPicked"
 			/>
 		</div>
@@ -69,9 +73,11 @@
 				class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-12 text-center"
 			>
 				<FeatherIcon name="users" class="h-12 w-12 text-slate-300" />
-				<p class="text-base font-semibold text-slate-700">Select a student group to begin</p>
+				<p class="text-base font-semibold text-slate-700">
+					{{ __('Select a student group to begin') }}
+				</p>
 				<p class="max-w-sm text-sm text-slate-500">
-					Filter by Program, Course, or Cohort, then choose a Student Group.
+					{{ __('Filter by Program, Course, or Cohort, then choose a Student Group.') }}
 				</p>
 			</div>
 
@@ -98,7 +104,7 @@
 					<a :href="`/desk/student/${stu.student}`" target="_blank" rel="noopener" class="block">
 						<img
 							:src="stu.student_image || DEFAULT_IMG"
-							:alt="`Photo of ${stu.student_name}`"
+							:alt="__('Photo of {0}', [stu.student_name])"
 							loading="lazy"
 							class="h-32 w-full rounded-xl object-cover"
 							@error="onImgError"
@@ -118,7 +124,7 @@
 								v-if="stu.medical_info"
 								type="button"
 								class="inline-flex items-center rounded-full border border-transparent bg-red-50 p-1 text-red-600 transition hover:border-red-200 hover:bg-red-100"
-								:title="'View health note'"
+								:title="__('View health note')"
 								@click.stop="showMedical(stu)"
 							>
 								<FeatherIcon name="alert-circle" class="h-4 w-4" />
@@ -128,10 +134,10 @@
 								v-if="stu.has_ssg"
 								type="button"
 								class="inline-flex items-center"
-								:title="'Support guidance available'"
+								:title="__('Support guidance available')"
 								@click.stop="openSSG(stu)"
 							>
-								<Badge variant="subtle">SSG</Badge>
+								<Badge variant="subtle">{{ __('SSG') }}</Badge>
 							</button>
 						</div>
 						<div v-if="stu.preferred_name" class="text-xs text-gray-500">
@@ -149,13 +155,15 @@
 					:disabled="studentsLoading"
 					@click="loadMore"
 				>
-					{{ studentsLoading ? 'Loading…' : 'Load More' }}
+					{{ studentsLoading ? __('Loading...') : __('Load More') }}
 				</button>
 			</div>
 
 			<!-- Totals -->
 			<div v-if="filters.student_group" class="mt-3 text-xs text-gray-500">
-				Showing {{ studentsState.students.length || 0 }} of {{ studentsState.total || 0 }}
+				{{
+					__('Showing {0} of {1}', [studentsState.students.length || 0, studentsState.total || 0])
+				}}
 			</div>
 		</div>
 	</div>
@@ -176,9 +184,9 @@
 				class="flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-200 bg-slate-50/60 px-6 py-12 text-center"
 			>
 				<FeatherIcon name="info" class="h-10 w-10 text-slate-300" />
-				<p class="text-base font-semibold text-slate-700">No published guidance</p>
+				<p class="text-base font-semibold text-slate-700">{{ __('No published guidance') }}</p>
 				<p class="max-w-sm text-sm text-slate-500">
-					There are no published, active support guidance entries for this student.
+					{{ __('There are no published, active support guidance entries for this student.') }}
 				</p>
 			</div>
 
@@ -196,9 +204,9 @@
 								<FeatherIcon name="calendar" class="h-4 w-4" />
 								<strong>{{ neatDate(item.entry_datetime) }}</strong>
 							</span>
-							<Badge v-if="(item.status || 'Open') === 'In Progress'" class="ml-2" variant="solid"
-								>In&nbsp;Progress</Badge
-							>
+							<Badge v-if="(item.status || 'Open') === 'In Progress'" class="ml-2" variant="solid">
+								{{ __('In Progress') }}
+							</Badge>
 						</div>
 
 						<button
@@ -206,9 +214,9 @@
 							type="button"
 							class="if-action"
 							@click="openCase(item.case_name)"
-							:title="'Open Referral Case in Desk'"
+							:title="__('Open Referral Case in Desk')"
 						>
-							View Case
+							{{ __('View Case') }}
 						</button>
 					</div>
 
@@ -216,12 +224,12 @@
 					<div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
 						<span class="inline-flex items-center gap-1">
 							<FeatherIcon name="user" class="h-4 w-4" />
-							Assignee:
-							<strong class="ml-1">{{ item.assignee || 'All instructors' }}</strong>
+							{{ __('Assignee:') }}
+							<strong class="ml-1">{{ item.assignee || __('All instructors') }}</strong>
 						</span>
 						<span v-if="item.author_full_name" class="inline-flex items-center gap-1">
 							<FeatherIcon name="edit" class="h-4 w-4" />
-							Author:
+							{{ __('Author:') }}
 							<strong class="ml-1">{{ item.author_full_name }}</strong>
 						</span>
 					</div>
@@ -235,7 +243,7 @@
 		<template #footer>
 			<div class="flex w-full justify-end">
 				<button type="button" class="if-button if-button--secondary" @click="ssg.open = false">
-					Close
+					{{ __('Close') }}
 				</button>
 			</div>
 		</template>
@@ -243,7 +251,7 @@
 
 	<Dialog
 		v-model="medicalDialog.open"
-		:options="{ title: `Health Note — ${medicalDialog.student}`, size: 'md' }"
+		:options="{ title: __('Health Note - {0}', [medicalDialog.student]), size: 'md' }"
 	>
 		<template #body>
 			<p class="text-sm text-slate-600 whitespace-pre-line">
@@ -257,7 +265,7 @@
 					class="if-button if-button--secondary"
 					@click="medicalDialog.open = false"
 				>
-					Close
+					{{ __('Close') }}
 				</button>
 			</div>
 		</template>
@@ -268,6 +276,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { nextTick } from 'vue';
 import { FormControl, Badge, Dialog, FeatherIcon, call, toast } from 'frappe-ui';
+import { __ } from '@/lib/i18n';
 
 type Filters = {
 	program: string | null;
@@ -348,7 +357,7 @@ const showLoadMore = computed(() => studentsState.students.length < (studentsSta
 const ssg = reactive({
 	open: false,
 	loading: false,
-	title: 'Support Guidance',
+	title: __('Support Guidance'),
 	entries: [] as SsgEntry[],
 });
 
@@ -379,7 +388,7 @@ async function fetchGroups() {
 
 		groups.value = Array.isArray(message) ? message : [];
 	} catch (error) {
-		handleError(error, 'Unable to fetch student groups');
+		handleError(error, __('Unable to fetch student groups'));
 	} finally {
 		groupsLoading.value = false;
 	}
@@ -405,7 +414,7 @@ async function fetchStudents(options: { reset?: boolean; append?: boolean } = {}
 
 		// … update studentsState …
 	} catch (error) {
-		handleError(error, 'Unable to load students');
+		handleError(error, __('Unable to load students'));
 	} finally {
 		studentsLoading.value = false;
 	}
@@ -450,15 +459,15 @@ function onImgError(e: Event, fallback?: string) {
 }
 
 function birthdayTitle(student: StudentEntry) {
-	if (student.birthday_today) return 'Birthday today';
-	if (student.birthday_label) return `Birthday on ${student.birthday_label}`;
-	return 'Birthday';
+	if (student.birthday_today) return __('Birthday today');
+	if (student.birthday_label) return __('Birthday on {0}', [student.birthday_label]);
+	return __('Birthday');
 }
 
 async function openSSG(stu: StudentEntry) {
 	ssg.open = true;
 	ssg.loading = true;
-	ssg.title = `Support Guidance — ${stu.student_name}`;
+	ssg.title = __('Support Guidance - {0}', [stu.student_name]);
 	ssg.entries = [];
 	try {
 		const { message } = await call(
@@ -467,7 +476,7 @@ async function openSSG(stu: StudentEntry) {
 		);
 		ssg.entries = message ?? [];
 	} catch (error) {
-		handleError(error, 'Unable to load support guidance');
+		handleError(error, __('Unable to load support guidance'));
 	} finally {
 		ssg.loading = false;
 	}

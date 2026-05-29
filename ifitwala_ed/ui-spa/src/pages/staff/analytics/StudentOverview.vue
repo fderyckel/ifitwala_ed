@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { createResource } from 'frappe-ui';
 
 import FiltersBar from '@/components/filters/FiltersBar.vue';
+import { __ } from '@/lib/i18n';
 
 import { matchesAcademicYearScope } from './student-overview/academicYearScope';
 import { emptySnapshot, viewModeOptions } from './student-overview/constants';
@@ -195,7 +196,7 @@ async function loadSnapshot() {
 	} catch (error) {
 		snapshotErrorMessage.value = describeResourceError(
 			error,
-			'Unable to load this student overview right now.'
+			__('Unable to load this student overview right now.')
 		);
 	}
 }
@@ -260,8 +261,8 @@ watch(
 const attendanceSourceToggle = computed(() => ({
 	active: attendanceKpiSource.value,
 	options: [
-		{ id: 'all_day' as AttendanceKpiSource, label: 'Whole day' },
-		{ id: 'by_course' as AttendanceKpiSource, label: 'Per course' },
+		{ id: 'all_day' as AttendanceKpiSource, label: __('Whole day') },
+		{ id: 'by_course' as AttendanceKpiSource, label: __('Per course') },
 	],
 }));
 
@@ -307,7 +308,10 @@ const allDayHeatmapOption = computed(() => {
 		tooltip: {
 			formatter: (params: any) => {
 				const item = params.value?.[3] || {};
-				return `${item.date || ''}<br>${item.attendance_code_name || item.attendance_code || ''}`;
+				return __('{0}<br>{1}', [
+					item.date || '',
+					item.attendance_code_name || item.attendance_code || '',
+				]);
 			},
 		},
 		visualMap: { show: false, min: 0, max: 1 },
@@ -373,9 +377,9 @@ const byCourseHeatmapOption = computed(() => {
 				const row = params.data?.row || {};
 				return `${row.course_name || row.course} (${row.week_label})<br>${formatCount(
 					row.unexcused_sessions
-				)} unexcused / ${formatCount(row.absent_sessions)} absent / ${formatCount(
+				)} ${__('unexcused')} / ${formatCount(row.absent_sessions)} ${__('absent')} / ${formatCount(
 					row.late_sessions
-				)} late / ${formatCount(row.present_sessions)} present`;
+				)} ${__('late')} / ${formatCount(row.present_sessions)} ${__('present')}`;
 			},
 		},
 		visualMap: {
@@ -385,7 +389,7 @@ const byCourseHeatmapOption = computed(() => {
 			orient: 'horizontal',
 			left: 'center',
 			bottom: 10,
-			text: ['More misses', 'Fewer'],
+			text: [__('More misses'), __('Fewer')],
 			inRange: {
 				color: [palette.sand, palette.moss, palette.flame],
 			},
@@ -466,11 +470,12 @@ const attendanceSummaryForScope = computed<AttendanceSummaryForScope>(() => {
 
 const kpiTiles = computed<KpiTile[]>(() => [
 	{
-		label: 'Attendance',
-		value: `${formatPct(attendanceSummaryForScope.value.present_percentage)} present`,
-		sub: `${formatCount(attendanceSummaryForScope.value.unexcused || 0)} unexcused · ${formatCount(
-			attendanceSummaryForScope.value.excused || 0
-		)} excused`,
+		label: __('Attendance'),
+		value: __('{0} present', [formatPct(attendanceSummaryForScope.value.present_percentage)]),
+		sub: __('{0} unexcused · {1} excused', [
+			formatCount(attendanceSummaryForScope.value.unexcused || 0),
+			formatCount(attendanceSummaryForScope.value.excused || 0),
+		]),
 		clickable: hasAllDayHeatmap.value && hasByCourseHeatmap.value,
 		onClick: () => {
 			if (hasAllDayHeatmap.value && hasByCourseHeatmap.value) {
@@ -482,48 +487,60 @@ const kpiTiles = computed<KpiTile[]>(() => [
 		sourceToggle: attendanceSourceToggle.value,
 	},
 	{
-		label: 'Tasks',
-		value: `${formatPct(snapshot.value.kpis.tasks.completion_rate)} tasks completed`,
-		sub: `${formatCount(snapshot.value.kpis.tasks.overdue_tasks)} overdue · ${formatCount(
-			snapshot.value.kpis.tasks.missed_tasks
-		)} missed`,
+		label: __('Tasks'),
+		value: __('{0} tasks completed', [formatPct(snapshot.value.kpis.tasks.completion_rate)]),
+		sub: __('{0} overdue · {1} missed', [
+			formatCount(snapshot.value.kpis.tasks.overdue_tasks),
+			formatCount(snapshot.value.kpis.tasks.missed_tasks),
+		]),
 	},
 	{
-		label: 'Academic progress',
+		label: __('Academic progress'),
 		value: snapshot.value.kpis.academic.latest_overall_label || '—',
 		sub: snapshot.value.kpis.academic.trend
-			? `Trend: ${snapshot.value.kpis.academic.trend}`
-			: 'Latest overall grade',
+			? __('Trend: {0}', [snapshot.value.kpis.academic.trend])
+			: __('Latest overall grade'),
 	},
 	{
-		label: 'Support signals',
-		value: `${formatCount(snapshot.value.kpis.support.student_logs_total)} logs`,
-		sub: `${formatCount(snapshot.value.kpis.support.active_referrals)} referral(s) · ${formatCount(
-			snapshot.value.kpis.support.nurse_visits_this_term
-		)} nurse visits`,
+		label: __('Support signals'),
+		value: __('{0} logs', [formatCount(snapshot.value.kpis.support.student_logs_total)]),
+		sub: __('{0} referral(s) · {1} nurse visits', [
+			formatCount(snapshot.value.kpis.support.active_referrals),
+			formatCount(snapshot.value.kpis.support.nurse_visits_this_term),
+		]),
 	},
 ]);
+
+function viewModeLabel(mode: ViewMode) {
+	if (mode === 'student') return __('Student');
+	if (mode === 'guardian') return __('Guardian');
+	return __('Staff');
+}
 </script>
 
 <template>
 	<div class="analytics-shell">
 		<header class="page-header">
 			<div class="page-header__intro">
-				<h1 class="type-h1 text-canopy">Student Overview</h1>
+				<h1 class="type-h1 text-canopy">{{ __('Student Overview') }}</h1>
 				<p class="type-meta text-slate-token/80">
-					One student snapshot across identity, learning, attendance, wellbeing, and history.
+					{{
+						__(
+							'One student snapshot across identity, learning, attendance, wellbeing, and history.'
+						)
+					}}
 				</p>
 			</div>
 			<div class="page-header__actions ifit-filters">
 				<div class="flex flex-col gap-1">
-					<label for="student-overview-view-mode" class="type-label">Lens</label>
+					<label for="student-overview-view-mode" class="type-label">{{ __('Lens') }}</label>
 					<select
 						id="student-overview-view-mode"
 						v-model="viewMode"
 						class="h-9 rounded-md border px-2 text-sm"
 					>
 						<option v-for="mode in viewModeOptions" :key="mode.id" :value="mode.id">
-							{{ mode.label }}
+							{{ viewModeLabel(mode.id) }}
 						</option>
 					</select>
 				</div>
@@ -535,13 +552,13 @@ const kpiTiles = computed<KpiTile[]>(() => [
 				class="grid w-full gap-3 md:grid-cols-2 xl:grid-cols-[repeat(2,minmax(0,12rem))_minmax(0,16rem)]"
 			>
 				<div class="flex min-w-0 flex-col gap-1">
-					<label class="type-label">School</label>
+					<label class="type-label">{{ __('School') }}</label>
 					<select
 						v-model="filters.school"
 						class="h-9 rounded-md border px-2 text-xs"
 						data-testid="student-overview-school-filter"
 					>
-						<option value="">Select a school</option>
+						<option value="">{{ __('Select a school') }}</option>
 						<option v-for="school in schools" :key="school.name" :value="school.name">
 							{{ school.label || school.name }}
 						</option>
@@ -549,13 +566,13 @@ const kpiTiles = computed<KpiTile[]>(() => [
 				</div>
 
 				<div class="flex min-w-0 flex-col gap-1">
-					<label class="type-label">Program</label>
+					<label class="type-label">{{ __('Program') }}</label>
 					<select
 						v-model="filters.program"
 						class="h-9 rounded-md border px-2 text-xs"
 						data-testid="student-overview-program-filter"
 					>
-						<option value="">Select</option>
+						<option value="">{{ __('Select') }}</option>
 						<option v-for="program in programs" :key="program.name" :value="program.name">
 							{{ program.label || program.name }}
 						</option>
@@ -563,14 +580,14 @@ const kpiTiles = computed<KpiTile[]>(() => [
 				</div>
 
 				<div class="relative flex min-w-0 flex-col gap-1">
-					<label class="type-label">Student</label>
+					<label class="type-label">{{ __('Student') }}</label>
 					<div class="control-input flex h-9 items-center rounded-md border px-2">
 						<span class="mr-1 text-[11px] text-ink/60">🔍</span>
 						<input
 							v-model="studentSearch"
 							class="h-full w-full text-xs"
 							data-testid="student-overview-student-search"
-							placeholder="Search student"
+							:placeholder="__('Search student')"
 							type="search"
 							@focus="openStudentDropdown"
 							@input="debounce(fetchStudents)"
@@ -581,14 +598,16 @@ const kpiTiles = computed<KpiTile[]>(() => [
 							class="ml-1 text-[11px] text-ink/60"
 							@click="clearStudent"
 						>
-							Clear
+							{{ __('Clear') }}
 						</button>
 					</div>
 					<div
 						v-if="studentDropdownOpen"
 						class="absolute top-full z-30 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-border/80 bg-[rgb(var(--surface-rgb))] shadow-soft"
 					>
-						<div v-if="studentLoading" class="px-3 py-2 text-xs text-ink/70">Searching…</div>
+						<div v-if="studentLoading" class="px-3 py-2 text-xs text-ink/70">
+							{{ __('Searching...') }}
+						</div>
 						<button
 							v-for="student in studentSuggestions"
 							:key="student.id"
@@ -604,8 +623,8 @@ const kpiTiles = computed<KpiTile[]>(() => [
 						>
 							{{
 								studentSearch
-									? 'No matches. Try a different name or ID.'
-									: 'Start typing to search for a student.'
+									? __('No matches. Try a different name or ID.')
+									: __('Start typing to search for a student.')
 							}}
 						</div>
 					</div>
@@ -618,7 +637,7 @@ const kpiTiles = computed<KpiTile[]>(() => [
 				v-if="!readyForSnapshot"
 				class="rounded-xl border border-dashed border-slate-200 bg-white/70 px-4 py-6 text-sm text-slate-500"
 			>
-				Choose a school, program, and student to load the overview.
+				{{ __('Choose a school, program, and student to load the overview.') }}
 			</div>
 
 			<div v-else>
@@ -626,18 +645,21 @@ const kpiTiles = computed<KpiTile[]>(() => [
 					v-if="loadingSnapshot"
 					class="rounded-xl border border-slate-200 bg-white/70 px-4 py-6 text-sm text-slate-500 shadow-sm"
 				>
-					Loading snapshot…
+					{{ __('Loading snapshot...') }}
 				</div>
 
 				<div
 					v-else-if="snapshotErrorMessage && !hasSnapshotData"
 					class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-900 shadow-sm"
 				>
-					<p class="font-semibold">Unable to load this student overview.</p>
+					<p class="font-semibold">{{ __('Unable to load this student overview.') }}</p>
 					<p class="mt-1 text-rose-800/90">{{ snapshotErrorMessage }}</p>
 					<p class="mt-2 text-xs text-rose-800/80">
-						Try reselecting the student. If the error persists, review the server logs for this
-						snapshot request.
+						{{
+							__(
+								'Try reselecting the student. If the error persists, review the server logs for this snapshot request.'
+							)
+						}}
 					</p>
 				</div>
 

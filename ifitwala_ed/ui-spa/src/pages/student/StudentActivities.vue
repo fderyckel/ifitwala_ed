@@ -4,15 +4,17 @@
 		<header class="student-hub-hero">
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 				<div>
-					<p class="type-overline text-ink/60">Student Activities</p>
-					<h1 class="type-h1 text-ink">After-School Booking</h1>
+					<p class="type-overline text-ink/60">{{ __('Student Activities') }}</p>
+					<h1 class="type-h1 text-ink">{{ __('After-School Booking') }}</h1>
 					<p class="type-body text-ink/70">
-						Choose activities with clear capacity, fairness rules, pricing, and updates.
+						{{
+							__('Choose activities with clear capacity, fairness rules, pricing, and updates.')
+						}}
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
 					<RouterLink class="if-button if-button--secondary" :to="{ name: 'student-home' }">
-						Back to Home
+						{{ __('Back to Home') }}
 					</RouterLink>
 					<button
 						type="button"
@@ -20,7 +22,7 @@
 						:disabled="loading"
 						@click="loadBoard"
 					>
-						Refresh
+						{{ __('Refresh') }}
 					</button>
 				</div>
 			</div>
@@ -28,39 +30,43 @@
 
 		<section class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Open now</p>
+				<p class="mini-kpi-label">{{ __('Open now') }}</p>
 				<p class="mini-kpi-value">{{ openNowCount }}</p>
 			</article>
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">My active bookings</p>
+				<p class="mini-kpi-label">{{ __('My active bookings') }}</p>
 				<p class="mini-kpi-value">{{ activeBookingCount }}</p>
 			</article>
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Waitlist spots</p>
+				<p class="mini-kpi-label">{{ __('Waitlist spots') }}</p>
 				<p class="mini-kpi-value">{{ waitlistCount }}</p>
 			</article>
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Offers expiring soon</p>
+				<p class="mini-kpi-label">{{ __('Offers expiring soon') }}</p>
 				<p class="mini-kpi-value">{{ expiringOfferCount }}</p>
 			</article>
 		</section>
 
 		<section v-if="loading" class="card-surface p-5">
-			<p class="type-body text-ink/70">Loading activity board...</p>
+			<p class="type-body text-ink/70">{{ __('Loading activity board...') }}</p>
 		</section>
 		<section v-else-if="errorMessage" class="if-banner if-banner--danger">
-			<p class="if-banner__title type-body-strong text-flame">Could not load activity board.</p>
+			<p class="if-banner__title type-body-strong text-flame">
+				{{ __('Could not load activity board.') }}
+			</p>
 			<p class="if-banner__body type-body">{{ errorMessage }}</p>
 		</section>
 
 		<template v-else>
 			<section id="communication-center" class="student-hub-section student-hub-section--focus">
 				<div class="mb-3 flex items-center justify-between gap-3">
-					<h2 class="type-h3 text-ink">My Bookings</h2>
-					<p class="type-caption text-ink/60">Humanized statuses are shown for clarity.</p>
+					<h2 class="type-h3 text-ink">{{ __('My Bookings') }}</h2>
+					<p class="type-caption text-ink/60">
+						{{ __('Humanized statuses are shown for clarity.') }}
+					</p>
 				</div>
 				<p v-if="!studentBookings.length" class="type-body text-ink/70">
-					No bookings yet. Choose an activity below.
+					{{ __('No bookings yet. Choose an activity below.') }}
 				</p>
 				<ul v-else class="space-y-2">
 					<li v-for="booking in studentBookings" :key="booking.name" class="if-feed-card">
@@ -70,13 +76,17 @@
 									{{ offeringTitle(booking.program_offering) }}
 								</p>
 								<p class="type-caption text-ink/70">
-									Section: {{ booking.allocated_student_group || 'Pending assignment' }}
+									{{
+										__('Section: {0}', [
+											booking.allocated_student_group || __('Pending assignment'),
+										])
+									}}
 								</p>
 								<p
 									v-if="showWaitlistPosition && booking.waitlist_position"
 									class="type-caption text-ink/70"
 								>
-									Waitlist position: {{ booking.waitlist_position }}
+									{{ __('Waitlist position: {0}', [booking.waitlist_position]) }}
 								</p>
 								<p v-if="offerHint(booking)" class="type-caption text-ink/70">
 									{{ offerHint(booking) }}
@@ -91,7 +101,7 @@
 									target="_blank"
 									rel="noopener"
 								>
-									View invoice
+									{{ __('View invoice') }}
 								</a>
 								<button
 									v-if="booking.status === 'Offered' || booking.status === 'Waitlisted'"
@@ -100,7 +110,7 @@
 									:disabled="actionLoading[booking.name]"
 									@click="confirmOffer(booking.name)"
 								>
-									Accept spot
+									{{ __('Accept spot') }}
 								</button>
 								<button
 									v-if="canCancel(booking.status)"
@@ -109,7 +119,7 @@
 									:disabled="actionLoading[booking.name]"
 									@click="cancelBooking(booking.name)"
 								>
-									Cancel
+									{{ __('Cancel') }}
 								</button>
 							</div>
 						</div>
@@ -119,14 +129,14 @@
 
 			<section class="student-hub-section student-hub-section--support space-y-4">
 				<div class="flex items-center justify-between gap-3">
-					<h2 class="type-h3 text-ink">Available Activities</h2>
+					<h2 class="type-h3 text-ink">{{ __('Available Activities') }}</h2>
 					<p class="type-caption text-ink/60">
-						Transparent allocation and section capacity are shown.
+						{{ __('Transparent allocation and section capacity are shown.') }}
 					</p>
 				</div>
 
 				<p v-if="!offerings.length" class="card-surface p-5 type-body text-ink/70">
-					No activity offerings are open right now.
+					{{ __('No activity offerings are open right now.') }}
 				</p>
 
 				<div v-else class="space-y-4">
@@ -145,32 +155,34 @@
 									>
 										{{
 											embeddedCommsOffering === offering.program_offering
-												? 'Hide updates'
-												: 'Show updates'
+												? __('Hide updates')
+												: __('Show updates')
 										}}
 									</button>
-									<p class="type-caption text-ink/70">Max ranked choices: {{ maxChoices }}</p>
+									<p class="type-caption text-ink/70">
+										{{ __('Max ranked choices: {0}', [maxChoices]) }}
+									</p>
 								</div>
 
 								<div
 									v-if="!canBookOffering(offering)"
 									class="student-hub-card student-hub-card--neutral p-3 type-caption text-ink/70"
 								>
-									Booking is not currently open for student self-booking.
+									{{ __('Booking is not currently open for student self-booking.') }}
 								</div>
 
 								<div v-else class="grid gap-3 sm:grid-cols-2">
 									<label
-										v-for="(_, idx) in rankSlots(offering.program_offering)"
+										v-for="(choice, idx) in rankSlots(offering.program_offering)"
 										:key="`${offering.program_offering}-rank-${idx}`"
 										class="flex flex-col gap-1"
 									>
-										<span class="type-label">Choice {{ idx + 1 }}</span>
+										<span class="type-label">{{ __('Choice {0}', [idx + 1]) }}</span>
 										<select
 											v-model="choiceState[offering.program_offering][idx]"
 											class="portal-select"
 										>
-											<option value="">Select section</option>
+											<option value="">{{ __('Select section') }}</option>
 											<option
 												v-for="section in offering.sections"
 												:key="`${offering.program_offering}-${section.student_group}`"
@@ -195,7 +207,7 @@
 										"
 										@click="submitBooking(offering.program_offering)"
 									>
-										Submit booking
+										{{ __('Submit booking') }}
 									</button>
 									<p class="type-caption text-ink/70">
 										{{ offering.allocation_mode }} · {{ offering.booking_status }}
@@ -214,7 +226,7 @@
 
 			<section class="student-hub-section">
 				<div class="mb-3 flex items-center justify-between gap-3">
-					<h2 class="type-h3 text-ink">Communication Center</h2>
+					<h2 class="type-h3 text-ink">{{ __('Communication Center') }}</h2>
 					<select v-model="centerOffering" class="portal-select max-w-xs">
 						<option
 							v-for="offering in offerings"
@@ -240,6 +252,7 @@ import ActivityCommunicationPanel from '@/components/activity/ActivityCommunicat
 import ActivityOfferingCard from '@/components/activity/ActivityOfferingCard.vue';
 import ActivityStatusBadge from '@/components/activity/ActivityStatusBadge.vue';
 
+import { __ } from '@/lib/i18n';
 import {
 	cancelActivityBooking,
 	confirmActivityBookingOffer,
@@ -353,11 +366,11 @@ function offerHint(booking: ActivityBookingRow): string {
 	const expiry = new Date(booking.offer_expires_on);
 	if (Number.isNaN(expiry.getTime())) return '';
 	const hours = Math.floor((expiry.getTime() - Date.now()) / (1000 * 60 * 60));
-	if (hours < 0) return 'Offer expired; refresh for latest status.';
+	if (hours < 0) return __('Offer expired; refresh for latest status.');
 	if (hours <= offerBannerHours.value) {
-		return `Offer expires in about ${hours}h.`;
+		return __('Offer expires in about {0}h.', [hours]);
 	}
-	return `Offer valid until ${expiry.toLocaleString()}.`;
+	return __('Offer valid until {0}.', [expiry.toLocaleString()]);
 }
 
 async function loadBoard() {
@@ -382,7 +395,7 @@ async function loadBoard() {
 		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		errorMessage.value = message || 'Could not load activities.';
+		errorMessage.value = message || __('Could not load activities.');
 	} finally {
 		loading.value = false;
 	}
@@ -396,12 +409,14 @@ function makeIdempotencyKey(student: string, programOffering: string): string {
 async function submitBooking(programOffering: string) {
 	const student = studentRecord.value?.student;
 	if (!student) {
-		submitError.value[programOffering] = 'Student context is missing.';
+		submitError.value[programOffering] = __('Student context is missing.');
 		return;
 	}
 	const choices = normalizeChoices(choiceState.value[programOffering] || []);
 	if (!choices.length) {
-		submitError.value[programOffering] = 'Select at least one section choice before submitting.';
+		submitError.value[programOffering] = __(
+			'Select at least one section choice before submitting.'
+		);
 		return;
 	}
 	submitLoading.value[programOffering] = true;
@@ -414,11 +429,11 @@ async function submitBooking(programOffering: string) {
 			idempotency_key: makeIdempotencyKey(student, programOffering),
 			request_surface: 'Student Portal',
 		});
-		toast.success('Activity booking submitted.');
+		toast.success(__('Activity booking submitted.'));
 		await loadBoard();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		submitError.value[programOffering] = message || 'Could not submit booking.';
+		submitError.value[programOffering] = message || __('Could not submit booking.');
 	} finally {
 		submitLoading.value[programOffering] = false;
 	}
@@ -428,11 +443,11 @@ async function confirmOffer(bookingName: string) {
 	actionLoading.value[bookingName] = true;
 	try {
 		await confirmActivityBookingOffer({ activity_booking: bookingName });
-		toast.success('Spot accepted.');
+		toast.success(__('Spot accepted.'));
 		await loadBoard();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		toast.error(message || 'Could not accept this offer.');
+		toast.error(message || __('Could not accept this offer.'));
 	} finally {
 		actionLoading.value[bookingName] = false;
 	}
@@ -442,11 +457,11 @@ async function cancelBooking(bookingName: string) {
 	actionLoading.value[bookingName] = true;
 	try {
 		await cancelActivityBooking({ activity_booking: bookingName });
-		toast.success('Booking cancelled.');
+		toast.success(__('Booking cancelled.'));
 		await loadBoard();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		toast.error(message || 'Could not cancel booking.');
+		toast.error(message || __('Could not cancel booking.'));
 	} finally {
 		actionLoading.value[bookingName] = false;
 	}

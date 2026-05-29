@@ -12,7 +12,7 @@
 					/>
 					<div>
 						<p class="type-overline text-ink/60">{{ overline }}</p>
-						<h1 class="type-h1 text-ink">{{ payload?.window.title || 'Course Selection' }}</h1>
+						<h1 class="type-h1 text-ink">{{ payload?.window.title || __('Course Selection') }}</h1>
 						<p class="type-body text-ink/70">
 							{{ subtitle }}
 						</p>
@@ -31,7 +31,7 @@
 						:disabled="loading"
 						@click="emit('refresh')"
 					>
-						Refresh
+						{{ __('Refresh') }}
 					</button>
 				</div>
 			</div>
@@ -39,19 +39,19 @@
 
 		<section class="grid grid-cols-2 gap-3 lg:grid-cols-4">
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Required</p>
+				<p class="mini-kpi-label">{{ __('Required') }}</p>
 				<p class="mini-kpi-value">{{ payload?.summary.required_course_count || 0 }}</p>
 			</article>
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Optional</p>
+				<p class="mini-kpi-label">{{ __('Optional') }}</p>
 				<p class="mini-kpi-value">{{ payload?.summary.optional_course_count || 0 }}</p>
 			</article>
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Selected</p>
+				<p class="mini-kpi-label">{{ __('Selected') }}</p>
 				<p class="mini-kpi-value">{{ payload?.summary.selected_optional_count || 0 }}</p>
 			</article>
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Due</p>
+				<p class="mini-kpi-label">{{ __('Due') }}</p>
 				<p class="mini-kpi-value text-base">
 					{{ dueLabel }}
 				</p>
@@ -59,10 +59,10 @@
 		</section>
 
 		<section v-if="loading" class="card-surface p-5">
-			<p class="type-body text-ink/70">Loading course selection...</p>
+			<p class="type-body text-ink/70">{{ __('Loading course selection...') }}</p>
 		</section>
 		<section v-else-if="errorMessage" class="card-surface p-5">
-			<p class="type-body-strong text-flame">Could not load course selection.</p>
+			<p class="type-body-strong text-flame">{{ __('Could not load course selection.') }}</p>
 			<p class="type-body text-ink/70">{{ errorMessage }}</p>
 		</section>
 
@@ -71,16 +71,16 @@
 				v-if="payload.permissions.locked_reason"
 				class="card-surface border border-line-soft bg-surface-soft p-5"
 			>
-				<p class="type-body-strong text-ink">Selection locked</p>
+				<p class="type-body-strong text-ink">{{ __('Selection locked') }}</p>
 				<p class="mt-2 type-body text-ink/70">{{ payload.permissions.locked_reason }}</p>
 			</section>
 
 			<section class="card-surface p-5">
 				<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<div>
-						<h2 class="type-h3 text-ink">Request Status</h2>
+						<h2 class="type-h3 text-ink">{{ __('Request Status') }}</h2>
 						<p class="type-caption text-ink/70">
-							Request {{ payload.request.name }} · {{ payload.request.status }}
+							{{ __('Request {0} · {1}', [payload.request.name, payload.request.status]) }}
 						</p>
 					</div>
 					<div class="flex flex-wrap items-center gap-2">
@@ -132,7 +132,7 @@
 			<section v-if="showCourseChoices" class="space-y-4">
 				<div class="flex items-center justify-between gap-3">
 					<div>
-						<h2 class="type-h3 text-ink">Required Courses</h2>
+						<h2 class="type-h3 text-ink">{{ __('Required Courses') }}</h2>
 						<p class="type-caption text-ink/60">
 							{{ __('These courses are part of the program and stay visible for reference.') }}
 						</p>
@@ -154,7 +154,7 @@
 							<div>
 								<div class="flex flex-wrap items-center gap-2">
 									<p class="type-body-strong text-ink">{{ course.course_name }}</p>
-									<span class="chip">Required</span>
+									<span class="chip">{{ __('Required') }}</span>
 									<span v-if="course.basket_groups.length" class="chip">
 										{{ course.basket_groups.join(' · ') }}
 									</span>
@@ -163,14 +163,14 @@
 							</div>
 							<div v-if="course.basket_groups.length > 1" class="w-full max-w-sm">
 								<label class="flex flex-col gap-1">
-									<span class="type-label">Counts Toward</span>
+									<span class="type-label">{{ __('Counts Toward') }}</span>
 									<select
 										:value="course.applied_basket_group || ''"
 										class="rounded-xl border border-line-soft bg-white px-3 py-2 type-body text-ink disabled:bg-surface-soft"
 										:disabled="!canEdit"
 										@change="handleAppliedGroupChange(course.course, $event)"
 									>
-										<option value="">Select basket group</option>
+										<option value="">{{ __('Select basket group') }}</option>
 										<option
 											v-for="basketGroup in course.basket_groups"
 											:key="`${course.course}-${basketGroup}`"
@@ -189,7 +189,7 @@
 			<section v-if="showCourseChoices" class="space-y-4">
 				<div class="flex items-center justify-between gap-3">
 					<div>
-						<h2 class="type-h3 text-ink">Choice Groups</h2>
+						<h2 class="type-h3 text-ink">{{ __('Choice Groups') }}</h2>
 						<p class="type-caption text-ink/60">
 							{{ __('Choose from the sections below where the school offers options.') }}
 						</p>
@@ -279,7 +279,7 @@
 											</select>
 										</label>
 										<label class="flex flex-col gap-1">
-											<span class="type-label">Preference Rank</span>
+											<span class="type-label">{{ __('Preference Rank') }}</span>
 											<input
 												:value="course.choice_rank ?? ''"
 												type="number"
@@ -539,7 +539,7 @@ const subtitle = computed(() => {
 
 const dueLabel = computed(() => {
 	const due = props.payload?.window.due_on;
-	if (!due) return 'No deadline';
+	if (!due) return __('No deadline');
 	return formatShortDate(due);
 });
 
@@ -638,7 +638,7 @@ const submitButtonLabel = computed(() =>
 );
 
 function formatShortDate(value?: string | null) {
-	if (!value) return 'No deadline';
+	if (!value) return __('No deadline');
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) return value;
 	return date.toLocaleDateString(undefined, {

@@ -169,6 +169,7 @@ class TestCalendarApi(TestCase):
                 end_time="10:00",
                 school="SCHOOL-1",
                 participants=[{"user": "student@example.com", "kind": "student", "label": "Student Example"}],
+                include_students=1,
             )
             second = create_meeting_quick(
                 client_request_id="req-1",
@@ -178,6 +179,7 @@ class TestCalendarApi(TestCase):
                 end_time="10:00",
                 school="SCHOOL-1",
                 participants=[{"user": "student@example.com", "kind": "student", "label": "Student Example"}],
+                include_students=1,
             )
 
         self.assertEqual(first.get("status"), "created")
@@ -193,6 +195,120 @@ class TestCalendarApi(TestCase):
                 {"participant": "staff@example.com", "participant_name": "Staff Example"},
             ],
         )
+
+    def test_create_meeting_quick_rejects_student_without_scope_opt_in(self):
+        cache = _DummyCache()
+
+        def _fake_get_all(doctype, filters=None, fields=None, **kwargs):
+            if doctype == "Employee":
+                return []
+            if doctype == "Student":
+                requested = (filters or {}).get("student_email", [None, []])[1] or []
+                return [
+                    frappe._dict(
+                        {
+                            "name": "STU-1",
+                            "student_email": "student@example.com",
+                            "student_full_name": "Student Example",
+                            "student_preferred_name": None,
+                            "anchor_school": "SCHOOL-1",
+                        }
+                    )
+                    for name in requested
+                    if name == "student@example.com"
+                ]
+            if doctype == "Guardian":
+                return []
+            if doctype == "Student Group Student":
+                return []
+            if doctype == "User":
+                requested = (filters or {}).get("name", [None, []])[1] or []
+                return [
+                    frappe._dict({"name": name, "full_name": "Student Example"})
+                    for name in requested
+                    if name == "student@example.com"
+                ]
+            raise AssertionError(f"Unexpected get_all call: doctype={doctype!r}")
+
+        with (
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.has_permission", return_value=True),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.get_all", side_effect=_fake_get_all),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.get_doc") as mocked_get_doc,
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_location", return_value=None),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_school", return_value="SCHOOL-1"),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_team", return_value=None),
+        ):
+            with self.assertRaises(frappe.ValidationError) as exc:
+                create_meeting_quick(
+                    client_request_id="req-student-guard",
+                    meeting_name="Private Staff Meeting",
+                    date="2026-02-01",
+                    start_time="09:00",
+                    end_time="10:00",
+                    school="SCHOOL-1",
+                    participants=[{"user": "student@example.com"}],
+                )
+
+        self.assertIn("Enable Students", str(exc.exception))
+        mocked_get_doc.assert_not_called()
+
+    def test_create_meeting_quick_rejects_guardian_without_scope_opt_in(self):
+        cache = _DummyCache()
+
+        def _fake_get_all(doctype, filters=None, fields=None, **kwargs):
+            if doctype == "Employee":
+                return []
+            if doctype == "Student":
+                return []
+            if doctype == "Guardian":
+                requested = (filters or {}).get("user", [None, []])[1] or []
+                return [
+                    frappe._dict(
+                        {
+                            "name": "GUARD-1",
+                            "user": "guardian@example.com",
+                            "guardian_full_name": "Guardian Example",
+                        }
+                    )
+                    for name in requested
+                    if name == "guardian@example.com"
+                ]
+            if doctype == "Guardian Student":
+                return []
+            if doctype == "User":
+                requested = (filters or {}).get("name", [None, []])[1] or []
+                return [
+                    frappe._dict({"name": name, "full_name": "Guardian Example"})
+                    for name in requested
+                    if name == "guardian@example.com"
+                ]
+            raise AssertionError(f"Unexpected get_all call: doctype={doctype!r}")
+
+        with (
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.session", frappe._dict({"user": "staff@example.com"})),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.has_permission", return_value=True),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.cache", return_value=cache),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.get_all", side_effect=_fake_get_all),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.get_doc") as mocked_get_doc,
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_location", return_value=None),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_school", return_value="SCHOOL-1"),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_team", return_value=None),
+        ):
+            with self.assertRaises(frappe.ValidationError) as exc:
+                create_meeting_quick(
+                    client_request_id="req-guardian-guard",
+                    meeting_name="Private Staff Meeting",
+                    date="2026-02-01",
+                    start_time="09:00",
+                    end_time="10:00",
+                    school="SCHOOL-1",
+                    participants=[{"user": "guardian@example.com"}],
+                )
+
+        self.assertIn("Enable Guardians", str(exc.exception))
+        mocked_get_doc.assert_not_called()
 
     def test_assert_students_available_for_meeting_blocks_busy_students(self):
         window_start = datetime(2026, 2, 1, 9, 0, 0)
@@ -270,6 +386,7 @@ class TestCalendarApi(TestCase):
                     end_time="10:00",
                     school="SCHOOL-1",
                     participants=[{"user": "student@example.com", "kind": "student", "label": "Student Example"}],
+                    include_students=1,
                 )
 
         mocked_student_check.assert_called_once()

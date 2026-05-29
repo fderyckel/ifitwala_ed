@@ -41,23 +41,23 @@
 						<div class="if-overlay__header px-6 pt-6">
 							<div class="flex items-start justify-between gap-4">
 								<div>
-									<p class="type-overline text-slate-token/70">Quick Evidence</p>
-									<h2 class="type-h2 text-ink">Capture observation</h2>
+									<p class="type-overline text-slate-token/70">{{ __('Quick Evidence') }}</p>
+									<h2 class="type-h2 text-ink">{{ __('Capture observation') }}</h2>
 								</div>
 								<button
 									type="button"
 									class="if-overlay__icon-button"
-									aria-label="Close"
+									:aria-label="__('Close')"
 									@click="emitClose('programmatic')"
 								>
-									<span aria-hidden="true">x</span>
+									<span aria-hidden="true">&times;</span>
 								</button>
 							</div>
 						</div>
 
 						<div class="if-overlay__body space-y-5">
 							<section class="space-y-2">
-								<p class="type-caption text-slate-token/70">Students</p>
+								<p class="type-caption text-slate-token/70">{{ __('Students') }}</p>
 								<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 									<label
 										v-for="student in students"
@@ -76,7 +76,7 @@
 							</section>
 
 							<section class="space-y-2">
-								<p class="type-caption text-slate-token/70">Evidence type</p>
+								<p class="type-caption text-slate-token/70">{{ __('Evidence type') }}</p>
 								<div class="flex flex-wrap gap-2">
 									<button
 										v-for="option in evidenceTypes"
@@ -96,28 +96,28 @@
 							</section>
 
 							<section v-if="evidenceType === 'text'" class="space-y-2">
-								<label class="type-caption text-slate-token/70" for="evidence-text"
-									>Evidence text</label
-								>
+								<label class="type-caption text-slate-token/70" for="evidence-text">
+									{{ __('Evidence text') }}
+								</label>
 								<textarea
 									id="evidence-text"
 									v-model="evidenceText"
 									rows="4"
 									class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 type-body text-ink"
-									placeholder="Capture what you noticed."
+									:placeholder="__('Capture what you noticed.')"
 								></textarea>
 							</section>
 
 							<section v-else class="space-y-2">
-								<label class="type-caption text-slate-token/70" for="evidence-link"
-									>Evidence link</label
-								>
+								<label class="type-caption text-slate-token/70" for="evidence-link">
+									{{ __('Evidence link') }}
+								</label>
 								<input
 									id="evidence-link"
 									v-model="evidenceLink"
 									type="text"
 									class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 type-body text-ink"
-									placeholder="Paste a link"
+									:placeholder="__('Paste a link')"
 								/>
 							</section>
 
@@ -132,14 +132,14 @@
 								class="rounded-full border border-slate-200 bg-white px-4 py-2 type-button-label text-ink"
 								@click="emitClose('programmatic')"
 							>
-								Cancel
+								{{ __('Cancel') }}
 							</button>
 							<button
 								type="button"
 								class="rounded-full bg-jacaranda px-5 py-2 type-button-label text-white shadow-soft"
 								@click="submit"
 							>
-								Save evidence
+								{{ __('Save evidence') }}
 							</button>
 						</div>
 					</DialogPanel>
@@ -153,6 +153,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { Dialog, DialogPanel, TransitionChild, TransitionRoot } from '@headlessui/vue';
 import { createClassHubService } from '@/lib/classHubService';
+import { __ } from '@/lib/i18n';
 import type { ClassHubQuickEvidencePayload } from '@/types/classHub';
 
 type StudentOption = { student: string; student_name: string };
@@ -178,8 +179,8 @@ const service = createClassHubService();
 const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 60 }));
 
 const evidenceTypes = [
-	{ value: 'text', label: 'Text note' },
-	{ value: 'link', label: 'Link' },
+	{ value: 'text', label: __('Text note') },
+	{ value: 'link', label: __('Link') },
 ] as const;
 
 const evidenceType = ref<ClassHubQuickEvidencePayload['evidence_type']>('text');
@@ -208,17 +209,17 @@ async function submit() {
 	errorMessage.value = '';
 
 	if (!selectedStudents.value.length) {
-		errorMessage.value = 'Select at least one student.';
+		errorMessage.value = __('Select at least one student.');
 		return;
 	}
 
 	if (evidenceType.value === 'text' && !evidenceText.value.trim()) {
-		errorMessage.value = 'Add evidence text before saving.';
+		errorMessage.value = __('Add evidence text before saving.');
 		return;
 	}
 
 	if (evidenceType.value === 'link' && !evidenceLink.value.trim()) {
-		errorMessage.value = 'Add a link before saving.';
+		errorMessage.value = __('Add a link before saving.');
 		return;
 	}
 
@@ -235,12 +236,13 @@ async function submit() {
 		await service.quickEvidence(payload);
 		emitClose('programmatic');
 	} catch (err) {
-		errorMessage.value = 'Unable to save right now.';
+		errorMessage.value = __('Unable to save right now.');
 		console.error('[QuickEvidenceOverlay] submit failed', err);
 	}
 }
 
-function onDialogClose(_payload: unknown) {
+function onDialogClose(payload: unknown) {
+	void payload;
 	// OverlayHost owns close enforcement.
 }
 

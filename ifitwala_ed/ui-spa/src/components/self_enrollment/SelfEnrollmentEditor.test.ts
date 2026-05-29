@@ -1,10 +1,10 @@
 // ifitwala_ed/ui-spa/src/components/self_enrollment/SelfEnrollmentEditor.test.ts
 
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createApp, defineComponent, h, nextTick, ref, type App } from 'vue'
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createApp, defineComponent, h, nextTick, ref, type App } from 'vue';
 
 vi.mock('vue-router', async () => {
-	const { defineComponent, h } = await import('vue')
+	const { defineComponent, h } = await import('vue');
 
 	return {
 		RouterLink: defineComponent({
@@ -17,41 +17,43 @@ vi.mock('vue-router', async () => {
 				},
 			},
 			setup(_, { slots }) {
-				return () => h('a', {}, slots.default?.())
+				return () => h('a', {}, slots.default?.());
 			},
 		}),
-	}
-})
+	};
+});
 
-import SelfEnrollmentEditor from '@/components/self_enrollment/SelfEnrollmentEditor.vue'
-import type { Response as ChoiceStateResponse } from '@/types/contracts/self_enrollment/get_self_enrollment_choice_state'
-import type { ChoiceSubmitRow } from '@/types/contracts/self_enrollment/save_self_enrollment_choices'
+import SelfEnrollmentEditor from '@/components/self_enrollment/SelfEnrollmentEditor.vue';
+import type { Response as ChoiceStateResponse } from '@/types/contracts/self_enrollment/get_self_enrollment_choice_state';
+import type { Request as SaveChoicesRequest } from '@/types/contracts/self_enrollment/save_self_enrollment_choices';
 
-const cleanupFns: Array<() => void> = []
+type SelfEnrollmentSubmitPayload = Pick<SaveChoicesRequest, 'courses' | 'enrollment_intent'>;
+
+const cleanupFns: Array<() => void> = [];
 
 async function flushUi() {
-	await Promise.resolve()
-	await nextTick()
-	await Promise.resolve()
-	await nextTick()
+	await Promise.resolve();
+	await nextTick();
+	await Promise.resolve();
+	await nextTick();
 }
 
 function findBasketSection(basketGroup: string): HTMLElement | null {
 	return (
-		Array.from(document.querySelectorAll('section.card-surface.p-5')).find(section => {
-			const heading = section.querySelector('h3')
-			return (heading?.textContent || '').trim() === basketGroup
-		}) as HTMLElement | undefined
-	) || null
+		(Array.from(document.querySelectorAll('section.card-surface.p-5')).find(section => {
+			const heading = section.querySelector('h3');
+			return (heading?.textContent || '').trim() === basketGroup;
+		}) as HTMLElement | undefined) || null
+	);
 }
 
 function findCourseCard(section: HTMLElement | null, courseCode: string): HTMLElement | null {
-	if (!section) return null
+	if (!section) return null;
 	return (
-		Array.from(section.querySelectorAll('article')).find(article =>
+		(Array.from(section.querySelectorAll('article')).find(article =>
 			(article.textContent || '').includes(courseCode)
-		) as HTMLElement | undefined
-	) || null
+		) as HTMLElement | undefined) || null
+	);
 }
 
 function buildPayload(courses: ChoiceStateResponse['courses']): ChoiceStateResponse {
@@ -117,15 +119,15 @@ function buildPayload(courses: ChoiceStateResponse['courses']): ChoiceStateRespo
 		},
 		required_basket_groups: ['Group 4 Sciences'],
 		courses,
-	}
+	};
 }
 
 function mountEditor(payload: ChoiceStateResponse) {
-	let latestSaveRows: ChoiceSubmitRow[] | null = null
-	let latestSubmitRows: ChoiceSubmitRow[] | null = null
-	const payloadRef = ref<ChoiceStateResponse | null>(payload)
-	const host = document.createElement('div')
-	document.body.appendChild(host)
+	let latestSavePayload: SelfEnrollmentSubmitPayload | null = null;
+	let latestSubmitPayload: SelfEnrollmentSubmitPayload | null = null;
+	const payloadRef = ref<ChoiceStateResponse | null>(payload);
+	const host = document.createElement('div');
+	document.body.appendChild(host);
 
 	const app: App = createApp(
 		defineComponent({
@@ -141,35 +143,35 @@ function mountEditor(payload: ChoiceStateResponse) {
 						backLabel: 'Back to Family Board',
 						overline: 'Guardian Course Selection',
 						onRefresh: () => {},
-						onSave: (rows: ChoiceSubmitRow[]) => {
-							latestSaveRows = rows
+						onSave: (submitPayload: SelfEnrollmentSubmitPayload) => {
+							latestSavePayload = submitPayload;
 						},
-						onSubmit: (rows: ChoiceSubmitRow[]) => {
-							latestSubmitRows = rows
+						onSubmit: (submitPayload: SelfEnrollmentSubmitPayload) => {
+							latestSubmitPayload = submitPayload;
 						},
-					})
+					});
 			},
 		})
-	)
+	);
 
-	app.mount(host)
+	app.mount(host);
 	cleanupFns.push(() => {
-		app.unmount()
-		host.remove()
-	})
+		app.unmount();
+		host.remove();
+	});
 
 	return {
-		getLatestSaveRows: () => latestSaveRows,
-		getLatestSubmitRows: () => latestSubmitRows,
-	}
+		getLatestSavePayload: () => latestSavePayload,
+		getLatestSubmitPayload: () => latestSubmitPayload,
+	};
 }
 
 afterEach(() => {
 	while (cleanupFns.length) {
-		cleanupFns.pop()?.()
+		cleanupFns.pop()?.();
 	}
-	document.body.innerHTML = ''
-})
+	document.body.innerHTML = '';
+});
 
 describe('SelfEnrollmentEditor', () => {
 	it('guides guardians and auto-fills the selected section and preference rank', async () => {
@@ -188,49 +190,56 @@ describe('SelfEnrollmentEditor', () => {
 					has_choice_rank: false,
 				},
 			])
-		)
+		);
 
-		await flushUi()
+		await flushUi();
 
-		const scienceSection = findBasketSection('Group 4 Sciences')
-		expect(scienceSection).toBeTruthy()
+		const scienceSection = findBasketSection('Group 4 Sciences');
+		expect(scienceSection).toBeTruthy();
 
-		const scienceCourseCard = findCourseCard(scienceSection, 'ESS')
-		const checkbox = scienceCourseCard?.querySelector('input[type="checkbox"]') as HTMLInputElement | null
-		expect(checkbox).toBeTruthy()
-		if (!checkbox) return
+		const scienceCourseCard = findCourseCard(scienceSection, 'ESS');
+		const checkbox = scienceCourseCard?.querySelector(
+			'input[type="checkbox"]'
+		) as HTMLInputElement | null;
+		expect(checkbox).toBeTruthy();
+		if (!checkbox) return;
 
-		checkbox.checked = true
-		checkbox.dispatchEvent(new Event('change', { bubbles: true }))
-		await flushUi()
+		checkbox.checked = true;
+		checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+		await flushUi();
 
-		const selectedScienceSection = findBasketSection('Group 4 Sciences')
-		const selectedScienceCourseCard = findCourseCard(selectedScienceSection, 'ESS')
+		const selectedScienceSection = findBasketSection('Group 4 Sciences');
+		const selectedScienceCourseCard = findCourseCard(selectedScienceSection, 'ESS');
 		const rankInput = selectedScienceCourseCard?.querySelector(
 			'input[type="number"]'
-		) as HTMLInputElement | null
-		const countsInSelect = selectedScienceCourseCard?.querySelector('select') as HTMLSelectElement | null
+		) as HTMLInputElement | null;
+		const countsInSelect = selectedScienceCourseCard?.querySelector(
+			'select'
+		) as HTMLSelectElement | null;
 
-		expect(rankInput?.value).toBe('1')
-		expect(countsInSelect?.value).toBe('Group 4 Sciences')
+		expect(rankInput?.value).toBe('1');
+		expect(countsInSelect?.value).toBe('Group 4 Sciences');
 		expect(document.body.textContent || '').toContain(
 			'1 is the first choice in this section. We fill this in for you, and you can change it if needed.'
-		)
+		);
 
 		const saveButton = Array.from(document.querySelectorAll('button')).find(
 			button => (button.textContent || '').trim() === 'Save Draft'
-		) as HTMLButtonElement | undefined
-		expect(saveButton?.disabled).toBe(false)
-		saveButton?.click()
+		) as HTMLButtonElement | undefined;
+		expect(saveButton?.disabled).toBe(false);
+		saveButton?.click();
 
-		expect(mounted.getLatestSaveRows()).toEqual([
-			{
-				course: 'ESS',
-				applied_basket_group: 'Group 4 Sciences',
-				choice_rank: 1,
-			},
-		])
-	})
+		expect(mounted.getLatestSavePayload()).toEqual({
+			courses: [
+				{
+					course: 'ESS',
+					applied_basket_group: 'Group 4 Sciences',
+					choice_rank: 1,
+				},
+			],
+			enrollment_intent: undefined,
+		});
+	});
 
 	it('lets guardians submit the latest unsaved choices directly', async () => {
 		const mounted = mountEditor(
@@ -248,34 +257,37 @@ describe('SelfEnrollmentEditor', () => {
 					has_choice_rank: false,
 				},
 			])
-		)
+		);
 
-		await flushUi()
+		await flushUi();
 
-		const checkbox = document.querySelector('input[type="checkbox"]') as HTMLInputElement | null
-		expect(checkbox).toBeTruthy()
-		if (!checkbox) return
+		const checkbox = document.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
+		expect(checkbox).toBeTruthy();
+		if (!checkbox) return;
 
-		checkbox.checked = true
-		checkbox.dispatchEvent(new Event('change', { bubbles: true }))
-		await flushUi()
+		checkbox.checked = true;
+		checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+		await flushUi();
 
 		const submitButton = Array.from(document.querySelectorAll('button')).find(
 			button => (button.textContent || '').trim() === 'Submit Selection'
-		) as HTMLButtonElement | undefined
-		expect(submitButton?.disabled).toBe(false)
+		) as HTMLButtonElement | undefined;
+		expect(submitButton?.disabled).toBe(false);
 		expect(document.body.textContent || '').toContain(
 			'Submit uses your latest changes. Save Draft is optional if you want to come back later.'
-		)
+		);
 
-		submitButton?.click()
+		submitButton?.click();
 
-		expect(mounted.getLatestSubmitRows()).toEqual([
-			{
-				course: 'ESS',
-				applied_basket_group: 'Group 4 Sciences',
-				choice_rank: 1,
-			},
-		])
-	})
-})
+		expect(mounted.getLatestSubmitPayload()).toEqual({
+			courses: [
+				{
+					course: 'ESS',
+					applied_basket_group: 'Group 4 Sciences',
+					choice_rank: 1,
+				},
+			],
+			enrollment_intent: undefined,
+		});
+	});
+});
