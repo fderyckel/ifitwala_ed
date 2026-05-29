@@ -17,6 +17,7 @@ from ifitwala_ed.schedule.program_enrollment_request_seed import (
     get_target_request_map,
     target_courses_by_group,
 )
+from ifitwala_ed.utilities.employee_utils import get_user_visible_schools
 
 WINDOW_STATUS_OPTIONS = {"Draft", "Open", "Closed", "Archived"}
 WINDOW_AUDIENCE_OPTIONS = {"Student", "Guardian"}
@@ -336,3 +337,43 @@ class ProgramOfferingSelectionWindow(Document):
         self.status = "Closed"
         self.save(ignore_permissions=True)
         return {"ok": True, "status": self.status}
+
+
+def get_permission_query_conditions(user: str | None = None):
+    resolved_user = user or frappe.session.user
+    if resolved_user == "Administrator" or "System Manager" in frappe.get_roles(resolved_user):
+        return None
+
+    visible_schools = get_user_visible_schools(resolved_user)
+    if not visible_schools:
+        return "1=0"
+
+    schools_list = ", ".join(frappe.db.escape(school) for school in visible_schools)
+    return f"`tabProgram Offering Selection Window`.`school` IN ({schools_list})"
+
+
+def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bool:
+    resolved_user = user or frappe.session.user
+    if resolved_user == "Administrator" or "System Manager" in frappe.get_roles(resolved_user):
+        return True
+
+    if not doc:
+        return True
+
+    visible_schools = get_user_visible_schools(resolved_user)
+    if not visible_schools:
+        return False
+
+    school = _selection_window_school(doc)
+    if not school:
+        return (ptype or "").lower() == "create"
+
+    return school in visible_schools
+
+
+def _selection_window_school(doc) -> str | None:
+    if isinstance(doc, str):
+        return frappe.db.get_value("Program Offering Selection Window", doc, "school")
+    if isinstance(doc, dict):
+        return doc.get("school")
+    return getattr(doc, "school", None)

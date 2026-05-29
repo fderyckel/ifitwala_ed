@@ -3,8 +3,8 @@ title: "Program Offering Selection Window: Time-Bound Self-Enrollment Campaign"
 slug: program-offering-selection-window
 category: Enrollment
 doc_order: 3
-version: "1.0.3"
-last_change_date: "2026-04-05"
+version: "1.0.4"
+last_change_date: "2026-05-29"
 summary: "Launch one time-bound student or guardian self-enrollment campaign for a Program Offering and Academic Year, pre-create draft Program Enrollment Requests, collect choices through the portal, and monitor response status from the window without bypassing the request-first architecture."
 seo_title: "Program Offering Selection Window: Time-Bound Self-Enrollment Campaign"
 seo_description: "Launch portal self-enrollment for one Program Offering and Academic Year while keeping Program Enrollment Request as the canonical staging object."
@@ -78,6 +78,8 @@ Opening a selection window never writes committed enrollment directly. It batch-
 | `Academic Admin` | Yes | Yes | Yes | Yes |
 | `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
 
+Desk visibility is limited to windows whose resolved `school` is inside the user's staff school scope.
+
 ## Related Docs
 
 <RelatedDocs
@@ -91,6 +93,7 @@ Opening a selection window never writes committed enrollment directly. It batch-
 
 - **DocType schema file**: `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window.json`
 - **Controller file**: `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window.py`
+- **Desk list file**: `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window_list.js`
 - **Child table schema file**: `ifitwala_ed/schedule/doctype/program_offering_selection_window_student/program_offering_selection_window_student.json`
 - **Required fields (`reqd=1`)**:
   - `program_offering` (`Link`)
@@ -104,6 +107,10 @@ Opening a selection window never writes committed enrollment directly. It batch-
   - document method `prepare_requests()` (whitelisted)
   - document method `open_window()` (whitelisted)
   - document method `close_window()` (whitelisted)
+- **Permission hooks**:
+  - `get_permission_query_conditions(user)` scopes Desk lists through `Program Offering Selection Window.school`
+  - `has_permission(doc, ptype, user)` enforces the same school scope at document level
+  - List view strips the generated linked-title join for `program_offering` so scoped permissions do not depend on aliased target-table joins
 
 - **DocType**: `Program Offering Selection Window` (`ifitwala_ed/schedule/doctype/program_offering_selection_window/`)
 - **Autoname**: `format:SEW-{YYYY}-{####}`

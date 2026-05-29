@@ -9,6 +9,7 @@ Code refs:
 - `ifitwala_ed/schedule/doctype/program_offering/program_offering.js`
 - `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window.py`
 - `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window.js`
+- `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window_list.js`
 - `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.py`
 - `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.js`
 - `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request_list.js`
@@ -275,6 +276,7 @@ Code refs:
 - `ifitwala_ed/curriculum/workspace/curriculum/curriculum.json`
 - `ifitwala_ed/schedule/doctype/program_offering/program_offering.js`
 - `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window.js`
+- `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window_list.js`
 - `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.js`
 - `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request_list.js`
 - `ifitwala_ed/ui-spa/src/router/index.ts`
@@ -314,9 +316,10 @@ Students and guardians do not use Desk.
 Desk visibility for school-anchored enrollment doctypes is staff-scope driven:
 
 - when the active `Employee.school` resolves, Desk stays within that school descendant branch
-- when the active `Employee` has no `school`, `Program Offering`, `Program Enrollment Request`, and `Program Enrollment` Desk visibility may widen to all schools in the employee organization's descendant scope
+- when the active `Employee` has no `school`, `Program Offering`, `Program Offering Selection Window`, `Program Enrollment Request`, and `Program Enrollment` Desk visibility may widen to all schools in the employee organization's descendant scope
 - this changes visibility scope only; DocType read/write/create/delete authority still comes from the DocType permission matrix and scripted permission guards
 - the enrollment hooks consume `employee_utils.get_user_visible_schools()`, which delegates the organization-scope-to-school bridge to `employee_utils.get_schools_for_organization_scope()`
+- `Program Offering Selection Window` list visibility is scoped through its own resolved `school` field; Desk list views must not depend on generated linked-title joins to `Program Offering` for tenant isolation
 - `Program Enrollment Request` list visibility is scoped through its own resolved `school` field; Desk list views must not depend on generated linked-title joins to `Program Offering` or `Student` for tenant isolation
 
 ### 4.2 Student portal ownership
@@ -370,11 +373,13 @@ The following are design regressions:
 Status: Active
 Code refs:
 - `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window.py`
+- `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window_list.js`
 - `ifitwala_ed/schedule/program_enrollment_request_seed.py`
 - `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.py`
 - `ifitwala_ed/api/self_enrollment.py`
 Test refs:
 - `ifitwala_ed/schedule/doctype/program_offering_selection_window/test_program_offering_selection_window.py`
+- `ifitwala_ed/schedule/test_program_scope_permissions_unit.py`
 - `ifitwala_ed/schedule/doctype/program_enrollment_request/test_program_enrollment_request.py`
 - `ifitwala_ed/api/test_self_enrollment.py`
 

@@ -144,6 +144,43 @@ def _program_enrollment_request_module():
         yield import_fresh("ifitwala_ed.schedule.doctype.program_enrollment_request.program_enrollment_request")
 
 
+@contextmanager
+def _program_offering_selection_window_module():
+    frappe_utils = ModuleType("frappe.utils")
+    frappe_utils.cint = lambda value=0: int(value or 0)
+    frappe_utils.get_datetime = lambda value=None: value
+    frappe_utils.now_datetime = lambda: "2026-04-23 10:00:00"
+
+    basket_group_utils = ModuleType("ifitwala_ed.schedule.basket_group_utils")
+    basket_group_utils.get_offering_course_semantics = lambda *args, **kwargs: {}
+
+    request_seed = ModuleType("ifitwala_ed.schedule.program_enrollment_request_seed")
+    request_seed.build_request_rows_for_student = lambda *args, **kwargs: ([], [])
+    request_seed.create_draft_request = lambda *args, **kwargs: SimpleNamespace(name="PER-TEST")
+    request_seed.get_source_enrollment_map = lambda *args, **kwargs: {}
+    request_seed.get_target_enrollments = lambda *args, **kwargs: {}
+    request_seed.get_target_request_map = lambda *args, **kwargs: {}
+    request_seed.target_courses_by_group = lambda *args, **kwargs: {}
+
+    employee_utils = ModuleType("ifitwala_ed.utilities.employee_utils")
+    employee_utils.get_user_visible_schools = lambda user=None: []
+
+    with stubbed_frappe(
+        extra_modules={
+            "frappe.utils": frappe_utils,
+            "ifitwala_ed.schedule.basket_group_utils": basket_group_utils,
+            "ifitwala_ed.schedule.program_enrollment_request_seed": request_seed,
+            "ifitwala_ed.utilities.employee_utils": employee_utils,
+        }
+    ) as frappe:
+        frappe.get_roles = lambda user: []
+        frappe.db.escape = lambda value, percent=True: f"'{value}'"
+        frappe.db.get_value = lambda *args, **kwargs: None
+        yield import_fresh(
+            "ifitwala_ed.schedule.doctype.program_offering_selection_window.program_offering_selection_window"
+        )
+
+
 class TestProgramOfferingPermissionScopeUnit(TestCase):
     def test_permission_query_conditions_use_visible_school_scope(self):
         with _program_offering_module() as program_offering:
@@ -227,4 +264,34 @@ class TestProgramEnrollmentRequestPermissionScopeUnit(TestCase):
                 )
                 self.assertFalse(
                     program_enrollment_request.has_permission(blocked_doc, ptype="read", user="staff@example.com")
+                )
+
+
+class TestProgramOfferingSelectionWindowPermissionScopeUnit(TestCase):
+    def test_permission_query_conditions_use_window_school_scope(self):
+        with _program_offering_selection_window_module() as selection_window:
+            with (
+                patch.object(selection_window.frappe, "get_roles", return_value=["Academic Assistant"]),
+                patch.object(selection_window, "get_user_visible_schools", return_value=["SCH-ROOT", "SCH-1"]),
+            ):
+                condition = selection_window.get_permission_query_conditions("assistant@example.com")
+
+        self.assertEqual(condition, "`tabProgram Offering Selection Window`.`school` IN ('SCH-ROOT', 'SCH-1')")
+        self.assertNotIn("`tabProgram Offering`.`school`", condition)
+        self.assertNotIn("program_offering.", condition)
+
+    def test_has_permission_allows_window_in_visible_school_scope(self):
+        with _program_offering_selection_window_module() as selection_window:
+            allowed_doc = SimpleNamespace(school="SCH-1")
+            blocked_doc = SimpleNamespace(school="SCH-OTHER")
+
+            with (
+                patch.object(selection_window.frappe, "get_roles", return_value=["Academic Assistant"]),
+                patch.object(selection_window, "get_user_visible_schools", return_value=["SCH-ROOT", "SCH-1"]),
+            ):
+                self.assertTrue(
+                    selection_window.has_permission(allowed_doc, ptype="read", user="assistant@example.com")
+                )
+                self.assertFalse(
+                    selection_window.has_permission(blocked_doc, ptype="read", user="assistant@example.com")
                 )
