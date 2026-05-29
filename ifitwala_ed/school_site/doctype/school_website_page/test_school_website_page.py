@@ -5,6 +5,7 @@
 
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
@@ -119,6 +120,27 @@ class TestSchoolWebsitePage(FrappeTestCase):
         self.assertEqual(page.workflow_state, "Draft")
         self.assertEqual(page.status, "Draft")
         self.assertEqual(page.is_published, 0)
+
+    def test_school_website_page_validates_content_owner(self):
+        page = frappe.get_doc(
+            {
+                "doctype": "School Website Page",
+                "school": "Test School",
+                "route": "/",
+                "page_type": "Standard",
+                "title": "Home",
+                "content_owner": "teacher@example.com",
+            }
+        )
+
+        with patch(
+            "ifitwala_ed.school_site.doctype.school_website_page.school_website_page.validate_school_website_page_content_owner",
+            side_effect=frappe.ValidationError,
+        ) as validate_content_owner:
+            with self.assertRaises(frappe.ValidationError):
+                page.validate()
+
+        validate_content_owner.assert_called_once_with(user="teacher@example.com", school="Test School")
 
     def test_non_draft_school_website_page_requires_enabled_block(self):
         organization = make_organization(prefix="Review Org")

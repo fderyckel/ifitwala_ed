@@ -86,6 +86,8 @@ function getSelectedBlockRow(frm) {
 
 const BLOCK_REGISTRY_METHOD_GET_ALLOWED =
 	"ifitwala_ed.website.block_registry.get_allowed_block_types_for_builder";
+const CONTENT_OWNER_QUERY_METHOD =
+	"ifitwala_ed.website.permissions.get_school_website_page_content_owner_options";
 const SEO_ASSISTANT_METHOD =
 	"ifitwala_ed.website.seo_checks.get_seo_assistant_report";
 const WORKFLOW_METHOD =
@@ -335,6 +337,15 @@ async function refreshSeoAssistant(frm, { showErrorToast = false } = {}) {
 }
 
 frappe.ui.form.on("School Website Page", {
+	setup(frm) {
+		frm.set_query("content_owner", () => ({
+			query: CONTENT_OWNER_QUERY_METHOD,
+			filters: {
+				school: frm.doc.school || ""
+			}
+		}));
+	},
+
 	refresh(frm) {
 		frm.clear_custom_buttons();
 		syncAllowedBlockTypes(frm);

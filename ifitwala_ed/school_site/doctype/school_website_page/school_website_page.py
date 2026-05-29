@@ -6,6 +6,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from ifitwala_ed.website.permissions import validate_school_website_page_content_owner
 from ifitwala_ed.website.publication import (
     WORKFLOW_DEFAULT_STATE,
     WORKFLOW_TRANSITIONS,
@@ -65,6 +66,7 @@ class SchoolWebsitePage(Document):
 
     def validate(self):
         self._ensure_workflow_state()
+        validate_school_website_page_content_owner(user=self.content_owner, school=self.school)
         validate_publication_window(publish_at=self.publish_at, expire_at=self.expire_at)
         self._sync_status_flags()
         apply_missing_block_enabled_defaults(self.blocks)

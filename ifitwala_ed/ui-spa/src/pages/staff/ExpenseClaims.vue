@@ -336,6 +336,75 @@
 							</p>
 						</div>
 
+						<div class="grid gap-3 sm:grid-cols-3">
+							<div class="rounded-lg border border-slate-200 bg-white p-3">
+								<p class="type-overline text-slate-token/70">{{ __('Receipts') }}</p>
+								<p
+									class="type-body-strong"
+									:class="receiptCount(claim) ? 'text-ink' : 'text-flame'"
+								>
+									{{ receiptCount(claim) }}
+								</p>
+							</div>
+							<div class="rounded-lg border border-slate-200 bg-white p-3">
+								<p class="type-overline text-slate-token/70">{{ __('Items') }}</p>
+								<p class="type-body-strong text-ink">{{ itemCount(claim) }}</p>
+							</div>
+							<div class="rounded-lg border border-slate-200 bg-white p-3">
+								<p class="type-overline text-slate-token/70">{{ __('Coding') }}</p>
+								<p
+									class="type-body-strong"
+									:class="financeCodingReady(claim) ? 'text-ink' : 'text-flame'"
+								>
+									{{ financeCodingReady(claim) ? __('Ready') : __('Select accounts') }}
+								</p>
+							</div>
+						</div>
+
+						<div v-if="claim.receipts.length" class="flex flex-wrap gap-2">
+							<a
+								v-for="receipt in claim.receipts"
+								:key="receipt.row_name"
+								:href="receipt.attachment?.open_url || receipt.external_url || '#'"
+								target="_blank"
+								rel="noopener"
+								class="rounded-full bg-sky/15 px-3 py-1 type-caption text-canopy"
+							>
+								{{ receipt.title }}
+							</a>
+						</div>
+
+						<div class="overflow-x-auto rounded-lg border border-slate-200">
+							<table class="min-w-full divide-y divide-slate-200 text-left">
+								<thead class="bg-slate-50">
+									<tr>
+										<th class="px-3 py-2 type-label text-slate-token">{{ __('Category') }}</th>
+										<th class="px-3 py-2 type-label text-slate-token">
+											{{ __('Description') }}
+										</th>
+										<th class="px-3 py-2 type-label text-slate-token">{{ __('Claimed') }}</th>
+										<th class="px-3 py-2 type-label text-slate-token">{{ __('Approved') }}</th>
+									</tr>
+								</thead>
+								<tbody class="divide-y divide-slate-100 bg-white">
+									<tr v-for="item in claim.items" :key="item.row_name || item.description">
+										<td class="px-3 py-2 type-caption text-slate-token">
+											{{ item.expense_category }}
+										</td>
+										<td class="px-3 py-2 type-caption text-slate-token">
+											{{ item.description }}
+										</td>
+										<td class="px-3 py-2 type-caption text-slate-token">
+											{{ money(item.claimed_amount) }}
+										</td>
+										<td class="px-3 py-2 type-caption text-slate-token">
+											{{ money(item.sanctioned_amount || item.claimed_amount) }}
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+
 						<div v-if="financeForms[claim.name]" class="grid gap-3 lg:grid-cols-3">
 							<label v-if="claim.status === 'Approved'" class="space-y-2">
 								<span class="type-label text-ink">{{ __('Expense Account') }}</span>
@@ -388,7 +457,21 @@
 							</label>
 						</div>
 
-						<div class="flex justify-end">
+						<label v-if="claim.status === 'Approved'" class="block space-y-2">
+							<span class="type-label text-ink">{{ __('Request Info Notes') }}</span>
+							<textarea v-model.trim="financeNotes[claim.name]" class="form-textarea min-h-20" />
+						</label>
+
+						<div class="flex flex-wrap justify-end gap-2">
+							<button
+								v-if="claim.status === 'Approved'"
+								type="button"
+								class="if-button if-button--secondary"
+								@click="requestFinanceInfo(claim.name)"
+							>
+								<FeatherIcon name="message-square" class="h-4 w-4" />
+								<span>{{ __('Request Info') }}</span>
+							</button>
 							<button
 								v-if="claim.status === 'Approved'"
 								type="button"
@@ -426,6 +509,7 @@ import {
 	decideExpenseClaim,
 	getExpenseClaimBoard,
 	postExpenseClaimPayable,
+	requestExpenseClaimInfo,
 	saveExpenseClaimDraft,
 	submitExpenseClaim,
 	uploadExpenseClaimReceipt,
@@ -453,6 +537,7 @@ const board = ref<ExpenseClaimBoard | null>(null);
 const receiptFiles = ref<File[]>([]);
 const financeForms = reactive<Record<string, FinanceForm>>({});
 const decisionNotes = reactive<Record<string, string>>({});
+const financeNotes = reactive<Record<string, string>>({});
 
 const draft = reactive<{
 	expense_claim: string | null;
@@ -534,6 +619,20 @@ function accountLabel(account: ExpenseClaimAccountOption) {
 	return account.account_number ? `${account.account_number} - ${account.label}` : account.label;
 }
 
+function receiptCount(claim: ExpenseClaimRow) {
+	return claim.receipts?.length || 0;
+}
+
+function itemCount(claim: ExpenseClaimRow) {
+	return claim.items?.length || 0;
+}
+
+function financeCodingReady(claim: ExpenseClaimRow) {
+	if (claim.status !== 'Approved') return true;
+	const form = financeForms[claim.name];
+	return Boolean(form?.expense_account && form?.payable_account);
+}
+
 function canCancel(claim: ExpenseClaimRow) {
 	return ['Draft', 'Needs Info', 'Submitted', 'Approved'].includes(claim.status);
 }
@@ -557,6 +656,7 @@ function reviseClaim(claim: ExpenseClaimRow) {
 	}));
 	receiptFiles.value = [];
 	formError.value = '';
+	requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
 }
 
 function ensureFinanceForm(claim: ExpenseClaimRow) {
@@ -690,6 +790,29 @@ async function decide(expenseClaim: string, decision: 'approve' | 'reject' | 're
 	} catch (error: any) {
 		toast.create({
 			title: __('Could not decide claim'),
+			text: error?.message || '',
+			icon: 'alert-circle',
+		});
+	}
+}
+
+async function requestFinanceInfo(expenseClaim: string) {
+	const notes = financeNotes[expenseClaim] || '';
+	if (!notes.trim()) {
+		toast.create({ title: __('Add notes before requesting information'), icon: 'alert-circle' });
+		return;
+	}
+	try {
+		const response = await requestExpenseClaimInfo({
+			expense_claim: expenseClaim,
+			notes,
+		});
+		board.value = response.board;
+		financeNotes[expenseClaim] = '';
+		toast.create({ title: __('Information requested'), icon: 'check' });
+	} catch (error: any) {
+		toast.create({
+			title: __('Could not request information'),
 			text: error?.message || '',
 			icon: 'alert-circle',
 		});

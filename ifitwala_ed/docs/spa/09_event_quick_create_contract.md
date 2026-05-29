@@ -76,7 +76,7 @@ Rules:
    - `ifitwala_ed.api.calendar.create_school_event_quick`
 2. SPA POST payloads are sent as the JSON body directly, not wrapped inside a nested `payload` object.
 3. `get_event_quick_create_options()` is the canonical source for meeting categories, school-event categories, audience types, selectable schools, selectable teams, selectable student groups, school-keyed selectable locations, school-keyed selectable room types, attendee kinds, and default scheduling times.
-4. `search_meeting_attendees(...)` returns a mixed attendee list with `kind`, `label`, `meta`, and `availability_mode`.
+4. `search_meeting_attendees(...)` returns a mixed attendee list with `kind`, `label`, `meta`, and `availability_mode`; employee results may span sibling schools inside the same real organization collaboration root, while student and guardian results remain constrained to the caller's authorized student school scope.
 5. `suggest_meeting_slots(...)` returns ranked exact matches plus fallback slots, server-owned availability notes, and when room-aware ranking is requested, suggested-room metadata on each slot; the request may also constrain ranking by `location_type`.
 6. `suggest_meeting_rooms(...)` returns ranked free-room suggestions plus room-scope notes, may constrain ranking by `location_type`, and may check a `selected_location` for final preflight before create.
 7. `create_meeting_quick(...)` accepts explicit attendees, optional team context, optional host school, explicit `include_students` / `include_guardians` invite-scope guard flags, and an idempotency key via `client_request_id`.
@@ -102,7 +102,7 @@ Test refs:
 
 Rules:
 
-1. Ad-hoc meetings are attendee-first and staff-safe by default: employees appear in attendee search immediately, while students and guardians appear only after the user explicitly enables the matching invite-scope checkbox.
+1. Ad-hoc meetings are attendee-first and staff-safe by default: employees appear in attendee search immediately, including cross-school employees inside the same real organization collaboration root, while students and guardians appear only after the user explicitly enables the matching invite-scope checkbox.
 2. The organizer is always added server-side, even if the attendee list does not include the organizer explicitly.
 3. Ad-hoc meetings require a host school so the meeting remains anchored to school and academic-year metadata even when no team is present.
 4. Team bulk-add in ad-hoc mode only affects the attendee list; the final create payload leaves `team` empty so the meeting stays `Participants Only`.

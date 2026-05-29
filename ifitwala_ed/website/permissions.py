@@ -17,6 +17,15 @@ WEBSITE_STORY_CONTENT_OWNER_ROLES = (
     "Website Manager",
     "System Manager",
 )
+SCHOOL_WEBSITE_PAGE_CONTENT_OWNER_ROLES = (
+    "Website Manager",
+    "Academic Admin",
+    "Academic Assistant",
+    "Admission Officer",
+    "Admission Manager",
+    "Marketing User",
+    "Marketing Manager",
+)
 
 
 def _can_bypass_scope(user: str | None = None) -> bool:
@@ -112,7 +121,12 @@ def website_notice_has_permission(doc, ptype: str | None = None, user: str | Non
     return has_school_scoped_permission(doc, user=user)
 
 
-def is_eligible_website_story_content_owner(*, user: str | None, school: str | None) -> bool:
+def _is_eligible_content_owner(
+    *,
+    user: str | None,
+    school: str | None,
+    allowed_roles: tuple[str, ...],
+) -> bool:
     if not user or not school:
         return False
 
@@ -125,7 +139,7 @@ def is_eligible_website_story_content_owner(*, user: str | None, school: str | N
         return False
 
     user_roles = set(frappe.get_roles(user))
-    if not user_roles.intersection(set(WEBSITE_STORY_CONTENT_OWNER_ROLES)):
+    if not user_roles.intersection(set(allowed_roles)):
         return False
 
     if _can_bypass_scope(user):
@@ -135,6 +149,22 @@ def is_eligible_website_story_content_owner(*, user: str | None, school: str | N
     if not scope:
         return False
     return school in scope
+
+
+def is_eligible_website_story_content_owner(*, user: str | None, school: str | None) -> bool:
+    return _is_eligible_content_owner(
+        user=user,
+        school=school,
+        allowed_roles=WEBSITE_STORY_CONTENT_OWNER_ROLES,
+    )
+
+
+def is_eligible_school_website_page_content_owner(*, user: str | None, school: str | None) -> bool:
+    return _is_eligible_content_owner(
+        user=user,
+        school=school,
+        allowed_roles=SCHOOL_WEBSITE_PAGE_CONTENT_OWNER_ROLES,
+    )
 
 
 def validate_website_story_content_owner(*, user: str | None, school: str | None) -> None:
@@ -154,8 +184,32 @@ def validate_website_story_content_owner(*, user: str | None, school: str | None
     )
 
 
-@frappe.whitelist()
-def get_website_story_content_owner_options(doctype, txt, searchfield, start, page_len, filters):
+def validate_school_website_page_content_owner(*, user: str | None, school: str | None) -> None:
+    if not user:
+        return
+    if not school:
+        frappe.throw(_("Select a School before setting Content Owner."), frappe.ValidationError)
+
+    if is_eligible_school_website_page_content_owner(user=user, school=school):
+        return
+
+    frappe.throw(
+        _(
+            "Content Owner must be an enabled System User with one of these roles: {roles}. The user must also be scoped for this School. Portal Website Users are not allowed."
+        ).format(roles=", ".join(SCHOOL_WEBSITE_PAGE_CONTENT_OWNER_ROLES)),
+        frappe.ValidationError,
+    )
+
+
+def _get_content_owner_options(
+    *,
+    txt,
+    start,
+    page_len,
+    filters,
+    allowed_roles: tuple[str, ...],
+    eligibility_fn,
+):
     query_filters = filters or {}
     if isinstance(query_filters, str):
         query_filters = frappe.parse_json(query_filters) or {}
@@ -170,7 +224,7 @@ def get_website_story_content_owner_options(doctype, txt, searchfield, start, pa
             for parent in frappe.get_all(
                 "Has Role",
                 filters={
-                    "role": ["in", list(WEBSITE_STORY_CONTENT_OWNER_ROLES)],
+                    "role": ["in", list(allowed_roles)],
                     "parenttype": "User",
                 },
                 pluck="parent",
@@ -201,10 +255,34 @@ def get_website_story_content_owner_options(doctype, txt, searchfield, start, pa
         full_name = str(row.get("full_name") or "")
         if needle and needle not in name.casefold() and needle not in full_name.casefold():
             continue
-        if not is_eligible_website_story_content_owner(user=name, school=school):
+        if not eligibility_fn(user=name, school=school):
             continue
         eligible_rows.append((name, full_name or name))
 
     start_idx = int(start or 0)
     page_size = int(page_len or 20)
     return eligible_rows[start_idx : start_idx + page_size]
+
+
+@frappe.whitelist()
+def get_website_story_content_owner_options(doctype, txt, searchfield, start, page_len, filters):
+    return _get_content_owner_options(
+        txt=txt,
+        start=start,
+        page_len=page_len,
+        filters=filters,
+        allowed_roles=WEBSITE_STORY_CONTENT_OWNER_ROLES,
+        eligibility_fn=is_eligible_website_story_content_owner,
+    )
+
+
+@frappe.whitelist()
+def get_school_website_page_content_owner_options(doctype, txt, searchfield, start, page_len, filters):
+    return _get_content_owner_options(
+        txt=txt,
+        start=start,
+        page_len=page_len,
+        filters=filters,
+        allowed_roles=SCHOOL_WEBSITE_PAGE_CONTENT_OWNER_ROLES,
+        eligibility_fn=is_eligible_school_website_page_content_owner,
+    )

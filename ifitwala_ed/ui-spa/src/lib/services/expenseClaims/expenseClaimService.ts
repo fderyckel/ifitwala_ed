@@ -22,6 +22,10 @@ import type {
 	Response as PostExpenseClaimPayableResponse,
 } from '@/types/contracts/expense_claims/post_expense_claim_payable'
 import type {
+	Request as RequestExpenseClaimInfoRequest,
+	Response as RequestExpenseClaimInfoResponse,
+} from '@/types/contracts/expense_claims/request_expense_claim_info'
+import type {
 	Request as SaveExpenseClaimDraftRequest,
 	Response as SaveExpenseClaimDraftResponse,
 } from '@/types/contracts/expense_claims/save_expense_claim_draft'
@@ -37,6 +41,7 @@ const METHODS = {
 	submit: 'ifitwala_ed.api.expense_claims.submit_expense_claim',
 	decide: 'ifitwala_ed.api.expense_claims.decide_expense_claim',
 	postPayable: 'ifitwala_ed.api.expense_claims.post_expense_claim_payable',
+	requestInfo: 'ifitwala_ed.api.expense_claims.request_expense_claim_info',
 	createPayment: 'ifitwala_ed.api.expense_claims.create_expense_claim_payment',
 	cancel: 'ifitwala_ed.api.expense_claims.cancel_expense_claim',
 	uploadReceipt: 'ifitwala_ed.api.expense_claim_receipts.upload_expense_claim_receipt',
@@ -70,6 +75,12 @@ export async function postExpenseClaimPayable(
 	payload: PostExpenseClaimPayableRequest
 ): Promise<PostExpenseClaimPayableResponse> {
 	return apiMethod<PostExpenseClaimPayableResponse>(METHODS.postPayable, payload)
+}
+
+export async function requestExpenseClaimInfo(
+	payload: RequestExpenseClaimInfoRequest
+): Promise<RequestExpenseClaimInfoResponse> {
+	return apiMethod<RequestExpenseClaimInfoResponse>(METHODS.requestInfo, payload)
 }
 
 export async function createExpenseClaimPayment(

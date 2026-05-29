@@ -699,6 +699,30 @@ def decide_claim(
     return frappe.get_doc("Expense Claim", doc.name)
 
 
+def request_claim_info(expense_claim: str, *, notes: str, acting_user: str | None = None):
+    acting_user = acting_user or frappe.session.user
+    _ensure_finance_access(acting_user)
+
+    doc = frappe.get_doc("Expense Claim", expense_claim)
+    if doc.status != "Approved":
+        frappe.throw(_("Only approved Expense Claims can be sent back by finance before payable posting."))
+    if not _clean_text(notes):
+        frappe.throw(_("Explain what information or receipts are needed before sending the claim back."))
+
+    doc.flags.ignore_expense_claim_lock = True
+    doc.status = "Needs Info"
+    doc.decision_by = acting_user
+    doc.decision_on = now_datetime()
+    doc.decision_notes = notes
+    doc.save(ignore_permissions=True)
+    _close_expense_claim_todos(
+        doc.name,
+        kinds={EXPENSE_CLAIM_TODO_FINANCE_POST, EXPENSE_CLAIM_TODO_FINANCE_PAY},
+    )
+    _assign_claimant_update_todo(doc)
+    return frappe.get_doc("Expense Claim", doc.name)
+
+
 def _apply_finance_account_mapping(
     doc, *, expense_account: str | None, item_accounts: list[dict[str, Any]] | None
 ) -> None:

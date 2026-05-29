@@ -50,6 +50,42 @@ class TestExpenseClaimPermissions(FrappeTestCase):
             )
         )
 
+    def test_finance_request_info_moves_approved_claim_to_needs_info(self):
+        class FakeClaim:
+            name = "EXC-26-00001"
+            status = "Approved"
+            decision_by = None
+            decision_on = None
+            decision_notes = None
+            flags = frappe._dict()
+
+            def save(self, ignore_permissions=False):
+                self.saved_ignore_permissions = ignore_permissions
+
+        claim = FakeClaim()
+
+        with (
+            patch("ifitwala_ed.hr.expense_claims.frappe.get_doc", return_value=claim),
+            patch("ifitwala_ed.hr.expense_claims._ensure_finance_access") as ensure_finance_access,
+            patch("ifitwala_ed.hr.expense_claims._close_expense_claim_todos") as close_todos,
+            patch("ifitwala_ed.hr.expense_claims._assign_claimant_update_todo") as assign_claimant_todo,
+            patch("ifitwala_ed.hr.expense_claims.now_datetime", return_value="2026-05-29 12:00:00"),
+        ):
+            returned = expense_claims.request_claim_info(
+                "EXC-26-00001",
+                notes="Please attach the itemized receipt.",
+                acting_user="finance@example.com",
+            )
+
+        ensure_finance_access.assert_called_once_with("finance@example.com")
+        close_todos.assert_called_once()
+        assign_claimant_todo.assert_called_once_with(claim)
+        self.assertIs(returned, claim)
+        self.assertEqual(claim.status, "Needs Info")
+        self.assertEqual(claim.decision_by, "finance@example.com")
+        self.assertEqual(claim.decision_notes, "Please attach the itemized receipt.")
+        self.assertTrue(claim.saved_ignore_permissions)
+
     def test_expense_claim_pqc_is_self_or_approver_scoped_for_employee(self):
         with (
             patch(

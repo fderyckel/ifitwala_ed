@@ -12,6 +12,7 @@
 * One H1 owner block must be first (`hero`, `admissions_overview`, or `program_intro`).
 * Route input for `School Website Page` is school-relative (`/`, `about`, `admissions`, `about/team`).
 * Publication is workflow-driven (`Draft -> In Review -> Approved -> Published`) and website-owned records may also use `publish_at` / `expire_at`.
+* `School Website Page.content_owner` is optional but, when set, must be an enabled internal `System User` with one of these roles in the relevant school scope: `Website Manager`, `Academic Admin`, `Academic Assistant`, `Admission Officer`, `Admission Manager`, `Marketing User`, or `Marketing Manager`. Student, guardian, and other portal users are not valid content owners.
 * First-time School publication now prepares and publishes canonical starter pages (`/`, `about`, `admissions`, `programs`) when the School itself is public.
 * First-time Program/Course publication still prepares starter website/SEO defaults without bypassing profile review workflow.
 * Allowed blocks depend on context:

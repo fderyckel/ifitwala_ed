@@ -28,7 +28,7 @@ from ifitwala_ed.schedule.schedule_utils import iter_student_group_room_slots
 from ifitwala_ed.school_settings.doctype.school_event.school_event import (
     publish_companion_org_communication_for_event,
 )
-from ifitwala_ed.utilities.employee_utils import get_descendant_organizations
+from ifitwala_ed.utilities.employee_utils import get_ancestor_organizations, get_descendant_organizations
 from ifitwala_ed.utilities.location_utils import (
     find_room_conflicts,
     get_location_scope,
@@ -49,6 +49,7 @@ MAX_SLOT_SEARCH_DAYS = 14
 SLOT_INCREMENT_MINUTES = 15
 DEFAULT_DAY_START_TIME = "08:00:00"
 DEFAULT_DAY_END_TIME = "17:00:00"
+VIRTUAL_ORGANIZATION_ROOT = "All Organizations"
 
 
 class StudentAvailabilityConflictError(frappe.ValidationError):
@@ -508,6 +509,7 @@ def _get_quick_create_scope(user: str) -> dict:
     )
     organization = _safe_text((employee_row or {}).get("organization"))
     organization_scope = get_descendant_organizations(organization) if organization else []
+    employee_collaboration_organization_scope = _employee_collaboration_organization_scope(organization)
 
     school_scope: list[str] = []
     if base_school:
@@ -528,6 +530,7 @@ def _get_quick_create_scope(user: str) -> dict:
         "base_school": base_school or None,
         "organization": organization or None,
         "organization_scope": organization_scope,
+        "employee_collaboration_organization_scope": employee_collaboration_organization_scope,
         "school_scope": school_scope,
         "student_scope": student_scope,
     }
@@ -709,6 +712,20 @@ def _format_slot_label(start_dt: datetime, end_dt: datetime) -> str:
 
 def _current_user_label(user: str) -> str:
     return frappe.db.get_value("User", user, "full_name") or user
+
+
+def _employee_collaboration_organization_scope(organization: str | None) -> list[str]:
+    organization_value = _safe_text(organization)
+    if not organization_value:
+        return []
+
+    ancestors = [
+        org
+        for org in (get_ancestor_organizations(organization_value) or [organization_value])
+        if org and org != VIRTUAL_ORGANIZATION_ROOT
+    ]
+    collaboration_root = ancestors[-1] if ancestors else organization_value
+    return get_descendant_organizations(collaboration_root) or [collaboration_root]
 
 
 def _search_employee_attendees(
@@ -1817,7 +1834,9 @@ def search_meeting_attendees(
             "query": search_query.lower(),
             "kinds": kinds,
             "limit": result_limit,
-            "organization_scope": scope.get("organization_scope") or [],
+            "employee_collaboration_organization_scope": scope.get("employee_collaboration_organization_scope")
+            or scope.get("organization_scope")
+            or [],
             "student_scope": scope.get("student_scope") or [],
         },
     )
@@ -1833,7 +1852,8 @@ def search_meeting_attendees(
         results.extend(
             _search_employee_attendees(
                 user=user,
-                organization_scope=scope.get("organization_scope")
+                organization_scope=scope.get("employee_collaboration_organization_scope")
+                or scope.get("organization_scope")
                 or ([scope.get("organization")] if scope.get("organization") else []),
                 query=search_query,
                 limit=result_limit,

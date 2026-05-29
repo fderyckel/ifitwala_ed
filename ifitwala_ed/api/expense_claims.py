@@ -14,6 +14,7 @@ from ifitwala_ed.hr.expense_claims import (
     create_claim_payment,
     decide_claim,
     post_claim_payable,
+    request_claim_info,
     save_draft_claim,
     serialize_claim,
     submit_claim,
@@ -143,6 +144,18 @@ def post_expense_claim_payable(
         remarks=remarks,
         acting_user=frappe.session.user,
     )
+    return {
+        "expense_claim": serialize_claim(
+            doc.as_dict(), items=[row.as_dict() for row in doc.items], receipts=[row.as_dict() for row in doc.receipts]
+        ),
+        "board": build_expense_claim_board(frappe.session.user),
+    }
+
+
+@frappe.whitelist()
+def request_expense_claim_info(expense_claim: str, notes: str):
+    _ensure_logged_in()
+    doc = request_claim_info(expense_claim, notes=notes, acting_user=frappe.session.user)
     return {
         "expense_claim": serialize_claim(
             doc.as_dict(), items=[row.as_dict() for row in doc.items], receipts=[row.as_dict() for row in doc.receipts]

@@ -904,7 +904,24 @@ class TestCalendarApi(TestCase):
             ],
         )
 
-    def test_search_meeting_attendees_passes_descendant_organization_scope_to_employee_search(self):
+    def test_employee_collaboration_scope_expands_to_real_parent_organization(self):
+        with (
+            patch(
+                "ifitwala_ed.api.calendar_quick_create.get_ancestor_organizations",
+                return_value=["IHS Organization", "Ifitwala Organization", "All Organizations"],
+            ) as mocked_ancestors,
+            patch(
+                "ifitwala_ed.api.calendar_quick_create.get_descendant_organizations",
+                return_value=["Ifitwala Organization", "IHS Organization", "IMS Organization"],
+            ) as mocked_descendants,
+        ):
+            scope = calendar_quick_create._employee_collaboration_organization_scope("IHS Organization")
+
+        mocked_ancestors.assert_called_once_with("IHS Organization")
+        mocked_descendants.assert_called_once_with("Ifitwala Organization")
+        self.assertEqual(scope, ["Ifitwala Organization", "IHS Organization", "IMS Organization"])
+
+    def test_search_meeting_attendees_passes_collaboration_scope_to_employee_search(self):
         cache = _DummyCache()
 
         with (
@@ -919,6 +936,11 @@ class TestCalendarApi(TestCase):
                 return_value={
                     "organization": "Parent Org",
                     "organization_scope": ["Parent Org", "Child Org"],
+                    "employee_collaboration_organization_scope": [
+                        "Parent Org",
+                        "Child Org",
+                        "Sibling School Org",
+                    ],
                     "student_scope": ["School A"],
                 },
             ),
@@ -943,7 +965,7 @@ class TestCalendarApi(TestCase):
 
         mocked_search.assert_called_once_with(
             user="admission@example.com",
-            organization_scope=["Parent Org", "Child Org"],
+            organization_scope=["Parent Org", "Child Org", "Sibling School Org"],
             query="inter",
             limit=8,
         )
