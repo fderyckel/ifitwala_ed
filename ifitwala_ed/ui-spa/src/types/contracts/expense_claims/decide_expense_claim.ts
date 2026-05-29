@@ -2,7 +2,7 @@ import type { ExpenseClaimBoard, ExpenseClaimItemRow, ExpenseClaimRow } from './
 
 export type Request = {
 	expense_claim: string
-	decision: 'approve' | 'reject'
+	decision: 'approve' | 'reject' | 'request_info'
 	notes?: string | null
 	sanctioned_items?: ExpenseClaimItemRow[]
 }

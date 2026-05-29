@@ -174,7 +174,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Draft\nSubmitted\nApproved\nRejected\nFinance Review\nPayable Posted\nPaid\nCancelled",
+   "options": "Draft\nSubmitted\nNeeds Info\nApproved\nRejected\nFinance Review\nPayable Posted\nPaid\nCancelled",
    "read_only": 1
   },
   {
@@ -269,7 +269,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-29 10:43:10.000000",
+ "modified": "2026-05-29 15:30:00.000000",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Expense Claim",

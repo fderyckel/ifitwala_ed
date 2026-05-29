@@ -90,6 +90,7 @@ export type ExpenseClaimBoard = {
 	stats: {
 		draft: number
 		submitted: number
+		needs_info: number
 		approved: number
 		outstanding: number
 	}

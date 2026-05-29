@@ -2,9 +2,17 @@
 
 import type { AttachmentPreviewItem } from '@/types/contracts/attachments/shared'
 
+export type FocusReferenceDoctype =
+  | 'Student Log'
+  | 'Inquiry'
+  | 'Applicant Interview'
+  | 'Applicant Review Assignment'
+  | 'Expense Claim'
+  | 'Policy Version'
+
 export type Request = {
   focus_item_id?: string | null
-  reference_doctype?: 'Student Log' | 'Inquiry' | 'Applicant Interview' | 'Applicant Review Assignment' | 'Policy Version' | null
+  reference_doctype?: FocusReferenceDoctype | null
   reference_name?: string | null
   action_type?: string | null
 }
@@ -12,7 +20,7 @@ export type Request = {
 export type Response = {
   focus_item_id?: string | null
   action_type?: string | null
-  reference_doctype: 'Student Log' | 'Inquiry' | 'Applicant Interview' | 'Applicant Review Assignment' | 'Policy Version'
+  reference_doctype: FocusReferenceDoctype
   reference_name: string
   mode: 'assignee' | 'author'
   log: {
@@ -150,6 +158,27 @@ export type Response = {
     todo_due_date?: string | null
     is_acknowledged?: boolean
     acknowledged_at?: string | null
+  } | null
+  expense_claim?: {
+    name: string
+    claim_title?: string | null
+    employee?: string | null
+    employee_name?: string | null
+    organization?: string | null
+    school?: string | null
+    claim_date?: string | null
+    status?: string | null
+    claimed_total?: number | null
+    sanctioned_total?: number | null
+    outstanding_amount?: number | null
+    decision_notes?: string | null
+    items?: Array<{
+      expense_date?: string | null
+      expense_category?: string | null
+      description?: string | null
+      claimed_amount?: number | null
+      sanctioned_amount?: number | null
+    }>
   } | null
 }
 

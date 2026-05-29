@@ -130,6 +130,11 @@ Used by:
 									@done="onWorkflowDone"
 									@request-refresh="reload"
 								/>
+								<ExpenseClaimFocusAction
+									v-else-if="isExpenseClaimAction && ctx"
+									:context="ctx"
+									@close="requestClose"
+								/>
 
 								<!-- Not implemented -->
 								<div v-else class="card-panel p-5">
@@ -183,6 +188,7 @@ import InquiryFollowUpAction from '@/components/focus/InquiryFollowUpAction.vue'
 import ApplicantReviewAssignmentAction from '@/components/focus/ApplicantReviewAssignmentAction.vue';
 import ApplicantInterviewFeedbackAction from '@/components/focus/ApplicantInterviewFeedbackAction.vue';
 import StaffPolicyAcknowledgeAction from '@/components/focus/StaffPolicyAcknowledgeAction.vue';
+import ExpenseClaimFocusAction from '@/components/focus/ExpenseClaimFocusAction.vue';
 import { __ } from '@/lib/i18n';
 import { createFocusService } from '@/lib/services/focus/focusService';
 
@@ -275,6 +281,13 @@ const headerTitle = computed(() => {
 	if (referenceDoctype.value === 'Policy Version') {
 		return __('Acknowledge policy');
 	}
+	if (referenceDoctype.value === 'Expense Claim') {
+		if (ctx.value?.action_type === 'expense_claim.claimant.update')
+			return __('Update expense claim');
+		if (ctx.value?.action_type === 'expense_claim.approval.decide')
+			return __('Review expense claim');
+		return __('Process reimbursement');
+	}
 	return __('Focus');
 });
 
@@ -291,6 +304,7 @@ const headerKicker = computed(() => {
 	if (referenceDoctype.value === 'Applicant Interview') return __('Admissions interview');
 	if (referenceDoctype.value === 'Applicant Review Assignment') return __('Admissions review');
 	if (referenceDoctype.value === 'Policy Version') return __('Compliance');
+	if (referenceDoctype.value === 'Expense Claim') return __('Expenses');
 	return __('Focus');
 });
 
@@ -326,6 +340,16 @@ const isStaffPolicyAcknowledgeAction = computed(() => {
 	if (referenceDoctype.value !== 'Policy Version') return false;
 	if (!actionType.value) return false;
 	return actionType.value === 'policy_acknowledgement.staff.sign';
+});
+
+const isExpenseClaimAction = computed(() => {
+	if (referenceDoctype.value !== 'Expense Claim') return false;
+	if (!actionType.value) return false;
+	return (
+		actionType.value === 'expense_claim.approval.decide' ||
+		actionType.value === 'expense_claim.claimant.update' ||
+		actionType.value === 'expense_claim.finance.process'
+	);
 });
 
 /* API ---------------------------------------------------------- */

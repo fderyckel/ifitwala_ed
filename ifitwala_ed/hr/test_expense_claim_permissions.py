@@ -8,7 +8,7 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.hr import expense_claim_permissions
+from ifitwala_ed.hr import expense_claim_permissions, expense_claims
 
 EXPENSE_CLAIM_JSON = Path(__file__).parent / "doctype" / "expense_claim" / "expense_claim.json"
 
@@ -20,6 +20,35 @@ class TestExpenseClaimPermissions(FrappeTestCase):
 
         self.assertNotIn("in_list_view", fields["employee"])
         self.assertEqual(fields["employee_name"].get("in_list_view"), 1)
+
+    def test_expense_claim_status_metadata_matches_runtime_contract(self):
+        metadata = json.loads(EXPENSE_CLAIM_JSON.read_text())
+        fields = {field["fieldname"]: field for field in metadata["fields"]}
+        status_options = set(fields["status"]["options"].splitlines())
+
+        self.assertEqual(status_options, expense_claims.EXPENSE_CLAIM_STATUSES)
+        self.assertIn("Needs Info", status_options)
+        self.assertNotIn("Needs Info", expense_claims.EXPENSE_CLAIM_LOCKED_STATUSES)
+
+    def test_expense_claim_todo_description_is_namespaced_by_kind(self):
+        description = expense_claims._todo_description(
+            expense_claims.EXPENSE_CLAIM_TODO_APPROVER_REVIEW,
+            "Review expense claim EXC-26-00001",
+        )
+
+        self.assertIn(expense_claims.EXPENSE_CLAIM_TODO_MARKER, description)
+        self.assertTrue(
+            expense_claims._todo_kind_matches(
+                description,
+                {expense_claims.EXPENSE_CLAIM_TODO_APPROVER_REVIEW},
+            )
+        )
+        self.assertFalse(
+            expense_claims._todo_kind_matches(
+                description,
+                {expense_claims.EXPENSE_CLAIM_TODO_CLAIMANT_UPDATE},
+            )
+        )
 
     def test_expense_claim_pqc_is_self_or_approver_scoped_for_employee(self):
         with (

@@ -338,7 +338,14 @@ Behavior:
 * Extended `focus.list` and `focus.get_context` with `Policy Version` focus items (staff only)
 * Added named endpoint `focus.acknowledge_staff_policy` with assignment, scope, and idempotency guards
 
-### Phase 4 — Student Referral / Meetings
+### Phase 4 — Expense Claim (delivered)
+
+* Added action types `expense_claim.approval.decide`, `expense_claim.claimant.update`, and `expense_claim.finance.process`
+* Added `ExpenseClaimFocusAction.vue` routed by `FocusRouterOverlay.vue`
+* Extended `focus.list` and `focus.get_context` with `Expense Claim` focus items backed by native Frappe ToDo
+* Kept workflow decisions in `ifitwala_ed.hr.expense_claims`; Focus only routes users back to the Expense Claims workspace
+
+### Phase 5 — Student Referral / Meetings
 
 * Same pattern
 
@@ -467,7 +474,7 @@ We **continue using native Frappe `ToDo`**, with strict encapsulation.
 
 **Confirmed behavior**
 
-* Student Log / Follow Up controllers:
+* Student Log / Follow Up controllers and Expense Claim workflow services:
 
   * create ToDo on assignment
   * close ToDo on completion / auto-close

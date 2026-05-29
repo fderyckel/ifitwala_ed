@@ -39,6 +39,7 @@ declare module 'vue' {
     CreateTaskDeliveryOverlay: typeof import('./src/components/tasks/CreateTaskDeliveryOverlay.vue')['default']
     DateRangePills: typeof import('./src/components/filters/DateRangePills.vue')['default']
     DonutSplit: typeof import('./src/components/analytics/DonutSplit.vue')['default']
+    ExpenseClaimFocusAction: typeof import('./src/components/focus/ExpenseClaimFocusAction.vue')['default']
     FiltersBar: typeof import('./src/components/filters/FiltersBar.vue')['default']
     FocusListCard: typeof import('./src/components/focus/FocusListCard.vue')['default']
     FocusListItem: typeof import('./src/components/focus/FocusListItem.vue')['default']

@@ -11,12 +11,16 @@ from ifitwala_ed.admission.applicant_review_workflow import TARGET_DOCUMENT_ITEM
 from ifitwala_ed.api.focus_shared import (
     ACTION_APPLICANT_INTERVIEW_FEEDBACK_SUBMIT,
     ACTION_APPLICANT_REVIEW_SUBMIT,
+    ACTION_EXPENSE_CLAIM_APPROVE,
+    ACTION_EXPENSE_CLAIM_FINANCE,
+    ACTION_EXPENSE_CLAIM_UPDATE,
     ACTION_INQUIRY_FIRST_CONTACT,
     ACTION_POLICY_STAFF_SIGN,
     ACTION_STUDENT_LOG_REVIEW,
     ACTION_STUDENT_LOG_SUBMIT,
     APPLICANT_INTERVIEW_DOCTYPE,
     APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE,
+    EXPENSE_CLAIM_DOCTYPE,
     INQUIRY_DOCTYPE,
     POLICY_VERSION_DOCTYPE,
     STUDENT_LOG_DOCTYPE,
@@ -25,6 +29,7 @@ from ifitwala_ed.api.focus_shared import (
     _assignment_subtitle,
     _assignment_title,
     _badge_from_due_date,
+    _can_read_expense_claim,
     _can_read_inquiry,
     _can_read_student_log,
     _get_user_full_names,
@@ -42,7 +47,7 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
     """
     Return FocusItem[] for the current user.
 
-    V1: Student Log + Inquiry.
+    V1: workflow-owned focus items projected from Student Log, Inquiry, admissions, policy, and Expense Claim.
     - "action" items: ToDo allocated to user for Student Log follow-up work
     - "review" items: log owner, submitted follow-up exists, no active follow-up ToDo, log not completed
 
@@ -311,7 +316,118 @@ def list_focus_items(open_only: int = 1, limit: int = 20, offset: int = 0):
         )
 
     # ------------------------------------------------------------
-    # C) Author review items
+    # C) Assignee action items (ToDo -> Expense Claim)
+    # ------------------------------------------------------------
+    expense_rows = frappe.db.sql(
+        """
+        select
+            t.reference_name as claim_name,
+            t.date as todo_due_date,
+            nullif(trim(ifnull(t.assigned_by, '')), '') as todo_assigned_by,
+            nullif(trim(ifnull(t.assigned_by_full_name, '')), '') as todo_assigned_by_full_name,
+            nullif(trim(ifnull(t.owner, '')), '') as todo_owner,
+            e.employee_name,
+            e.claim_title,
+            e.claim_date,
+            e.status,
+            e.claimed_total,
+            e.sanctioned_total,
+            e.outstanding_amount,
+            e.decision_notes
+        from `tabToDo` t
+        join `tabExpense Claim` e
+          on e.name = t.reference_name
+        where t.allocated_to = %(user)s
+          and t.reference_type = %(ref_type)s
+          and (%(open_only)s = 0 or t.status = 'Open')
+          and e.status in ('Submitted', 'Needs Info', 'Approved', 'Payable Posted')
+        order by ifnull(t.date, '9999-12-31') asc, t.modified desc
+        limit %(limit)s offset %(offset)s
+        """,
+        {
+            "user": user,
+            "ref_type": EXPENSE_CLAIM_DOCTYPE,
+            "open_only": open_only,
+            "limit": limit,
+            "offset": offset,
+        },
+        as_dict=True,
+    )
+
+    expense_assigner_ids: set[str] = set()
+    for row in expense_rows:
+        if row.get("todo_assigned_by_full_name"):
+            continue
+        assigner = row.get("todo_assigned_by") or row.get("todo_owner")
+        if assigner:
+            expense_assigner_ids.add(assigner)
+    expense_assigner_name_by_id = _get_user_full_names(sorted(expense_assigner_ids))
+
+    for row in expense_rows:
+        claim_name = (row.get("claim_name") or "").strip()
+        if not claim_name:
+            continue
+
+        if not _can_read_expense_claim(claim_name):
+            continue
+
+        status = (row.get("status") or "").strip()
+        if status == "Submitted":
+            action_type = ACTION_EXPENSE_CLAIM_APPROVE
+            title = "Review expense claim"
+            priority = 82
+        elif status == "Needs Info":
+            action_type = ACTION_EXPENSE_CLAIM_UPDATE
+            title = "Update expense claim"
+            priority = 84
+        else:
+            action_type = ACTION_EXPENSE_CLAIM_FINANCE
+            title = "Process reimbursement"
+            priority = 80
+
+        due = str(row.get("todo_due_date")) if row.get("todo_due_date") else None
+        assigned_by = (row.get("todo_assigned_by") or row.get("todo_owner") or "").strip() or None
+        assigned_by_name = (row.get("todo_assigned_by_full_name") or "").strip() or None
+        if not assigned_by_name and assigned_by:
+            assigned_by_name = expense_assigner_name_by_id.get(assigned_by) or assigned_by
+
+        subtitle_parts = [
+            (row.get("employee_name") or "").strip() or claim_name,
+            status,
+        ]
+        if row.get("claim_title"):
+            subtitle_parts.append(row.get("claim_title"))
+
+        items.append(
+            {
+                "id": build_focus_item_id("expense_claim", EXPENSE_CLAIM_DOCTYPE, claim_name, action_type, user),
+                "kind": "action",
+                "title": title,
+                "subtitle": " • ".join(part for part in subtitle_parts if part),
+                "badge": _badge_from_due_date(due),
+                "priority": priority,
+                "due_date": due,
+                "action_type": action_type,
+                "reference_doctype": EXPENSE_CLAIM_DOCTYPE,
+                "reference_name": claim_name,
+                "payload": {
+                    "employee_name": row.get("employee_name"),
+                    "claim_title": row.get("claim_title"),
+                    "claim_date": str(row.get("claim_date")) if row.get("claim_date") else None,
+                    "status": status,
+                    "claimed_total": row.get("claimed_total"),
+                    "sanctioned_total": row.get("sanctioned_total"),
+                    "outstanding_amount": row.get("outstanding_amount"),
+                    "decision_notes": row.get("decision_notes"),
+                    "assigned_by": assigned_by,
+                    "assigned_by_name": assigned_by_name,
+                },
+                "permissions": {"can_open": True},
+            }
+        )
+
+    # ------------------------------------------------------------
+    # D) Author review items
     # ------------------------------------------------------------
     review_rows = frappe.db.sql(
         """

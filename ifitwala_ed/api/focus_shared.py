@@ -20,6 +20,7 @@ APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE = ASSIGNMENT_DOCTYPE
 APPLICANT_INTERVIEW_DOCTYPE = "Applicant Interview"
 APPLICANT_INTERVIEW_FEEDBACK_DOCTYPE = "Applicant Interview Feedback"
 POLICY_VERSION_DOCTYPE = "Policy Version"
+EXPENSE_CLAIM_DOCTYPE = "Expense Claim"
 
 ACTION_STUDENT_LOG_SUBMIT = "student_log.follow_up.act.submit"
 ACTION_STUDENT_LOG_REVIEW = "student_log.follow_up.review.decide"
@@ -27,6 +28,9 @@ ACTION_INQUIRY_FIRST_CONTACT = "inquiry.follow_up.act.first_contact"
 ACTION_APPLICANT_REVIEW_SUBMIT = "applicant_review.assignment.decide"
 ACTION_APPLICANT_INTERVIEW_FEEDBACK_SUBMIT = "applicant_interview.feedback.submit"
 ACTION_POLICY_STAFF_SIGN = "policy_acknowledgement.staff.sign"
+ACTION_EXPENSE_CLAIM_APPROVE = "expense_claim.approval.decide"
+ACTION_EXPENSE_CLAIM_UPDATE = "expense_claim.claimant.update"
+ACTION_EXPENSE_CLAIM_FINANCE = "expense_claim.finance.process"
 
 # Focus action types (v1)
 ACTION_MODE = {
@@ -36,6 +40,9 @@ ACTION_MODE = {
     ACTION_APPLICANT_REVIEW_SUBMIT: "assignee",
     ACTION_APPLICANT_INTERVIEW_FEEDBACK_SUBMIT: "assignee",
     ACTION_POLICY_STAFF_SIGN: "assignee",
+    ACTION_EXPENSE_CLAIM_APPROVE: "assignee",
+    ACTION_EXPENSE_CLAIM_UPDATE: "assignee",
+    ACTION_EXPENSE_CLAIM_FINANCE: "assignee",
 }
 
 
@@ -123,6 +130,8 @@ def _resolve_mode(action_type: str | None, reference_doctype: str, doc) -> str:
         return "assignee"
     if reference_doctype == POLICY_VERSION_DOCTYPE:
         return "assignee"
+    if reference_doctype == EXPENSE_CLAIM_DOCTYPE:
+        return "assignee"
 
     return "author"
 
@@ -177,6 +186,22 @@ def _can_read_inquiry(name: str) -> bool:
 
         rows = frappe.get_list(
             INQUIRY_DOCTYPE,
+            filters={"name": name},
+            fields=["name"],
+            limit=1,
+        )
+        return bool(rows)
+    except Exception:
+        return False
+
+
+def _can_read_expense_claim(name: str) -> bool:
+    try:
+        if not name:
+            return False
+
+        rows = frappe.get_list(
+            EXPENSE_CLAIM_DOCTYPE,
             filters={"name": name},
             fields=["name"],
             limit=1,

@@ -13,7 +13,7 @@
 			</div>
 		</header>
 
-		<section class="grid gap-3 sm:grid-cols-4">
+		<section class="grid gap-3 sm:grid-cols-5">
 			<article class="mini-kpi-card">
 				<p class="type-overline text-slate-token/70">{{ __('Draft') }}</p>
 				<p class="type-h2 text-ink">{{ board?.stats.draft ?? 0 }}</p>
@@ -21,6 +21,10 @@
 			<article class="mini-kpi-card">
 				<p class="type-overline text-slate-token/70">{{ __('Submitted') }}</p>
 				<p class="type-h2 text-ink">{{ board?.stats.submitted ?? 0 }}</p>
+			</article>
+			<article class="mini-kpi-card">
+				<p class="type-overline text-slate-token/70">{{ __('Needs Info') }}</p>
+				<p class="type-h2 text-ink">{{ board?.stats.needs_info ?? 0 }}</p>
 			</article>
 			<article class="mini-kpi-card">
 				<p class="type-overline text-slate-token/70">{{ __('Approved') }}</p>
@@ -43,6 +47,11 @@
 		<template v-else-if="board">
 			<section class="card-surface p-5 sm:p-6">
 				<form class="space-y-5" @submit.prevent="submitDraft">
+					<div v-if="draft.expense_claim" class="rounded-lg bg-sky/10 p-3">
+						<p class="type-body-strong text-canopy">
+							{{ __('Updating {0}', [draft.expense_claim]) }}
+						</p>
+					</div>
 					<div class="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
 						<label class="space-y-2">
 							<span class="type-label text-ink">{{ __('Title') }}</span>
@@ -209,6 +218,13 @@
 									{{ receipt.title }}
 								</a>
 							</div>
+							<div
+								v-if="claim.status === 'Needs Info' && claim.decision_notes"
+								class="rounded-lg bg-amber-50 p-3"
+							>
+								<p class="type-label text-amber-900">{{ __('Requested information') }}</p>
+								<p class="mt-1 type-body text-amber-950">{{ claim.decision_notes }}</p>
+							</div>
 						</div>
 						<div class="grid gap-1 text-right">
 							<p class="type-overline text-slate-token/70">{{ __('Claimed') }}</p>
@@ -218,8 +234,23 @@
 							</p>
 						</div>
 					</div>
-					<div v-if="canCancel(claim)" class="mt-4 flex justify-end">
+					<div
+						v-if="canRevise(claim) || canCancel(claim)"
+						class="mt-4 flex flex-wrap justify-end gap-2"
+					>
 						<button
+							v-if="canRevise(claim)"
+							type="button"
+							class="if-button if-button--secondary"
+							@click="reviseClaim(claim)"
+						>
+							<FeatherIcon name="edit-3" class="h-4 w-4" />
+							<span>{{
+								claim.status === 'Needs Info' ? __('Update Claim') : __('Edit Draft')
+							}}</span>
+						</button>
+						<button
+							v-if="canCancel(claim)"
 							type="button"
 							class="if-button if-button--secondary"
 							@click="cancelClaim(claim.name)"
@@ -250,6 +281,13 @@
 									{{ money(item.claimed_amount) }}
 								</li>
 							</ul>
+							<label class="block space-y-2 pt-2">
+								<span class="type-label text-ink">{{ __('Decision Notes') }}</span>
+								<textarea
+									v-model.trim="decisionNotes[claim.name]"
+									class="form-textarea min-h-20"
+								/>
+							</label>
 						</div>
 						<div class="flex flex-wrap gap-2">
 							<button
@@ -259,6 +297,14 @@
 							>
 								<FeatherIcon name="x" class="h-4 w-4" />
 								<span>{{ __('Reject') }}</span>
+							</button>
+							<button
+								type="button"
+								class="if-button if-button--secondary"
+								@click="decide(claim.name, 'request_info')"
+							>
+								<FeatherIcon name="message-square" class="h-4 w-4" />
+								<span>{{ __('Request Info') }}</span>
 							</button>
 							<button
 								type="button"
@@ -406,13 +452,16 @@ const formError = ref('');
 const board = ref<ExpenseClaimBoard | null>(null);
 const receiptFiles = ref<File[]>([]);
 const financeForms = reactive<Record<string, FinanceForm>>({});
+const decisionNotes = reactive<Record<string, string>>({});
 
 const draft = reactive<{
+	expense_claim: string | null;
 	claim_title: string;
 	claim_date: string;
 	purpose: string;
 	items: DraftItem[];
 }>({
+	expense_claim: null,
 	claim_title: '',
 	claim_date: '',
 	purpose: '',
@@ -438,6 +487,7 @@ function newItem(): DraftItem {
 }
 
 function resetDraft() {
+	draft.expense_claim = null;
 	draft.claim_title = '';
 	draft.claim_date = board.value?.defaults.claim_date || todayString();
 	draft.purpose = '';
@@ -485,7 +535,28 @@ function accountLabel(account: ExpenseClaimAccountOption) {
 }
 
 function canCancel(claim: ExpenseClaimRow) {
-	return ['Draft', 'Submitted', 'Approved'].includes(claim.status);
+	return ['Draft', 'Needs Info', 'Submitted', 'Approved'].includes(claim.status);
+}
+
+function canRevise(claim: ExpenseClaimRow) {
+	return ['Draft', 'Needs Info'].includes(claim.status);
+}
+
+function reviseClaim(claim: ExpenseClaimRow) {
+	draft.expense_claim = claim.name;
+	draft.claim_title = claim.claim_title || '';
+	draft.claim_date = claim.claim_date || board.value?.defaults.claim_date || todayString();
+	draft.purpose = claim.purpose || '';
+	draft.items = (claim.items.length ? claim.items : [newItem()]).map(item => ({
+		...item,
+		uid: `${item.row_name || item.description}-${Math.random().toString(36).slice(2)}`,
+		expense_date: item.expense_date || draft.claim_date || todayString(),
+		expense_category: item.expense_category || board.value?.options.categories[0] || 'Meals',
+		description: item.description || '',
+		claimed_amount: Number(item.claimed_amount || 0),
+	}));
+	receiptFiles.value = [];
+	formError.value = '';
 }
 
 function ensureFinanceForm(claim: ExpenseClaimRow) {
@@ -549,6 +620,7 @@ async function submitDraft() {
 	saving.value = true;
 	try {
 		const saveResponse = await saveExpenseClaimDraft({
+			expense_claim: draft.expense_claim,
 			claim_title: draft.claim_title,
 			claim_date: draft.claim_date,
 			purpose: draft.purpose || null,
@@ -592,12 +664,27 @@ async function cancelClaim(expenseClaim: string) {
 	}
 }
 
-async function decide(expenseClaim: string, decision: 'approve' | 'reject') {
+async function decide(expenseClaim: string, decision: 'approve' | 'reject' | 'request_info') {
+	const notes = decisionNotes[expenseClaim] || '';
+	if (decision === 'request_info' && !notes.trim()) {
+		toast.create({ title: __('Add notes before requesting information'), icon: 'alert-circle' });
+		return;
+	}
 	try {
-		const response = await decideExpenseClaim({ expense_claim: expenseClaim, decision });
+		const response = await decideExpenseClaim({
+			expense_claim: expenseClaim,
+			decision,
+			notes: notes || null,
+		});
 		board.value = response.board;
+		decisionNotes[expenseClaim] = '';
 		toast.create({
-			title: decision === 'approve' ? __('Expense claim approved') : __('Expense claim rejected'),
+			title:
+				decision === 'approve'
+					? __('Expense claim approved')
+					: decision === 'request_info'
+						? __('Information requested')
+						: __('Expense claim rejected'),
 			icon: 'check',
 		});
 	} catch (error: any) {

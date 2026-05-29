@@ -18,9 +18,13 @@ from ifitwala_ed.api.focus_actions_applicant_review import (
 )
 from ifitwala_ed.api.focus_shared import (
     ACTION_APPLICANT_INTERVIEW_FEEDBACK_SUBMIT,
+    ACTION_EXPENSE_CLAIM_APPROVE,
+    ACTION_EXPENSE_CLAIM_FINANCE,
+    ACTION_EXPENSE_CLAIM_UPDATE,
     ACTION_POLICY_STAFF_SIGN,
     APPLICANT_INTERVIEW_DOCTYPE,
     APPLICANT_REVIEW_ASSIGNMENT_DOCTYPE,
+    EXPENSE_CLAIM_DOCTYPE,
     FOLLOW_UP_DOCTYPE,
     INQUIRY_DOCTYPE,
     POLICY_VERSION_DOCTYPE,
@@ -487,6 +491,75 @@ def get_focus_context(
             },
         }
 
+    if reference_doctype == EXPENSE_CLAIM_DOCTYPE:
+        allowed_actions = {
+            ACTION_EXPENSE_CLAIM_APPROVE,
+            ACTION_EXPENSE_CLAIM_UPDATE,
+            ACTION_EXPENSE_CLAIM_FINANCE,
+        }
+        if action_type and action_type not in allowed_actions:
+            frappe.throw(_("This focus item is not an Expense Claim action."), frappe.PermissionError)
+
+        if not frappe.db.exists(
+            "ToDo",
+            {
+                "reference_type": EXPENSE_CLAIM_DOCTYPE,
+                "reference_name": reference_name,
+                "allocated_to": frappe.session.user,
+                "status": "Open",
+            },
+        ):
+            frappe.throw(_("This expense claim task is no longer open."))
+
+        claim_doc = frappe.get_doc(EXPENSE_CLAIM_DOCTYPE, reference_name)
+        if not frappe.has_permission(EXPENSE_CLAIM_DOCTYPE, ptype="read", doc=claim_doc):
+            frappe.throw(_("You are not permitted to view this Expense Claim."), frappe.PermissionError)
+
+        status = (claim_doc.status or "").strip()
+        if action_type == ACTION_EXPENSE_CLAIM_APPROVE and status != "Submitted":
+            frappe.throw(_("This expense claim is no longer waiting for approval."))
+        if action_type == ACTION_EXPENSE_CLAIM_UPDATE and status != "Needs Info":
+            frappe.throw(_("This expense claim no longer needs more information."))
+        if action_type == ACTION_EXPENSE_CLAIM_FINANCE and status not in {"Approved", "Payable Posted"}:
+            frappe.throw(_("This expense claim is no longer waiting for finance processing."))
+
+        return {
+            "focus_item_id": focus_item_id,
+            "action_type": action_type,
+            "reference_doctype": EXPENSE_CLAIM_DOCTYPE,
+            "reference_name": claim_doc.name,
+            "mode": "assignee",
+            "log": None,
+            "inquiry": None,
+            "follow_ups": [],
+            "review_assignment": None,
+            "policy_signature": None,
+            "expense_claim": {
+                "name": claim_doc.name,
+                "claim_title": claim_doc.claim_title,
+                "employee": claim_doc.employee,
+                "employee_name": claim_doc.employee_name,
+                "organization": claim_doc.organization,
+                "school": claim_doc.school,
+                "claim_date": str(claim_doc.claim_date) if claim_doc.claim_date else None,
+                "status": status,
+                "claimed_total": claim_doc.claimed_total,
+                "sanctioned_total": claim_doc.sanctioned_total,
+                "outstanding_amount": claim_doc.outstanding_amount,
+                "decision_notes": claim_doc.decision_notes,
+                "items": [
+                    {
+                        "expense_date": str(row.expense_date) if row.expense_date else None,
+                        "expense_category": row.expense_category,
+                        "description": row.description,
+                        "claimed_amount": row.claimed_amount,
+                        "sanctioned_amount": row.sanctioned_amount,
+                    }
+                    for row in (claim_doc.get("items") or [])
+                ],
+            },
+        }
+
     if reference_doctype == POLICY_VERSION_DOCTYPE:
         if action_type and action_type != ACTION_POLICY_STAFF_SIGN:
             frappe.throw(_("This focus item is not a staff policy acknowledgement action."), frappe.PermissionError)
@@ -598,8 +671,6 @@ def get_focus_context(
         }
 
     frappe.throw(
-        _(
-            "Only Student Log, Inquiry, Applicant Interview, Applicant Review Assignment, and Policy Version focus items are supported."
-        ),
+        _("This focus item type is not supported."),
         frappe.ValidationError,
     )

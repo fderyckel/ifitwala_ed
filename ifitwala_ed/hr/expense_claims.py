@@ -8,7 +8,7 @@ from typing import Any
 
 import frappe
 from frappe import _
-from frappe.utils import cint, flt, getdate, now_datetime
+from frappe.utils import add_days, cint, flt, getdate, now_datetime
 
 from ifitwala_ed.accounting.ledger_utils import cancel_gl_entries, make_gl_entries, validate_posting_date
 from ifitwala_ed.accounting.receivables import clamp_money, is_zero, money
@@ -29,6 +29,7 @@ EXPENSE_CLAIM_CATEGORIES = (
 EXPENSE_CLAIM_STATUSES = {
     "Draft",
     "Submitted",
+    "Needs Info",
     "Approved",
     "Rejected",
     "Finance Review",
@@ -47,6 +48,7 @@ EXPENSE_CLAIM_LOCKED_STATUSES = {
 }
 EXPENSE_APPROVAL_OVERRIDE_ROLES = {"HR Manager", "HR User", "Academic Admin", "System Manager"}
 EXPENSE_FINANCE_ROLES = {"Accounts Manager", "Accounts User", "System Manager"}
+EXPENSE_FINANCE_TODO_ROLES = {"Accounts Manager", "Accounts User"}
 EXPENSE_STAFF_PORTAL_ROLES = {
     "Employee",
     "Academic Staff",
@@ -56,6 +58,12 @@ EXPENSE_STAFF_PORTAL_ROLES = {
     "Academic Admin",
     "System Manager",
 }
+
+EXPENSE_CLAIM_TODO_MARKER = "[ifitwala:expense_claim]"
+EXPENSE_CLAIM_TODO_APPROVER_REVIEW = "approver_review"
+EXPENSE_CLAIM_TODO_CLAIMANT_UPDATE = "claimant_update"
+EXPENSE_CLAIM_TODO_FINANCE_POST = "finance_post"
+EXPENSE_CLAIM_TODO_FINANCE_PAY = "finance_pay"
 
 EXPENSE_CLAIM_FIELDS = [
     "name",
@@ -279,7 +287,7 @@ def validate_expense_claim(doc) -> None:
     if not doc.claim_date:
         doc.claim_date = getdate()
 
-    if doc.status in {"Submitted", "Approved"} and not doc.expense_approver:
+    if doc.status in {"Submitted", "Needs Info", "Approved"} and not doc.expense_approver:
         frappe.throw(
             _(
                 "No Expense Approver is set for this employee. Ask HR to set Employee Expense Approver before submitting."
@@ -301,12 +309,22 @@ def validate_expense_claim(doc) -> None:
         if claimed_amount <= 0:
             frappe.throw(_("Claimed amount must be greater than zero."))
 
-        if getattr(row, "sanctioned_amount", None) in (None, "") or status in {"Draft", "Submitted"}:
+        if getattr(row, "sanctioned_amount", None) in (None, "") or status in {
+            "Draft",
+            "Submitted",
+            "Needs Info",
+        }:
             row.sanctioned_amount = claimed_amount
         sanctioned_amount = money(getattr(row, "sanctioned_amount", 0) or 0)
         if sanctioned_amount < 0:
             frappe.throw(_("Sanctioned amount cannot be negative."))
-        if sanctioned_amount > claimed_amount and status in {"Submitted", "Approved", "Payable Posted", "Paid"}:
+        if sanctioned_amount > claimed_amount and status in {
+            "Submitted",
+            "Needs Info",
+            "Approved",
+            "Payable Posted",
+            "Paid",
+        }:
             frappe.throw(_("Sanctioned amount cannot exceed claimed amount."))
 
         _validate_account(
@@ -371,6 +389,180 @@ def _ensure_finance_access(user: str | None = None) -> None:
     frappe.throw(_("Only finance-authorized roles can process Expense Claim accounting."), frappe.PermissionError)
 
 
+def _native_assign_add(payload: dict[str, Any]) -> None:
+    from frappe.desk.form.assign_to import add as assign_add
+
+    assign_add(payload)
+
+
+def _claimant_user(doc) -> str | None:
+    if not doc.employee:
+        return None
+    return _clean_text(frappe.db.get_value("Employee", doc.employee, "user_id"))
+
+
+def _todo_description(kind: str, message: str) -> str:
+    return f"{EXPENSE_CLAIM_TODO_MARKER}:{kind} {message}"
+
+
+def _todo_kind_matches(description: str | None, kinds: set[str] | None) -> bool:
+    if not kinds:
+        return True
+    description = description or ""
+    return any(f"{EXPENSE_CLAIM_TODO_MARKER}:{kind}" in description for kind in kinds)
+
+
+def _close_expense_claim_todos(
+    expense_claim: str,
+    *,
+    kinds: set[str] | None = None,
+    allocated_to: str | None = None,
+) -> None:
+    if not expense_claim:
+        return
+
+    filters: dict[str, Any] = {
+        "reference_type": "Expense Claim",
+        "reference_name": expense_claim,
+        "status": "Open",
+    }
+    if allocated_to:
+        filters["allocated_to"] = allocated_to
+
+    rows = frappe.get_all(
+        "ToDo",
+        filters=filters,
+        fields=["name", "description"],
+        limit=500,
+        ignore_permissions=True,
+    )
+    for row in rows:
+        if _todo_kind_matches(row.get("description"), kinds):
+            frappe.db.set_value("ToDo", row.get("name"), "status", "Closed", update_modified=False)
+
+
+def _assign_expense_claim_todo(
+    doc,
+    *,
+    allocated_to: str | None,
+    kind: str,
+    message: str,
+    due_in_days: int | None = None,
+) -> None:
+    allocated_to = _clean_text(allocated_to)
+    if not allocated_to:
+        return
+
+    _close_expense_claim_todos(doc.name, kinds={kind}, allocated_to=allocated_to)
+    payload: dict[str, Any] = {
+        "doctype": "Expense Claim",
+        "name": doc.name,
+        "assign_to": [allocated_to],
+        "description": _todo_description(kind, message),
+        "notify": 1,
+    }
+    if due_in_days is not None:
+        payload["due_date"] = add_days(getdate(), due_in_days)
+    _native_assign_add(payload)
+
+
+def _assign_approver_review_todo(doc) -> None:
+    message = _("Review expense claim {claim}: {title}").format(
+        claim=doc.name,
+        title=doc.claim_title or doc.name,
+    )
+    _assign_expense_claim_todo(
+        doc,
+        allocated_to=doc.expense_approver,
+        kind=EXPENSE_CLAIM_TODO_APPROVER_REVIEW,
+        message=message,
+        due_in_days=2,
+    )
+
+
+def _assign_claimant_update_todo(doc) -> None:
+    claimant_user = _claimant_user(doc)
+    message = _("Update expense claim {claim}: {title}").format(
+        claim=doc.name,
+        title=doc.claim_title or doc.name,
+    )
+    _assign_expense_claim_todo(
+        doc,
+        allocated_to=claimant_user,
+        kind=EXPENSE_CLAIM_TODO_CLAIMANT_UPDATE,
+        message=message,
+        due_in_days=3,
+    )
+
+
+def _finance_user_can_receive_claim_todo(doc, user: str) -> bool:
+    roles = _get_roles(user)
+    if not (roles & EXPENSE_FINANCE_TODO_ROLES):
+        return False
+    if _is_administrator(user) or "System Manager" in roles:
+        return True
+
+    orgs = set(_get_org_scope(user))
+    if not orgs or doc.organization not in orgs:
+        return False
+
+    schools = set(_get_school_scope(user))
+    doc_school = (doc.school or "").strip()
+    if schools and doc_school and doc_school not in schools:
+        return False
+    return True
+
+
+def _finance_todo_users(doc) -> list[str]:
+    role_rows = frappe.get_all(
+        "Has Role",
+        filters={"role": ["in", sorted(EXPENSE_FINANCE_TODO_ROLES)]},
+        fields=["parent"],
+        limit=1000,
+        ignore_permissions=True,
+    )
+    candidates = sorted({(row.get("parent") or "").strip() for row in role_rows if (row.get("parent") or "").strip()})
+    if not candidates:
+        return []
+
+    user_rows = frappe.get_all(
+        "User",
+        filters={"name": ["in", candidates], "enabled": 1},
+        fields=["name"],
+        limit=1000,
+        ignore_permissions=True,
+    )
+    return [
+        row.get("name")
+        for row in user_rows
+        if row.get("name") and _finance_user_can_receive_claim_todo(doc, row.get("name"))
+    ]
+
+
+def _assign_finance_todos(doc, *, kind: str) -> None:
+    if kind == EXPENSE_CLAIM_TODO_FINANCE_PAY:
+        message = _("Pay expense claim {claim}: {title}").format(
+            claim=doc.name,
+            title=doc.claim_title or doc.name,
+        )
+        due_in_days = 2
+    else:
+        message = _("Post payable for expense claim {claim}: {title}").format(
+            claim=doc.name,
+            title=doc.claim_title or doc.name,
+        )
+        due_in_days = 2
+
+    for user in _finance_todo_users(doc):
+        _assign_expense_claim_todo(
+            doc,
+            allocated_to=user,
+            kind=kind,
+            message=message,
+            due_in_days=due_in_days,
+        )
+
+
 def _replace_claim_items(doc, rows: list[dict[str, Any]]) -> None:
     doc.set("items", [])
     for row in rows:
@@ -408,8 +600,8 @@ def save_draft_claim(payload: dict[str, Any], *, acting_user: str | None = None)
     if claim_name:
         doc = frappe.get_doc("Expense Claim", claim_name)
         _ensure_claim_write_access(doc, acting_user)
-        if doc.status != "Draft":
-            frappe.throw(_("Only draft Expense Claims can be edited before submission."))
+        if doc.status not in {"Draft", "Needs Info"}:
+            frappe.throw(_("Only draft or needs-info Expense Claims can be edited before submission."))
     else:
         doc = frappe.new_doc("Expense Claim")
         doc.status = "Draft"
@@ -431,8 +623,8 @@ def submit_claim(expense_claim: str, *, acting_user: str | None = None):
     current_employee = get_current_employee(acting_user)
     if doc.employee != current_employee.get("name") and "System Manager" not in _get_roles(acting_user):
         frappe.throw(_("Only the claimant can submit this Expense Claim."), frappe.PermissionError)
-    if doc.status != "Draft":
-        frappe.throw(_("Only draft Expense Claims can be submitted."))
+    if doc.status not in {"Draft", "Needs Info"}:
+        frappe.throw(_("Only draft or needs-info Expense Claims can be submitted."))
     if not doc.expense_approver:
         frappe.throw(
             _(
@@ -445,6 +637,8 @@ def submit_claim(expense_claim: str, *, acting_user: str | None = None):
     doc.submitted_by = acting_user
     doc.submitted_on = now_datetime()
     doc.save(ignore_permissions=True)
+    _close_expense_claim_todos(doc.name, kinds={EXPENSE_CLAIM_TODO_CLAIMANT_UPDATE})
+    _assign_approver_review_todo(doc)
     return frappe.get_doc("Expense Claim", doc.name)
 
 
@@ -461,14 +655,20 @@ def decide_claim(
     _ensure_decision_access(doc, acting_user)
 
     if doc.status not in {"Submitted"}:
-        frappe.throw(_("Only submitted Expense Claims can be approved or rejected."))
+        frappe.throw(_("Only submitted Expense Claims can be approved, rejected, or sent back for information."))
 
-    decision = (_clean_text(decision) or "").lower()
-    if decision not in {"approve", "reject"}:
-        frappe.throw(_("Decision must be approve or reject."))
+    decision = (_clean_text(decision) or "").lower().replace("-", "_")
+    if decision == "needs_info":
+        decision = "request_info"
+    if decision not in {"approve", "reject", "request_info"}:
+        frappe.throw(_("Decision must be approve, reject, or request_info."))
 
     doc.flags.ignore_expense_claim_lock = True
-    if decision == "reject":
+    if decision == "request_info":
+        if not _clean_text(notes):
+            frappe.throw(_("Explain what information or receipts are needed before sending the claim back."))
+        doc.status = "Needs Info"
+    elif decision == "reject":
         doc.status = "Rejected"
     else:
         sanctioned_by_row = {
@@ -486,6 +686,16 @@ def decide_claim(
     doc.decision_on = now_datetime()
     doc.decision_notes = notes or ""
     doc.save(ignore_permissions=True)
+    _close_expense_claim_todos(
+        doc.name,
+        kinds={EXPENSE_CLAIM_TODO_APPROVER_REVIEW, EXPENSE_CLAIM_TODO_CLAIMANT_UPDATE},
+    )
+    if decision == "request_info":
+        _assign_claimant_update_todo(doc)
+    elif decision == "approve":
+        _assign_finance_todos(doc, kind=EXPENSE_CLAIM_TODO_FINANCE_POST)
+    else:
+        _close_expense_claim_todos(doc.name)
     return frappe.get_doc("Expense Claim", doc.name)
 
 
@@ -530,6 +740,7 @@ def post_claim_payable(
     doc = frappe.get_doc("Expense Claim", expense_claim)
 
     if doc.status == "Payable Posted":
+        _assign_finance_todos(doc, kind=EXPENSE_CLAIM_TODO_FINANCE_PAY)
         return doc
     if doc.status != "Approved":
         frappe.throw(_("Only approved Expense Claims can be posted to payable."))
@@ -594,6 +805,8 @@ def post_claim_payable(
     doc.outstanding_amount = doc.sanctioned_total
     doc.remarks = remarks or doc.remarks
     doc.save(ignore_permissions=True)
+    _close_expense_claim_todos(doc.name, kinds={EXPENSE_CLAIM_TODO_FINANCE_POST})
+    _assign_finance_todos(doc, kind=EXPENSE_CLAIM_TODO_FINANCE_PAY)
     return frappe.get_doc("Expense Claim", doc.name)
 
 
@@ -674,6 +887,7 @@ def cancel_claim(expense_claim: str, *, notes: str | None = None, acting_user: s
     doc.decision_notes = notes or doc.decision_notes
     doc.outstanding_amount = 0
     doc.save(ignore_permissions=True)
+    _close_expense_claim_todos(doc.name)
     return frappe.get_doc("Expense Claim", doc.name)
 
 
@@ -709,6 +923,10 @@ def apply_expense_claim_payment(
     elif cancel:
         values["paid_on"] = None
     frappe.db.set_value("Expense Claim", expense_claim, values, update_modified=False)
+    if status == "Paid":
+        _close_expense_claim_todos(expense_claim, kinds={EXPENSE_CLAIM_TODO_FINANCE_PAY})
+    else:
+        _assign_finance_todos(frappe.get_doc("Expense Claim", expense_claim), kind=EXPENSE_CLAIM_TODO_FINANCE_PAY)
 
 
 def _serialize_items(rows: list[Any]) -> list[dict[str, Any]]:
@@ -941,6 +1159,7 @@ def build_expense_claim_board(user: str | None = None) -> dict[str, Any]:
         "stats": {
             "draft": sum(1 for claim in my_claims if claim.get("status") == "Draft"),
             "submitted": sum(1 for claim in my_claims if claim.get("status") == "Submitted"),
+            "needs_info": sum(1 for claim in my_claims if claim.get("status") == "Needs Info"),
             "approved": sum(1 for claim in my_claims if claim.get("status") == "Approved"),
             "outstanding": sum(flt(claim.get("outstanding_amount") or 0) for claim in my_claims),
         },
