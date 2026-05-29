@@ -286,7 +286,7 @@ class ProgramOfferingSelectionWindow(Document):
                 target_courses_by_group_map=target_courses_by_group_map,
             )
 
-            if not request_rows:
+            if not request_rows and not cint(self.collect_enrollment_intent or 0):
                 counts["failed"] += 1
                 issues.append(f"{student},No destination courses could be prepared for this student.")
                 continue
@@ -298,6 +298,7 @@ class ProgramOfferingSelectionWindow(Document):
                     academic_year=self.academic_year,
                     request_rows=request_rows,
                     selection_window=self.name if not self.is_new() else None,
+                    allow_empty_request=bool(cint(self.collect_enrollment_intent or 0)),
                 )
                 row.program_enrollment_request = request.name
                 counts["created_requests"] += 1

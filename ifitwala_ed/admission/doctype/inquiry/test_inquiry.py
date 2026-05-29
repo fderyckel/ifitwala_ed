@@ -511,8 +511,16 @@ class TestInquiry(FrappeTestCase):
                 "guardian_mobile_phone": "+14155550130",
             }
         ).insert(ignore_permissions=True)
-        contact_name = frappe.db.get_value("Contact Email", {"email_id": email}, "parent")
-        self.assertTrue(bool(contact_name))
+        contact = frappe.get_doc(
+            {
+                "doctype": "Contact",
+                "first_name": "Protected",
+                "last_name": "Guardian",
+                "email_ids": [{"email_id": email, "is_primary": 1}],
+                "links": [{"link_doctype": "Guardian", "link_name": guardian.name}],
+            }
+        ).insert(ignore_permissions=True)
+        contact_name = contact.name
         self.assertTrue(
             bool(
                 frappe.db.exists(

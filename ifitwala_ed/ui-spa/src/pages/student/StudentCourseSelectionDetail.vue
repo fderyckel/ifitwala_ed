@@ -27,7 +27,9 @@ import {
 	submitSelfEnrollmentChoices,
 } from '@/lib/services/selfEnrollment/selfEnrollmentService';
 import type { Response as ChoiceStateResponse } from '@/types/contracts/self_enrollment/get_self_enrollment_choice_state';
-import type { ChoiceSubmitRow } from '@/types/contracts/self_enrollment/save_self_enrollment_choices';
+import type { Request as SaveChoicesRequest } from '@/types/contracts/self_enrollment/save_self_enrollment_choices';
+
+type SelfEnrollmentSubmitPayload = Pick<SaveChoicesRequest, 'courses' | 'enrollment_intent'>;
 
 const route = useRoute();
 const loading = ref<boolean>(true);
@@ -53,12 +55,13 @@ async function loadDetail() {
 	}
 }
 
-async function saveDraft(rows: ChoiceSubmitRow[]) {
+async function saveDraft(submitPayload: SelfEnrollmentSubmitPayload) {
 	saving.value = true;
 	try {
 		payload.value = await saveSelfEnrollmentChoices({
 			selection_window: selectionWindow,
-			courses: rows,
+			courses: submitPayload.courses,
+			enrollment_intent: submitPayload.enrollment_intent,
 		});
 		toast.success('Course selection draft saved.');
 	} catch (error) {
@@ -68,14 +71,15 @@ async function saveDraft(rows: ChoiceSubmitRow[]) {
 	}
 }
 
-async function submitSelection(rows: ChoiceSubmitRow[]) {
+async function submitSelection(submitPayload: SelfEnrollmentSubmitPayload) {
 	submitting.value = true;
 	try {
 		payload.value = await submitSelfEnrollmentChoices({
 			selection_window: selectionWindow,
-			courses: rows,
+			courses: submitPayload.courses,
+			enrollment_intent: submitPayload.enrollment_intent,
 		});
-		toast.success('Course selection submitted.');
+		toast.success('Course selection response submitted.');
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : 'Could not submit course selection.');
 	} finally {

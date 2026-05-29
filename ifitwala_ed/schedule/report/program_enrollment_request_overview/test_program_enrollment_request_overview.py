@@ -150,6 +150,50 @@ class TestProgramEnrollmentRequestOverview(TestCase):
         self.assertEqual(data[1]["course"], "CHEM")
         self.assertEqual(data[1]["students_requested"], 0)
 
+    def test_build_summary_view_excludes_non_returning_intent_from_course_demand(self):
+        requests = [
+            {
+                "name": "PER-0001",
+                "validation_status": "Not Validated",
+                "request_status": "Submitted",
+                "requires_override": 0,
+                "enrollment_intent": "Does Not Intend to Enroll",
+                "collect_enrollment_intent": 1,
+                "invalid_reason_buckets": [],
+                "courses": [{"course": "BIO", "course_name": "Biology", "required": 0}],
+            },
+            {
+                "name": "PER-0002",
+                "validation_status": "Valid",
+                "request_status": "Submitted",
+                "requires_override": 0,
+                "enrollment_intent": "Intends to Enroll",
+                "collect_enrollment_intent": 1,
+                "invalid_reason_buckets": [],
+                "courses": [{"course": "BIO", "course_name": "Biology", "required": 0}],
+            },
+        ]
+        course_catalog = [{"course": "BIO", "course_name": "Biology", "required": 0, "fieldname": "course_001_bio"}]
+
+        _columns, data = report._build_summary_view(requests, course_catalog)
+
+        self.assertEqual(data[0]["students_requested"], 1)
+        self.assertEqual(data[0]["valid_requests"], 1)
+
+    def test_window_tracker_summary_counts_no_response_intent(self):
+        rows = [
+            {
+                "submission_status": report.SUBMISSION_STATUS_NOT_SUBMITTED,
+                "enrollment_intent": "No Response",
+                "problem_status": "",
+            }
+        ]
+
+        summary = report._build_window_tracker_summary(rows)
+
+        by_label = {row["label"]: row["value"] for row in summary}
+        self.assertEqual(by_label["No Response"], 1)
+
     @patch(
         "ifitwala_ed.schedule.report.program_enrollment_request_overview.program_enrollment_request_overview._get_live_choice_states",
         return_value={

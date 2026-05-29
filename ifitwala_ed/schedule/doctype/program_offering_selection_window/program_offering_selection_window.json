@@ -16,6 +16,7 @@
   "school",
   "open_from",
   "due_on",
+  "collect_enrollment_intent",
   "instructions_section",
   "instructions",
   "source_section",
@@ -102,6 +103,13 @@
    "label": "Submission Deadline"
   },
   {
+   "default": "0",
+   "description": "Ask the portal user whether the student intends to enroll before course choices are required.",
+   "fieldname": "collect_enrollment_intent",
+   "fieldtype": "Check",
+   "label": "Collect Enrollment Intent"
+  },
+  {
    "fieldname": "instructions_section",
    "fieldtype": "Section Break",
    "label": "Portal Instructions"
@@ -161,7 +169,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-26 22:00:44.612597",
+ "modified": "2026-05-29 11:34:29.000000",
  "modified_by": "Administrator",
  "module": "Schedule",
  "name": "Program Offering Selection Window",

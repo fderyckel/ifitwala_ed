@@ -22,6 +22,12 @@ from ifitwala_ed.schedule.enrollment_engine import (
     _get_student_results,
     evaluate_basket_selection,
 )
+from ifitwala_ed.schedule.enrollment_intent import (
+    is_enrollment_intent_affirmative,
+    is_enrollment_intent_missing,
+    is_non_enrolling_intent,
+    normalize_enrollment_intent,
+)
 from ifitwala_ed.schedule.enrollment_request_utils import (
     _assert_no_catalog_prereqs,
     _map_offering_seat_policy_to_capacity_policy,
@@ -318,6 +324,10 @@ def _live_validation_batch_context(requests, offering_semantics_by_offering: dic
         and (request.get("name") or "").strip()
         and (request.get("student") or "").strip()
         and (request.get("program_offering") or "").strip()
+        and is_enrollment_intent_affirmative(
+            request.get("enrollment_intent"),
+            collect_enrollment_intent=request.get("collect_enrollment_intent"),
+        )
     ]
     if not draft_requests:
         return {
@@ -568,11 +578,33 @@ def get_program_enrollment_request_live_choice_states(requests) -> dict[str, dic
 
     _assert_no_catalog_prereqs()
 
-    offering_semantics_by_offering: dict[str, dict] = {}
-    batch_context = _live_validation_batch_context(draft_requests, offering_semantics_by_offering)
     live_choice_states: dict[str, dict] = {}
-
+    validation_requests = []
     for request in draft_requests:
+        request_name = (request.get("name") or "").strip()
+        collect_intent = request.get("collect_enrollment_intent")
+        intent = request.get("enrollment_intent")
+        if is_enrollment_intent_missing(intent, collect_enrollment_intent=collect_intent):
+            live_choice_states[request_name] = {
+                "ready_for_submit": False,
+                "reasons": [_("Choose whether the student intends to enroll before submitting.")],
+            }
+            continue
+        if is_non_enrolling_intent(intent):
+            live_choice_states[request_name] = {
+                "ready_for_submit": True,
+                "reasons": [],
+            }
+            continue
+        validation_requests.append(request)
+
+    if not validation_requests:
+        return live_choice_states
+
+    offering_semantics_by_offering: dict[str, dict] = {}
+    batch_context = _live_validation_batch_context(validation_requests, offering_semantics_by_offering)
+
+    for request in validation_requests:
         request_name = (request.get("name") or "").strip()
         offering_name = (request.get("program_offering") or "").strip()
         offering_semantics = offering_semantics_by_offering.get(offering_name) or {}
@@ -655,8 +687,10 @@ def get_program_enrollment_request_choice_state(
     can_edit: bool,
     offering_semantics: dict[str, dict] | None = None,
     required_basket_groups: list[str] | None = None,
+    collect_enrollment_intent: bool = False,
 ) -> dict:
     offering_name = (request.program_offering or "").strip()
+    enrollment_intent = normalize_enrollment_intent(getattr(request, "enrollment_intent", None))
     if offering_semantics is None:
         offering_semantics = get_offering_course_semantics(offering_name) if offering_name else {}
     explicit_rows = _normalize_rows(request.get("courses") or [])
@@ -683,12 +717,27 @@ def get_program_enrollment_request_choice_state(
     ready_for_submit = live_status in {"ok", "not_configured"}
     validation_messages = _choice_validation_messages(basket_result)
 
-    if offering_name and request.get("student"):
-        engine_payload, live_status, ready_for_submit, validation_messages = _live_validation_state(
-            request,
-            offering_semantics=offering_semantics,
-        )
-        basket_result = ((engine_payload.get("results") or {}).get("basket") or {}) or basket_result
+    if is_enrollment_intent_missing(enrollment_intent, collect_enrollment_intent=collect_enrollment_intent):
+        live_status = "intent_required"
+        ready_for_submit = False
+        validation_messages = [_("Choose whether the student intends to enroll before submitting.")]
+    elif is_non_enrolling_intent(enrollment_intent):
+        live_status = "intent_only"
+        ready_for_submit = True
+        validation_messages = []
+    elif offering_name and request.get("student"):
+        try:
+            engine_payload, live_status, ready_for_submit, validation_messages = _live_validation_state(
+                request,
+                offering_semantics=offering_semantics,
+            )
+            basket_result = ((engine_payload.get("results") or {}).get("basket") or {}) or basket_result
+        except Exception as exc:
+            live_status = "invalid"
+            ready_for_submit = False
+            validation_messages = [
+                str(exc or "").strip() or _("Please review the course choices above before you submit.")
+            ]
 
     courses = []
     required_count = 0
@@ -737,6 +786,7 @@ def get_program_enrollment_request_choice_state(
             "program": (request.program or "").strip(),
             "program_offering": offering_name,
             "validation_status": (request.validation_status or "").strip() or "Not Validated",
+            "enrollment_intent": enrollment_intent or None,
             "submitted_on": request.submitted_on,
             "submitted_by": (request.submitted_by or "").strip() or None,
             "can_edit_choices": bool(can_edit),
@@ -748,6 +798,7 @@ def get_program_enrollment_request_choice_state(
             "has_selectable_courses": any(not bool(row.get("required")) for row in courses),
             "can_edit_choices": bool(can_edit),
             "ready_for_submit": ready_for_submit,
+            "requires_intent_response": bool(collect_enrollment_intent),
             "required_course_count": required_count,
             "optional_course_count": optional_count,
             "selected_optional_count": selected_optional_count,

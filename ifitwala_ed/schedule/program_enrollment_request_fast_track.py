@@ -12,6 +12,12 @@ from frappe import _
 from frappe.utils import getdate, now_datetime
 from frappe.utils.file_manager import save_file
 
+from ifitwala_ed.schedule.enrollment_intent import (
+    INTENT_DOES_NOT_INTEND,
+    INTENT_UNDECIDED,
+    is_enrollment_intent_missing,
+    normalize_enrollment_intent,
+)
 from ifitwala_ed.schedule.enrollment_request_utils import (
     materialize_program_enrollment_request,
     validate_program_enrollment_request,
@@ -282,6 +288,13 @@ def _build_preview_counts(*, requests: list[dict], materialized_request_names: s
         status = (request.get("request_status") or "").strip()
         validation_status = (request.get("validation_status") or "").strip()
         requires_override = int(request.get("requires_override") or 0) == 1
+        intent_block = _intent_block_bucket(
+            request.get("enrollment_intent"),
+            collect_enrollment_intent=request.get("collect_enrollment_intent"),
+        )
+        if intent_block:
+            counts[intent_block] += 1
+            continue
 
         if action == ACTION_APPROVE_ONLY:
             if name in materialized_request_names:
@@ -338,6 +351,70 @@ def _build_preview_counts(*, requests: list[dict], materialized_request_names: s
     return counts
 
 
+def _intent_block_bucket(intent, *, collect_enrollment_intent=0) -> str:
+    normalized = normalize_enrollment_intent(intent)
+    if is_enrollment_intent_missing(normalized, collect_enrollment_intent=collect_enrollment_intent):
+        return "no_intent_response"
+    if normalized == INTENT_DOES_NOT_INTEND:
+        return "not_returning"
+    if normalized == INTENT_UNDECIDED:
+        return "undecided"
+    return ""
+
+
+def _intent_block_message(intent, *, collect_enrollment_intent=0) -> str:
+    bucket = _intent_block_bucket(intent, collect_enrollment_intent=collect_enrollment_intent)
+    if bucket == "no_intent_response":
+        return _("Enrollment intent has not been submitted yet.")
+    if bucket == "not_returning":
+        return _("Family indicated the student does not intend to enroll.")
+    if bucket == "undecided":
+        return _("Family is undecided and needs staff follow-up.")
+    return ""
+
+
+def _get_request_intent_context(request_names: list[str]) -> dict[str, dict]:
+    names = [(name or "").strip() for name in (request_names or []) if (name or "").strip()]
+    if not names:
+        return {}
+
+    rows = frappe.get_all(
+        "Program Enrollment Request",
+        filters={"name": ["in", names]},
+        fields=["name", "enrollment_intent", "selection_window"],
+        limit=max(200, len(names) * 2),
+    )
+    window_names = sorted(
+        {
+            (row.get("selection_window") or "").strip()
+            for row in rows or []
+            if (row.get("selection_window") or "").strip()
+        }
+    )
+    window_collect = {}
+    if window_names:
+        window_rows = frappe.get_all(
+            "Program Offering Selection Window",
+            filters={"name": ["in", window_names]},
+            fields=["name", "collect_enrollment_intent"],
+            limit=max(100, len(window_names) * 2),
+        )
+        window_collect = {
+            (row.get("name") or "").strip(): int(row.get("collect_enrollment_intent") or 0)
+            for row in window_rows or []
+            if (row.get("name") or "").strip()
+        }
+
+    return {
+        (row.get("name") or "").strip(): {
+            "enrollment_intent": normalize_enrollment_intent(row.get("enrollment_intent")),
+            "collect_enrollment_intent": window_collect.get((row.get("selection_window") or "").strip(), 0),
+        }
+        for row in rows or []
+        if (row.get("name") or "").strip()
+    }
+
+
 def _publish_progress(*, position: int, total: int, target_user: str, action: str):
     frappe.publish_realtime(
         FAST_TRACK_PROGRESS_EVENT,
@@ -384,6 +461,7 @@ def _execute_fast_track(
         frappe.throw(_("No Program Enrollment Requests were selected for fast-track processing."))
 
     materialized_request_names = _get_materialized_request_names(names)
+    intent_context = _get_request_intent_context(names)
     if action == ACTION_APPROVE_ONLY:
         counts = {
             "selected": len(names),
@@ -392,6 +470,9 @@ def _execute_fast_track(
             "already_materialized": 0,
             "invalid": 0,
             "needs_override": 0,
+            "no_intent_response": 0,
+            "not_returning": 0,
+            "undecided": 0,
             "blocked": 0,
             "failed": 0,
         }
@@ -400,6 +481,9 @@ def _execute_fast_track(
             "selected": len(names),
             "materialized": 0,
             "already_materialized": 0,
+            "no_intent_response": 0,
+            "not_returning": 0,
+            "undecided": 0,
             "blocked": 0,
             "failed": 0,
         }
@@ -412,6 +496,9 @@ def _execute_fast_track(
             "already_materialized": 0,
             "invalid": 0,
             "needs_override": 0,
+            "no_intent_response": 0,
+            "not_returning": 0,
+            "undecided": 0,
             "blocked": 0,
             "failed": 0,
         }
@@ -426,6 +513,27 @@ def _execute_fast_track(
             student = (request_doc.student or "").strip()
             status = (request_doc.status or "").strip()
             request_kind = (request_doc.request_kind or ACADEMIC_REQUEST_KIND).strip() or ACADEMIC_REQUEST_KIND
+            request_intent_context = intent_context.get(request_name) or {
+                "enrollment_intent": normalize_enrollment_intent(getattr(request_doc, "enrollment_intent", None)),
+                "collect_enrollment_intent": 0,
+            }
+            intent_block_bucket = _intent_block_bucket(
+                request_intent_context.get("enrollment_intent"),
+                collect_enrollment_intent=request_intent_context.get("collect_enrollment_intent"),
+            )
+            if intent_block_bucket:
+                counts[intent_block_bucket] += 1
+                issues.append(
+                    (
+                        request_name,
+                        student,
+                        _intent_block_message(
+                            request_intent_context.get("enrollment_intent"),
+                            collect_enrollment_intent=request_intent_context.get("collect_enrollment_intent"),
+                        ),
+                    )
+                )
+                continue
 
             if request_name in materialized_request_names:
                 counts["already_materialized"] += 1

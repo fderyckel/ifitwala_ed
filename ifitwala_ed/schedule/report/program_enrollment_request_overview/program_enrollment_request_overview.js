@@ -416,6 +416,12 @@ frappe.query_reports["Program Enrollment Request Overview"] = {
 			options: __("\nNot Validated\nValid\nInvalid")
 		},
 		{
+			fieldname: "enrollment_intent",
+			label: __("Enrollment Intent"),
+			fieldtype: "Select",
+			options: __("\nIntends to Enroll\nDoes Not Intend to Enroll\nUndecided\nNo Response\nNot Collected")
+		},
+		{
 			fieldname: "requires_override",
 			label: __("Needs Override"),
 			fieldtype: "Check"
@@ -500,6 +506,17 @@ frappe.query_reports["Program Enrollment Request Overview"] = {
 			return `<span class="indicator-pill ${color}">${frappe.utils.escape_html(data.validation_status || "")}</span>`;
 		}
 
+		if (column.fieldname === "enrollment_intent" && data) {
+			const color = getIndicatorColor(data.enrollment_intent, {
+				"Intends to Enroll": "green",
+				"Does Not Intend to Enroll": "red",
+				Undecided: "orange",
+				"No Response": "orange",
+				"Not Collected": "gray"
+			});
+			return `<span class="indicator-pill ${color}">${frappe.utils.escape_html(data.enrollment_intent || "")}</span>`;
+		}
+
 		if (column.fieldname === "submission_status" && data) {
 			const color = getIndicatorColor(data.submission_status, {
 				Submitted: "green",
@@ -516,7 +533,10 @@ frappe.query_reports["Program Enrollment Request Overview"] = {
 				Valid: "green",
 				Invalid: "red",
 				"Not Validated": "gray",
-				"Missing Request": "red"
+				"Missing Request": "red",
+				"No Response": "orange",
+				"Not Returning": "red",
+				"Needs Follow-up": "orange"
 			});
 			return `<span class="indicator-pill ${color}">${frappe.utils.escape_html(data.current_state || "")}</span>`;
 		}
@@ -530,7 +550,8 @@ frappe.query_reports["Program Enrollment Request Overview"] = {
 				"Selection Blocked": "orange",
 				"Invalid Request": "red",
 				"Needs Override": "orange",
-				"Missing Request": "red"
+				"Missing Request": "red",
+				"Needs Follow-up": "orange"
 			});
 			return `<span class="indicator-pill ${color}">${frappe.utils.escape_html(text)}</span>`;
 		}

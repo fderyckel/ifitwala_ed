@@ -219,8 +219,9 @@ def create_draft_request(
     academic_year: str,
     request_rows: list[dict],
     selection_window: str | None = None,
+    allow_empty_request: bool = False,
 ) -> frappe.model.document.Document:
-    if not request_rows:
+    if not request_rows and not allow_empty_request:
         frappe.throw(_("At least one request row is required."))
 
     payload = {

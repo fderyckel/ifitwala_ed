@@ -3,9 +3,9 @@ title: "Program Offering Selection Window: Time-Bound Self-Enrollment Campaign"
 slug: program-offering-selection-window
 category: Enrollment
 doc_order: 3
-version: "1.0.5"
+version: "1.1.0"
 last_change_date: "2026-05-29"
-summary: "Launch one time-bound student or guardian self-enrollment campaign for a Program Offering and Academic Year, pre-create draft Program Enrollment Requests, collect choices through the portal, and monitor response status from the window without bypassing the request-first architecture."
+summary: "Launch one time-bound student or guardian self-enrollment campaign for a Program Offering and Academic Year, optionally collect re-enrollment intent before course choices, pre-create draft Program Enrollment Requests, and monitor responses without bypassing the request-first architecture."
 seo_title: "Program Offering Selection Window: Time-Bound Self-Enrollment Campaign"
 seo_description: "Launch portal self-enrollment for one Program Offering and Academic Year while keeping Program Enrollment Request as the canonical staging object."
 ---
@@ -23,6 +23,7 @@ It does not replace [**Program Enrollment Request**](/docs/en/program-enrollment
 - Choose the audience:
   - `Guardian` for school-style family confirmation
   - `Student` for university / college self-service
+- Decide whether to turn on `Collect Enrollment Intent` for yes/no/maybe re-enrollment confirmation before course choices.
 - Decide the source population:
   - current `Program Enrollment`
   - `Cohort`
@@ -35,6 +36,7 @@ Opening a selection window never writes committed enrollment directly. It batch-
 ## Why It Matters
 
 - Gives schools a due-date driven course-selection workflow without forcing staff to create every request by hand.
+- Lets schools ask families or students whether they intend to return before requiring course choices.
 - Keeps required courses visible and locked while exposing only the actual choices to students or guardians.
 - Reuses the same request seeding rules as [**Program Enrollment Tool**](/docs/en/program-enrollment-tool/), so rollover and portal-launch paths do not drift apart.
 
@@ -42,31 +44,36 @@ Opening a selection window never writes committed enrollment directly. It batch-
 
 1. Create a window for one `Program Offering` + `Academic Year`.
 2. Choose `Audience` (`Guardian` or `Student`).
-3. Choose `Source Mode` (`Program Enrollment`, `Cohort`, or `Manual`).
+3. Enable `Collect Enrollment Intent` when the campaign should collect `Intends to Enroll`, `Does Not Intend to Enroll`, or `Undecided`.
+4. Choose `Source Mode` (`Program Enrollment`, `Cohort`, or `Manual`).
    Draft windows can be saved before the source filters are complete.
-4. Load students into the window.
+5. Load students into the window.
    `Program Enrollment` source mode requires Source Program Offering and Source Academic Year before loading students.
    `Cohort` source mode requires Source Student Cohort before loading students.
-5. Click `Prepare Requests`.
-6. The server creates one draft `Program Enrollment Request` per student:
+6. Click `Prepare Requests`.
+7. The server creates one draft `Program Enrollment Request` per student:
    - all required offering courses are already present
    - deterministic carry-forward choices are included when possible
    - unresolved optional choices remain for the portal user
-7. Use `View Request Tracker` from the window to monitor:
+   - if intent collection is enabled and no course rows can be prepared yet, the request can still exist so the portal can collect intent first
+8. Use `View Request Tracker` from the window to monitor:
    - who already submitted
    - who is still draft / not submitted
+   - who intends to enroll, is not returning, is undecided, or has not answered
    - which rows are missing a linked request
    - which draft or reviewed requests are blocked and why
-8. Open the window.
-9. Student or guardian portal users save drafts and submit selections before the deadline.
-   - portal submission proceeds only when the current choices pass live validation
-   - if validation still needs attention, the request stays in `Draft` and the portal explains what must be fixed first
-10. Staff review, validate, approve, and materialize the resulting requests later.
+9. Open the window.
+10. Student or guardian portal users answer intent first when required, then save drafts and submit selections before the deadline.
+   - `Intends to Enroll` proceeds through live course validation
+   - `Does Not Intend to Enroll` and `Undecided` can be submitted without course choices for staff planning/follow-up
+   - if affirmative validation still needs attention, the request stays in `Draft` and the portal explains what must be fixed first
+11. Staff review intent, course-demand analytics, validation, approval, and materialization later.
 
 ## Portal Behavior
 
 - Required courses remain visible but not removable.
 - Optional / elective choices stay editable while the window is open and the linked request is still `Draft`.
+- When `Collect Enrollment Intent` is enabled, course choices appear only after the user chooses `Intends to Enroll`.
 - The portal uses live validation before submission, so "ready to submit" matches the real request validation outcome.
 - After submission, the linked request becomes read-only in the portal.
 - Closed windows remain visible in the portal as read-only records so families or students can still see what was submitted or which deadline was missed.
@@ -117,6 +124,8 @@ Desk visibility is limited to windows whose resolved `school` is inside the user
 
 - **DocType**: `Program Offering Selection Window` (`ifitwala_ed/schedule/doctype/program_offering_selection_window/`)
 - **Autoname**: `format:SEW-{YYYY}-{####}`
+- **Intent option field**:
+  - `collect_enrollment_intent` (`Check`) controls whether the portal collects yes/no/maybe re-enrollment intent before course choices
 - **Controller guarantees**:
   - target `academic_year` must belong to the chosen offering
   - target offering must have `allow_self_enroll = 1`
@@ -124,5 +133,6 @@ Desk visibility is limited to windows whose resolved `school` is inside the user
   - source population can be loaded from current enrollment, cohort, or manual rows
   - draft save does not require source filters, but load/prepare actions require the source context for `Program Enrollment` and `Cohort` modes
   - request preparation links each student row to one `Program Enrollment Request`
+  - request preparation permits an empty request only when `collect_enrollment_intent = 1`
   - existing active requests are reused instead of duplicated
   - the Desk form can launch the linked `Program Enrollment Request Overview` tracker with this window prefilled

@@ -94,7 +94,42 @@
 				</div>
 			</section>
 
-			<section class="space-y-4">
+			<section v-if="payload.window.collect_enrollment_intent === 1" class="card-surface p-5">
+				<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+					<div>
+						<h2 class="type-h3 text-ink">{{ __('Enrollment Intent') }}</h2>
+						<p class="type-caption text-ink/70">
+							{{ __('Tell the school whether this student plans to enroll next year.') }}
+						</p>
+					</div>
+					<div class="grid w-full gap-2 lg:max-w-xl">
+						<label
+							v-for="option in enrollmentIntentOptions"
+							:key="option.value"
+							class="rounded-xl border border-line-soft bg-surface-soft p-3"
+							:class="{
+								'border-jacaranda/40 bg-jacaranda/5': draftEnrollmentIntent === option.value,
+							}"
+						>
+							<span class="flex items-start gap-3">
+								<input
+									v-model="draftEnrollmentIntent"
+									type="radio"
+									class="mt-1"
+									:value="option.value"
+									:disabled="!canEdit"
+								/>
+								<span>
+									<span class="block type-body-strong text-ink">{{ option.label }}</span>
+									<span class="block type-caption text-ink/70">{{ option.description }}</span>
+								</span>
+							</span>
+						</label>
+					</div>
+				</div>
+			</section>
+
+			<section v-if="showCourseChoices" class="space-y-4">
 				<div class="flex items-center justify-between gap-3">
 					<div>
 						<h2 class="type-h3 text-ink">Required Courses</h2>
@@ -151,7 +186,7 @@
 				</div>
 			</section>
 
-			<section class="space-y-4">
+			<section v-if="showCourseChoices" class="space-y-4">
 				<div class="flex items-center justify-between gap-3">
 					<div>
 						<h2 class="type-h3 text-ink">Choice Groups</h2>
@@ -270,7 +305,7 @@
 				</div>
 			</section>
 
-			<section class="space-y-4">
+			<section v-if="showCourseChoices" class="space-y-4">
 				<div class="flex items-center justify-between gap-3">
 					<div>
 						<h2 class="type-h3 text-ink">{{ __('More Options') }}</h2>
@@ -308,7 +343,10 @@
 				</div>
 			</section>
 
-			<section class="card-surface p-5">
+			<section
+				v-if="showCourseChoices || payload.window.collect_enrollment_intent === 1"
+				class="card-surface p-5"
+			>
 				<div class="mb-3 flex items-center justify-between gap-3">
 					<h2 class="type-h3 text-ink">{{ __('Submission Check') }}</h2>
 					<span :class="validationToneClass(validationDisplayState)" class="chip">
@@ -347,7 +385,7 @@
 							type="button"
 							class="if-button if-button--secondary"
 							:disabled="!canEdit || !hasUnsavedChanges || saving"
-							@click="emit('save', submitRows)"
+							@click="emit('save', submitPayload)"
 						>
 							{{ saving ? __('Saving...') : __('Save Draft') }}
 						</button>
@@ -355,9 +393,9 @@
 							type="button"
 							class="if-button if-button--primary"
 							:disabled="!canAttemptSubmit || submitting"
-							@click="emit('submit', submitRows)"
+							@click="emit('submit', submitPayload)"
 						>
-							{{ submitting ? __('Submitting...') : __('Submit Selection') }}
+							{{ submitting ? __('Submitting...') : submitButtonLabel }}
 						</button>
 					</div>
 				</div>
@@ -380,10 +418,17 @@ import {
 } from '@/components/self_enrollment/choiceSections';
 import { __ } from '@/lib/i18n';
 import type {
+	EnrollmentIntent,
 	Response as ChoiceStateResponse,
 	SelfEnrollmentChoiceCourse,
 } from '@/types/contracts/self_enrollment/get_self_enrollment_choice_state';
 import type { ChoiceSubmitRow } from '@/types/contracts/self_enrollment/save_self_enrollment_choices';
+
+type IntentDraftValue = EnrollmentIntent | '';
+type SelfEnrollmentSubmitPayload = {
+	courses: ChoiceSubmitRow[];
+	enrollment_intent?: IntentDraftValue;
+};
 
 const props = defineProps<{
 	payload: ChoiceStateResponse | null;
@@ -398,13 +443,37 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	(e: 'refresh'): void;
-	(e: 'save', rows: ChoiceSubmitRow[]): void;
-	(e: 'submit', rows: ChoiceSubmitRow[]): void;
+	(e: 'save', payload: SelfEnrollmentSubmitPayload): void;
+	(e: 'submit', payload: SelfEnrollmentSubmitPayload): void;
 }>();
 
 const draftRows = ref<SelfEnrollmentChoiceCourse[]>([]);
 const savedRows = ref<SelfEnrollmentChoiceCourse[]>([]);
+const draftEnrollmentIntent = ref<IntentDraftValue>('');
+const savedEnrollmentIntent = ref<IntentDraftValue>('');
 const showGuardianChoiceRankHelp = computed(() => props.payload?.viewer.actor_type === 'Guardian');
+
+const enrollmentIntentOptions: Array<{
+	value: EnrollmentIntent;
+	label: string;
+	description: string;
+}> = [
+	{
+		value: 'Intends to Enroll',
+		label: __('Yes, intends to enroll'),
+		description: __('Continue with course choices for next year.'),
+	},
+	{
+		value: 'Does Not Intend to Enroll',
+		label: __('No, not returning'),
+		description: __('Submit the response without choosing courses.'),
+	},
+	{
+		value: 'Undecided',
+		label: __('Maybe / undecided'),
+		description: __('Ask the school to follow up before enrollment is confirmed.'),
+	},
+];
 
 watch(
 	() => props.payload,
@@ -415,6 +484,9 @@ watch(
 		);
 		draftRows.value = rows;
 		savedRows.value = rows;
+		const intent = (value?.request.enrollment_intent || '') as IntentDraftValue;
+		draftEnrollmentIntent.value = intent;
+		savedEnrollmentIntent.value = intent;
 	},
 	{ immediate: true }
 );
@@ -423,13 +495,38 @@ const canEdit = computed(() => props.payload?.permissions.can_edit === 1);
 const canSubmit = computed(() => props.payload?.permissions.can_submit === 1);
 const readyForSubmit = computed(() => props.payload?.summary.ready_for_submit === true);
 const submitRows = computed(() => choiceRowsForSubmit(draftRows.value));
-const hasUnsavedChanges = computed(() => haveChoiceRowsChanged(draftRows.value, savedRows.value));
+const collectEnrollmentIntent = computed(
+	() => props.payload?.window.collect_enrollment_intent === 1
+);
+const hasIntentResponse = computed(
+	() => !collectEnrollmentIntent.value || Boolean(draftEnrollmentIntent.value)
+);
+const showCourseChoices = computed(
+	() => !collectEnrollmentIntent.value || draftEnrollmentIntent.value === 'Intends to Enroll'
+);
+const submitPayload = computed<SelfEnrollmentSubmitPayload>(() => ({
+	courses: showCourseChoices.value ? submitRows.value : [],
+	enrollment_intent: collectEnrollmentIntent.value ? draftEnrollmentIntent.value : undefined,
+}));
+const hasUnsavedChanges = computed(
+	() =>
+		haveChoiceRowsChanged(draftRows.value, savedRows.value) ||
+		draftEnrollmentIntent.value !== savedEnrollmentIntent.value
+);
 const allowGuardianDirectSubmit = computed(
 	() =>
-		props.payload?.viewer.actor_type === 'Guardian' && canSubmit.value && hasUnsavedChanges.value
+		props.payload?.viewer.actor_type === 'Guardian' &&
+		canSubmit.value &&
+		hasUnsavedChanges.value &&
+		hasIntentResponse.value
 );
 const canAttemptSubmit = computed(
-	() => canSubmit.value && (readyForSubmit.value || allowGuardianDirectSubmit.value)
+	() =>
+		canSubmit.value &&
+		hasIntentResponse.value &&
+		((!showCourseChoices.value && draftEnrollmentIntent.value !== '') ||
+			readyForSubmit.value ||
+			allowGuardianDirectSubmit.value)
 );
 const subtitle = computed(() => {
 	if (!props.payload) return __('Review the course choices and confirm your selections.');
@@ -450,6 +547,12 @@ const sections = computed(() =>
 	buildChoiceSections(draftRows.value, props.payload?.required_basket_groups || [])
 );
 const submissionGuidance = computed(() => {
+	if (collectEnrollmentIntent.value && !draftEnrollmentIntent.value) {
+		return __('Choose an enrollment intent before submitting.');
+	}
+	if (!showCourseChoices.value) {
+		return __('Submit this response so the school can plan next steps.');
+	}
 	if (allowGuardianDirectSubmit.value) {
 		return __(
 			'Submit uses your latest changes. Save Draft is optional if you want to come back later.'
@@ -458,6 +561,12 @@ const submissionGuidance = computed(() => {
 	return __('Save your work while you review options, then submit when everything looks right.');
 });
 const submissionWarning = computed(() => {
+	if (collectEnrollmentIntent.value && !draftEnrollmentIntent.value) {
+		return __('Please answer the enrollment intent question first.');
+	}
+	if (!showCourseChoices.value) {
+		return '';
+	}
 	if (allowGuardianDirectSubmit.value) {
 		return __(
 			'You can submit now. If anything still needs attention, we will show you what to fix.'
@@ -472,6 +581,7 @@ const submissionWarning = computed(() => {
 const validationMessages = computed(() => {
 	const payload = props.payload;
 	if (!payload) return [];
+	if (!showCourseChoices.value) return [];
 	const messages = [
 		...(payload.validation.reasons || []),
 		...(payload.validation.violations || []),
@@ -484,6 +594,8 @@ const validationMessages = computed(() => {
 const validationDisplayState = computed<'invalid' | 'pending' | 'valid'>(() => {
 	const payload = props.payload;
 	if (!payload) return 'pending';
+	if (collectEnrollmentIntent.value && !draftEnrollmentIntent.value) return 'pending';
+	if (!showCourseChoices.value) return 'valid';
 
 	const liveStatus = String(payload.validation.status || '').trim();
 	if (liveStatus === 'invalid') return 'invalid';
@@ -498,12 +610,20 @@ const validationDisplayState = computed<'invalid' | 'pending' | 'valid'>(() => {
 });
 
 const validationDisplayLabel = computed(() => {
+	if (collectEnrollmentIntent.value && !draftEnrollmentIntent.value) return __('Intent required');
+	if (!showCourseChoices.value) return __('Response ready');
 	if (validationDisplayState.value === 'valid') return __('Ready to submit');
 	if (validationDisplayState.value === 'invalid') return __('Action needed');
 	return __('Review choices');
 });
 
 const validationEmptyMessage = computed(() => {
+	if (collectEnrollmentIntent.value && !draftEnrollmentIntent.value) {
+		return __('Choose whether the student intends to enroll before submitting.');
+	}
+	if (!showCourseChoices.value) {
+		return __('Course choices are not required for this response.');
+	}
 	if (validationDisplayState.value === 'valid') {
 		return __('Everything needed for submission is in place.');
 	}
@@ -512,6 +632,10 @@ const validationEmptyMessage = computed(() => {
 	}
 	return __('No issues to show right now.');
 });
+
+const submitButtonLabel = computed(() =>
+	showCourseChoices.value ? __('Submit Selection') : __('Submit Response')
+);
 
 function formatShortDate(value?: string | null) {
 	if (!value) return 'No deadline';

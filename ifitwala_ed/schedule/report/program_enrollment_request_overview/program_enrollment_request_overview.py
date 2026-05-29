@@ -11,6 +11,15 @@ from frappe import _
 from frappe.utils import cint
 
 from ifitwala_ed.schedule.basket_group_utils import get_offering_course_semantics
+from ifitwala_ed.schedule.enrollment_intent import (
+    INTENT_DOES_NOT_INTEND,
+    INTENT_INTENDS_TO_ENROLL,
+    INTENT_UNDECIDED,
+    enrollment_intent_label,
+    is_enrollment_intent_affirmative,
+    is_enrollment_intent_missing,
+    normalize_enrollment_intent,
+)
 from ifitwala_ed.schedule.program_enrollment_request_choice import get_program_enrollment_request_live_choice_states
 from ifitwala_ed.school_settings.school_settings_utils import get_allowed_schools
 
@@ -22,15 +31,25 @@ DETAIL_MESSAGE_LIMIT = 4
 
 STATUS_ORDER = ["Draft", "Submitted", "Under Review", "Approved", "Rejected", "Cancelled"]
 VALIDATION_STATUS_ORDER = ["Not Validated", "Valid", "Invalid"]
+ENROLLMENT_INTENT_FILTER_OPTIONS = [
+    INTENT_INTENDS_TO_ENROLL,
+    INTENT_DOES_NOT_INTEND,
+    INTENT_UNDECIDED,
+    "No Response",
+    "Not Collected",
+]
 SUBMISSION_STATUS_SUBMITTED = "Submitted"
 SUBMISSION_STATUS_NOT_SUBMITTED = "Not Submitted"
 SUBMISSION_STATUS_MISSING_REQUEST = "Missing Request"
 CURRENT_STATE_READY = "Ready to Submit"
 CURRENT_STATE_BLOCKED = "Blocked"
+CURRENT_STATE_NOT_RETURNING = "Not Returning"
+CURRENT_STATE_NEEDS_FOLLOW_UP = "Needs Follow-up"
 PROBLEM_STATUS_SELECTION_BLOCKED = "Selection Blocked"
 PROBLEM_STATUS_INVALID_REQUEST = "Invalid Request"
 PROBLEM_STATUS_NEEDS_OVERRIDE = "Needs Override"
 PROBLEM_STATUS_MISSING_REQUEST = "Missing Request"
+PROBLEM_STATUS_NEEDS_FOLLOW_UP = "Needs Follow-up"
 INVALID_REASON_BUCKETS = [
     "Prerequisite",
     "Capacity Full",
@@ -106,6 +125,7 @@ def _normalize_filters(filters, *, require_matrix_offering=True):
     filters["request_kind"] = (filters.get("request_kind") or DEFAULT_REQUEST_KIND).strip() or DEFAULT_REQUEST_KIND
     filters["request_status"] = (filters.get("request_status") or "").strip()
     filters["validation_status"] = (filters.get("validation_status") or "").strip()
+    filters["enrollment_intent"] = (filters.get("enrollment_intent") or "").strip()
     filters["invalid_reason_bucket"] = (filters.get("invalid_reason_bucket") or "").strip()
     filters["latest_request_only"] = cint(filters.get("latest_request_only", 1)) == 1
     filters["requires_override"] = cint(filters.get("requires_override") or 0) == 1
@@ -123,6 +143,8 @@ def _normalize_filters(filters, *, require_matrix_offering=True):
         filters["request_status"] = ""
     if filters["validation_status"] and filters["validation_status"] not in VALIDATION_STATUS_ORDER:
         filters["validation_status"] = ""
+    if filters["enrollment_intent"] and filters["enrollment_intent"] not in ENROLLMENT_INTENT_FILTER_OPTIONS:
+        filters["enrollment_intent"] = ""
     if filters["invalid_reason_bucket"] and filters["invalid_reason_bucket"] not in INVALID_REASON_BUCKETS:
         filters["invalid_reason_bucket"] = ""
 
@@ -156,6 +178,19 @@ def _fetch_request_rows(filters, allowed_schools, request_names=None):
     if filters.get("request_kind"):
         conditions.append("per.request_kind = %(request_kind)s")
         params["request_kind"] = filters.get("request_kind")
+    if filters.get("enrollment_intent") in {
+        INTENT_INTENDS_TO_ENROLL,
+        INTENT_DOES_NOT_INTEND,
+        INTENT_UNDECIDED,
+    }:
+        conditions.append("per.enrollment_intent = %(enrollment_intent)s")
+        params["enrollment_intent"] = filters.get("enrollment_intent")
+    elif filters.get("enrollment_intent") == "No Response":
+        conditions.append("IFNULL(per.enrollment_intent, '') = ''")
+        conditions.append("IFNULL(w.collect_enrollment_intent, 0) = 1")
+    elif filters.get("enrollment_intent") == "Not Collected":
+        conditions.append("IFNULL(per.enrollment_intent, '') = ''")
+        conditions.append("IFNULL(w.collect_enrollment_intent, 0) != 1")
     if names:
         conditions.append("per.name IN %(request_names)s")
         params["request_names"] = tuple(names)
@@ -174,17 +209,21 @@ def _fetch_request_rows(filters, allowed_schools, request_names=None):
             per.academic_year,
             per.request_kind,
             per.status,
+            per.enrollment_intent,
             per.validation_status,
             per.validation_payload,
             per.requires_override,
             per.override_approved,
             per.override_reason,
             per.selection_window,
+            IFNULL(w.collect_enrollment_intent, 0) AS collect_enrollment_intent,
             per.submitted_on,
             per.modified
         FROM `tabProgram Enrollment Request` per
         LEFT JOIN `tabStudent` st
             ON st.name = per.student
+        LEFT JOIN `tabProgram Offering Selection Window` w
+            ON w.name = per.selection_window
         WHERE {where}
         ORDER BY per.modified DESC, per.name DESC
         """,
@@ -304,6 +343,8 @@ def _build_request_models(request_rows, course_rows_by_parent):
             )
 
         invalid_reason_info = _extract_invalid_reason_info(row)
+        enrollment_intent = normalize_enrollment_intent(row.get("enrollment_intent"))
+        collect_enrollment_intent = 1 if cint(row.get("collect_enrollment_intent")) == 1 else 0
         requests.append(
             {
                 "name": row.get("name"),
@@ -315,6 +356,12 @@ def _build_request_models(request_rows, course_rows_by_parent):
                 "academic_year": row.get("academic_year"),
                 "request_kind": row.get("request_kind"),
                 "selection_window": row.get("selection_window"),
+                "collect_enrollment_intent": collect_enrollment_intent,
+                "enrollment_intent": enrollment_intent,
+                "enrollment_intent_label": enrollment_intent_label(
+                    enrollment_intent,
+                    collect_enrollment_intent=collect_enrollment_intent,
+                ),
                 "request_status": row.get("status"),
                 "validation_status": row.get("validation_status"),
                 "requires_override": 1 if cint(row.get("requires_override")) == 1 else 0,
@@ -424,6 +471,7 @@ def _build_matrix_view(requests, course_catalog):
             "width": 170,
         },
         {"label": _("Request Status"), "fieldname": "request_status", "fieldtype": "Data", "width": 130},
+        {"label": _("Enrollment Intent"), "fieldname": "enrollment_intent", "fieldtype": "Data", "width": 150},
         {"label": _("Validation"), "fieldname": "validation_status", "fieldtype": "Data", "width": 110},
         {"label": _("Needs Override"), "fieldname": "requires_override", "fieldtype": "Check", "width": 120},
         {"label": _("Override Approved"), "fieldname": "override_approved", "fieldtype": "Check", "width": 130},
@@ -452,6 +500,7 @@ def _build_matrix_view(requests, course_catalog):
             "student_name": request.get("student_name"),
             "program_offering": request.get("program_offering"),
             "request_status": request.get("request_status"),
+            "enrollment_intent": request.get("enrollment_intent_label"),
             "validation_status": request.get("validation_status"),
             "requires_override": request.get("requires_override"),
             "override_approved": request.get("override_approved"),
@@ -482,6 +531,7 @@ def _build_window_tracker_view(window_rows, requests, filters):
         {"label": _("Student"), "fieldname": "student", "fieldtype": "Link", "options": "Student", "width": 140},
         {"label": _("Student Name"), "fieldname": "student_name", "fieldtype": "Data", "width": 220},
         {"label": _("Submission"), "fieldname": "submission_status", "fieldtype": "Data", "width": 130},
+        {"label": _("Enrollment Intent"), "fieldname": "enrollment_intent", "fieldtype": "Data", "width": 150},
         {"label": _("Review Status"), "fieldname": "request_status", "fieldtype": "Data", "width": 130},
         {"label": _("Current State"), "fieldname": "current_state", "fieldtype": "Data", "width": 130},
         {"label": _("Needs Override"), "fieldname": "requires_override", "fieldtype": "Check", "width": 120},
@@ -510,11 +560,19 @@ def _build_window_tracker_view(window_rows, requests, filters):
 def _build_window_tracker_row(window_row, request, live_choice_state):
     request_status = (request.get("request_status") or "").strip() if request else ""
     problem_status, problem_detail = _window_problem_state(request, live_choice_state)
+    enrollment_intent = (request.get("enrollment_intent") or "").strip() if request else ""
+    collect_enrollment_intent = request.get("collect_enrollment_intent") if request else 0
     return {
         "request": (request.get("name") if request else (window_row.get("program_enrollment_request") or "")).strip(),
         "student": (window_row.get("student") or "").strip(),
         "student_name": (window_row.get("student_name") or "").strip(),
         "submission_status": _window_submission_status(request),
+        "enrollment_intent": enrollment_intent_label(
+            enrollment_intent,
+            collect_enrollment_intent=collect_enrollment_intent,
+        )
+        if request
+        else "",
         "request_status": request_status,
         "validation_status": (request.get("validation_status") or "").strip() if request else "",
         "request_kind": (request.get("request_kind") or DEFAULT_REQUEST_KIND).strip()
@@ -536,6 +594,8 @@ def _tracker_row_matches_filters(row, filters):
     if filters.get("request_status") and row.get("request_status") != filters.get("request_status"):
         return False
     if filters.get("validation_status") and row.get("validation_status") != filters.get("validation_status"):
+        return False
+    if filters.get("enrollment_intent") and row.get("enrollment_intent") != filters.get("enrollment_intent"):
         return False
     if filters.get("requires_override") and cint(row.get("requires_override")) != 1:
         return False
@@ -576,6 +636,14 @@ def _window_current_state(request, live_choice_state):
     if not request:
         return SUBMISSION_STATUS_MISSING_REQUEST
 
+    intent = (request.get("enrollment_intent") or "").strip()
+    if is_enrollment_intent_missing(intent, collect_enrollment_intent=request.get("collect_enrollment_intent")):
+        return "No Response"
+    if intent == INTENT_DOES_NOT_INTEND:
+        return CURRENT_STATE_NOT_RETURNING
+    if intent == INTENT_UNDECIDED:
+        return CURRENT_STATE_NEEDS_FOLLOW_UP
+
     request_status = (request.get("request_status") or "").strip()
     if request_status == "Draft" and live_choice_state is not None:
         return CURRENT_STATE_READY if live_choice_state.get("ready_for_submit") else CURRENT_STATE_BLOCKED
@@ -585,6 +653,10 @@ def _window_current_state(request, live_choice_state):
 def _window_problem_state(request, live_choice_state):
     if not request:
         return PROBLEM_STATUS_MISSING_REQUEST, _("Request has not been prepared for this student yet.")
+
+    intent = (request.get("enrollment_intent") or "").strip()
+    if intent == INTENT_UNDECIDED:
+        return PROBLEM_STATUS_NEEDS_FOLLOW_UP, _("Family is undecided and needs staff follow-up.")
 
     request_status = (request.get("request_status") or "").strip()
     if request_status == "Draft" and live_choice_state is not None and not live_choice_state.get("ready_for_submit"):
@@ -649,6 +721,8 @@ def _build_summary_view(requests, course_catalog):
         aggregates[course] = _empty_summary_row(course, course_names[course], required_map[course])
 
     for request in requests or []:
+        if not _counts_for_course_demand(request):
+            continue
         invalid_buckets = request.get("invalid_reason_buckets") or []
         for course_row in request.get("courses") or []:
             course = (course_row.get("course") or "").strip()
@@ -694,6 +768,13 @@ def _build_summary_view(requests, course_catalog):
         {"label": _("Top Invalid Reasons"), "fieldname": "top_invalid_reasons", "fieldtype": "Data", "width": 260},
     ]
     return columns, rows
+
+
+def _counts_for_course_demand(request):
+    return is_enrollment_intent_affirmative(
+        request.get("enrollment_intent"),
+        collect_enrollment_intent=request.get("collect_enrollment_intent"),
+    )
 
 
 def _empty_summary_row(course, course_name, required):
@@ -781,8 +862,30 @@ def _build_report_summary(requests):
     invalid = sum(1 for request in requests if request.get("validation_status") == "Invalid")
     approved = sum(1 for request in requests if request.get("request_status") == "Approved")
     overrides = sum(1 for request in requests if cint(request.get("requires_override")) == 1)
+    intends = sum(
+        1
+        for request in requests
+        if is_enrollment_intent_affirmative(
+            request.get("enrollment_intent"),
+            collect_enrollment_intent=request.get("collect_enrollment_intent"),
+        )
+    )
+    not_returning = sum(1 for request in requests if request.get("enrollment_intent") == INTENT_DOES_NOT_INTEND)
+    undecided = sum(1 for request in requests if request.get("enrollment_intent") == INTENT_UNDECIDED)
+    no_response = sum(
+        1
+        for request in requests
+        if is_enrollment_intent_missing(
+            request.get("enrollment_intent"),
+            collect_enrollment_intent=request.get("collect_enrollment_intent"),
+        )
+    )
     return [
         {"value": total, "label": _("Requests"), "indicator": "blue", "datatype": "Int"},
+        {"value": intends, "label": _("Intends"), "indicator": "green", "datatype": "Int"},
+        {"value": not_returning, "label": _("Not Returning"), "indicator": "red", "datatype": "Int"},
+        {"value": undecided, "label": _("Undecided"), "indicator": "orange", "datatype": "Int"},
+        {"value": no_response, "label": _("No Response"), "indicator": "orange", "datatype": "Int"},
         {"value": valid, "label": _("Valid"), "indicator": "green", "datatype": "Int"},
         {"value": invalid, "label": _("Invalid"), "indicator": "red", "datatype": "Int"},
         {"value": approved, "label": _("Approved"), "indicator": "blue", "datatype": "Int"},
@@ -819,12 +922,20 @@ def _build_window_tracker_summary(rows):
     submitted = sum(1 for row in rows if row.get("submission_status") == SUBMISSION_STATUS_SUBMITTED)
     not_submitted = sum(1 for row in rows if row.get("submission_status") == SUBMISSION_STATUS_NOT_SUBMITTED)
     missing_request = sum(1 for row in rows if row.get("submission_status") == SUBMISSION_STATUS_MISSING_REQUEST)
+    intends = sum(1 for row in rows if row.get("enrollment_intent") == INTENT_INTENDS_TO_ENROLL)
+    not_returning = sum(1 for row in rows if row.get("enrollment_intent") == INTENT_DOES_NOT_INTEND)
+    undecided = sum(1 for row in rows if row.get("enrollment_intent") == INTENT_UNDECIDED)
+    no_response = sum(1 for row in rows if row.get("enrollment_intent") == "No Response")
     problematic = sum(1 for row in rows if row.get("problem_status"))
     return [
         {"value": total, "label": _("Students"), "indicator": "blue", "datatype": "Int"},
         {"value": submitted, "label": _("Submitted"), "indicator": "green", "datatype": "Int"},
         {"value": not_submitted, "label": _("Not Submitted"), "indicator": "orange", "datatype": "Int"},
         {"value": missing_request, "label": _("Missing Request"), "indicator": "red", "datatype": "Int"},
+        {"value": intends, "label": _("Intends"), "indicator": "green", "datatype": "Int"},
+        {"value": not_returning, "label": _("Not Returning"), "indicator": "red", "datatype": "Int"},
+        {"value": undecided, "label": _("Undecided"), "indicator": "orange", "datatype": "Int"},
+        {"value": no_response, "label": _("No Response"), "indicator": "orange", "datatype": "Int"},
         {"value": problematic, "label": _("Problematic"), "indicator": "red", "datatype": "Int"},
     ]
 

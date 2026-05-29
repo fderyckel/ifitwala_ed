@@ -5,6 +5,11 @@ export type Request = {
 	student?: string | null
 }
 
+export type EnrollmentIntent =
+	| 'Intends to Enroll'
+	| 'Does Not Intend to Enroll'
+	| 'Undecided'
+
 export type SelfEnrollmentChoiceCourse = {
 	course: string
 	course_name: string
@@ -38,6 +43,7 @@ export type Response = {
 		status: string
 		open_from?: string | null
 		due_on?: string | null
+		collect_enrollment_intent: 0 | 1
 		is_open_now: 0 | 1
 		instructions?: string | null
 	}
@@ -60,6 +66,7 @@ export type Response = {
 		program: string
 		program_offering: string
 		validation_status: string
+		enrollment_intent?: EnrollmentIntent | null
 		submitted_on?: string | null
 		submitted_by?: string | null
 		can_edit_choices: boolean
@@ -71,6 +78,7 @@ export type Response = {
 		has_selectable_courses: boolean
 		can_edit_choices: boolean
 		ready_for_submit: boolean
+		requires_intent_response: boolean
 		required_course_count: number
 		optional_course_count: number
 		selected_optional_count: number

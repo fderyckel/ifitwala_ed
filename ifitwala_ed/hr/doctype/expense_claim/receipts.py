@@ -61,6 +61,9 @@ def parse_expense_claim_receipt_row_key(slot: str | None) -> str | None:
 def _get_doc(name: str, *, permission_type: str | None = None):
     _refresh_runtime_bindings()
 
+    if not _clean_link_value(name):
+        frappe.throw(_("Save the Expense Claim before attaching receipts."))
+
     if not frappe.db.exists("Expense Claim", name):
         frappe.throw(_("Expense Claim does not exist: {claim}").format(claim=name))
 

@@ -13,8 +13,10 @@ Code refs:
 - `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.py`
 - `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.js`
 - `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request_list.js`
+- `ifitwala_ed/schedule/enrollment_intent.py`
 - `ifitwala_ed/schedule/enrollment_request_utils.py`
 - `ifitwala_ed/schedule/program_enrollment_request_choice.py`
+- `ifitwala_ed/schedule/report/enrollment_intent_course_analytics/enrollment_intent_course_analytics.py`
 - `ifitwala_ed/schedule/doctype/program_enrollment/program_enrollment.py`
 - `ifitwala_ed/schedule/doctype/program_enrollment_tool/program_enrollment_tool.py`
 - `ifitwala_ed/schedule/doctype/course_enrollment_tool/course_enrollment_tool.py`
@@ -30,6 +32,7 @@ Test refs:
 - `ifitwala_ed/schedule/doctype/program_offering/test_program_offering.py`
 - `ifitwala_ed/schedule/doctype/program_offering_selection_window/test_program_offering_selection_window.py`
 - `ifitwala_ed/schedule/doctype/program_enrollment_request/test_program_enrollment_request.py`
+- `ifitwala_ed/schedule/report/enrollment_intent_course_analytics/test_enrollment_intent_course_analytics.py`
 - `ifitwala_ed/schedule/test_program_scope_permissions_unit.py`
 - `ifitwala_ed/schedule/doctype/program_enrollment/test_program_enrollment.py`
 - `ifitwala_ed/schedule/test_enrollment_engine.py`
@@ -173,6 +176,7 @@ It locks:
 - one explicit `Academic Year`
 - one explicit audience: `Student` or `Guardian`
 - one student population source
+- whether the window collects re-enrollment intent before course choices
 - one linked draft request per student row
 
 It does not become committed academic truth.
@@ -190,6 +194,7 @@ Its statuses are operational only:
 
 It owns:
 
+- the student's/family's re-enrollment intent when that campaign collects it
 - the requested basket
 - request-time course semantics snapshot
 - validation snapshot
@@ -200,6 +205,8 @@ It is the only valid transactional staging object between request intent and com
 
 Academic request validation requires the target `Program Offering` to have at least one `Program Offering Enrollment Rule`.
 For a minimal offering, use `MIN_TOTAL_COURSES` with `Value 1 = 1`; without any enrollment rule, the engine reports the offering basket as `not_configured` and the request remains invalid.
+
+When a request records `Does Not Intend to Enroll` or `Undecided`, it is an intent response rather than an enrollment-ready academic request. It may be submitted for staff visibility, but it cannot be approved, validated for enrollment, or materialized into `Program Enrollment`.
 
 ### 2.4 `Program Enrollment`
 
@@ -309,6 +316,7 @@ Desk is the authoritative staff surface for:
 - preparing one draft request per student
 - opening and closing the portal window
 - reviewing, overriding, approving, and materializing requests
+- reviewing re-enrollment intent and course-demand analytics before approval/materialization
 - executing governed direct-enrollment tools
 
 Students and guardians do not use Desk.
@@ -409,6 +417,8 @@ The Desk workflow is:
 
 Opening is blocked if the window does not already govern linked requests.
 
+If `collect_enrollment_intent` is enabled, request preparation may create an empty draft request so the portal can first collect whether the student intends to return. Course choices are required only after the response is `Intends to Enroll`.
+
 ### 5.2 Request creation under a window
 
 Preparing a window does not create committed enrollments.
@@ -430,8 +440,16 @@ Portal save and submit are allowed only when:
 - the window audience matches the actor type
 - the window is open right now
 - the linked request is still editable
+- enrollment intent is collected only by windows configured to collect it
 
 Once a request leaves draft state, portal editing becomes read-only.
+
+For intent-collection windows:
+
+- `Intends to Enroll` continues into the normal course-choice validation path
+- `Does Not Intend to Enroll` can be submitted without course rows and becomes a planning signal for staff
+- `Undecided` can be submitted without course rows and becomes a staff follow-up item
+- missing intent blocks submit with an actionable message
 
 ### 5.4 Request gate states
 
@@ -441,14 +459,17 @@ For `Program Enrollment Request`, gate states are:
 - `Under Review`
 - `Approved`
 
-Those states require a validation snapshot.
+Those states require an affirmative enrollment intent before academic validation can run.
 
 Approval requires:
 
 - `validation_status = Valid`
 - override approval if `requires_override = 1`
+- `enrollment_intent = Intends to Enroll` when intent has been recorded
 
 The request is the only valid staging area between portal/desk intent and committed enrollment.
+
+Non-enrolling or undecided requests are still auditable request records, but they remain outside the approval/materialization path until the intent changes to `Intends to Enroll`.
 
 ---
 
@@ -639,6 +660,7 @@ Do not mix academic enrollment rules and activity-booking rules inside one undoc
 8. Rule changes must not retroactively rewrite old decisions.
 9. Child tables remain passive; business logic belongs in parent controllers and canonical services.
 10. Desk vs portal ownership must stay explicit; silent surface drift is a product defect.
+11. Enrollment intent and course demand planning are request/report surfaces, not committed enrollment truth.
 
 ---
 

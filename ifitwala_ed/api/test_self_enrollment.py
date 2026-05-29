@@ -163,6 +163,71 @@ class TestSelfEnrollmentApi(FrappeTestCase):
         optional_row = next(row for row in request.courses if row.course == context["optional_course"].name)
         self.assertEqual(optional_row.applied_basket_group, context["basket_group"].name)
 
+    def test_guardian_can_submit_not_returning_intent_without_course_choices(self):
+        context = _build_self_enrollment_context(
+            carry_forward_optional=False,
+            collect_enrollment_intent=1,
+        )
+        window = context["window"]
+        window.load_students()
+        window.prepare_requests()
+        window.open_window()
+        guardian_user = self._create_guardian_user_for_student(context["student"].name)
+
+        request_name = frappe.db.get_value(
+            "Program Enrollment Request",
+            {
+                "selection_window": window.name,
+                "student": context["student"].name,
+            },
+        )
+
+        frappe.set_user(guardian_user)
+        payload = self_enrollment_api.submit_self_enrollment_choices(
+            selection_window=window.name,
+            student=context["student"].name,
+            enrollment_intent="Does Not Intend to Enroll",
+            courses=[],
+        )
+
+        request = frappe.get_doc("Program Enrollment Request", request_name)
+        request.reload()
+        self.assertEqual(request.status, "Submitted")
+        self.assertEqual(request.enrollment_intent, "Does Not Intend to Enroll")
+        self.assertEqual(request.validation_status, "Not Validated")
+        self.assertEqual(payload["request"]["enrollment_intent"], "Does Not Intend to Enroll")
+        self.assertTrue(payload["summary"]["ready_for_submit"])
+
+    def test_guardian_cannot_submit_intent_when_window_does_not_collect_it(self):
+        context = _build_self_enrollment_context(carry_forward_optional=False)
+        window = context["window"]
+        window.load_students()
+        window.prepare_requests()
+        window.open_window()
+        guardian_user = self._create_guardian_user_for_student(context["student"].name)
+
+        request_name = frappe.db.get_value(
+            "Program Enrollment Request",
+            {
+                "selection_window": window.name,
+                "student": context["student"].name,
+            },
+        )
+
+        frappe.set_user(guardian_user)
+        with self.assertRaises(frappe.ValidationError):
+            self_enrollment_api.submit_self_enrollment_choices(
+                selection_window=window.name,
+                student=context["student"].name,
+                enrollment_intent="Does Not Intend to Enroll",
+                courses=[],
+            )
+
+        request = frappe.get_doc("Program Enrollment Request", request_name)
+        request.reload()
+        self.assertEqual(request.status, "Draft")
+        self.assertFalse(bool(request.enrollment_intent))
+
     def test_guardian_choice_state_uses_family_friendly_validation_message(self):
         context = _build_self_enrollment_context(carry_forward_optional=False)
         window = context["window"]

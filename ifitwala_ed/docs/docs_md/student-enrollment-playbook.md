@@ -3,9 +3,9 @@ title: "Student Enrollment Playbook: Curriculum to Ready Enrollment"
 slug: student-enrollment-playbook
 category: Enrollment
 doc_order: 1
-version: "1.2.0"
-last_change_date: "2026-03-11"
-summary: "Run the full enrollment workflow end-to-end: prepare curriculum, publish offering constraints, bridge admissions into draft requests safely, validate requests, materialize Program Enrollment, and finalize course rosters with the in-product tools."
+version: "1.3.0"
+last_change_date: "2026-05-29"
+summary: "Run the full enrollment workflow end-to-end: prepare curriculum, publish offering constraints, collect re-enrollment intent and course choices, bridge admissions into draft requests safely, validate affirmative requests, materialize Program Enrollment, and finalize course rosters with the in-product tools."
 seo_title: "Student Enrollment Playbook: Curriculum to Ready Enrollment"
 seo_description: "Run the full enrollment workflow end-to-end: prepare curriculum, publish offering constraints, validate requests, materialize Program Enrollment, and finalize course rosters safely."
 ---
@@ -29,11 +29,12 @@ This page is the operational path for enrolling students into programs and cours
 
 1. Prepare curriculum policy (`Program`, catalog rows, prerequisite snapshots).
 2. Publish operational availability (`Program Offering`, offering courses, basket rules, capacity model).
-3. Capture student intent in [**Program Enrollment Request**](/docs/en/program-enrollment-request/), either directly or by hydrating it from an accepted [**Applicant Enrollment Plan**](/docs/en/applicant-enrollment-plan/) after promotion.
-4. Validate request snapshot (`validate_program_enrollment_request`).
-5. Approve with explicit override if required.
-6. Materialize approved request into [**Program Enrollment**](/docs/en/program-enrollment/) (`materialize_program_enrollment_request`).
-7. Finalize or adjust enrollment in-product:
+3. Capture student intent in [**Program Enrollment Request**](/docs/en/program-enrollment-request/), either directly, through a [**Program Offering Selection Window**](/docs/en/program-offering-selection-window/) that asks yes/no/maybe plus courses, or by hydrating it from an accepted [**Applicant Enrollment Plan**](/docs/en/applicant-enrollment-plan/) after promotion.
+4. Use `Program Enrollment Request Overview` and `Enrollment Intent Course Analytics` to follow up missing/undecided responses and estimate course demand.
+5. Validate affirmative request snapshots (`validate_program_enrollment_request`).
+6. Approve with explicit override if required.
+7. Materialize approved affirmative requests into [**Program Enrollment**](/docs/en/program-enrollment/) (`materialize_program_enrollment_request`).
+8. Finalize or adjust enrollment in-product:
    - [**Program Enrollment Tool**](/docs/en/program-enrollment-tool/) for batch request preparation, validation, approval, and materialization during cohort/offering rollover
    - [**Course Enrollment Tool**](/docs/en/course-enrollment-tool/) for adding one course across many enrollments, including source-course-based course promotion
 
@@ -68,20 +69,30 @@ This page is the operational path for enrolling students into programs and cours
 4. Staff batch-validates, approves valid requests, and materializes the destination enrollments.
 5. For batches over 100 rows, job runs in queue and publishes realtime completion summary.
 
+### Example 4: Family Re-Enrollment Intent Campaign
+
+1. Staff opens a Program Offering Selection Window with `Collect Enrollment Intent` enabled.
+2. Families answer `Intends to Enroll`, `Does Not Intend to Enroll`, or `Undecided`.
+3. Only affirmative responses continue into course-choice validation and approval.
+4. Academic admin reviews `Enrollment Intent Course Analytics` before approving, so likely section demand is visible before the new academic year starts.
+
 ## Related Docs
 
 <RelatedDocs
-  slugs="program,course,program-offering,applicant-enrollment-plan,program-enrollment-request,program-enrollment,program-enrollment-tool,course-enrollment-tool"
+  slugs="program,course,program-offering,program-offering-selection-window,applicant-enrollment-plan,program-enrollment-request,program-enrollment,program-enrollment-tool,course-enrollment-tool"
   title="Related Docs"
 />
 
 ## Technical Notes (IT)
 
-### Latest Technical Snapshot (2026-03-10)
+### Latest Technical Snapshot (2026-05-29)
 
 - **Primary runtime owners**:
   - `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.py`
+  - `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window.py`
+  - `ifitwala_ed/schedule/enrollment_intent.py`
   - `ifitwala_ed/schedule/enrollment_request_utils.py`
+  - `ifitwala_ed/schedule/report/enrollment_intent_course_analytics/enrollment_intent_course_analytics.py`
   - `ifitwala_ed/admission/doctype/applicant_enrollment_plan/applicant_enrollment_plan.py`
   - `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
 - **Admissions bridge nuance**:

@@ -10,6 +10,8 @@ Code refs:
 - `ifitwala_ed/schedule/doctype/program_offering/program_offering.js`
 - `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window.py`
 - `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window.js`
+- `ifitwala_ed/schedule/enrollment_intent.py`
+- `ifitwala_ed/schedule/report/enrollment_intent_course_analytics/enrollment_intent_course_analytics.py`
 - `ifitwala_ed/api/self_enrollment.py`
 - `ifitwala_ed/schedule/doctype/end_of_year_checklist/end_of_year_checklist.py`
 - `ifitwala_ed/school_settings/doctype/academic_year/academic_year.py`
@@ -20,6 +22,7 @@ Test refs:
 - `ifitwala_ed/schedule/doctype/program_enrollment_tool/test_program_enrollment_tool.py`
 - `ifitwala_ed/schedule/doctype/program_offering_selection_window/test_program_offering_selection_window.py`
 - `ifitwala_ed/api/test_self_enrollment.py`
+- `ifitwala_ed/schedule/report/enrollment_intent_course_analytics/test_enrollment_intent_course_analytics.py`
 - `ifitwala_ed/schedule/doctype/end_of_year_checklist/test_end_of_year_checklist.py`
 
 This document defines the current runtime contract for year rollover and year-end closure in Ifitwala_Ed.
@@ -111,7 +114,7 @@ Use the lane that matches the decision model:
 | Situation | Canonical lane | Why |
 | --- | --- | --- |
 | Staff is progressing a known student set and no family/student choice window is needed | `Program Enrollment Tool` | lowest-friction batch path under staff control |
-| Student or guardian must review or choose courses before progression is approved | `Program Offering Selection Window` -> portal -> staff approval | preserves self-service without bypassing request governance |
+| Student or guardian must confirm next-year intent and, when returning, choose courses before progression is approved | `Program Offering Selection Window` -> portal -> staff approval | preserves self-service and planning signals without bypassing request governance |
 | Student is still in admissions and is not yet part of the current student body | admissions bridge, not rollover | this uses `Applicant Enrollment Plan`, not the current-student rollover lane |
 
 Do not pretend every student progression goes through the same surface.
@@ -179,15 +182,16 @@ Current flow:
 
 1. staff enables `allow_self_enroll` on the target `Program Offering`
 2. staff creates the selection window from the offering
-3. staff chooses source mode:
+3. staff decides whether the window should collect re-enrollment intent before course choices
+4. staff chooses source mode:
    - `Program Enrollment`
    - `Cohort`
    - `Manual`
-4. staff loads students
-5. staff prepares one draft `Program Enrollment Request` per student row
-6. staff opens the window
-7. student or guardian saves and submits the linked request in portal
-8. staff reviews, validates, approves, and materializes later
+5. staff loads students
+6. staff prepares one draft `Program Enrollment Request` per student row
+7. staff opens the window
+8. student or guardian answers intent first, then chooses courses only when the answer is `Intends to Enroll`
+9. staff reviews response and course-demand analytics, validates affirmative requests, approves, and materializes later
 
 Portal boundaries remain strict:
 
@@ -195,6 +199,7 @@ Portal boundaries remain strict:
 - portal actors edit only the linked draft request
 - portal actors do not create `Program Enrollment`
 - the window is an operational envelope, not academic truth
+- non-returning and undecided responses remain request-stage planning data until staff follow-up changes the intent
 
 For SPA and request-shape discipline, the current portal contract is:
 
@@ -275,12 +280,14 @@ The lowest-friction operational order, inferred from current ownership, is:
 1. prepare the destination `Program Offering` and destination `Academic Year`
 2. decide whether this cohort needs:
    - direct staff batch rollover, or
-   - portal choice collection
+   - portal intent and choice collection
 3. prepare next-year requests
 4. collect portal submissions where required
-5. validate, approve, and materialize next-year `Program Enrollment`
-6. verify leavers are excluded from next-year progression
-7. run `End of Year Checklist` for the outgoing year
+5. use `Program Enrollment Request Overview` to chase missing, undecided, and blocked responses
+6. use `Enrollment Intent Course Analytics` to estimate course demand before approving requests
+7. validate, approve, and materialize affirmative next-year `Program Enrollment`
+8. verify leavers and undecided students are excluded from next-year progression until resolved
+9. run `End of Year Checklist` for the outgoing year
 
 This sequence avoids turning year closure into a blocker before next-year intent is prepared.
 

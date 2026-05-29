@@ -48,7 +48,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Reports",
-   "link_count": 4,
+   "link_count": 5,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -59,6 +59,16 @@
    "label": "Enrollment Requests Overview",
    "link_count": 0,
    "link_to": "Program Enrollment Request Overview",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Enrollment Intent Course Analytics",
+   "link_count": 0,
+   "link_to": "Enrollment Intent Course Analytics",
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
@@ -554,7 +564,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-03-28 12:47:08.000000",
+ "modified": "2026-05-29 11:34:29.000000",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Admin",

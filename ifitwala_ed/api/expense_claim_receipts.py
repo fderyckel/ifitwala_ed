@@ -19,6 +19,7 @@ from ifitwala_ed.hr.doctype.expense_claim.receipts import (
 )
 from ifitwala_ed.utilities.governed_uploads import (
     _drive_upload_and_finalize,
+    _get_form_arg,
     _get_uploaded_file,
     _resolve_upload_mime_type_hint,
     _workflow_result_payload,
@@ -272,11 +273,17 @@ def upload_expense_claim_receipt(
     row_name: str | None = None,
     **_kwargs,
 ) -> dict[str, Any]:
-    doc = assert_expense_claim_receipt_upload_access(str(expense_claim or "").strip(), permission_type="write")
+    resolved_expense_claim = (
+        _clean_text(expense_claim)
+        or _clean_text(_get_form_arg("expense_claim"))
+        or _clean_text(frappe.form_dict.get("docname"))
+    )
+    resolved_row_name = _clean_text(row_name) or _clean_text(_get_form_arg("row_name"))
+    doc = assert_expense_claim_receipt_upload_access(resolved_expense_claim or "", permission_type="write")
     filename, content = _get_uploaded_file()
     workflow_payload = {
         "expense_claim": doc.name,
-        "row_name": _clean_text(row_name),
+        "row_name": resolved_row_name,
     }
     session_response, finalize_response, file_doc = _drive_upload_and_finalize(
         create_session_callable=_create_expense_claim_receipt_session,
@@ -284,7 +291,7 @@ def upload_expense_claim_receipt(
             "workflow_id": EXPENSE_CLAIM_RECEIPT_WORKFLOW_ID,
             "workflow_payload": workflow_payload,
             "expense_claim": doc.name,
-            "row_name": _clean_text(row_name),
+            "row_name": resolved_row_name,
             "filename_original": filename,
             "mime_type_hint": _resolve_upload_mime_type_hint(filename=filename),
             "expected_size_bytes": len(content),
@@ -300,7 +307,7 @@ def upload_expense_claim_receipt(
     resolved_row_name = (
         _clean_text(finalize_workflow_result.get("row_name"))
         or _clean_text(session_workflow_result.get("row_name"))
-        or _clean_text(row_name)
+        or resolved_row_name
     )
     target_row = _get_receipt_row(doc, resolved_row_name)
 

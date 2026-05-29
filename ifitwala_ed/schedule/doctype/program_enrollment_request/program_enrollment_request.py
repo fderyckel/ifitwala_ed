@@ -8,6 +8,12 @@ from frappe.model.document import Document
 from frappe.utils import get_link_to_form
 
 from ifitwala_ed.schedule.basket_group_utils import get_offering_course_semantics
+from ifitwala_ed.schedule.enrollment_intent import (
+    is_enrollment_intent_affirmative,
+    is_enrollment_intent_missing,
+    is_valid_enrollment_intent,
+    normalize_enrollment_intent,
+)
 from ifitwala_ed.schedule.enrollment_request_utils import (
     build_program_enrollment_request_validation,
     validate_program_enrollment_request,
@@ -33,9 +39,32 @@ class ProgramEnrollmentRequest(Document):
         if request_kind == "Activity" and not self.activity_booking:
             frappe.throw(_("Activity Request Kind requires Activity Booking reference."))
 
+        self._validate_enrollment_intent()
         self._apply_offering_spine()
         self._sync_course_semantics_from_offering()
         self._validate_course_rows()
+
+        collects_intent = self._collects_enrollment_intent()
+        if target_status in {"Submitted", "Under Review", "Approved"} and is_enrollment_intent_missing(
+            getattr(self, "enrollment_intent", None),
+            collect_enrollment_intent=collects_intent,
+        ):
+            frappe.throw(_("Choose an Enrollment Intent before submitting this request."))
+
+        is_affirmative_intent = is_enrollment_intent_affirmative(
+            getattr(self, "enrollment_intent", None),
+            collect_enrollment_intent=collects_intent,
+        )
+        if target_status == "Approved" and not is_affirmative_intent:
+            frappe.throw(_("Only requests with Enrollment Intent set to Intends to Enroll can be Approved."))
+
+        if not is_affirmative_intent and target_status in {"Submitted", "Under Review"}:
+            self.validation_status = "Not Validated"
+            self.validation_payload = None
+            self.validated_on = None
+            self.validated_by = None
+            self.requires_override = 0
+            return
 
         needs_snapshot = target_status in {"Submitted", "Under Review", "Approved"}
 
@@ -108,6 +137,28 @@ class ProgramEnrollmentRequest(Document):
                 frappe.throw(
                     _("This request requires an override and must be override-approved before it can be Approved.")
                 )
+
+    def _validate_enrollment_intent(self):
+        intent = normalize_enrollment_intent(getattr(self, "enrollment_intent", None))
+        if not is_valid_enrollment_intent(intent):
+            frappe.throw(_("Invalid Enrollment Intent: {intent}.").format(intent=intent))
+        self.enrollment_intent = intent
+
+    def _collects_enrollment_intent(self) -> bool:
+        selection_window = (self.selection_window or "").strip()
+        if not selection_window:
+            return False
+        return (
+            int(
+                frappe.db.get_value(
+                    "Program Offering Selection Window",
+                    selection_window,
+                    "collect_enrollment_intent",
+                )
+                or 0
+            )
+            == 1
+        )
 
     def _sync_course_semantics_from_offering(self):
         if not self.program_offering or not getattr(self, "courses", None):

@@ -185,6 +185,27 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
         self.assertEqual(request.validation_status, "Valid")
         self.assertEqual(request.courses[0].applied_basket_group, humanities_group.name)
 
+    def test_non_returning_intent_can_submit_without_validation_snapshot(self):
+        context = _setup_enrollment_context(score=95)
+        request = _make_enrollment_request(
+            context,
+            student=context["student"],
+            course=context["target_course"],
+        )
+
+        request.enrollment_intent = "Does Not Intend to Enroll"
+        request.set("courses", [])
+        request.status = "Submitted"
+        request.save()
+        request.reload()
+
+        self.assertEqual(request.status, "Submitted")
+        self.assertEqual(request.validation_status, "Not Validated")
+        self.assertFalse(bool(request.validation_payload))
+
+        with self.assertRaises(frappe.ValidationError):
+            materialize_program_enrollment_request(request.name)
+
     def test_materialize_request_updates_enrollment(self):
         basket_group = _make_basket_group("Sciences")
         context = _setup_enrollment_context(

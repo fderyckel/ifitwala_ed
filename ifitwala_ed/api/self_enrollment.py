@@ -11,6 +11,15 @@ from frappe.utils import cint, get_datetime, now_datetime
 
 from ifitwala_ed.api.activity_booking import _guardian_student_names, _parse_name_list, _student_rows
 from ifitwala_ed.api.courses import _require_student_name_for_session_user
+from ifitwala_ed.schedule.enrollment_intent import (
+    INTENT_DOES_NOT_INTEND,
+    INTENT_INTENDS_TO_ENROLL,
+    INTENT_UNDECIDED,
+    is_enrollment_intent_missing,
+    is_non_enrolling_intent,
+    is_valid_enrollment_intent,
+    normalize_enrollment_intent,
+)
 from ifitwala_ed.schedule.program_enrollment_request_choice import (
     get_program_enrollment_request_choice_state,
     store_program_enrollment_request_choices,
@@ -104,6 +113,7 @@ def _request_rows_by_name(request_names: list[str]) -> dict[str, dict]:
             "selection_window",
             "status",
             "validation_status",
+            "enrollment_intent",
             "submitted_on",
             "submitted_by",
         ],
@@ -129,6 +139,7 @@ def _window_rows(window_names: list[str], *, audience: str) -> list[dict]:
             "status",
             "open_from",
             "due_on",
+            "collect_enrollment_intent",
             "instructions",
         ],
         order_by="modified desc",
@@ -238,17 +249,31 @@ def _board_window_payload(
         submitted_count = 0
         invalid_count = 0
         approved_count = 0
+        intent_to_enroll_count = 0
+        not_returning_count = 0
+        undecided_count = 0
+        no_response_count = 0
+        collect_intent = cint(window.get("collect_enrollment_intent") or 0) == 1
 
         for row in rows:
             student_name = (row.get("student") or "").strip()
             student_meta = student_map.get(student_name) or {}
             request_row = request_map.get((row.get("program_enrollment_request") or "").strip()) or None
+            enrollment_intent = normalize_enrollment_intent((request_row or {}).get("enrollment_intent"))
             if request_row and (request_row.get("status") or "").strip() != "Draft":
                 submitted_count += 1
             if request_row and (request_row.get("validation_status") or "").strip() == "Invalid":
                 invalid_count += 1
             if request_row and (request_row.get("status") or "").strip() == "Approved":
                 approved_count += 1
+            if enrollment_intent == INTENT_INTENDS_TO_ENROLL:
+                intent_to_enroll_count += 1
+            elif enrollment_intent == INTENT_DOES_NOT_INTEND:
+                not_returning_count += 1
+            elif enrollment_intent == INTENT_UNDECIDED:
+                undecided_count += 1
+            elif collect_intent:
+                no_response_count += 1
 
             locked_reason = _locked_reason(window=window, request_row=request_row)
             students_payload.append(
@@ -260,6 +285,7 @@ def _board_window_payload(
                         "status": ((request_row or {}).get("status") or "Draft").strip() or "Draft",
                         "validation_status": ((request_row or {}).get("validation_status") or "Not Validated").strip()
                         or "Not Validated",
+                        "enrollment_intent": enrollment_intent or None,
                         "submitted_on": (request_row or {}).get("submitted_on"),
                         "submitted_by": (request_row or {}).get("submitted_by"),
                         "can_edit": 0 if locked_reason else 1,
@@ -294,6 +320,7 @@ def _board_window_payload(
                 "open_from": open_state["open_from"],
                 "due_on": open_state["due_on"],
                 "is_open_now": open_state["is_open_now"],
+                "collect_enrollment_intent": 1 if collect_intent else 0,
                 "instructions": window.get("instructions"),
                 "summary": {
                     "total_students": len(rows),
@@ -301,6 +328,10 @@ def _board_window_payload(
                     "pending_count": max(len(rows) - submitted_count, 0),
                     "invalid_count": invalid_count,
                     "approved_count": approved_count,
+                    "intent_to_enroll_count": intent_to_enroll_count,
+                    "not_returning_count": not_returning_count,
+                    "undecided_count": undecided_count,
+                    "no_response_count": no_response_count,
                 },
                 "students": students_payload,
             }
@@ -361,12 +392,18 @@ def _build_choice_state_response(*, actor_type: str, student_meta: dict, window:
         request_row={
             "status": request.status,
             "validation_status": request.validation_status,
+            "enrollment_intent": getattr(request, "enrollment_intent", None),
             "submitted_on": request.submitted_on,
             "submitted_by": request.submitted_by,
         },
     )
     can_edit = locked_reason is None
-    choice_state = get_program_enrollment_request_choice_state(request, can_edit=can_edit)
+    collect_intent = cint(window.get("collect_enrollment_intent") or 0) == 1
+    choice_state = get_program_enrollment_request_choice_state(
+        request,
+        can_edit=can_edit,
+        collect_enrollment_intent=collect_intent,
+    )
 
     offering = (
         frappe.db.get_value(
@@ -410,6 +447,7 @@ def _build_choice_state_response(*, actor_type: str, student_meta: dict, window:
             "status": window.get("status"),
             "open_from": window.get("open_from"),
             "due_on": window.get("due_on"),
+            "collect_enrollment_intent": 1 if collect_intent else 0,
             "is_open_now": _window_open_state(window)["is_open_now"],
             "instructions": window.get("instructions"),
         },
@@ -447,6 +485,34 @@ def _parse_course_rows(courses) -> list[dict]:
     return courses
 
 
+def _parse_enrollment_intent(enrollment_intent) -> str:
+    intent = normalize_enrollment_intent(enrollment_intent)
+    if not is_valid_enrollment_intent(intent):
+        frappe.throw(_("Invalid Enrollment Intent: {intent}.").format(intent=intent))
+    return intent
+
+
+def _apply_enrollment_intent(request, enrollment_intent, *, collect_enrollment_intent=0) -> bool:
+    if enrollment_intent is None:
+        return False
+
+    intent = _parse_enrollment_intent(enrollment_intent)
+    if intent and cint(collect_enrollment_intent or 0) != 1:
+        frappe.throw(_("Enrollment intent is not being collected for this window."))
+
+    current = normalize_enrollment_intent(getattr(request, "enrollment_intent", None))
+    if intent == current:
+        return False
+
+    request.enrollment_intent = intent
+    request.validation_status = "Not Validated"
+    request.validation_payload = None
+    request.validated_on = None
+    request.validated_by = None
+    request.requires_override = 0
+    return True
+
+
 @frappe.whitelist()
 def get_self_enrollment_portal_board(students=None, include_closed: int = 0):
     actor_type, student_rows = _resolve_self_enrollment_actor(students=students)
@@ -477,14 +543,29 @@ def get_self_enrollment_choice_state(selection_window: str, student: str | None 
 
 
 @frappe.whitelist()
-def save_self_enrollment_choices(selection_window: str, courses=None, student: str | None = None):
+def save_self_enrollment_choices(
+    selection_window: str,
+    courses=None,
+    student: str | None = None,
+    enrollment_intent=None,
+):
     actor_type, student_meta, window, request = _resolve_window_student_request(selection_window, student)
     locked_reason = _locked_reason(window=window, request_row={"status": request.status})
     if locked_reason:
         frappe.throw(locked_reason)
 
+    collect_intent = cint(window.get("collect_enrollment_intent") or 0) == 1
+    intent_changed = _apply_enrollment_intent(
+        request,
+        enrollment_intent,
+        collect_enrollment_intent=collect_intent,
+    )
     if courses is not None:
         store_program_enrollment_request_choices(request, courses=_parse_course_rows(courses))
+    if intent_changed and courses is None:
+        request.save(ignore_permissions=True)
+        request.reload()
+    elif courses is not None:
         request.save(ignore_permissions=True)
         request.reload()
     return _build_choice_state_response(
@@ -496,7 +577,12 @@ def save_self_enrollment_choices(selection_window: str, courses=None, student: s
 
 
 @frappe.whitelist()
-def submit_self_enrollment_choices(selection_window: str, courses=None, student: str | None = None):
+def submit_self_enrollment_choices(
+    selection_window: str,
+    courses=None,
+    student: str | None = None,
+    enrollment_intent=None,
+):
     actor_type, student_meta, window, request = _resolve_window_student_request(selection_window, student)
     if (request.status or "").strip() == "Submitted":
         return _build_choice_state_response(
@@ -509,6 +595,29 @@ def submit_self_enrollment_choices(selection_window: str, courses=None, student:
     locked_reason = _locked_reason(window=window, request_row={"status": request.status})
     if locked_reason:
         frappe.throw(locked_reason)
+
+    collect_intent = cint(window.get("collect_enrollment_intent") or 0) == 1
+    _apply_enrollment_intent(
+        request,
+        enrollment_intent,
+        collect_enrollment_intent=collect_intent,
+    )
+    intent = normalize_enrollment_intent(getattr(request, "enrollment_intent", None))
+    if is_enrollment_intent_missing(intent, collect_enrollment_intent=collect_intent):
+        frappe.throw(_("Choose whether the student intends to enroll before submitting."))
+
+    if is_non_enrolling_intent(intent):
+        request.status = "Submitted"
+        request.submitted_on = now_datetime()
+        request.submitted_by = frappe.session.user
+        request.save(ignore_permissions=True)
+        request.reload()
+        return _build_choice_state_response(
+            actor_type=actor_type,
+            student_meta=student_meta,
+            window={**window, "name": selection_window},
+            request=request,
+        )
 
     if courses is not None:
         store_program_enrollment_request_choices(request, courses=_parse_course_rows(courses))

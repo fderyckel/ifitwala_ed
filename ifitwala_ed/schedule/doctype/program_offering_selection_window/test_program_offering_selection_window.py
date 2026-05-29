@@ -91,7 +91,12 @@ class TestProgramOfferingSelectionWindow(FrappeTestCase):
             window.load_students()
 
 
-def _build_self_enrollment_context(*, carry_forward_optional: bool = True, audience: str = "Guardian") -> dict:
+def _build_self_enrollment_context(
+    *,
+    carry_forward_optional: bool = True,
+    audience: str = "Guardian",
+    collect_enrollment_intent: int = 0,
+) -> dict:
     grade_scale = _make_grade_scale()
     organization = _make_organization()
     school = _make_school(organization)
@@ -169,6 +174,7 @@ def _build_self_enrollment_context(*, carry_forward_optional: bool = True, audie
             "source_mode": "Program Enrollment",
             "source_program_offering": source_offering.name,
             "source_academic_year": source_ay.name,
+            "collect_enrollment_intent": collect_enrollment_intent,
         }
     ).insert()
 

@@ -3,9 +3,9 @@ title: "Program Enrollment Request: Transactional Staging for Enrollment"
 slug: program-enrollment-request
 category: Enrollment
 doc_order: 4
-version: "1.6.4"
+version: "1.7.0"
 last_change_date: "2026-05-29"
-summary: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment, including basket-group snapshots, offering-derived term-window carry-forward, admissions hydration, portal self-enrollment provenance, report-driven batch actions, and PER form shortcuts into the request overview."
+summary: "Capture re-enrollment intent and course choices, run deterministic validation snapshots for affirmative requests, enforce override gates, support intent/course analytics, and approve requests before materializing Program Enrollment."
 seo_title: "Program Enrollment Request: Transactional Staging for Enrollment"
 seo_description: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment."
 ---
@@ -20,10 +20,10 @@ It remains student-linked even when the request originates in admissions. If adm
 
 - Create target [**Program Offering**](/docs/en/program-offering/) with offering courses, at least one enrollment rule, and, when needed, basket-group memberships.
 - Ensure student identity exists.
-- Provide at least one request course row.
+- Provide at least one request course row, unless the request is recording `Does Not Intend to Enroll` or `Undecided` intent for planning/follow-up.
 
 <Callout type="warning" title="Approval gate">
-For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot must exist and remain aligned with basket content. The target Program Offering must have at least one enrollment rule, such as `MIN_TOTAL_COURSES` with `Value 1 = 1`; otherwise validation is marked not configured. Multi-group optional courses must carry an explicit `applied_basket_group` before the request can advance.
+For affirmative enrollment requests, statuses `Submitted`, `Under Review`, and `Approved` require a validation snapshot aligned with basket content. The target Program Offering must have at least one enrollment rule, such as `MIN_TOTAL_COURSES` with `Value 1 = 1`; otherwise validation is marked not configured. Multi-group optional courses must carry an explicit `applied_basket_group` before an affirmative request can advance.
 </Callout>
 
 ## Where It Is Used Across the ERP
@@ -40,7 +40,8 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
   - `Program Enrollment Request Overview` script report supports:
     - student-by-course matrix review
     - course demand summaries
-    - selection-window tracker review for submitted, not-submitted, missing-request, and problematic portal responses
+    - selection-window tracker review for submitted, not-submitted, missing-request, intent, and problematic portal responses
+  - `Enrollment Intent Course Analytics` summarizes intended course demand before academic admin validates and approves requests
   - the same report now offers:
     - `Approve Valid Requests`
     - `Create Enrollments from Approved`
@@ -62,21 +63,27 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
 2. `program`, `school`, and `academic_year` are resolved from the offering context; if the offering has exactly one academic year, the request auto-fills it.
 3. Request rows sync `required` from the offering.
 4. Optional rows may carry `applied_basket_group` and `choice_rank`.
-5. If request came from portal self-enrollment, `selection_window` records the campaign provenance.
-   Portal submission stays in `Draft` until the current choices pass live validation; families see plain-language guidance instead of a silent invalid submit.
-6. Move to `Submitted` / `Under Review`; server runs or refreshes the snapshot when needed.
-7. Review `validation_status`, `requires_override`, and reasons in payload.
-8. Approve only when request is valid, or when override is approved with traceability.
-9. Materialize approved request into one [**Program Enrollment**](/docs/en/program-enrollment/).
-10. For straightforward academic cohorts, staff may use the report batch actions to:
+5. If the governing selection window collects enrollment intent, the request records one of:
+   - `Intends to Enroll`
+   - `Does Not Intend to Enroll`
+   - `Undecided`
+6. If request came from portal self-enrollment, `selection_window` records the campaign provenance.
+   For affirmative course-choice submissions, the portal keeps the request in `Draft` until the current choices pass live validation; families see plain-language guidance instead of a silent invalid submit.
+   If intent is `Does Not Intend to Enroll` or `Undecided`, the portal can submit without course choices and staff sees the response in review/reporting surfaces.
+7. Move affirmative requests to `Submitted` / `Under Review`; server runs or refreshes the snapshot when needed.
+8. Review `validation_status`, `requires_override`, and reasons in payload.
+9. Approve only when request intent is `Intends to Enroll` and the request is valid, or when override is approved with traceability.
+10. Materialize approved request into one [**Program Enrollment**](/docs/en/program-enrollment/).
+11. For straightforward academic cohorts, staff may use the report batch actions to:
     - approve valid requests only
     - materialize already-approved valid requests only
     - or run the combined approve-and-materialize shortcut
-    while skipping invalid, override-required, or already-materialized rows.
+    while skipping invalid, override-required, non-returning, undecided, or already-materialized rows.
 
 ### Status and Validation Fields
 
 - `status`: `Draft`, `Submitted`, `Under Review`, `Approved`, `Rejected`, `Cancelled`
+- `enrollment_intent`: blank, `Intends to Enroll`, `Does Not Intend to Enroll`, `Undecided`
 - `validation_status`: `Not Validated`, `Valid`, `Invalid`
 - `validation_payload`: frozen engine output
 - override fields: `requires_override`, `override_approved`, `override_reason`, `override_by`, `override_on`
@@ -110,9 +117,10 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
 
 1. Staff opens a [**Program Offering Selection Window**](/docs/en/program-offering-selection-window/) for `Guardian`.
 2. Server prepares one draft request per child with all required rows already present.
-3. Guardian opens the portal, chooses the optional language course, and submits.
+3. Guardian first confirms `Intends to Enroll`, then chooses the optional language course and submits.
 4. If the choices pass live validation, the request stays canonical: `status = Submitted`, `selection_window = ...`, `submitted_by = guardian user`.
-5. If the choices still need attention, the request remains `Draft` and the portal explains what must be fixed first.
+5. If the guardian chooses `Does Not Intend to Enroll` or `Undecided`, the request can be submitted without course choices and remains outside approval/materialization until staff follow-up changes the intent.
+6. If affirmative choices still need attention, the request remains `Draft` and the portal explains what must be fixed first.
 
 ## Permission Matrix
 
@@ -129,7 +137,7 @@ Desk visibility is limited to requests whose resolved `school` is inside the use
 ## Related Docs
 
 <RelatedDocs
-  slugs="program-offering,basket-group,applicant-enrollment-plan,program-enrollment,student-enrollment-playbook"
+  slugs="program-offering,program-offering-selection-window,basket-group,applicant-enrollment-plan,program-enrollment,student-enrollment-playbook"
   title="Related Docs"
 />
 
@@ -143,7 +151,6 @@ Desk visibility is limited to requests whose resolved `school` is inside the use
 - **Required fields (`reqd=1`)**:
   - `student` (`Link`)
   - `program_offering` (`Link`)
-  - `courses` (`Table`)
 - **Lifecycle hooks in controller**: `validate`
 - **Operational/public methods**:
   - `get_offering_catalog(program_offering)`
@@ -160,6 +167,8 @@ Desk visibility is limited to requests whose resolved `school` is inside the use
   - `selection_window` (`Link`, read-only)
   - `source_student_applicant` (`Link`, read-only)
   - `source_applicant_enrollment_plan` (`Link`, read-only)
+- **Intent field**:
+  - `enrollment_intent` (`Select`): blank, `Intends to Enroll`, `Does Not Intend to Enroll`, `Undecided`
 - **Request course snapshot fields**:
   - `required`
   - `applied_basket_group`
@@ -172,6 +181,8 @@ Desk visibility is limited to requests whose resolved `school` is inside the use
   - request-kind enforcement (`Academic` or `Activity`)
   - activity requests require `activity_booking`
   - portal self-enrollment provenance through `selection_window`
+  - intent-only submission support for `Does Not Intend to Enroll` and `Undecided`
+  - `Approved` status is blocked unless `enrollment_intent` is `Intends to Enroll` when intent is recorded
   - request rows sync `required` from offering semantics
   - duplicate course rows are blocked
   - invalid basket-group choices are blocked
@@ -182,7 +193,7 @@ Desk visibility is limited to requests whose resolved `school` is inside the use
   - basket-change and status-change aware revalidation
   - override approval gate before `Approved`
 - **Materialization utility guarantees** (`enrollment_request_utils.py`):
-  - only `Approved` + `Valid` requests can materialize
+  - only `Approved` + `Valid` + affirmative-intent requests can materialize
   - one enrollment target per `(student, program_offering, academic_year)`
   - request-source lock (`enrollment_source = Request`)
   - idempotent add and update of course rows

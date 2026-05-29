@@ -57,6 +57,14 @@ class TestProgramEnrollmentRequestFastTrack(TestCase):
                     "validation_status": "Valid",
                     "requires_override": 0,
                 },
+                {
+                    "name": "PER-004",
+                    "request_status": "Submitted",
+                    "validation_status": "Not Validated",
+                    "requires_override": 0,
+                    "enrollment_intent": "Does Not Intend to Enroll",
+                    "collect_enrollment_intent": 1,
+                },
             ],
         ),
     )
@@ -76,10 +84,11 @@ class TestProgramEnrollmentRequestFastTrack(TestCase):
             {"school": "SCH-1", "academic_year": "AY-2026", "latest_request_only": 1}
         )
 
-        self.assertEqual(summary["counts"]["selected"], 3)
+        self.assertEqual(summary["counts"]["selected"], 4)
         self.assertEqual(summary["counts"]["ready_now"], 1)
         self.assertEqual(summary["counts"]["needs_override"], 1)
         self.assertEqual(summary["counts"]["already_materialized"], 1)
+        self.assertEqual(summary["counts"]["not_returning"], 1)
         self.assertEqual(summary["default_enrollment_date"], "2026-08-01")
 
     @patch(

@@ -1,5 +1,7 @@
 // ui-spa/src/types/contracts/self_enrollment/get_self_enrollment_portal_board.ts
 
+import type { EnrollmentIntent } from '@/types/contracts/self_enrollment/get_self_enrollment_choice_state'
+
 export type Request = {
 	students?: string[] | null
 	include_closed?: 0 | 1 | null
@@ -19,6 +21,7 @@ export type PortalSelectionRequestSummary = {
 	name?: string | null
 	status: string
 	validation_status: string
+	enrollment_intent?: EnrollmentIntent | null
 	submitted_on?: string | null
 	submitted_by?: string | null
 	can_edit: 0 | 1
@@ -44,6 +47,7 @@ export type PortalSelectionWindow = {
 	status: string
 	open_from?: string | null
 	due_on?: string | null
+	collect_enrollment_intent: 0 | 1
 	is_open_now: 0 | 1
 	instructions?: string | null
 	summary: {
@@ -52,6 +56,10 @@ export type PortalSelectionWindow = {
 		pending_count: number
 		invalid_count: number
 		approved_count: number
+		intent_to_enroll_count: number
+		not_returning_count: number
+		undecided_count: number
+		no_response_count: number
 	}
 	students: PortalSelectionStudent[]
 }

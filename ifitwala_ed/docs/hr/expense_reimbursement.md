@@ -2,7 +2,7 @@
 
 Status: Canonical Phase 1A runtime contract
 Code refs: `ifitwala_ed/hr/doctype/expense_claim/`, `ifitwala_ed/hr/expense_claims.py`, `ifitwala_ed/hr/expense_claim_permissions.py`, `ifitwala_ed/api/expense_claims.py`, `ifitwala_ed/api/expense_claim_receipts.py`, `ifitwala_ed/utilities/file_management.py`, `ifitwala_ed/ui-spa/src/pages/staff/ExpenseClaims.vue`
-Test refs: `ifitwala_ed/hr/test_expense_claim_permissions.py`, `ifitwala_ed/utilities/test_file_management.py`; Frappe site workflow tests pending
+Test refs: `ifitwala_ed/hr/test_expense_claim_permissions.py`, `ifitwala_ed/api/test_expense_claim_receipts_unit.py`, `ifitwala_ed/utilities/test_file_management.py`; Frappe site workflow tests pending
 
 ## Scope
 

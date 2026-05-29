@@ -9,6 +9,7 @@ import frappe
 from frappe import _
 from frappe.utils import getdate, now_datetime
 
+from ifitwala_ed.schedule.enrollment_intent import is_enrollment_intent_affirmative
 from ifitwala_ed.schedule.schedule_utils import get_school_term_bounds
 
 
@@ -32,6 +33,11 @@ def _requested_course_rows_from_doc(doc) -> list[dict]:
 
 def build_program_enrollment_request_validation(doc, *, force=0):
     force = int(force or 0)
+    if not is_enrollment_intent_affirmative(
+        getattr(doc, "enrollment_intent", None),
+        collect_enrollment_intent=_request_collects_enrollment_intent(doc),
+    ):
+        frappe.throw(_("Only requests with Enrollment Intent set to Intends to Enroll can be validated."))
 
     if not force and (doc.validation_status or "").strip() == "Valid":
         if doc.validation_payload:
@@ -217,6 +223,11 @@ def materialize_program_enrollment_request(request_name, enrollment_date=None):
     _assert_no_catalog_prereqs()
 
     req = frappe.get_doc("Program Enrollment Request", request_name)
+    if not is_enrollment_intent_affirmative(
+        getattr(req, "enrollment_intent", None),
+        collect_enrollment_intent=_request_collects_enrollment_intent(req),
+    ):
+        frappe.throw(_("Only requests with Enrollment Intent set to Intends to Enroll can be materialized."))
 
     # 1) Hard gates: status + validation snapshot must exist
     if (req.status or "").strip() != "Approved":
@@ -369,3 +380,20 @@ def _assert_no_catalog_prereqs():
     if meta.has_field("prerequisites"):
         frappe.throw(_("Catalog-level prerequisites are not supported. Use program-scoped prerequisites."))
     assert not meta.has_field("prerequisites")
+
+
+def _request_collects_enrollment_intent(doc) -> bool:
+    selection_window = (getattr(doc, "selection_window", None) or "").strip()
+    if not selection_window:
+        return False
+    return (
+        int(
+            frappe.db.get_value(
+                "Program Offering Selection Window",
+                selection_window,
+                "collect_enrollment_intent",
+            )
+            or 0
+        )
+        == 1
+    )
