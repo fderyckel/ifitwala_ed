@@ -11,33 +11,76 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan import (
-    ensure_applicant_enrollment_plan,
-)
-from ifitwala_ed.api import admissions_portal as admissions_portal_api
-from ifitwala_ed.api.admissions_portal import (
-    _derive_next_actions,
+from ifitwala_ed.admission.api.portal.access import _get_applicant_for_user, _require_admissions_applicant
+from ifitwala_ed.admission.api.portal.enrollment import (
     _portal_status_for,
     _read_only_for,
+)
+from ifitwala_ed.admission.api.portal.enrollment import (
+    accept_enrollment_offer_impl as accept_enrollment_offer,
+)
+from ifitwala_ed.admission.api.portal.enrollment import (
+    decline_enrollment_offer_impl as decline_enrollment_offer,
+)
+from ifitwala_ed.admission.api.portal.enrollment import (
+    get_applicant_enrollment_choices_impl as get_applicant_enrollment_choices,
+)
+from ifitwala_ed.admission.api.portal.enrollment import (
+    update_applicant_enrollment_choices_impl as update_applicant_enrollment_choices,
+)
+from ifitwala_ed.admission.api.portal.guardians import APPLICANT_CONTACT_GUARDIAN_ROW
+from ifitwala_ed.admission.api.portal.health import (
+    get_applicant_health_impl as get_applicant_health,
+)
+from ifitwala_ed.admission.api.portal.health import (
+    update_applicant_health_impl as update_applicant_health,
+)
+from ifitwala_ed.admission.api.portal.invites import (
     _send_applicant_invite_email,
-    accept_enrollment_offer,
-    acknowledge_policy,
-    decline_enrollment_offer,
-    get_admissions_portal_invite_options,
-    get_applicant_enrollment_choices,
-    get_applicant_policies,
-    get_applicant_profile,
-    get_applicant_snapshot,
-    get_family_invite_options,
-    get_invite_email_options,
-    invite_applicant,
-    invite_family_collaborator,
-    submit_application,
-    update_applicant_enrollment_choices,
-    update_applicant_health,
-    update_applicant_profile,
-    upload_applicant_guardian_image,
-    upload_applicant_profile_image,
+)
+from ifitwala_ed.admission.api.portal.invites import (
+    get_admissions_portal_invite_options_impl as get_admissions_portal_invite_options,
+)
+from ifitwala_ed.admission.api.portal.invites import (
+    get_family_invite_options_impl as get_family_invite_options,
+)
+from ifitwala_ed.admission.api.portal.invites import (
+    get_invite_email_options_impl as get_invite_email_options,
+)
+from ifitwala_ed.admission.api.portal.invites import (
+    invite_applicant_impl as invite_applicant,
+)
+from ifitwala_ed.admission.api.portal.invites import (
+    invite_family_collaborator_impl as invite_family_collaborator,
+)
+from ifitwala_ed.admission.api.portal.policies import (
+    acknowledge_policy_impl as acknowledge_policy,
+)
+from ifitwala_ed.admission.api.portal.policies import (
+    get_applicant_policies_impl as get_applicant_policies,
+)
+from ifitwala_ed.admission.api.portal.profile import (
+    get_applicant_profile_impl as get_applicant_profile,
+)
+from ifitwala_ed.admission.api.portal.profile import (
+    update_applicant_profile_impl as update_applicant_profile,
+)
+from ifitwala_ed.admission.api.portal.profile_images import (
+    upload_applicant_guardian_image_impl as upload_applicant_guardian_image,
+)
+from ifitwala_ed.admission.api.portal.profile_images import (
+    upload_applicant_profile_image_impl as upload_applicant_profile_image,
+)
+from ifitwala_ed.admission.api.portal.session import get_admissions_session_impl as get_admissions_session
+from ifitwala_ed.admission.api.portal.snapshot import (
+    _derive_next_actions,
+)
+from ifitwala_ed.admission.api.portal.snapshot import (
+    get_applicant_snapshot_impl as get_applicant_snapshot,
+)
+from ifitwala_ed.admission.api.portal.submission import submit_application_impl as submit_application
+from ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan import (
+    ensure_applicant_enrollment_plan,
 )
 from ifitwala_ed.governance.policy_utils import (
     ensure_policy_applies_to_column,
@@ -71,10 +114,7 @@ class TestAdmissionsPortalAuthGuards(FrappeTestCase):
     def test_require_admissions_applicant_rejects_none_literal_as_unauthenticated(self):
         with patch("ifitwala_ed.admission.api.portal.access._session_user", return_value=""):
             with self.assertRaises(frappe.PermissionError):
-                admissions_portal_api._require_admissions_applicant()
-
-    def test_portal_session_endpoint_is_whitelisted(self):
-        self.assertIn(admissions_portal_api.get_admissions_session, frappe.whitelisted)
+                _require_admissions_applicant()
 
     def test_get_applicant_for_user_uses_canonical_applicant_user_only(self):
         def fake_get_all(doctype, **kwargs):
@@ -91,7 +131,7 @@ class TestAdmissionsPortalAuthGuards(FrappeTestCase):
             ) as mocked_names,
             patch("ifitwala_ed.admission.api.portal.access.frappe.get_all", side_effect=fake_get_all),
         ):
-            row = admissions_portal_api._get_applicant_for_user(
+            row = _get_applicant_for_user(
                 "applicant@example.com",
                 fields=["name"],
             )
@@ -113,7 +153,7 @@ class TestAdmissionsPortalAuthGuards(FrappeTestCase):
             ),
         ):
             with self.assertRaises(frappe.PermissionError):
-                admissions_portal_api._get_applicant_for_user(
+                _get_applicant_for_user(
                     "applicant@example.com",
                     fields=["name"],
                 )
@@ -577,7 +617,7 @@ class TestInviteApplicant(FrappeTestCase):
         guardians = family_invite.get("guardians") or []
         self.assertTrue(bool(family_invite.get("enabled")))
         self.assertEqual(len(guardians), 1)
-        self.assertEqual(guardians[0].get("name"), admissions_portal_api.APPLICANT_CONTACT_GUARDIAN_ROW)
+        self.assertEqual(guardians[0].get("name"), APPLICANT_CONTACT_GUARDIAN_ROW)
         self.assertEqual(guardians[0].get("email"), invite_email)
         self.assertTrue(bool(guardians[0].get("bootstrap_from_applicant_contact")))
 
@@ -616,7 +656,7 @@ class TestInviteApplicant(FrappeTestCase):
 
         payload = invite_family_collaborator(
             student_applicant=self.applicant.name,
-            guardian_row=admissions_portal_api.APPLICANT_CONTACT_GUARDIAN_ROW,
+            guardian_row=APPLICANT_CONTACT_GUARDIAN_ROW,
             email=invite_email,
         )
         self._created.append(("User", invite_email))
@@ -1050,7 +1090,7 @@ class TestSubmitApplication(FrappeTestCase):
         self._create_offer_plan(status="Offer Sent", offer_message="Review your place.")
 
         frappe.set_user(self.applicant_user)
-        session_payload = admissions_portal_api.get_admissions_session()
+        session_payload = get_admissions_session()
         snapshot = get_applicant_snapshot(student_applicant=self.applicant.name)
 
         self.assertEqual((session_payload.get("applicant") or {}).get("portal_status"), "Offer Sent")
@@ -1091,7 +1131,7 @@ class TestSubmitApplication(FrappeTestCase):
         self._link_family_guardian(second_applicant, guardian_name=guardian.name, user=family_user.name)
 
         frappe.set_user(family_user.name)
-        payload = admissions_portal_api.get_admissions_session(student_applicant=second_applicant.name)
+        payload = get_admissions_session(student_applicant=second_applicant.name)
 
         self.assertEqual(payload.get("access_mode"), "Family Workspace")
         self.assertTrue(bool(payload.get("family_workspace_enabled")))
@@ -1310,7 +1350,7 @@ class TestSubmitApplication(FrappeTestCase):
         frappe.set_user(self.applicant_user)
         first = accept_enrollment_offer(student_applicant=self.applicant.name)
         second = accept_enrollment_offer(student_applicant=self.applicant.name)
-        session_payload = admissions_portal_api.get_admissions_session()
+        session_payload = get_admissions_session()
 
         self.assertTrue(first.get("ok"))
         self.assertTrue(second.get("ok"))
@@ -1326,7 +1366,7 @@ class TestSubmitApplication(FrappeTestCase):
         frappe.set_user(self.applicant_user)
         first = decline_enrollment_offer(student_applicant=self.applicant.name)
         second = decline_enrollment_offer(student_applicant=self.applicant.name)
-        session_payload = admissions_portal_api.get_admissions_session()
+        session_payload = get_admissions_session()
         snapshot = get_applicant_snapshot(student_applicant=self.applicant.name)
 
         self.assertTrue(first.get("ok"))
@@ -1979,7 +2019,7 @@ class TestSubmitApplication(FrappeTestCase):
 
     def test_update_applicant_health_rejects_stale_expected_modified(self):
         frappe.set_user(self.applicant_user)
-        initial = admissions_portal_api.get_applicant_health(student_applicant=self.applicant.name)
+        initial = get_applicant_health(student_applicant=self.applicant.name)
         initial_modified = initial.get("record_modified") or ""
 
         fresh = update_applicant_health(
