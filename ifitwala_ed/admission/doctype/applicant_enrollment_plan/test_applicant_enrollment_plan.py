@@ -363,6 +363,7 @@ class TestApplicantEnrollmentPlanDepositBridge(IfitwalaEdTestSuite):
             {
                 "doctype": "Billable Offering",
                 "organization": organization,
+                "offering_name": f"Admissions Deposit {frappe.generate_hash(length=6)}",
                 "offering_type": "One-off Fee",
                 "income_account": income_account,
                 "pricing_mode": "Fixed",

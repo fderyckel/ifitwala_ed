@@ -5,7 +5,8 @@ File: ifitwala_ed/api/AGENTS.md
 This file adds local rules for work inside `ifitwala_ed/api/`.
 The root `AGENTS.md` remains authoritative and must still be obeyed.
 
-This folder owns server-facing contracts, workflow endpoints, and high-concurrency request design.
+This folder owns public server-facing RPC contracts, workflow endpoints, and high-concurrency request design.
+Domain implementation ownership belongs in the relevant product module whenever a domain package exists.
 
 ---
 
@@ -22,12 +23,84 @@ Inside `ifitwala_ed/api/`, prioritize:
 API endpoints are not generic transport wrappers.
 They are contract surfaces for real workflows.
 
-## 0.1 Local Environment Note
+## 0.1 API Folder Architecture Direction
+
+`ifitwala_ed/api/` is the public Frappe RPC boundary, not the default home for all endpoint implementation code.
+
+Target architecture:
+
+- Root `ifitwala_ed/api/*.py` modules are thin public facades for stable dotted RPC paths such as `ifitwala_ed.api.calendar.get_staff_calendar`.
+- Domain-owned implementation lives under the owning package, for example:
+  - admissions: `ifitwala_ed/admission/api/...`
+  - assessment and gradebook: `ifitwala_ed/assessment/api/...`
+  - curriculum and teaching plans: `ifitwala_ed/curriculum/api/...`
+  - scheduling and calendars: `ifitwala_ed/schedule/api/...`
+  - student and guardian portal surfaces: `ifitwala_ed/students/api/...` or the documented owning portal package
+  - governance, policy, consent, and organization communications: `ifitwala_ed/governance/api/...`
+  - accounting surfaces: `ifitwala_ed/accounting/api/...`
+  - HR/staff surfaces: `ifitwala_ed/hr/api/...`
+- A root facade may keep `@frappe.whitelist(...)`, payload binding, and public response delegation, but should not grow business logic, permission math, query builders, cache ownership, DTO assembly, or file-governance workflow logic.
+- Internal Python callers should import implementation helpers from the domain-owned module, not through the root public facade, unless they are intentionally exercising the public RPC contract.
+- Do not add new helper/support modules directly under `ifitwala_ed/api/` for domain implementation work unless there is no clear owning domain package and the choice is documented in the relevant runtime contract.
+
+Existing modules may remain in the root during migration, but new work should move the touched implementation toward the target architecture instead of making the flat folder larger.
+
+## 0.2 API Cleanup Migration Plan
+
+When cleaning or moving API code, migrate one domain at a time. Do not perform a broad mechanical move of the whole API folder.
+
+Use this sequence:
+
+1. Inventory the public contract.
+   - List whitelisted functions, `allow_guest` settings, public `/api/method/...` URLs, hooks, SPA service calls, website calls, and internal imports.
+   - Identify the canonical docs for the domain before designing the move.
+2. Choose the owning domain package.
+   - Use the docs folder and DocType ownership to decide the destination.
+   - If ownership is ambiguous, stop and clarify before moving code.
+3. Move implementation behind a stable facade.
+   - Keep the old root dotted RPC path unless an explicit contract change has been approved.
+   - The root module delegates to exactly one canonical implementation path.
+   - Preserve function names, accepted payload shapes, `allow_guest`, permission behavior, response shape, and exception semantics.
+4. Move tests with ownership.
+   - Domain implementation tests belong beside the owning domain package.
+   - Root `ifitwala_ed/api/test_*.py` files should remain only for facade/delegation, public payload binding, and public compatibility tests.
+   - Update explicit test module lists such as `ifitwala_ed/codex_cli.py` when test module paths move.
+   - Update `scripts/test_metrics.sh` before moving enough tests to make API coverage metrics misleading.
+5. Update imports and docs together.
+   - Internal imports should target the new domain implementation module.
+   - SPA, website, hooks, and external public callers may keep the stable root RPC path until a separately approved contract migration changes them.
+   - Update canonical docs when behavior, ownership, or public contracts change.
+6. Verify narrowly.
+   - Run or identify the focused backend tests for the moved domain.
+   - Run import checks for moved modules when possible.
+   - For SPA-facing endpoints, verify the service method strings still point to a live whitelisted facade.
+
+Migration priority:
+
+1. Continue the existing admissions split because `ifitwala_ed/admission/api/` already establishes the pattern.
+2. Then migrate cohesive facade groups that already exist, such as calendar and gradebook, where root modules already delegate.
+3. Move standalone domain clusters next: assessment/task, teaching plans/curriculum, student/guardian portal, governance/policy/communications, accounting, HR/setup.
+4. Split high-risk cross-cutting modules last. `file_access.py`, `policy_signature.py`, `recommendation_intake.py`, `activity_booking.py`, and `family_consent.py` require explicit domain docs and focused permission/contract tests before any split.
+
+## 0.3 API Cleanup Risk Controls
+
+During API cleanup:
+
+- Do not rename public Frappe dotted paths without explicit approval and a caller migration plan.
+- Do not create duplicate runtime workflows where both the old root module and new domain module implement business behavior independently.
+- Do not weaken permissions, tenant scope, idempotency, cache invalidation, queue selection, or governed file rules for the sake of a cleaner file layout.
+- Do not change payload or response contracts as part of a move unless the behavior change is separately documented and approved.
+- Do not move a test without preserving the invariant it covered.
+- Do not leave root facade modules importing from test-only stubs or partial compatibility surfaces.
+- Do not use `__init__.py` re-export tricks to hide unclear ownership; import the concrete domain module.
+- Treat governed files, private-media routes, applicant/family guest routes, hooks, and website routes as high-risk public contracts.
+
+## 0.4 Local Environment Note
 
 - This Codex session runs on the user's local machine for this repo.
 - Do not add stock explanations about missing `frappe` in `.venv`, missing `bench` on `PATH`, or the shell not being the remote server unless a specific attempted command is blocked and that exact blocker matters.
 
-## 0.2 Documentation Routing Protocol
+## 0.5 Documentation Routing Protocol
 
 Before changing API behavior, read the canonical docs in this order:
 

@@ -109,6 +109,7 @@ class TestPaymentEntry(FrappeTestCase):
             {
                 "doctype": "Billable Offering",
                 "organization": organization,
+                "offering_name": f"{offering_type} {frappe.generate_hash(length=6)}",
                 "offering_type": offering_type,
                 "income_account": income_account,
                 "pricing_mode": pricing_mode,

@@ -11,7 +11,16 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import add_days, getdate, nowdate
 
-from ifitwala_ed.students.doctype.student.student import get_permission_query_conditions as get_student_scope_condition
+from ifitwala_ed.students.doctype.student.student import (
+    STUDENT_INSTRUCTOR_SCOPE_OVERRIDE_ROLES,
+    STUDENT_INSTRUCTOR_SCOPE_ROLES,
+    STUDENT_SCHOOL_SCOPED_ROLES,
+    get_instructor_student_scope_condition,
+)
+from ifitwala_ed.students.doctype.student.student import (
+    get_permission_query_conditions as get_student_scope_condition,
+)
+from ifitwala_ed.utilities.employee_utils import get_user_visible_schools
 
 INSIGHT_CATEGORIES = {
     "Learning Support",
@@ -230,6 +239,12 @@ def _can_create_or_write(user: str | None = None) -> bool:
     return bool(roles & WRITE_ROLES)
 
 
+def _uses_instructor_student_scope(roles: set[str]) -> bool:
+    if not roles & STUDENT_INSTRUCTOR_SCOPE_ROLES:
+        return False
+    return not bool(roles & STUDENT_INSTRUCTOR_SCOPE_OVERRIDE_ROLES)
+
+
 def _interpolate_sql_params(sql: str, params: dict) -> str:
     out = sql
     for key, value in (params or {}).items():
@@ -241,6 +256,46 @@ def _interpolate_sql_params(sql: str, params: dict) -> str:
             replacement = frappe.db.escape(value)
         out = out.replace(placeholder, replacement)
     return out
+
+
+def _student_insight_scope_predicate(
+    user: str,
+    roles: set[str],
+    table_alias: str,
+) -> tuple[str | None, dict]:
+    if user in SYSTEM_WIDE_USERS or roles & SYSTEM_WIDE_ROLE_NAMES:
+        return None, {}
+
+    if _uses_instructor_student_scope(roles):
+        scoped_sql = f"""
+            EXISTS (
+                SELECT 1
+                FROM `tabStudent`
+                WHERE `tabStudent`.name = {table_alias}.student
+                  AND {get_instructor_student_scope_condition(user)}
+            )
+        """
+        return scoped_sql, {}
+
+    if roles & STUDENT_SCHOOL_SCOPED_ROLES:
+        school_names = _dedupe(get_user_visible_schools(user) or [])
+        if not school_names:
+            return "0=1", {}
+        return f"{table_alias}.school IN %(schools)s", {"schools": tuple(school_names)}
+
+    student_scope = get_student_scope_condition(user)
+    if not student_scope:
+        return None, {}
+
+    scoped_sql = f"""
+        EXISTS (
+            SELECT 1
+            FROM `tabStudent`
+            WHERE `tabStudent`.name = {table_alias}.student
+              AND {student_scope}
+        )
+    """
+    return scoped_sql, {}
 
 
 def get_student_insight_visibility_predicate(
@@ -263,19 +318,11 @@ def get_student_insight_visibility_predicate(
         visibility_sql = f"{table_alias}.visibility IN %(visibilities)s"
         params = {"visibilities": tuple(allowed_visibilities)}
 
-    student_scope = get_student_scope_condition(user)
-    if not student_scope:
+    scope_sql, scope_params = _student_insight_scope_predicate(user, roles, table_alias)
+    if not scope_sql:
         return visibility_sql, params
 
-    scoped_sql = f"""
-        EXISTS (
-            SELECT 1
-            FROM `tabStudent`
-            WHERE `tabStudent`.name = {table_alias}.student
-              AND {student_scope}
-        )
-    """
-    return f"({visibility_sql}) AND ({scoped_sql})", params
+    return f"({visibility_sql}) AND ({scope_sql})", {**params, **scope_params}
 
 
 def get_permission_query_conditions(user: str | None = None) -> str | None:

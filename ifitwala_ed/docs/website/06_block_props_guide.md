@@ -419,9 +419,10 @@ Snippet resolution order is deterministic:
 ### Purpose
 
 * Displays school staff with `show_on_website = 1`
-* Renders two premium carousels by default:
+* Renders compact profile carousels by default:
   * `Academic Leadership`
   * `Faculty & Staff`
+* Carousel cards show photo, name, and role only; clicking a card opens the public biography dialog with the larger approved image variant and bio text.
 * The leadership carousel resolves from `Designation.default_role_profile = "Academic Admin"` unless a manual `roles` designation filter is provided.
 * Descendant-school inclusion is off by default; page authors must opt in per designation or role profile with `role_scopes`.
 
@@ -476,6 +477,7 @@ Canonical provider: `ifitwala_ed.website.providers.staff_directory.get_context`
 * Displays a school-scoped public staff directory from the canonical public-people service
 * Exact-school only in the current implementation
 * Intended for a dedicated `Faculty & Staff` or `Teachers & Counselors` website page
+* Renders compact profile cards; clicking a card opens the same public biography dialog used by the leadership block
 * Search and filter interactions run client-side on the rendered directory cards
 
 ### Props (schema)

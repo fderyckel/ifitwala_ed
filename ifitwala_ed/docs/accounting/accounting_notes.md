@@ -184,6 +184,8 @@ Offering types:
 
 Each Offering defines:
 
+* Offering name (the accountant-facing display label)
+* Organization
 * Revenue account (default)
 * Tax category / template
 * Pricing mode (fixed, per‑term, per‑unit, subscription)
@@ -204,7 +206,7 @@ Phase 1 adds separate program billing objects:
 
 Locked boundary:
 
-* keep income-account and tax-category ownership on `Billable Offering`
+* keep display-name, income-account, and tax-category ownership on `Billable Offering`
 * keep plan-local pricing on `Program Billing Plan Component`
 * keep installment splitting on `Payment Terms Template`
 * keep all GL posting inside `Sales Invoice`

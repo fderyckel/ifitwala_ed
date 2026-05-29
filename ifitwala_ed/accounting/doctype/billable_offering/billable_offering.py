@@ -13,8 +13,14 @@ class BillableOffering(Document):
         self.name = make_autoname(f"BO-{organization_abbr}-.####")
 
     def validate(self):
+        self.validate_offering_name()
         self.validate_income_account()
         self.validate_linked_reference()
+
+    def validate_offering_name(self):
+        self.offering_name = (self.offering_name or "").strip()
+        if not self.offering_name:
+            frappe.throw(_("Offering Name is required."))
 
     def validate_income_account(self):
         account = frappe.db.get_value(

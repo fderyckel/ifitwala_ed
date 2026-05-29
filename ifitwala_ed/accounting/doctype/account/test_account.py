@@ -183,6 +183,100 @@ class TestAccount(FrappeTestCase):
         self.assertIn(account.name, comment)
         self.assertIn(result["name"], comment)
 
+    def test_update_account_name_number_updates_account_links(self):
+        org = self.make_organization("Links")
+        asset_parent = self.make_account(
+            organization=org.name,
+            root_type="Asset",
+            is_group=1,
+            prefix="Link Asset Parent",
+        )
+        liability_parent = self.make_account(
+            organization=org.name,
+            root_type="Liability",
+            is_group=1,
+            prefix="Link Liability Parent",
+        )
+        income_parent = self.make_account(
+            organization=org.name,
+            root_type="Income",
+            is_group=1,
+            prefix="Link Income Parent",
+        )
+        receivable = self.make_account(
+            organization=org.name,
+            root_type="Asset",
+            account_type="Receivable",
+            parent_account=asset_parent.name,
+            prefix="Linked Receivable",
+            account_number=f"LR-{frappe.generate_hash(length=5)}",
+        )
+        advance = self.make_account(
+            organization=org.name,
+            root_type="Liability",
+            parent_account=liability_parent.name,
+            prefix="Linked Advance",
+        )
+        income = self.make_account(
+            organization=org.name,
+            root_type="Income",
+            parent_account=income_parent.name,
+            prefix="Linked Income",
+            account_number=f"LI-{frappe.generate_hash(length=5)}",
+        )
+
+        if frappe.db.exists("Accounts Settings", org.name):
+            settings = frappe.get_doc("Accounts Settings", org.name)
+        else:
+            settings = frappe.new_doc("Accounts Settings")
+            settings.organization = org.name
+        settings.default_receivable_account = receivable.name
+        settings.default_advance_account = advance.name
+        settings.save()
+        gl_entry = frappe.get_doc(
+            {
+                "doctype": "GL Entry",
+                "organization": org.name,
+                "posting_date": "2026-01-15",
+                "account": receivable.name,
+                "debit": 100,
+                "voucher_type": "Test",
+                "voucher_no": "TEST-ACCOUNT-RENAME",
+            }
+        )
+        gl_entry.insert(ignore_permissions=True)
+        offering = frappe.get_doc(
+            {
+                "doctype": "Billable Offering",
+                "organization": org.name,
+                "offering_name": f"Account Rename Test {frappe.generate_hash(length=6)}",
+                "offering_type": "One-off Fee",
+                "income_account": income.name,
+                "pricing_mode": "Fixed",
+            }
+        )
+        offering.insert()
+
+        renamed_receivable = update_account_name_number(
+            name=receivable.name,
+            account_name="Renamed Linked Receivable",
+            account_number=f"LR-{frappe.generate_hash(length=5)}",
+            reason="Verify linked accounting references update",
+        )["name"]
+        renamed_income = update_account_name_number(
+            name=income.name,
+            account_name="Renamed Linked Income",
+            account_number=f"LI-{frappe.generate_hash(length=5)}",
+            reason="Verify linked income references update",
+        )["name"]
+
+        self.assertEqual(
+            frappe.db.get_value("Accounts Settings", settings.name, "default_receivable_account"),
+            renamed_receivable,
+        )
+        self.assertEqual(frappe.db.get_value("GL Entry", gl_entry.name, "account"), renamed_receivable)
+        self.assertEqual(frappe.db.get_value("Billable Offering", offering.name, "income_account"), renamed_income)
+
     def test_update_account_name_number_requires_reason(self):
         org = self.make_organization("Reason")
         parent = self.make_account(
@@ -204,6 +298,36 @@ class TestAccount(FrappeTestCase):
                 account_name="Reason Child Renamed",
                 reason="",
             )
+
+    def test_update_account_name_number_blocks_non_manager_role(self):
+        org = self.make_organization("Role Guard")
+        parent = self.make_account(
+            organization=org.name,
+            root_type="Asset",
+            is_group=1,
+            prefix="Role Guard Parent",
+        )
+        account = self.make_account(
+            organization=org.name,
+            root_type="Asset",
+            parent_account=parent.name,
+            prefix="Role Guard Child",
+        )
+
+        with (
+            patch.object(account_module.frappe, "has_permission", return_value=True),
+            patch.object(
+                account_module.frappe,
+                "get_roles",
+                return_value=["Accounts User"],
+            ),
+        ):
+            with self.assertRaises(frappe.ValidationError):
+                update_account_name_number(
+                    name=account.name,
+                    account_name="Role Guard Child Renamed",
+                    reason="Accounts User should not rename accounts",
+                )
 
     def test_update_account_name_number_blocks_root_account(self):
         org = self.make_organization("Root Rename")

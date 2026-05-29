@@ -29,5 +29,7 @@ class TestBillableOffering(AccountingTestMixin, IfitwalaEdTestSuite):
         self.assertTrue(second.name.startswith(f"BO-{org.abbr}-"))
         self.assertNotIn(first.offering_type, first.name)
         self.assertNotIn(org.name, first.name)
+        self.assertTrue(first.offering_name)
+        self.assertTrue(second.offering_name)
         self.assertTrue(frappe.db.exists("Billable Offering", first.name))
         self.assertTrue(frappe.db.exists("Billable Offering", second.name))

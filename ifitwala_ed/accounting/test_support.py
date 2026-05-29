@@ -124,11 +124,19 @@ class AccountingTestMixin:
         account_holder.insert()
         return account_holder
 
-    def make_billable_offering(self, organization, income_account, offering_type="One-off Fee", pricing_mode="Fixed"):
+    def make_billable_offering(
+        self,
+        organization,
+        income_account,
+        offering_type="One-off Fee",
+        pricing_mode="Fixed",
+        offering_name=None,
+    ):
         offering = frappe.get_doc(
             {
                 "doctype": "Billable Offering",
                 "organization": organization,
+                "offering_name": offering_name or f"{offering_type} {frappe.generate_hash(length=6)}",
                 "offering_type": offering_type,
                 "income_account": income_account,
                 "pricing_mode": pricing_mode,

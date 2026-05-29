@@ -23,7 +23,7 @@ Phase 1 does not move any GL logic outside `Sales Invoice`.
 
 | Object | Role | Must not own |
 | --- | --- | --- |
-| `Billable Offering` | Fee catalog and accounting mapping for one charge type | program-specific enrollment roster, batch state |
+| `Billable Offering` | Fee catalog, display label, and accounting mapping for one charge type | program-specific enrollment roster, batch state |
 | `Program Billing Plan` | Program-specific billing structure for one `Program Offering` + `Academic Year` | tax posting logic, debtor balances |
 | `Billing Schedule` | Derived per-enrollment billing state | ledger posting, payment allocation |
 | `Billing Run` | Batch control for “generate all draft invoices for this program/period” | fee catalog setup, manual A/R settlement |
@@ -32,7 +32,7 @@ Phase 1 does not move any GL logic outside `Sales Invoice`.
 
 Locked interpretation:
 
-- `Billable Offering` remains the only master that defines income-account and tax-category defaults.
+- `Billable Offering` remains the only master that defines the accountant-facing offering name, income-account, and tax-category defaults.
 - `Program Billing Plan Component` may store a plan-local `default_rate`; this is allowed because it is program-specific pricing, not a global catalog price.
 - `Payment Terms Template` remains the only installment engine. Phase 1 reuses it on generated invoices instead of rebuilding payment schedules elsewhere.
 

@@ -77,6 +77,7 @@ Fees are configured as `Billable Offering` records. This is the live fee catalog
 
 Each billable offering defines:
 
+- offering name, the human-facing label finance users select in plans and invoices
 - organization
 - offering type: `Program`, `Service Subscription`, `One-off Fee`, or `Product`
 - optional linked type/reference

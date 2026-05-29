@@ -6,6 +6,9 @@ Test refs: None
 
 `ifitwala_ed/docs/admission/` is the canonical home for admissions pipeline rules, applicant runtime behavior, evidence/review modeling, admissions portal boundaries, and the applicant-to-enrollment bridge.
 
+Admissions API implementation modules live under `ifitwala_ed/admission/api/`.
+Public Frappe RPC paths remain under `ifitwala_ed.api.*` unless an explicit endpoint contract migration is approved.
+
 Read in this order for current runtime:
 
 - `01_governance.md`

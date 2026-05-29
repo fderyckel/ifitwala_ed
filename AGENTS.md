@@ -106,6 +106,22 @@ For non-trivial tasks, agents MUST:
 
 No opportunistic cleanup. No scope creep.
 
+### 1.1.1 Large File Refactor Proposal Rule
+
+When touching or inspecting a file over 1000 lines, agents must treat file size as a maintainability risk.
+
+Rules:
+
+- Do not silently expand large files when a smaller owned component would be clearer.
+- Before refactoring a large file, make a proposal that identifies:
+  - current responsibilities in the file
+  - natural extraction boundaries
+  - target module/component layout
+  - public imports, whitelisted paths, hooks, and tests that must remain stable
+  - migration steps that reduce risk
+- Do not perform the refactor without explicit approval unless the user already approved that structural refactor.
+- If the current task only needs a narrow fix, keep the fix scoped, but call out the large-file follow-up proposal when relevant.
+
 ### 1.2 Generated Artifact And I18n Discipline
 
 - Do not commit or leave behind oversized generated audit artifacts, scan dumps, or machine-produced markdown unless the user explicitly asks for them to live in the repo.

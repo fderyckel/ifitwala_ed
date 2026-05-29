@@ -5,6 +5,7 @@
  "engine": "InnoDB",
  "field_order": [
   "organization",
+  "offering_name",
   "offering_type",
   "linked_doctype",
   "linked_reference",
@@ -20,6 +21,15 @@
    "in_list_view": 1,
    "label": "Organization",
    "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "fieldname": "offering_name",
+   "fieldtype": "Data",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Offering Name",
    "reqd": 1
   },
   {
@@ -71,7 +81,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-29 22:43:00.000000",
+ "modified": "2026-05-29 23:08:09.000000",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Billable Offering",
@@ -106,5 +116,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "offering_name"
 }

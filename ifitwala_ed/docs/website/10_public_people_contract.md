@@ -129,7 +129,8 @@ Public people surfaces must use governed employee image derivatives first.
 Current runtime behavior:
 
 - people payloads use `build_public_employee_image_variants(...)`
-- website cards should prefer compact/card/richer preview variants through semantic server-returned fields
+- website cards should prefer compact/card preview variants through semantic server-returned fields
+- public biography dialogs may use the approved medium/card preview variant, but not the original full-size employee image
 - guest delivery goes through `open_public_employee_image(...)`, which validates publication scope and resolves a short-lived Drive preview grant for the approved derivative only
 - public website people surfaces do not fall back to the original full-size employee image
 
@@ -156,6 +157,7 @@ Stale public-people cache without an invalidation owner is a bug.
 - staff directory block consumes the canonical public-people service
 - optional public person profile pages resolve through the canonical public-people service
 - public people payloads resolve from `Employee` and `Designation`
+- leadership and staff-directory cards render compact photo/name/role tiles; biography text opens in the shared public biography dialog
 
 ### 8.2 Not implemented yet
 

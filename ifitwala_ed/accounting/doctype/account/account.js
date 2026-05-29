@@ -17,12 +17,18 @@ frappe.ui.form.on("Account", {
 		frm.toggle_enable(["account_name", "account_number"], frm.is_new());
 
 		if (!frm.is_new() && frm.has_perm("write") && frm.doc.parent_account) {
+			frm.set_intro(null);
 			frm.add_custom_button(
 				__("Update Account Name / Number"),
 				function () {
 					frm.trigger("update_account_name_number");
 				},
 				__("Actions")
+			);
+		} else if (!frm.is_new() && !frm.doc.parent_account) {
+			frm.set_intro(
+				__("Root accounts cannot be renamed. Rename a child account from Actions instead."),
+				"blue"
 			);
 		}
 	},

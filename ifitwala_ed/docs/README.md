@@ -18,6 +18,7 @@ Read in this order:
 
 Cross-cutting contracts every agent should know:
 
+- `codebase_maintainability.md`
 - `high_concurrency_contract.md`
 - `i18n/README.md` when touching user-facing strings or translation workflow
 - `nested_scope_contract.md`

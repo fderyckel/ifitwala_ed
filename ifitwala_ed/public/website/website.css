@@ -95,6 +95,10 @@
 		transition: none;
 	}
 
+	body.ifitwala-theme.site-dialog-open {
+		overflow: hidden;
+	}
+
 	#ifitwala-page-root .site-page-content {
 		gap: var(--if-block-gap);
 	}
@@ -308,6 +312,26 @@
 			linear-gradient(180deg, rgb(255 255 255 / 0.98), rgb(248 250 252 / 0.98));
 	}
 
+	#ifitwala-page-root .site-people-card {
+		cursor: pointer;
+		color: inherit;
+	}
+
+	#ifitwala-page-root .site-people-name,
+	#ifitwala-page-root .site-people-role {
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	#ifitwala-page-root .site-people-name {
+		-webkit-line-clamp: 2;
+	}
+
+	#ifitwala-page-root .site-people-role {
+		-webkit-line-clamp: 2;
+	}
+
 	#ifitwala-page-root .site-people-track {
 		scrollbar-width: none;
 		-ms-overflow-style: none;
@@ -325,6 +349,189 @@
 	#ifitwala-page-root .site-people-nav.hidden,
 	#ifitwala-page-root [data-people-carousel-dots].hidden {
 		display: none;
+	}
+
+	body.ifitwala-theme .site-people-dialog {
+		position: fixed;
+		inset: 0;
+		z-index: 80;
+		display: none;
+		align-items: center;
+		justify-content: center;
+		padding: 1.25rem;
+	}
+
+	body.ifitwala-theme .site-people-dialog.is-open {
+		display: flex;
+	}
+
+	body.ifitwala-theme .site-people-dialog__backdrop {
+		position: absolute;
+		inset: 0;
+		background: rgb(15 23 42 / 0.56);
+		backdrop-filter: blur(10px);
+	}
+
+	body.ifitwala-theme .site-people-dialog__panel {
+		position: relative;
+		z-index: 1;
+		display: grid;
+		width: min(58rem, 100%);
+		max-height: min(88vh, 54rem);
+		grid-template-columns: minmax(16rem, 0.86fr) minmax(0, 1fr);
+		overflow: hidden;
+		border: 1px solid rgb(226 232 240 / 0.92);
+		border-radius: 1rem;
+		background: #fff;
+		box-shadow: 0 32px 80px -28px rgb(15 23 42 / 0.58);
+	}
+
+	body.ifitwala-theme .site-people-dialog__close {
+		position: absolute;
+		top: 0.85rem;
+		right: 0.85rem;
+		z-index: 2;
+		display: inline-flex;
+		height: 2.35rem;
+		width: 2.35rem;
+		align-items: center;
+		justify-content: center;
+		border: 1px solid rgb(226 232 240 / 0.88);
+		border-radius: 999px;
+		background: rgb(255 255 255 / 0.92);
+		color: #0f172a;
+		font-size: 1.35rem;
+		line-height: 1;
+		box-shadow: 0 12px 28px -22px rgb(15 23 42 / 0.72);
+		cursor: pointer;
+	}
+
+	body.ifitwala-theme .site-people-dialog__close:focus-visible {
+		outline: 2px solid rgb(15 23 42 / 0.22);
+		outline-offset: 3px;
+	}
+
+	body.ifitwala-theme .site-people-dialog__media {
+		min-height: 26rem;
+		background:
+			radial-gradient(
+				circle at top,
+				color-mix(in srgb, var(--if-theme-primary) 14%, #fff),
+				transparent 58%
+			),
+			linear-gradient(135deg, #eff6ff, #f8fafc 55%, #eef2ff);
+	}
+
+	body.ifitwala-theme .site-people-dialog__image,
+	body.ifitwala-theme .site-people-dialog__fallback {
+		height: 100%;
+		width: 100%;
+	}
+
+	body.ifitwala-theme .site-people-dialog__image {
+		display: block;
+		object-fit: cover;
+	}
+
+	body.ifitwala-theme .site-people-dialog__image[hidden],
+	body.ifitwala-theme .site-people-dialog__fallback[hidden] {
+		display: none;
+	}
+
+	body.ifitwala-theme .site-people-dialog__fallback {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	body.ifitwala-theme .site-people-dialog__fallback span {
+		display: inline-flex;
+		height: 8rem;
+		width: 8rem;
+		align-items: center;
+		justify-content: center;
+		border: 1px solid rgb(255 255 255 / 0.76);
+		border-radius: 999px;
+		background: rgb(255 255 255 / 0.82);
+		color: #475569;
+		font-size: 2.45rem;
+		font-weight: 700;
+		letter-spacing: 0.12em;
+		box-shadow: 0 20px 46px -36px rgb(15 23 42 / 0.6);
+	}
+
+	body.ifitwala-theme .site-people-dialog__content {
+		display: flex;
+		min-height: 0;
+		flex-direction: column;
+		padding: 3.25rem 3rem 2.75rem;
+		overflow-y: auto;
+	}
+
+	body.ifitwala-theme .site-people-dialog__role {
+		margin: 0;
+		color: #64748b;
+		font-size: 0.75rem;
+		font-weight: 700;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+	}
+
+	body.ifitwala-theme .site-people-dialog__title {
+		margin: 0.65rem 0 0;
+		color: #0f172a;
+		font-size: clamp(1.75rem, 3vw, 2.65rem);
+		font-weight: 700;
+		letter-spacing: 0;
+		line-height: 1.08;
+	}
+
+	body.ifitwala-theme .site-people-dialog__bio {
+		margin: 1.35rem 0 0;
+		color: #475569;
+		font-size: 1rem;
+		line-height: 1.8;
+		white-space: pre-line;
+	}
+
+	body.ifitwala-theme .site-people-dialog__link {
+		display: inline-flex;
+		align-self: flex-start;
+		margin-top: 1.6rem;
+		border-radius: 999px;
+		background: #0f172a;
+		padding: 0.8rem 1.05rem;
+		color: #fff;
+		font-size: 0.9rem;
+		font-weight: 700;
+		text-decoration: none;
+	}
+
+	body.ifitwala-theme .site-people-dialog__link[hidden] {
+		display: none;
+	}
+
+	@media (max-width: 720px) {
+		body.ifitwala-theme .site-people-dialog {
+			align-items: stretch;
+			padding: 0.75rem;
+		}
+
+		body.ifitwala-theme .site-people-dialog__panel {
+			grid-template-columns: 1fr;
+			max-height: calc(100vh - 1.5rem);
+			overflow-y: auto;
+		}
+
+		body.ifitwala-theme .site-people-dialog__media {
+			min-height: 16rem;
+			aspect-ratio: 4 / 3;
+		}
+
+		body.ifitwala-theme .site-people-dialog__content {
+			padding: 1.5rem;
+			overflow: visible;
+		}
 	}
 
 	@media (max-width: 1023px) {

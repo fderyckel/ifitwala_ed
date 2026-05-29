@@ -3,30 +3,24 @@
 from __future__ import annotations
 
 import frappe
-from frappe import _
 
-from ifitwala_ed.api.admission_cockpit import invalidate_admissions_cockpit_cache
+from ifitwala_ed.admission.api.cockpit.cache import invalidate_admissions_cockpit_cache
+from ifitwala_ed.admission.api.review import (
+    _cache,
+    _idempotency_key,
+    _lock_key,
+    _require_login,
+    review_applicant_document_submission_impl,
+    set_document_requirement_override_impl,
+)
 
-
-def _cache():
-    return frappe.cache()
-
-
-def _lock_key(*parts: str) -> str:
-    cleaned = [str(part or "").strip() for part in parts if str(part or "").strip()]
-    return "ifitwala_ed:lock:admissions_review:" + ":".join(cleaned)
-
-
-def _idempotency_key(*parts: str) -> str:
-    cleaned = [str(part or "").strip() for part in parts if str(part or "").strip()]
-    return "ifitwala_ed:idempotency:admissions_review:" + ":".join(cleaned)
-
-
-def _require_login() -> str:
-    user = (frappe.session.user or "").strip()
-    if not user or user == "Guest":
-        frappe.throw(_("Please sign in to continue."), frappe.PermissionError)
-    return user
+_REVIEW_COMPAT_EXPORTS = (
+    _cache,
+    _lock_key,
+    _idempotency_key,
+    _require_login,
+    invalidate_admissions_cockpit_cache,
+)
 
 
 @frappe.whitelist()
@@ -38,42 +32,14 @@ def review_applicant_document_submission(
     notes: str | None = None,
     client_request_id: str | None = None,
 ):
-    user = _require_login()
-    applicant_name = (student_applicant or "").strip()
-    item_name = (applicant_document_item or "").strip()
-    resolved_decision = (decision or "").strip()
-    request_id = (client_request_id or "").strip() or None
-
-    if not applicant_name:
-        frappe.throw(_("Student Applicant is required."))
-    if not item_name:
-        frappe.throw(_("Submitted file is required."))
-
-    lock_target = f"{applicant_name}:{item_name}:{resolved_decision}"
-    cache = _cache()
-    cache_key = None
-    if request_id:
-        cache_key = _idempotency_key(user, lock_target, request_id)
-        cached = cache.get_value(cache_key)
-        if cached:
-            return cached
-
-    with cache.lock(_lock_key(user, lock_target), timeout=10):
-        if cache_key:
-            cached = cache.get_value(cache_key)
-            if cached:
-                return cached
-
-        applicant_doc = frappe.get_doc("Student Applicant", applicant_name)
-        response = applicant_doc.review_document_submission(
-            applicant_document_item=item_name,
-            decision=resolved_decision,
-            notes=notes,
-        )
-        invalidate_admissions_cockpit_cache()
-        if cache_key:
-            cache.set_value(cache_key, response, expires_in_sec=60 * 10)
-        return response
+    return review_applicant_document_submission_impl(
+        student_applicant=student_applicant,
+        applicant_document_item=applicant_document_item,
+        decision=decision,
+        notes=notes,
+        client_request_id=client_request_id,
+        invalidate_cache=invalidate_admissions_cockpit_cache,
+    )
 
 
 @frappe.whitelist()
@@ -86,38 +52,12 @@ def set_document_requirement_override(
     override_reason: str | None = None,
     client_request_id: str | None = None,
 ):
-    user = _require_login()
-    applicant_name = (student_applicant or "").strip()
-    request_id = (client_request_id or "").strip() or None
-
-    if not applicant_name:
-        frappe.throw(_("Student Applicant is required."))
-
-    document_anchor = (applicant_document or "").strip() or (document_type or "").strip() or "unscoped"
-    override_value = (requirement_override or "").strip() or "clear"
-    lock_target = f"{applicant_name}:{document_anchor}:{override_value}"
-    cache = _cache()
-    cache_key = None
-    if request_id:
-        cache_key = _idempotency_key(user, lock_target, request_id)
-        cached = cache.get_value(cache_key)
-        if cached:
-            return cached
-
-    with cache.lock(_lock_key(user, lock_target), timeout=10):
-        if cache_key:
-            cached = cache.get_value(cache_key)
-            if cached:
-                return cached
-
-        applicant_doc = frappe.get_doc("Student Applicant", applicant_name)
-        response = applicant_doc.set_document_requirement_override(
-            applicant_document=applicant_document,
-            document_type=document_type,
-            requirement_override=requirement_override,
-            override_reason=override_reason,
-        )
-        invalidate_admissions_cockpit_cache()
-        if cache_key:
-            cache.set_value(cache_key, response, expires_in_sec=60 * 10)
-        return response
+    return set_document_requirement_override_impl(
+        student_applicant=student_applicant,
+        applicant_document=applicant_document,
+        document_type=document_type,
+        requirement_override=requirement_override,
+        override_reason=override_reason,
+        client_request_id=client_request_id,
+        invalidate_cache=invalidate_admissions_cockpit_cache,
+    )
