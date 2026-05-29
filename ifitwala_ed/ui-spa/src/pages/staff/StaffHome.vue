@@ -23,7 +23,7 @@
 					class="if-button if-button--primary"
 				>
 					<FeatherIcon name="sun" class="h-4 w-4 text-yellow-300" />
-					<span>Morning Brief</span>
+					<span>{{ __('Morning Brief') }}</span>
 				</RouterLink>
 			</div>
 		</header>
@@ -49,9 +49,9 @@
 				<FocusListCard
 					:items="focusItems"
 					:loading="focusLoading"
-					title="Your Focus"
-					meta="Pending"
-					empty-text="Nothing urgent right now."
+					:title="__('Your Focus')"
+					:meta="__('Pending')"
+					:empty-text="__('Nothing urgent right now.')"
 					:max-items="8"
 					@open="openFocusItem"
 				/>
@@ -59,7 +59,7 @@
 
 			<!-- RIGHT COL: QUICK ACTIONS ------------------------------->
 			<div class="staff-home__actions-column min-w-0 space-y-4 xl:sticky xl:top-6">
-				<h3 class="px-1 type-h3 text-canopy">Quick Actions</h3>
+				<h3 class="px-1 type-h3 text-canopy">{{ __('Quick Actions') }}</h3>
 
 				<div data-testid="staff-home-quick-actions" class="grid min-w-0 gap-3">
 					<button
@@ -74,13 +74,13 @@
 						</div>
 						<div class="flex-1 min-w-0">
 							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
-								Open Class Hub
+								{{ __('Open Class Hub') }}
 							</p>
 							<p class="truncate type-caption text-slate-token/70">
 								{{
 									classHubQuickActionLoading
-										? 'Checking your teaching groups'
-										: 'Choose one of your teaching groups and open the class workspace'
+										? __('Checking your teaching groups')
+										: __('Choose one of your teaching groups and open the class workspace')
 								}}
 							</p>
 						</div>
@@ -126,10 +126,10 @@
 						</div>
 						<div class="flex-1 min-w-0">
 							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
-								Add student log
+								{{ __('Add student log') }}
 							</p>
 							<p class="truncate type-caption text-slate-token/70">
-								Record a note, concern, or follow-up
+								{{ __('Record a note, concern, or follow-up') }}
 							</p>
 						</div>
 						<FeatherIcon
@@ -150,7 +150,7 @@
 						</div>
 						<div class="flex-1 min-w-0">
 							<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
-								Create communication
+								{{ __('Create communication') }}
 							</p>
 							<p
 								class="type-caption text-slate-token/70"
@@ -169,7 +169,7 @@
 						v-if="!hasVisibleQuickActions"
 						class="rounded-xl border border-dashed border-slate-300 bg-slate-50/70 px-4 py-3 type-caption text-slate-token/80"
 					>
-						No quick actions are assigned to your current role.
+						{{ __('No quick actions are assigned to your current role.') }}
 					</p>
 				</div>
 			</div>
@@ -186,8 +186,8 @@
 			<div class="rounded-2xl border border-[rgb(var(--sand-rgb)/0.35)]">
 				<div class="border-b border-[rgb(var(--sand-rgb)/0.35)] px-6 pb-6 pt-7">
 					<div class="space-y-2">
-						<p class="type-overline text-slate-token/70">Analytics</p>
-						<h3 class="type-h2">Insights & Dashboards</h3>
+						<p class="type-overline text-slate-token/70">{{ __('Analytics') }}</p>
+						<h3 class="type-h2">{{ __('Insights & Dashboards') }}</h3>
 					</div>
 				</div>
 
@@ -290,7 +290,7 @@
 							<span
 								class="rounded-full bg-slate-100 px-3 py-1 type-badge-label text-slate-token/70"
 							>
-								{{ category.links.length }} links
+								{{ __('{0} links', [category.links.length]) }}
 							</span>
 						</div>
 
@@ -330,6 +330,7 @@ import ScheduleCalendar from '@/components/calendar/ScheduleCalendar.vue';
 import FocusListCard from '@/components/focus/FocusListCard.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { createClassHubService } from '@/lib/classHubService';
+import { __ } from '@/lib/i18n';
 import {
 	getStaffHomeHeader,
 	type StaffHomeQuickActionState,
@@ -379,10 +380,10 @@ onMounted(async () => {
 
 const firstName = computed(() => {
 	const doc = userDoc.value;
-	if (!doc) return 'Staff';
+	if (!doc) return __('Staff');
 	if (doc.first_name) return doc.first_name;
 	if (doc.full_name) return doc.full_name.split(' ')[0];
-	return 'Staff';
+	return __('Staff');
 });
 
 const userCapabilities = computed<Record<string, boolean>>(
@@ -405,7 +406,7 @@ const showOrgCommunicationQuickAction = computed(
 const orgCommunicationQuickActionSubtitle = computed(
 	() =>
 		orgCommunicationQuickActionState.value.blocked_reason ||
-		'Publish to staff, a student group, or your wider school community'
+		__('Publish to staff, a student group, or your wider school community')
 );
 
 /* QUICK ACTIONS ------------------------------------------------ */
@@ -551,8 +552,8 @@ function onStudentLogInvalidated() {
 		?.then(() => {
 			if (shouldToast) {
 				toast.create({
-					title: 'Saved',
-					text: 'Student note submitted.',
+					title: __('Saved'),
+					text: __('Student note submitted.'),
 					icon: 'check',
 				});
 			}
@@ -566,8 +567,8 @@ function onOrgCommunicationInvalidated(payload?: { reason?: string }) {
 	if (payload?.reason !== 'quick_create') return;
 
 	toast.create({
-		title: 'Communication created',
-		text: 'Your communication is ready on the relevant announcement surfaces.',
+		title: __('Communication created'),
+		text: __('Your communication is ready on the relevant announcement surfaces.'),
 		icon: 'check',
 	});
 }
@@ -610,8 +611,8 @@ onBeforeUnmount(() => {
 function openFocusItem(item: FocusItem) {
 	if (item.permissions?.can_open === false) {
 		toast.create({
-			title: 'Not available',
-			text: 'You do not have access to open this item.',
+			title: __('Not available'),
+			text: __('You do not have access to open this item.'),
 			icon: 'info',
 		});
 		return;
@@ -666,47 +667,47 @@ type StaffHomeAnalyticsCategory = {
 const exploreLinks: Array<StaffHomeAnalyticsLink | StaffHomeExploreAction> = [
 	{
 		kind: 'route',
-		label: 'Announcement Archive',
-		caption: 'Check all current and past announcements',
+		label: __('Announcement Archive'),
+		caption: __('Check all current and past announcements'),
 		icon: 'activity',
 		to: '/staff/announcements',
-		badge: 'Hot',
+		badge: __('Hot'),
 	},
 	{
 		kind: 'action',
-		label: 'Create task',
-		caption: 'Assign work to a class in seconds',
+		label: __('Create task'),
+		caption: __('Assign work to a class in seconds'),
 		icon: 'clipboard',
 		capability: 'quick_action_create_task',
 		action: openCreateTask,
 	},
 	{
 		kind: 'route',
-		label: 'Update Gradebook',
-		caption: 'Capture evidence, notes, and marks',
+		label: __('Update Gradebook'),
+		caption: __('Capture evidence, notes, and marks'),
 		icon: 'edit-3',
 		to: { name: 'staff-gradebook' },
 		capability: 'quick_action_gradebook',
 	},
 	{
 		kind: 'route',
-		label: 'Term Reporting',
-		caption: 'Review frozen results and calculation components',
+		label: __('Term Reporting'),
+		caption: __('Review frozen results and calculation components'),
 		icon: 'file-text',
 		to: { name: 'staff-term-reporting' },
 		capability: 'term_reporting_review',
 	},
 	{
 		kind: 'route',
-		label: 'Course Plans',
-		caption: 'Open the governed curriculum backbone and shared resources',
+		label: __('Course Plans'),
+		caption: __('Open the governed curriculum backbone and shared resources'),
 		icon: 'layers',
 		to: { name: 'staff-course-plan-index' },
 	},
 	{
 		kind: 'route',
-		label: 'Room Utilization',
-		caption: 'Which rooms are free, over or under-used this week',
+		label: __('Room Utilization'),
+		caption: __('Which rooms are free, over or under-used this week'),
 		icon: 'clock',
 		to: '/staff/room-utilization',
 		capability: 'room_utilization_page',
@@ -715,140 +716,140 @@ const exploreLinks: Array<StaffHomeAnalyticsLink | StaffHomeExploreAction> = [
 
 const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 	{
-		title: 'Enrollment & Census',
-		description: 'Student body profile, admissions, and retention.',
+		title: __('Enrollment & Census'),
+		description: __('Student body profile, admissions, and retention.'),
 		icon: 'trending-up',
 		links: [
 			{
-				label: 'Demographics Overview',
+				label: __('Demographics Overview'),
 				to: { name: 'student-demographic-analytics' },
 				capability: 'analytics_demographics',
 			},
 			{
-				label: 'Enrollment Analytics',
+				label: __('Enrollment Analytics'),
 				to: { name: 'StaffEnrollmentAnalytics' },
 				capability: 'analytics_admissions',
 			},
 		],
 	},
 	{
-		title: 'Operations & Attendance',
-		description: 'Coverage, punctuality, and daily health of the timetable.',
+		title: __('Operations & Attendance'),
+		description: __('Coverage, punctuality, and daily health of the timetable.'),
 		icon: 'check-square',
 		links: [
 			{
-				label: 'Attendance Analytics',
+				label: __('Attendance Analytics'),
 				to: { name: 'staff-attendance-analytics' },
 				capability: 'analytics_attendance',
 			},
 			{
-				label: 'Attendance Ledger',
+				label: __('Attendance Ledger'),
 				to: { name: 'staff-attendance-ledger' },
 				capability: 'analytics_attendance',
 			},
 		],
 	},
 	{
-		title: 'Academic Performance',
-		description: 'Grades, assessments, and intervention impact.',
+		title: __('Academic Performance'),
+		description: __('Grades, assessments, and intervention impact.'),
 		icon: 'book',
 		links: [
 			{
-				label: 'Student Overview',
+				label: __('Student Overview'),
 				to: { name: 'staff-student-overview' },
 				capability: 'analytics_student_overview',
 			},
 		],
 	},
 	{
-		title: 'Student Wellbeing',
-		description: 'Referrals, caseloads, incidents, and follow-ups.',
+		title: __('Student Wellbeing'),
+		description: __('Referrals, caseloads, incidents, and follow-ups.'),
 		icon: 'heart',
 		links: [
 			{
-				label: 'Student Log Analytics',
+				label: __('Student Log Analytics'),
 				to: { name: 'staff-student-log-analytics' },
 				capability: 'analytics_wellbeing',
 			},
 		],
 	},
 	{
-		title: 'Staff & HR',
-		description: 'Availability, development, and evaluations.',
+		title: __('Staff & HR'),
+		description: __('Availability, development, and evaluations.'),
 		icon: 'users',
 		links: [
 			{
-				label: 'Organizational Chart',
+				label: __('Organizational Chart'),
 				to: { name: 'staff-organization-chart' },
 			},
 			{
-				label: 'My Growth',
+				label: __('My Growth'),
 				to: { name: 'staff-professional-development' },
 				capability: 'staff_professional_development',
 			},
 			{
-				label: 'Expenses',
+				label: __('Expenses'),
 				to: { name: 'staff-expense-claims' },
 				capability: 'staff_expense_claims',
 			},
 		],
 	},
 	{
-		title: 'Scheduling & Capacity',
-		description: 'Timetable load, rooms, and transport fill.',
+		title: __('Scheduling & Capacity'),
+		description: __('Timetable load, rooms, and transport fill.'),
 		icon: 'calendar',
 		links: [
 			{
-				label: 'Academic Load',
+				label: __('Academic Load'),
 				to: { name: 'staff-academic-load' },
 				capability: 'analytics_academic_load',
 			},
 			{
-				label: 'Room Occupancy',
+				label: __('Room Occupancy'),
 				to: { name: 'staff-room-utilization' },
 				capability: 'room_utilization_page',
 			},
 		],
 	},
 	{
-		title: 'Admission & Engagement',
-		description: 'Family engagement, events, and surveys.',
+		title: __('Admission & Engagement'),
+		description: __('Family engagement, events, and surveys.'),
 		icon: 'message-circle',
 		links: [
 			{
-				label: 'Admissions Inbox',
+				label: __('Admissions Inbox'),
 				to: { name: 'staff-admissions-inbox' },
 				capability: 'analytics_admissions',
 			},
 			{
-				label: 'Admissions Cockpit',
+				label: __('Admissions Cockpit'),
 				to: { name: 'staff-admission-cockpit' },
 				capability: 'analytics_admissions',
 			},
 			{
-				label: 'Zero Lost Lead',
+				label: __('Zero Lost Lead'),
 				to: { name: 'staff-inquiry-analytics' },
 				capability: 'analytics_admissions',
 			},
 		],
 	},
 	{
-		title: 'Compliance & Risk',
-		description: 'Safeguarding signals and audit readiness.',
+		title: __('Compliance & Risk'),
+		description: __('Safeguarding signals and audit readiness.'),
 		icon: 'shield',
 		links: [
 			{
-				label: 'Policy Acknowledgments',
+				label: __('Policy Acknowledgments'),
 				to: { name: 'staff-policy-signature-analytics' },
 				capability: 'analytics_policy_signatures',
 			},
 			{
-				label: 'Forms & Signatures',
+				label: __('Forms & Signatures'),
 				to: { name: 'staff-forms-signatures-analytics' },
 				capability: 'analytics_policy_signatures',
 			},
 			{
-				label: 'Policy Library',
+				label: __('Policy Library'),
 				to: { name: 'staff-policies' },
 				capability: 'staff_policy_library',
 			},
@@ -882,7 +883,7 @@ const hasVisibleAnalyticsLinks = computed(
 /* GREETING ----------------------------------------------------- */
 const greeting = computed(() => {
 	const hour = new Date().getHours();
-	return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+	return hour < 12 ? __('Good morning') : hour < 17 ? __('Good afternoon') : __('Good evening');
 });
 
 const canCreateMeeting = computed(() =>
@@ -892,15 +893,15 @@ const canCreateSchoolEvent = computed(() =>
 	Boolean(userCapabilities.value.quick_action_create_school_event)
 );
 const eventQuickActionTitle = computed(() => {
-	if (canCreateMeeting.value && !canCreateSchoolEvent.value) return 'Schedule meeting';
-	return 'Create event';
+	if (canCreateMeeting.value && !canCreateSchoolEvent.value) return __('Schedule meeting');
+	return __('Create event');
 });
 
 const eventQuickActionSubtitle = computed(() => {
 	if (canCreateMeeting.value && !canCreateSchoolEvent.value) {
-		return 'Find a common time and invite colleagues, students, or guardians';
+		return __('Find a common time and invite colleagues, students, or guardians');
 	}
-	return 'Create a meeting or school event';
+	return __('Create a meeting or school event');
 });
 
 /* OVERLAY: Create Task ---------------------------------------- */
@@ -936,8 +937,8 @@ async function openClassHubQuickAction() {
 	} catch (err) {
 		console.error('[StaffHome] Failed to resolve Class Hub quick action:', err);
 		toast.create({
-			title: 'Could not open Class Hub',
-			text: 'Try again in a moment.',
+			title: __('Could not open Class Hub'),
+			text: __('Try again in a moment.'),
 			icon: 'info',
 		});
 	} finally {
@@ -949,8 +950,8 @@ async function openClassHubQuickAction() {
 function openCreateEvent() {
 	if (!canCreateMeeting.value && !canCreateSchoolEvent.value) {
 		toast.create({
-			title: 'Not available',
-			text: 'You do not have permission to create events.',
+			title: __('Not available'),
+			text: __('You do not have permission to create events.'),
 			icon: 'info',
 		});
 		return;
@@ -982,10 +983,10 @@ function openStudentLog() {
 function openOrgCommunication() {
 	if (!orgCommunicationQuickActionState.value.enabled) {
 		toast.create({
-			title: 'Communication unavailable',
+			title: __('Communication unavailable'),
 			text:
 				orgCommunicationQuickActionState.value.blocked_reason ||
-				'You cannot create communications from Staff Home right now.',
+				__('You cannot create communications from Staff Home right now.'),
 			icon: 'info',
 		});
 		return;

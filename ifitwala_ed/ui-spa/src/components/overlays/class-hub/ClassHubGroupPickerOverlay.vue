@@ -39,25 +39,27 @@
 							tabindex="0"
 							@click="emitClose('programmatic')"
 						>
-							Close
+							{{ __('Close') }}
 						</button>
 
 						<div class="if-overlay__header px-6 pt-6">
 							<div class="flex items-start justify-between gap-4">
 								<div>
 									<p class="type-overline text-slate-token/70">{{ sourceLabel }}</p>
-									<DialogTitle as="h2" class="type-h2 text-ink">Open Class Hub</DialogTitle>
+									<DialogTitle as="h2" class="type-h2 text-ink">
+										{{ __('Open Class Hub') }}
+									</DialogTitle>
 									<p class="mt-2 type-body text-slate-token/70">
-										Choose the class workspace you want to open.
+										{{ __('Choose the class workspace you want to open.') }}
 									</p>
 								</div>
 								<button
 									type="button"
 									class="if-overlay__icon-button"
-									aria-label="Close class hub chooser"
+									:aria-label="__('Close class hub chooser')"
 									@click="emitClose('programmatic')"
 								>
-									<span aria-hidden="true">x</span>
+									<span aria-hidden="true">&times;</span>
 								</button>
 							</div>
 						</div>
@@ -71,19 +73,24 @@
 									{{ emptyMessage }}
 								</p>
 								<p class="mt-2 type-caption text-slate-token/70">
-									Ask an academic admin to add you as an instructor on a student group, then try
-									again here.
+									{{
+										__(
+											'Ask an academic admin to add you as an instructor on a student group, then try again here.'
+										)
+									}}
 								</p>
 							</section>
 
 							<template v-else>
 								<label v-if="groupOptions.length > 6" class="block space-y-2">
-									<span class="type-label text-slate-token/70">Search your classes</span>
+									<span class="type-label text-slate-token/70">
+										{{ __('Search your classes') }}
+									</span>
 									<input
 										v-model.trim="searchQuery"
 										type="text"
 										class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-jacaranda"
-										placeholder="Find a course or student group"
+										:placeholder="__('Find a course or student group')"
 									/>
 								</label>
 
@@ -114,7 +121,7 @@
 									v-else
 									class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-5 type-body text-slate-token/70"
 								>
-									No classes match that search yet.
+									{{ __('No classes match that search yet.') }}
 								</p>
 							</template>
 						</div>
@@ -125,7 +132,7 @@
 								class="rounded-full border border-slate-200 bg-white px-4 py-2 type-button-label text-ink"
 								@click="emitClose('programmatic')"
 							>
-								Close
+								{{ __('Close') }}
 							</button>
 						</div>
 					</DialogPanel>
@@ -147,6 +154,7 @@ import {
 	TransitionRoot,
 } from '@headlessui/vue';
 
+import { __ } from '@/lib/i18n';
 import type { ClassHubHomeEntryGroup } from '@/types/classHub';
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
@@ -170,10 +178,10 @@ const initialFocus = ref<HTMLElement | null>(null);
 const searchQuery = ref('');
 
 const overlayStyle = computed(() => ({ zIndex: props.zIndex ?? 60 }));
-const sourceLabel = computed(() => props.source_label || 'Staff Home');
+const sourceLabel = computed(() => props.source_label || __('Staff Home'));
 const groupOptions = computed(() => props.groups || []);
 const emptyMessage = computed(
-	() => props.message || 'You are not assigned to any student groups yet.'
+	() => props.message || __('You are not assigned to any student groups yet.')
 );
 const filteredGroups = computed(() => {
 	const query = searchQuery.value.trim().toLowerCase();
@@ -190,7 +198,8 @@ function emitClose(reason: CloseReason) {
 	emit('close', reason);
 }
 
-function onDialogClose(_payload: unknown) {
+function onDialogClose(payload: unknown) {
+	void payload;
 	// OverlayHost owns close enforcement.
 }
 

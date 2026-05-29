@@ -11,19 +11,25 @@
 				@click="emit('toggle-course-resources')"
 			>
 				<div>
-					<p class="type-overline text-ink/60">Shared Plan Resources</p>
-					<h2 class="mt-2 type-h2 text-ink">Resources for every class using this plan</h2>
+					<p class="type-overline text-ink/60">{{ __('Shared Plan Resources') }}</p>
+					<h2 class="mt-2 type-h2 text-ink">
+						{{ __('Resources for every class using this plan') }}
+					</h2>
 					<p class="mt-2 type-body text-ink/80">
 						{{
 							courseResourcesCollapsed
-								? 'Open the governed references, links, and shared files attached at the course-plan level.'
-								: 'Keep governed references, anchor texts, and shared files at the course-plan level.'
+								? __(
+										'Open the governed references, links, and shared files attached at the course-plan level.'
+									)
+								: __(
+										'Keep governed references, anchor texts, and shared files at the course-plan level.'
+									)
 						}}
 					</p>
 				</div>
 				<div class="flex flex-wrap items-center gap-2 lg:justify-end">
-					<span class="chip">{{ coursePlanResourceCount }} resources</span>
-					<span class="chip">{{ courseResourcesCollapsed ? 'Show' : 'Hide' }}</span>
+					<span class="chip">{{ __('{0} resources', [coursePlanResourceCount]) }}</span>
+					<span class="chip">{{ courseResourcesCollapsed ? __('Show') : __('Hide') }}</span>
 				</div>
 			</button>
 
@@ -32,12 +38,18 @@
 					anchor-doctype="Course Plan"
 					:anchor-name="coursePlanName"
 					:can-manage="canManagePlan"
-					eyebrow="Shared Plan Resources"
-					title="Resources for every class using this plan"
-					description="Keep governed references, anchor texts, and shared files at the course-plan level."
-					empty-message="No shared course-plan resources yet."
-					blocked-message="Choose a course plan before sharing resources."
-					read-only-message="Only approved curriculum staff can edit shared course-plan resources."
+					:eyebrow="__('Shared Plan Resources')"
+					:title="__('Resources for every class using this plan')"
+					:description="
+						__(
+							'Keep governed references, anchor texts, and shared files at the course-plan level.'
+						)
+					"
+					:empty-message="__('No shared course-plan resources yet.')"
+					:blocked-message="__('Choose a course plan before sharing resources.')"
+					:read-only-message="
+						__('Only approved curriculum staff can edit shared course-plan resources.')
+					"
 					:resources="coursePlanResources"
 					enable-attachment-preview
 					hide-header
@@ -53,8 +65,8 @@
 		>
 			<div class="mb-4 flex items-center justify-between gap-3">
 				<div>
-					<p class="type-overline text-ink/60">Unit Backbone</p>
-					<h2 class="mt-1 type-h3 text-ink">Governed sequence</h2>
+					<p class="type-overline text-ink/60">{{ __('Unit Backbone') }}</p>
+					<h2 class="mt-1 type-h3 text-ink">{{ __('Governed sequence') }}</h2>
 				</div>
 				<span class="chip">{{ unitCount }}</span>
 			</div>
@@ -74,23 +86,25 @@
 				>
 					<div class="flex items-start justify-between gap-3">
 						<div class="min-w-0">
-							<p class="type-overline text-ink/60">Unit {{ unit.unit_order || '—' }}</p>
+							<p class="type-overline text-ink/60">
+								{{ __('Unit {0}', [unit.unit_order || '—']) }}
+							</p>
 							<p class="mt-1 type-body-strong text-ink">{{ unit.title }}</p>
 						</div>
-						<span class="chip">{{ unit.shared_resources.length }} resources</span>
+						<span class="chip">{{ __('{0} resources', [unit.shared_resources.length]) }}</span>
 					</div>
 				</button>
 
 				<div v-if="!units.length" class="rounded-2xl border border-dashed border-line-soft p-4">
 					<p class="type-caption text-ink/70">
-						Add the first unit plan to define the shared curriculum backbone.
+						{{ __('Add the first unit plan to define the shared curriculum backbone.') }}
 					</p>
 				</div>
 			</div>
 
 			<div v-if="canManagePlan" class="mt-4">
 				<button type="button" class="if-action w-full" @click="emit('start-new-unit')">
-					{{ creatingUnit ? 'Editing New Unit' : 'New Unit Plan' }}
+					{{ creatingUnit ? __('Editing New Unit') : __('New Unit Plan') }}
 				</button>
 			</div>
 		</section>
@@ -99,6 +113,7 @@
 
 <script setup lang="ts">
 import PlanningResourcePanel from '@/components/planning/PlanningResourcePanel.vue';
+import { __ } from '@/lib/i18n';
 import { SECTION_IDS } from '@/lib/planning/coursePlanWorkspace';
 import type { Response as StaffCoursePlanSurfaceResponse } from '@/types/contracts/staff_teaching/get_staff_course_plan_surface';
 

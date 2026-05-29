@@ -37,7 +37,6 @@ META_SELECT_OPTIONS_CACHE_TTL_SECONDS = 3600
 QUICK_CREATE_OPTIONS_CACHE_TTL_SECONDS = 300
 ATTENDEE_SEARCH_CACHE_TTL_SECONDS = 60
 SLOT_SUGGESTION_CACHE_TTL_SECONDS = 60
-ROOM_SUGGESTION_CACHE_TTL_SECONDS = 60
 MAX_ATTENDEE_SEARCH_RESULTS = 12
 MAX_SLOT_SUGGESTIONS = 5
 MAX_SLOT_FALLBACKS = 3
@@ -2099,26 +2098,6 @@ def suggest_meeting_rooms(
         else 0
     )
 
-    cache_key = _json_cache_key(
-        "ifitwala_ed:event_quick_create:room_suggestions",
-        {
-            "user": user,
-            "school": school_value,
-            "date": target_date.isoformat(),
-            "start": str(start_value),
-            "end": str(end_value),
-            "location_type": location_type_value,
-            "capacity": cap_needed,
-            "limit": room_limit,
-        },
-    )
-    cache = frappe.cache()
-    cached = cache.get_value(cache_key)
-    if cached:
-        parsed = frappe.parse_json(cached)
-        if isinstance(parsed, dict):
-            return parsed
-
     rows = _room_rows_for_school_scope(
         school_value,
         cap_needed,
@@ -2129,7 +2108,6 @@ def suggest_meeting_rooms(
             "rooms": [],
             "notes": [_("No rooms are configured for the selected school scope.")],
         }
-        cache.set_value(cache_key, frappe.as_json(payload), expires_in_sec=ROOM_SUGGESTION_CACHE_TTL_SECONDS)
         return payload
 
     conflicts = find_room_conflicts(
@@ -2157,7 +2135,6 @@ def suggest_meeting_rooms(
             else []
         ),
     }
-    cache.set_value(cache_key, frappe.as_json(payload), expires_in_sec=ROOM_SUGGESTION_CACHE_TTL_SECONDS)
     return payload
 
 

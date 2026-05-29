@@ -65,7 +65,7 @@ Used by:
 									type="button"
 									class="if-overlay__icon-button"
 									@click="emitClose('programmatic')"
-									aria-label="Close"
+									:aria-label="__('Close')"
 								>
 									<FeatherIcon name="x" class="h-5 w-5" />
 								</button>
@@ -131,7 +131,7 @@ Used by:
 												size="md"
 												:model-value="studentQuery"
 												:disabled="submitting"
-												placeholder="Search student name…"
+												:placeholder="__('Search student name…')"
 												@update:modelValue="onStudentQuery"
 											/>
 
@@ -383,7 +383,7 @@ Used by:
 												size="md"
 												:model-value="assigneeQuery"
 												:disabled="submitting || !form.next_step"
-												placeholder="Search staff to assign…"
+												:placeholder="__('Search staff to assign…')"
 												@update:modelValue="onAssigneeQuery"
 											/>
 
@@ -765,7 +765,8 @@ function emitAfterLeave() {
  * Under A+ we DO NOT forward it or close from it.
  * Backdrop + ESC + explicit buttons are the only closing paths.
  */
-function onDialogClose(_payload: unknown) {
+function onDialogClose(payload: unknown) {
+	void payload;
 	// no-op by design
 }
 

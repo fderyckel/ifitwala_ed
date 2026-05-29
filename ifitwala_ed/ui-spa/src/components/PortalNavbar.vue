@@ -13,7 +13,7 @@
 				<button
 					@click="$emit('toggle-sidebar')"
 					class="portal-navbar__menu-button"
-					aria-label="Toggle sidebar"
+					:aria-label="__('Toggle sidebar')"
 				>
 					<FeatherIcon name="menu" class="h-5 w-5" />
 				</button>
@@ -22,7 +22,7 @@
 					<span class="portal-navbar__brand-mark">
 						<FeatherIcon name="book-open" class="h-5 w-5" />
 					</span>
-					<span class="portal-navbar__brand-label">Ifitwala</span>
+					<span class="portal-navbar__brand-label">{{ BRAND_NAME }}</span>
 				</RouterLink>
 			</div>
 
@@ -33,7 +33,7 @@
 						<img
 							v-if="user.avatarImage"
 							:src="user.avatarImage"
-							:alt="`${user.fullname} avatar`"
+							:alt="__('{0} avatar', [user.fullname])"
 							class="portal-navbar__avatar"
 						/>
 						<div v-else class="portal-navbar__avatar-fallback">
@@ -52,17 +52,21 @@
 						<div v-if="isUserMenuOpen" class="portal-navbar__menu">
 							<div class="py-1">
 								<div class="portal-navbar__menu-header">
-									<p class="portal-navbar__menu-label">Signed in as</p>
+									<p class="portal-navbar__menu-label">{{ __('Signed in as') }}</p>
 									<p class="portal-navbar__menu-email">{{ user.email }}</p>
 								</div>
-								<a href="/desk/user-profile" class="portal-navbar__menu-link"> My Profile </a>
-								<a href="/update-password" class="portal-navbar__menu-link"> Security Settings </a>
+								<a href="/desk/user-profile" class="portal-navbar__menu-link">
+									{{ __('My Profile') }}
+								</a>
+								<a href="/update-password" class="portal-navbar__menu-link">
+									{{ __('Security Settings') }}
+								</a>
 								<div class="portal-navbar__menu-separator"></div>
 								<a
 									href="/logout?redirect-to=%2F"
 									class="portal-navbar__menu-link portal-navbar__menu-link--danger"
 								>
-									Logout
+									{{ __('Logout') }}
 								</a>
 							</div>
 						</div>
@@ -77,8 +81,11 @@
 import { ref, computed, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { FeatherIcon } from 'frappe-ui';
+import { __ } from '@/lib/i18n';
 import { getGuardianPortalIdentity } from '@/lib/services/guardian/guardianPortalService';
 import { getStudentPortalIdentity } from '@/lib/services/student/studentHomeService';
+
+const BRAND_NAME = 'Ifitwala';
 
 // Reactive state for user menu visibility
 const isUserMenuOpen = ref(false);
@@ -176,7 +183,7 @@ const user = computed(() => {
 			(guardianIdentity.value?.display_name || guardianIdentity.value?.full_name)) ||
 		userInfo.fullname ||
 		userInfo.email ||
-		'Guest'
+		__('Guest')
 	).trim();
 	const nameParts = resolvedFullName.split(' ').filter(Boolean);
 	const initials =

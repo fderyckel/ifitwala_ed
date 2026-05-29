@@ -6,7 +6,7 @@
 			<div class="staff-layout__header-inner">
 				<h1 class="staff-layout__brand type-overline">
 					<RouterLink :to="{ name: 'staff-home' }" class="staff-layout__brand-link">
-						Staff Portal
+						{{ __('Staff Portal') }}
 					</RouterLink>
 				</h1>
 
@@ -14,10 +14,10 @@
 					<RouterLink
 						:to="{ name: 'staff-calendar-sync' }"
 						class="staff-layout__desk-switch type-button-label"
-						title="Calendar sync"
+						:title="__('Calendar sync')"
 					>
 						<FeatherIcon name="calendar" class="h-4 w-4" />
-						<span>Calendar Sync</span>
+						<span>{{ __('Calendar Sync') }}</span>
 					</RouterLink>
 
 					<!-- Leaving SPA intentionally -->
@@ -32,14 +32,14 @@
 								stroke-width="1.7"
 							/>
 						</svg>
-						<span>Switch to Desk</span>
+						<span>{{ __('Switch to Desk') }}</span>
 					</a>
 
 					<!-- Leaving SPA intentionally -->
 					<a
 						href="/logout?redirect-to=%2F"
 						class="staff-layout__desk-switch type-button-label"
-						title="Logout"
+						:title="__('Logout')"
 					>
 						<FeatherIcon name="log-out" class="h-4 w-4" />
 					</a>
@@ -58,4 +58,5 @@
 import { RouterLink } from 'vue-router';
 import { FeatherIcon } from 'frappe-ui';
 import PortalNotification from '@/components/PortalNotification.vue';
+import { __ } from '@/lib/i18n';
 </script>

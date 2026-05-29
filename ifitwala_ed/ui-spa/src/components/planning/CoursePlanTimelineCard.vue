@@ -3,11 +3,14 @@
 		<template v-if="!hideHeader">
 			<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 				<div>
-					<p class="type-overline text-ink/60">Curriculum Timeline</p>
-					<h2 class="mt-2 type-h2 text-ink">Year-at-a-glance pacing</h2>
+					<p class="type-overline text-ink/60">{{ __('Curriculum Timeline') }}</p>
+					<h2 class="mt-2 type-h2 text-ink">{{ __('Year-at-a-glance pacing') }}</h2>
 					<p class="mt-2 max-w-3xl type-body text-ink/80">
-						See the governed unit sequence against real instructional dates so holidays and school
-						breaks visibly push the plan forward.
+						{{
+							__(
+								'See the governed unit sequence against real instructional dates so holidays and school breaks visibly push the plan forward.'
+							)
+						}}
 					</p>
 				</div>
 				<div v-if="timeline.status === 'ready'" class="flex flex-wrap gap-2">
@@ -15,30 +18,33 @@
 					<span v-if="dateRangeLabel" class="chip">{{ dateRangeLabel }}</span>
 					<span class="chip">{{ scheduledCountLabel }}</span>
 					<span v-if="timeline.summary.overflow_unit_count" class="chip">
-						{{ timeline.summary.overflow_unit_count }} overflow
+						{{ __('{0} overflow', [timeline.summary.overflow_unit_count]) }}
 					</span>
 					<span v-if="timeline.holidays.length" class="chip">
-						{{ timeline.holidays.length }} holiday spans
+						{{ __('{0} holiday spans', [timeline.holidays.length]) }}
 					</span>
 				</div>
 			</div>
 		</template>
 
 		<div v-if="timeline.status !== 'ready'" :class="blockedStateClasses">
-			<p class="type-body-strong text-ink">Timeline unavailable</p>
+			<p class="type-body-strong text-ink">{{ __('Timeline unavailable') }}</p>
 			<p class="mt-1 type-caption text-ink/70">
 				{{
 					timeline.message ||
-					'This plan needs more calendar context before a timeline can be shown.'
+					__('This plan needs more calendar context before a timeline can be shown.')
 				}}
 			</p>
 		</div>
 
 		<div v-else-if="!timeline.units.length" :class="emptyStateClasses">
-			<p class="type-body-strong text-ink">No governed units yet</p>
+			<p class="type-body-strong text-ink">{{ __('No governed units yet') }}</p>
 			<p class="mt-1 type-caption text-ink/70">
-				Add the unit backbone first, then this timeline will lay out the sequence across the
-				selected window.
+				{{
+					__(
+						'Add the unit backbone first, then this timeline will lay out the sequence across the selected window.'
+					)
+				}}
 			</p>
 		</div>
 
@@ -51,7 +57,7 @@
 				<div class="timeline-shell" :style="timelineShellStyle">
 					<div class="timeline-row timeline-row--header">
 						<div class="timeline-label timeline-label--header">
-							<p class="type-caption text-ink/60">Units</p>
+							<p class="type-caption text-ink/60">{{ __('Units') }}</p>
 						</div>
 						<div class="timeline-track timeline-track--header">
 							<div class="timeline-track__inner">
@@ -61,7 +67,9 @@
 									class="timeline-holiday"
 									:style="spanStyle(holiday.start_date, holiday.end_date)"
 								>
-									<div class="timeline-holiday__label">{{ holiday.titles[0] || 'Holiday' }}</div>
+									<div class="timeline-holiday__label">
+										{{ holiday.titles[0] || __('Holiday') }}
+									</div>
 								</div>
 								<div
 									v-for="term in timeline.terms"
@@ -89,10 +97,14 @@
 						class="timeline-row"
 					>
 						<div class="timeline-label">
-							<p class="type-overline text-ink/60">Unit {{ unit.unit_order || '—' }}</p>
+							<p class="type-overline text-ink/60">
+								{{ __('Unit {0}', [unit.unit_order || '—']) }}
+							</p>
 							<p class="timeline-label__title type-body-strong text-ink">{{ unit.title }}</p>
 							<div class="mt-2 flex flex-wrap gap-2">
-								<span v-if="unit.is_current" class="chip chip--current">Current</span>
+								<span v-if="unit.is_current" class="chip chip--current">
+									{{ __('Current') }}
+								</span>
 								<span v-if="unit.duration_label" class="chip">{{ unit.duration_label }}</span>
 								<span v-if="unit.unit_status" class="chip">{{ unit.unit_status }}</span>
 							</div>
@@ -114,14 +126,14 @@
 								>
 									<div class="timeline-bar__title">{{ unit.title }}</div>
 									<div class="timeline-bar__meta">
-										{{ unit.duration_label || `${unit.duration_weeks || 0} weeks` }}
+										{{ unit.duration_label || __('{0} weeks', [unit.duration_weeks || 0]) }}
 									</div>
 								</div>
 								<div v-else class="timeline-note">
 									<p class="type-caption text-ink/80">
 										{{
 											unit.message ||
-											'Add a numeric week duration to place this unit on the timeline.'
+											__('Add a numeric week duration to place this unit on the timeline.')
 										}}
 									</p>
 								</div>
@@ -137,6 +149,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+import { __ } from '@/lib/i18n';
 import type {
 	StaffCoursePlanTimeline,
 	StaffCoursePlanTimelineHoliday,
@@ -242,25 +255,35 @@ const scopeLabel = computed(() => {
 	const scope = timeline.value.scope;
 	if (scope.mode === 'student_group_term') {
 		return scope.student_group_label
-			? `${scope.student_group_label} · ${scope.term_label || scope.term || 'Term'}`
-			: scope.term_label || scope.term || 'Term';
+			? __('{0} · {1}', [scope.student_group_label, scope.term_label || scope.term || __('Term')])
+			: scope.term_label || scope.term || __('Term');
 	}
-	return scope.academic_year || 'Academic Year';
+	return scope.academic_year || __('Academic Year');
 });
 
 const dateRangeLabel = computed(() => {
 	if (!windowStart.value || !windowEnd.value) return '';
-	return `${shortDateFormatter.format(windowStart.value)} to ${shortDateFormatter.format(windowEnd.value)}`;
+	return __('{0} to {1}', [
+		shortDateFormatter.format(windowStart.value),
+		shortDateFormatter.format(windowEnd.value),
+	]);
 });
 
 const scheduledCountLabel = computed(() => {
-	return `${timeline.value.summary.scheduled_unit_count || 0} scheduled units`;
+	return __('{0} scheduled units', [timeline.value.summary.scheduled_unit_count || 0]);
 });
 
 const unscheduledSummary = computed(() => {
 	const unscheduledCount = timeline.value.summary.unscheduled_unit_count || 0;
 	if (!unscheduledCount) return '';
-	return `${unscheduledCount} unit${unscheduledCount === 1 ? '' : 's'} still need a usable week duration or timeline room before the full sequence can be shown.`;
+	return unscheduledCount === 1
+		? __(
+				'1 unit still needs a usable week duration or timeline room before the full sequence can be shown.'
+			)
+		: __(
+				'{0} units still need a usable week duration or timeline room before the full sequence can be shown.',
+				[unscheduledCount]
+			);
 });
 
 function holidayKey(holiday: StaffCoursePlanTimelineHoliday) {

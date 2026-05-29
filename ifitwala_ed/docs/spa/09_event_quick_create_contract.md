@@ -137,7 +137,7 @@ Rules:
 
 1. Meeting-attendee search, slot suggestion, and room suggestion are all server-owned workflows; the SPA must not fan out per attendee or per room.
 2. Quick-create scope is cached per user in Redis-backed cache so repeated attendee and scheduling requests do not rebuild visibility scope every time.
-3. Slot and room suggestion payloads are short-lived cached responses keyed by user plus filter scope.
+3. Slot suggestion payloads are short-lived cached responses keyed by user plus filter scope; room suggestions must recheck live `Location Booking` on every request so recovery from a location conflict never returns a stale occupied room.
 4. Slot suggestion requests are bounded to 20 attendees, 14 days, and 15-minute increments.
 5. Employee availability is authoritative from `Employee Booking`.
 6. Student availability is derived from school timetable room slots plus known meetings and school events.

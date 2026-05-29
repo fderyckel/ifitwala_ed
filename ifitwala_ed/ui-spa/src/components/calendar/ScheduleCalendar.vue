@@ -18,7 +18,7 @@
 	<div class="relative">
 		<section class="paper-card schedule-card p-4 sm:p-6">
 			<header class="schedule-calendar__header border-b border-[rgb(var(--border-rgb)/0.9)] pb-4">
-				<h2 class="type-h2">Your upcoming commitments</h2>
+				<h2 class="type-h2">{{ __('Your upcoming commitments') }}</h2>
 				<p class="type-meta schedule-calendar__header-meta">
 					{{ subtitle }}
 				</p>
@@ -31,7 +31,7 @@
 				>
 					<button class="if-action type-button-label" @click="handleRefresh">
 						<FeatherIcon name="refresh-cw" class="h-4 w-4" />
-						Refresh
+						{{ __('Refresh') }}
 					</button>
 					<button
 						class="if-action type-button-label"
@@ -39,10 +39,10 @@
 						@click="toggleExportPanel"
 					>
 						<FeatherIcon name="printer" class="h-4 w-4" />
-						Print timetable
+						{{ __('Print timetable') }}
 					</button>
 					<span v-if="lastUpdatedLabel" class="type-caption text-slate-token/70">
-						Updated {{ lastUpdatedLabel }}
+						{{ __('Updated {0}', [lastUpdatedLabel]) }}
 					</span>
 				</div>
 
@@ -56,7 +56,7 @@
 						@click="showWeekends = !showWeekends"
 					>
 						<FeatherIcon name="calendar" class="h-4 w-4" />
-						{{ showWeekends ? 'Show all days' : 'Hide weekends' }}
+						{{ showWeekends ? __('Show all days') : __('Hide weekends') }}
 					</button>
 					<button
 						class="if-pill type-button-label"
@@ -64,7 +64,7 @@
 						@click="showFullDay = !showFullDay"
 					>
 						<FeatherIcon name="clock" class="h-4 w-4" />
-						{{ showFullDay ? 'Full day on' : 'Default hours' }}
+						{{ showFullDay ? __('Full day on') : __('Default hours') }}
 					</button>
 				</div>
 
@@ -93,15 +93,15 @@
 				v-if="exportPanelOpen"
 				class="schedule-calendar__export-panel mt-4 rounded-2xl border border-[rgb(var(--sand-rgb)/0.45)] bg-[rgb(var(--sky-rgb)/0.42)] px-4 py-4 shadow-soft sm:px-5"
 				role="region"
-				aria-label="Timetable export"
+				:aria-label="__('Timetable export')"
 			>
 				<div class="schedule-calendar__export-header">
 					<div>
-						<p class="type-overline text-slate-token/70">Print</p>
-						<h3 class="type-h3 text-ink">Choose a timetable range</h3>
+						<p class="type-overline text-slate-token/70">{{ __('Print') }}</p>
+						<h3 class="type-h3 text-ink">{{ __('Choose a timetable range') }}</h3>
 					</div>
 					<p class="type-caption text-slate-token/70">
-						Opens a dedicated Ifitwala PDF, not the live calendar view.
+						{{ __('Opens a dedicated Ifitwala PDF, not the live calendar view.') }}
 					</p>
 				</div>
 
@@ -116,9 +116,9 @@
 						class="mt-0.5 h-4 w-4 rounded-[0.35rem] border border-[rgb(var(--border-rgb)/0.88)] accent-[rgb(var(--canopy-rgb)/1)]"
 					/>
 					<span class="min-w-0">
-						<span class="type-body-strong block text-ink">Include weekends</span>
+						<span class="type-body-strong block text-ink">{{ __('Include weekends') }}</span>
 						<span class="type-caption text-slate-token/72">
-							Unchecked prints a tighter Monday to Friday spread.
+							{{ __('Unchecked prints a tighter Monday to Friday spread.') }}
 						</span>
 					</span>
 				</label>
@@ -162,7 +162,7 @@
 				>
 					<div class="flex items-center gap-2 type-body-strong text-ink/70">
 						<FeatherIcon name="loader" class="h-4 w-4 animate-spin" />
-						Loading calendar…
+						{{ __('Loading calendar…') }}
 					</div>
 				</div>
 			</div>
@@ -178,7 +178,11 @@
 				v-else-if="isEmpty"
 				class="mt-4 rounded-2xl border border-dashed border-[rgb(var(--border-rgb)/0.9)] bg-[rgb(var(--sky-rgb)/0.45)] px-4 py-6 text-center type-body text-ink/70"
 			>
-				Nothing scheduled for this range. Enjoy the calm or adjust the view to a different week.
+				{{
+					__(
+						'Nothing scheduled for this range. Enjoy the calm or adjust the view to a different week.'
+					)
+				}}
 			</div>
 		</section>
 	</div>
@@ -212,6 +216,7 @@ import {
 	type StaffTimetableExportPreset,
 } from '@/components/calendar/staffTimetableExport';
 import { SIGNAL_CALENDAR_INVALIDATE, uiSignals } from '@/lib/uiSignals';
+import { __ } from '@/lib/i18n';
 
 // ✅ Overlay stack (single renderer via OverlayHost teleported to #overlay-root)
 import { useOverlayStack } from '@/composables/useOverlayStack';
@@ -284,8 +289,10 @@ const slotMax = ref<string>('17:00:00');
 const subtitle = computed(() => {
 	const total = events.value.length;
 	return total
-		? `${total} event${total === 1 ? '' : 's'} in view`
-		: 'Nothing scheduled in this range';
+		? total === 1
+			? __('1 event in view')
+			: __('{0} events in view', [total])
+		: __('Nothing scheduled in this range');
 });
 
 const exportPresets = STAFF_TIMETABLE_EXPORT_PRESETS;
@@ -490,7 +497,7 @@ function openTimetableExport(preset: StaffTimetableExportPreset) {
 		'noopener'
 	);
 	if (!opened) {
-		const message = 'Allow pop-ups to open the timetable PDF.';
+		const message = __('Allow pop-ups to open the timetable PDF.');
 		exportError.value = message;
 		toast.error(message);
 		return;
@@ -500,22 +507,22 @@ function openTimetableExport(preset: StaffTimetableExportPreset) {
 
 const sourcePalette: Record<CalendarSource, { label: string; dot: string; active: string }> = {
 	student_group: {
-		label: 'Class',
+		label: __('Class'),
 		dot: 'if-pill__dot--scheduled',
 		active: 'if-pill--class',
 	},
 	meeting: {
-		label: 'Meeting',
+		label: __('Meeting'),
 		dot: 'if-pill__dot--scheduled',
 		active: 'if-pill--meeting',
 	},
 	school_event: {
-		label: 'School',
+		label: __('School'),
 		dot: 'if-pill__dot--scheduled',
 		active: 'if-pill--school',
 	},
 	staff_holiday: {
-		label: 'Holidays',
+		label: __('Holidays'),
 		dot: 'if-pill__dot--holiday',
 		active: 'if-pill--holiday',
 	},
@@ -538,11 +545,11 @@ const sourceChips = computed(() =>
 const lastUpdatedLabel = computed(() => {
 	if (!lastUpdated.value) return '';
 	const delta = Date.now() - lastUpdated.value;
-	if (delta < 60_000) return 'just now';
+	if (delta < 60_000) return __('just now');
 	const minutes = Math.floor(delta / 60_000);
-	if (minutes < 60) return `${minutes} min ago`;
+	if (minutes < 60) return __('{0} min ago', [minutes]);
 	const hours = Math.floor(minutes / 60);
-	return `${hours} hr${hours === 1 ? '' : 's'} ago`;
+	return hours === 1 ? __('1 hr ago') : __('{0} hrs ago', [hours]);
 });
 
 function toggleChip(id: CalendarSource) {
@@ -550,7 +557,7 @@ function toggleChip(id: CalendarSource) {
 }
 
 function renderEventContent(info: EventContentArg) {
-	const title = info.event.title || 'Untitled event';
+	const title = info.event.title || __('Untitled event');
 	if (!info.view.type.startsWith('list')) {
 		const titleNode = document.createElement('span');
 		titleNode.className = 'fc-event-title';

@@ -3,16 +3,19 @@
 		<header class="student-hub-hero">
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 				<div>
-					<p class="type-overline text-ink/60">Guardian Portal</p>
-					<h1 class="type-h1 text-ink">Communication Center</h1>
+					<p class="type-overline text-ink/60">{{ __('Guardian Portal') }}</p>
+					<h1 class="type-h1 text-ink">{{ __('Communication Center') }}</h1>
 					<p class="type-body text-ink/70">
-						See school events and school, class, activity, pastoral, and cohort updates for your
-						family in one place, then filter by child when needed.
+						{{
+							__(
+								'See school events and school, class, activity, pastoral, and cohort updates for your family in one place, then filter by child when needed.'
+							)
+						}}
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
 					<RouterLink :to="{ name: 'guardian-home' }" class="if-button if-button--secondary">
-						Back to Home
+						{{ __('Back to Home') }}
 					</RouterLink>
 					<button
 						type="button"
@@ -20,7 +23,7 @@
 						:disabled="loading"
 						@click="refreshFeed"
 					>
-						Refresh
+						{{ __('Refresh') }}
 					</button>
 				</div>
 			</div>
@@ -29,12 +32,12 @@
 		<section class="student-hub-section student-hub-section--warm">
 			<div class="grid gap-4 xl:grid-cols-[minmax(0,220px)_1fr_auto] xl:items-center">
 				<label class="space-y-1">
-					<span class="type-caption text-ink/60">Child filter</span>
+					<span class="type-caption text-ink/60">{{ __('Child filter') }}</span>
 					<select
 						v-model="selectedStudent"
 						class="w-full rounded-xl border border-line-soft bg-white px-3 py-2 type-body text-ink"
 					>
-						<option value="">All linked children</option>
+						<option value="">{{ __('All linked children') }}</option>
 						<option v-for="child in children" :key="child.student" :value="child.student">
 							{{ child.full_name }}
 						</option>
@@ -55,10 +58,10 @@
 				</div>
 
 				<div class="flex flex-wrap gap-2 xl:justify-end">
-					<span class="chip">Total {{ totalCount }}</span>
-					<span class="chip">Unread {{ unreadCount }}</span>
+					<span class="chip">{{ __('Total {0}', [totalCount]) }}</span>
+					<span class="chip">{{ __('Unread {0}', [unreadCount]) }}</span>
 					<span v-for="chip in summaryChips" :key="chip.label" class="chip">
-						{{ chip.label }} {{ chip.count }}
+						{{ __('{0} {1}', [chip.label, chip.count]) }}
 					</span>
 				</div>
 			</div>
@@ -68,20 +71,20 @@
 			v-if="errorMessage"
 			class="student-hub-section border border-flame/30 bg-[var(--flame)]/5"
 		>
-			<p class="type-body-strong text-flame">Could not load communications.</p>
+			<p class="type-body-strong text-flame">{{ __('Could not load communications.') }}</p>
 			<p class="mt-2 type-caption text-ink/70">{{ errorMessage }}</p>
 		</section>
 
 		<section v-else-if="loading && !items.length" class="student-hub-section">
-			<p class="type-body text-ink/70">Loading guardian communications...</p>
+			<p class="type-body text-ink/70">{{ __('Loading guardian communications...') }}</p>
 		</section>
 
 		<section v-else-if="!items.length" class="student-hub-empty">
 			<p class="type-body text-ink/70">
 				{{
 					selectedStudent
-						? 'No updates or events match this child filter right now.'
-						: 'No updates or events match this view right now.'
+						? __('No updates or events match this child filter right now.')
+						: __('No updates or events match this view right now.')
 				}}
 			</p>
 		</section>
@@ -108,7 +111,7 @@
 									class="rounded-full px-3 py-1 text-xs font-semibold"
 									:class="item.is_unread ? 'bg-flame/15 text-flame' : 'bg-leaf/15 text-canopy'"
 								>
-									{{ item.is_unread ? 'Unread' : 'Seen' }}
+									{{ item.is_unread ? __('Unread') : __('Seen') }}
 								</span>
 							</div>
 
@@ -129,7 +132,7 @@
 
 						<div class="flex flex-wrap gap-2">
 							<button type="button" class="if-action" @click="toggleOrgCommunication(item)">
-								{{ expandedItemId === item.item_id ? 'Hide update' : 'Read update' }}
+								{{ expandedItemId === item.item_id ? __('Hide update') : __('Read update') }}
 							</button>
 						</div>
 					</div>
@@ -162,7 +165,7 @@
 						class="mt-5 student-hub-card student-hub-card--warm"
 					>
 						<p v-if="detailLoading[item.org_communication.name]" class="type-body text-ink/70">
-							Loading full update...
+							{{ __('Loading full update...') }}
 						</p>
 						<p v-else-if="detailError[item.org_communication.name]" class="type-body text-flame">
 							{{ detailError[item.org_communication.name] }}
@@ -177,7 +180,7 @@
 								v-if="communicationDetail(item.org_communication.name)?.attachments?.length"
 								class="mt-5 space-y-2"
 							>
-								<p class="type-body-strong text-ink">Attachments</p>
+								<p class="type-body-strong text-ink">{{ __('Attachments') }}</p>
 								<CommunicationAttachmentPreviewList
 									:attachments="
 										communicationDetail(item.org_communication.name)?.attachments || []
@@ -217,7 +220,7 @@
 
 						<div class="flex flex-wrap gap-2">
 							<button type="button" class="if-action" @click="openSchoolEvent(item)">
-								View event
+								{{ __('View event') }}
 							</button>
 						</div>
 					</div>
@@ -231,7 +234,7 @@
 					:disabled="loadingMore"
 					@click="loadMore"
 				>
-					{{ loadingMore ? 'Loading…' : 'Load more' }}
+					{{ loadingMore ? __('Loading…') : __('Load more') }}
 				</button>
 			</div>
 		</section>
@@ -273,6 +276,7 @@ import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue';
 import CommunicationAttachmentPreviewList from '@/components/communication/CommunicationAttachmentPreviewList.vue';
 import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue';
 import { formatLocalizedDateTime } from '@/lib/datetime';
+import { __ } from '@/lib/i18n';
 import { createCommunicationInteractionService } from '@/lib/services/communicationInteraction/communicationInteractionService';
 import { getGuardianCommunicationCenter } from '@/lib/services/guardianCommunication/guardianCommunicationService';
 import { createOrgCommunicationArchiveService } from '@/lib/services/orgCommunicationArchive/orgCommunicationArchiveService';
@@ -302,12 +306,12 @@ const interactionService = createCommunicationInteractionService();
 const archiveService = createOrgCommunicationArchiveService();
 
 const sourceOptions: Array<{ value: SourceFilter; label: string }> = [
-	{ value: 'all', label: 'All' },
-	{ value: 'course', label: 'Classes' },
-	{ value: 'activity', label: 'Activities' },
-	{ value: 'school', label: 'School' },
-	{ value: 'pastoral', label: 'Pastoral' },
-	{ value: 'cohort', label: 'Cohort' },
+	{ value: 'all', label: __('All') },
+	{ value: 'course', label: __('Classes') },
+	{ value: 'activity', label: __('Activities') },
+	{ value: 'school', label: __('School') },
+	{ value: 'pastoral', label: __('Pastoral') },
+	{ value: 'cohort', label: __('Cohort') },
 ];
 
 const snapshot = ref<GuardianCommunicationCenterResponse | null>(null);
@@ -427,7 +431,7 @@ function childSummary(item: GuardianCommunicationCenterItem): string {
 	if (names.length <= 2) {
 		return names.join(', ');
 	}
-	return `${names.slice(0, 2).join(', ')} +${names.length - 2} more`;
+	return __('{0} +{1} more', [names.slice(0, 2).join(', '), names.length - 2]);
 }
 
 function metaLine(item: GuardianCommunicationCenterItem) {
@@ -498,7 +502,7 @@ async function loadFeed(reset = true) {
 		await loadSummaries();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		errorMessage.value = message || 'Could not load communications.';
+		errorMessage.value = message || __('Could not load communications.');
 	} finally {
 		loading.value = false;
 		loadingMore.value = false;
@@ -527,7 +531,7 @@ async function loadCommunicationDetail(name: string) {
 		detailMap.value[name] = await archiveService.getOrgCommunicationItem({ name });
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		detailError.value[name] = message || 'Could not load this update.';
+		detailError.value[name] = message || __('Could not load this update.');
 	} finally {
 		detailLoading.value[name] = false;
 	}
@@ -545,7 +549,7 @@ async function markCommunicationRead(item: GuardianOrgCommunicationCenterItem) {
 		unreadCount.value = Math.max(0, unreadCount.value - 1);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		toast.error(message || 'Could not mark this update as read.');
+		toast.error(message || __('Could not mark this update as read.'));
 	} finally {
 		readMarking.value[commName] = false;
 	}
@@ -572,7 +576,7 @@ async function reactToCommunication(
 ) {
 	actionError.value = '';
 	if (!canReact(comm)) {
-		actionError.value = 'Reactions are not enabled for this update.';
+		actionError.value = __('Reactions are not enabled for this update.');
 		return;
 	}
 	try {
@@ -584,7 +588,7 @@ async function reactToCommunication(
 		await loadSummaries();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		actionError.value = message || 'Could not record reaction.';
+		actionError.value = message || __('Could not record reaction.');
 	}
 }
 
@@ -628,7 +632,7 @@ async function submitComment() {
 	actionError.value = '';
 	const comm = selectedCommunication.value?.org_communication;
 	if (!comm) {
-		actionError.value = 'Select an update first.';
+		actionError.value = __('Select an update first.');
 		return;
 	}
 	if (!canComment(comm)) {

@@ -4,9 +4,9 @@
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 				<div>
 					<p class="type-overline text-ink/60">
-						{{ hasCourseScope ? 'Class Updates' : 'Student Hub' }}
+						{{ hasCourseScope ? __('Class Updates') : __('Student Hub') }}
 					</p>
-					<h1 class="type-h1 text-ink">Communication Center</h1>
+					<h1 class="type-h1 text-ink">{{ __('Communication Center') }}</h1>
 					<p class="type-body text-ink/70">
 						{{ heroDescription }}
 					</p>
@@ -17,7 +17,7 @@
 						:to="courseBackTo"
 						class="if-button if-button--secondary"
 					>
-						Back to course
+						{{ __('Back to course') }}
 					</RouterLink>
 					<button
 						v-if="hasCourseScope"
@@ -25,10 +25,10 @@
 						class="if-button if-button--secondary"
 						@click="clearCourseScope"
 					>
-						All communications
+						{{ __('All communications') }}
 					</button>
 					<RouterLink v-else :to="{ name: 'student-home' }" class="if-button if-button--secondary">
-						Back to Home
+						{{ __('Back to Home') }}
 					</RouterLink>
 					<button
 						type="button"
@@ -36,7 +36,7 @@
 						:disabled="loading"
 						@click="refreshFeed"
 					>
-						Refresh
+						{{ __('Refresh') }}
 					</button>
 				</div>
 			</div>
@@ -45,9 +45,11 @@
 		<section class="student-hub-section student-hub-section--warm">
 			<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 				<div v-if="hasCourseScope">
-					<p class="type-caption text-ink/60">Filtered to this class</p>
+					<p class="type-caption text-ink/60">{{ __('Filtered to this class') }}</p>
 					<p class="mt-1 type-body-strong text-ink">{{ scopedContextLabel }}</p>
-					<p class="mt-1 type-caption text-ink/70">Most recent messages appear first.</p>
+					<p class="mt-1 type-caption text-ink/70">
+						{{ __('Most recent messages appear first.') }}
+					</p>
 				</div>
 				<div v-else class="if-segmented flex-wrap">
 					<button
@@ -63,10 +65,10 @@
 				</div>
 
 				<div class="flex flex-wrap gap-2">
-					<span class="chip">Total {{ totalCount }}</span>
-					<span class="chip">Unread {{ unreadCount }}</span>
+					<span class="chip">{{ __('Total {0}', [totalCount]) }}</span>
+					<span class="chip">{{ __('Unread {0}', [unreadCount]) }}</span>
 					<span v-for="chip in summaryChips" :key="chip.label" class="chip">
-						{{ chip.label }} {{ chip.count }}
+						{{ __('{0} {1}', [chip.label, chip.count]) }}
 					</span>
 				</div>
 			</div>
@@ -76,20 +78,20 @@
 			v-if="errorMessage"
 			class="student-hub-section border border-flame/30 bg-[var(--flame)]/5"
 		>
-			<p class="type-body-strong text-flame">Could not load communications.</p>
+			<p class="type-body-strong text-flame">{{ __('Could not load communications.') }}</p>
 			<p class="mt-2 type-caption text-ink/70">{{ errorMessage }}</p>
 		</section>
 
 		<section v-else-if="loading && !items.length" class="student-hub-section">
-			<p class="type-body text-ink/70">Loading student communications...</p>
+			<p class="type-body text-ink/70">{{ __('Loading student communications...') }}</p>
 		</section>
 
 		<section v-else-if="!items.length" class="student-hub-empty">
 			<p class="type-body text-ink/70">
 				{{
 					hasCourseScope
-						? 'No class updates match this class right now.'
-						: 'No communications match this view right now.'
+						? __('No class updates match this class right now.')
+						: __('No communications match this view right now.')
 				}}
 			</p>
 		</section>
@@ -116,7 +118,7 @@
 									class="rounded-full px-3 py-1 text-xs font-semibold"
 									:class="item.is_unread ? 'bg-flame/15 text-flame' : 'bg-leaf/15 text-canopy'"
 								>
-									{{ item.is_unread ? 'Unread' : 'Seen' }}
+									{{ item.is_unread ? __('Unread') : __('Seen') }}
 								</span>
 							</div>
 							<h2 class="mt-2 type-h3 text-ink">{{ item.org_communication.title }}</h2>
@@ -126,10 +128,10 @@
 
 						<div class="flex flex-wrap gap-2">
 							<RouterLink v-if="item.href" :to="item.href" class="if-action">
-								{{ item.href_label || 'Open' }}
+								{{ item.href_label || __('Open') }}
 							</RouterLink>
 							<button type="button" class="if-action" @click="toggleOrgCommunication(item)">
-								{{ expandedItemId === item.item_id ? 'Hide update' : 'Read update' }}
+								{{ expandedItemId === item.item_id ? __('Hide update') : __('Read update') }}
 							</button>
 						</div>
 					</div>
@@ -162,7 +164,7 @@
 						class="mt-5 student-hub-card student-hub-card--warm"
 					>
 						<p v-if="detailLoading[item.org_communication.name]" class="type-body text-ink/70">
-							Loading full update...
+							{{ __('Loading full update...') }}
 						</p>
 						<p v-else-if="detailError[item.org_communication.name]" class="type-body text-flame">
 							{{ detailError[item.org_communication.name] }}
@@ -177,7 +179,7 @@
 								v-if="communicationDetail(item.org_communication.name)?.attachments?.length"
 								class="mt-5 space-y-2"
 							>
-								<p class="type-body-strong text-ink">Attachments</p>
+								<p class="type-body-strong text-ink">{{ __('Attachments') }}</p>
 								<CommunicationAttachmentPreviewList
 									:attachments="
 										communicationDetail(item.org_communication.name)?.attachments || []
@@ -205,7 +207,7 @@
 						</div>
 
 						<button type="button" class="if-action" @click="openSchoolEvent(item)">
-							View event
+							{{ __('View event') }}
 						</button>
 					</div>
 				</template>
@@ -218,7 +220,7 @@
 					:disabled="loadingMore"
 					@click="loadMore"
 				>
-					{{ loadingMore ? 'Loading…' : 'Load more' }}
+					{{ loadingMore ? __('Loading…') : __('Load more') }}
 				</button>
 			</div>
 		</section>
@@ -260,6 +262,7 @@ import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue';
 import CommunicationAttachmentPreviewList from '@/components/communication/CommunicationAttachmentPreviewList.vue';
 import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue';
 import { formatLocalizedDateTime } from '@/lib/datetime';
+import { __ } from '@/lib/i18n';
 import { createCommunicationInteractionService } from '@/lib/services/communicationInteraction/communicationInteractionService';
 import { createOrgCommunicationArchiveService } from '@/lib/services/orgCommunicationArchive/orgCommunicationArchiveService';
 import { getStudentCommunicationCenter } from '@/lib/services/student/studentLearningHubService';
@@ -289,12 +292,12 @@ const interactionService = createCommunicationInteractionService();
 const archiveService = createOrgCommunicationArchiveService();
 
 const sourceOptions: Array<{ value: SourceFilter; label: string }> = [
-	{ value: 'all', label: 'All' },
-	{ value: 'course', label: 'Classes' },
-	{ value: 'activity', label: 'Activities' },
-	{ value: 'school', label: 'School' },
-	{ value: 'pastoral', label: 'Pastoral' },
-	{ value: 'cohort', label: 'Cohort' },
+	{ value: 'all', label: __('All') },
+	{ value: 'course', label: __('Classes') },
+	{ value: 'activity', label: __('Activities') },
+	{ value: 'school', label: __('School') },
+	{ value: 'pastoral', label: __('Pastoral') },
+	{ value: 'cohort', label: __('Cohort') },
 ];
 
 const items = ref<StudentCommunicationCenterItem[]>([]);
@@ -362,9 +365,11 @@ const courseBackTo = computed(() => {
 
 const heroDescription = computed(() => {
 	if (hasCourseScope.value) {
-		return 'See the messages shared with this class, newest first, without adding noise to the course page.';
+		return __(
+			'See the messages shared with this class, newest first, without adding noise to the course page.'
+		);
 	}
-	return 'See class, activity, pastoral, cohort, and school updates in one place.';
+	return __('See class, activity, pastoral, cohort, and school updates in one place.');
 });
 
 const scopedContextLabel = computed(() => {
@@ -372,7 +377,7 @@ const scopedContextLabel = computed(() => {
 		(item): item is StudentOrgCommunicationCenterItem =>
 			item.kind === 'org_communication' && item.source_type === 'course'
 	);
-	return firstCourseItem?.context_label || 'Selected class';
+	return firstCourseItem?.context_label || __('Selected class');
 });
 
 const summaryChips = computed(() =>
@@ -521,7 +526,7 @@ async function loadFeed(reset = true) {
 		await loadSummaries();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		errorMessage.value = message || 'Could not load communications.';
+		errorMessage.value = message || __('Could not load communications.');
 	} finally {
 		loading.value = false;
 		loadingMore.value = false;
@@ -569,7 +574,7 @@ async function loadCommunicationDetail(name: string) {
 		detailMap.value[name] = await archiveService.getOrgCommunicationItem({ name });
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		detailError.value[name] = message || 'Could not load this update.';
+		detailError.value[name] = message || __('Could not load this update.');
 	} finally {
 		detailLoading.value[name] = false;
 	}
@@ -587,7 +592,7 @@ async function markCommunicationRead(item: StudentOrgCommunicationCenterItem) {
 		unreadCount.value = Math.max(0, unreadCount.value - 1);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		toast.error(message || 'Could not mark this update as read.');
+		toast.error(message || __('Could not mark this update as read.'));
 	} finally {
 		readMarking.value[commName] = false;
 	}
@@ -614,7 +619,7 @@ async function reactToCommunication(
 ) {
 	actionError.value = '';
 	if (!canReact(comm)) {
-		actionError.value = 'Reactions are not enabled for this update.';
+		actionError.value = __('Reactions are not enabled for this update.');
 		return;
 	}
 	try {
@@ -626,7 +631,7 @@ async function reactToCommunication(
 		await loadSummaries();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		actionError.value = message || 'Could not record reaction.';
+		actionError.value = message || __('Could not record reaction.');
 	}
 }
 
@@ -670,7 +675,7 @@ async function submitComment() {
 	actionError.value = '';
 	const comm = selectedCommunication.value?.org_communication;
 	if (!comm) {
-		actionError.value = 'Select an update first.';
+		actionError.value = __('Select an update first.');
 		return;
 	}
 	if (!canComment(comm)) {

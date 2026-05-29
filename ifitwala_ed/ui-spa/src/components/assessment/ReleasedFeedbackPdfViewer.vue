@@ -3,12 +3,12 @@
 		<div class="border-b border-line-soft bg-surface-soft px-4 py-4">
 			<div class="flex flex-wrap items-start justify-between gap-3">
 				<div class="min-w-0">
-					<p class="type-overline text-ink/55">Document Context</p>
+					<p class="type-overline text-ink/55">{{ __('Document Context') }}</p>
 					<h3 class="mt-2 type-body-strong text-ink">
 						{{
 							primaryAttachment?.display_name ||
 							props.document?.submission.annotation_readiness?.attachment_file_name ||
-							'Submitted evidence'
+							__('Submitted evidence')
 						}}
 					</h3>
 					<p class="mt-2 type-caption text-ink/70">
@@ -20,10 +20,12 @@
 						v-if="props.document?.submission.annotation_readiness?.preview_status"
 						class="chip"
 					>
-						Preview {{ props.document?.submission.annotation_readiness?.preview_status }}
+						{{
+							__('Preview {0}', [props.document?.submission.annotation_readiness?.preview_status])
+						}}
 					</span>
 					<span v-if="props.document?.submission.version" class="chip chip-focus">
-						Version {{ props.document.submission.version }}
+						{{ __('Version {0}', [props.document.submission.version]) }}
 					</span>
 					<span v-if="currentPageTotalLabel" class="chip">
 						{{ currentPageTotalLabel }}
@@ -39,7 +41,7 @@
 					target="_blank"
 					rel="noreferrer"
 				>
-					Open preview
+					{{ __('Open preview') }}
 				</a>
 				<a
 					v-if="sourcePdfUrl"
@@ -48,7 +50,7 @@
 					target="_blank"
 					rel="noreferrer"
 				>
-					Open source PDF
+					{{ __('Open source PDF') }}
 				</a>
 			</div>
 		</div>
@@ -62,7 +64,7 @@
 						:disabled="!canGoPreviousPage"
 						@click="goToPreviousPage"
 					>
-						Previous
+						{{ __('Previous') }}
 					</button>
 					<button
 						type="button"
@@ -70,7 +72,7 @@
 						:disabled="!canGoNextPage"
 						@click="goToNextPage"
 					>
-						Next
+						{{ __('Next') }}
 					</button>
 				</div>
 
@@ -81,7 +83,7 @@
 						:disabled="!canAdjustZoom"
 						@click="zoomOut"
 					>
-						Zoom out
+						{{ __('Zoom out') }}
 					</button>
 					<button
 						type="button"
@@ -97,7 +99,7 @@
 						:disabled="!canAdjustZoom"
 						@click="zoomIn"
 					>
-						Zoom in
+						{{ __('Zoom in') }}
 					</button>
 				</div>
 			</div>
@@ -125,7 +127,9 @@
 					<div ref="pageSurfaceRef" class="relative inline-block">
 						<canvas
 							ref="canvasRef"
-							:aria-label="`${primaryAttachment?.display_name || 'Submission'} PDF page`"
+							:aria-label="
+								__('{0} PDF page', [primaryAttachment?.display_name || __('Submission')])
+							"
 							class="block max-w-full rounded-2xl bg-white shadow-sm ring-1 ring-black/5"
 						/>
 
@@ -167,9 +171,11 @@
 				>
 					<div class="flex flex-wrap items-center justify-between gap-3">
 						<div>
-							<p class="type-caption text-ink/60">Page comments on this page</p>
+							<p class="type-caption text-ink/60">
+								{{ __('Page comments on this page') }}
+							</p>
 							<p class="mt-1 type-body-strong text-ink">
-								{{ pageItemsForCurrentPage.length }} page-level notes
+								{{ __('{0} page-level notes', [pageItemsForCurrentPage.length]) }}
 							</p>
 						</div>
 						<span class="chip">{{ currentPageTotalLabel }}</span>
@@ -187,7 +193,7 @@
 							"
 							@click="emitSelect(item.id)"
 						>
-							{{ item.comment || 'Open page note' }}
+							{{ item.comment || __('Open page note') }}
 						</button>
 					</div>
 				</div>
@@ -198,7 +204,7 @@
 					v-if="primaryAttachment"
 					:attachment="primaryAttachment"
 					variant="evidence"
-					:title="primaryAttachment.display_name || 'Submitted evidence'"
+					:title="primaryAttachment.display_name || __('Submitted evidence')"
 					:description="props.document?.submission.annotation_readiness?.message || null"
 				/>
 			</div>
@@ -230,6 +236,7 @@ import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist/legacy/build/pdf.mj
 import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 
 import AttachmentPreviewCard from '@/components/attachments/AttachmentPreviewCard.vue';
+import { __ } from '@/lib/i18n';
 import type { ReleasedFeedbackDetail } from '@/types/contracts/assessment/released_feedback_detail';
 import type { FeedbackWorkspaceItem } from '@/types/contracts/gradebook/feedback_workspace';
 
@@ -307,7 +314,7 @@ const pageItemsForCurrentPage = computed(() =>
 
 const hasRenderedPage = computed(() => pageCount.value > 0 && !viewerError.value);
 const currentPageTotalLabel = computed(() =>
-	pageCount.value ? `Page ${currentPage.value} of ${pageCount.value}` : ''
+	pageCount.value ? __('Page {0} of {1}', [currentPage.value, pageCount.value]) : ''
 );
 const canGoPreviousPage = computed(
 	() => pageCount.value > 0 && currentPage.value > 1 && !isDocumentLoading.value
@@ -321,24 +328,26 @@ const showViewerLoadingBanner = computed(
 	() => isDocumentLoading.value || (isPageRendering.value && hasRenderedPage.value)
 );
 const viewerLoadingLabel = computed(() =>
-	isDocumentLoading.value ? 'Loading source PDF...' : 'Rendering page...'
+	isDocumentLoading.value ? __('Loading source PDF...') : __('Rendering page...')
 );
 const viewerEmptyTitle = computed(() =>
-	viewerError.value ? 'Document viewer unavailable' : 'Document viewer not available'
+	viewerError.value ? __('Document viewer unavailable') : __('Document viewer not available')
 );
 const fallbackMessage = computed(
 	() =>
 		viewerError.value ||
 		props.document?.submission.annotation_readiness?.message ||
-		'Open the source document when preview is available.'
+		__('Open the source document when preview is available.')
 );
 const documentMessage = computed(() => {
 	if (hasRenderedPage.value) {
-		return 'The original submitted PDF is shown here with released feedback anchors layered on top.';
+		return __(
+			'The original submitted PDF is shown here with released feedback anchors layered on top.'
+		);
 	}
 	return (
 		props.document?.submission.annotation_readiness?.message ||
-		'Open the released evidence context from the source PDF when needed.'
+		__('Open the released evidence context from the source PDF when needed.')
 	);
 });
 
@@ -435,7 +444,7 @@ function isCancellationError(error: unknown): boolean {
 
 function formatErrorMessage(error: unknown): string {
 	if (error instanceof Error && error.message) return error.message;
-	return 'The submitted PDF could not be loaded for inline reading.';
+	return __('The submitted PDF could not be loaded for inline reading.');
 }
 
 async function loadPdfDocument() {
@@ -463,7 +472,7 @@ async function loadPdfDocument() {
 			signal: abortController.signal,
 		});
 		if (!response.ok) {
-			throw new Error(`The source PDF request failed with status ${response.status}.`);
+			throw new Error(__('The source PDF request failed with status {0}.', [response.status]));
 		}
 		const pdfBytes = new Uint8Array(await response.arrayBuffer());
 		if (loadGeneration !== activeLoadGeneration) return;
@@ -518,7 +527,7 @@ async function renderCurrentPage(loadGeneration = activeLoadGeneration) {
 		const canvas = canvasRef.value;
 		const canvasContext = canvas.getContext('2d');
 		if (!canvasContext) {
-			throw new Error('Canvas rendering is unavailable in this browser context.');
+			throw new Error(__('Canvas rendering is unavailable in this browser context.'));
 		}
 
 		const pixelRatio = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;

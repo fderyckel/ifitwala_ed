@@ -11,7 +11,7 @@
 			</div>
 			<div class="flex flex-wrap items-center gap-2">
 				<span class="chip">{{ offering.allocation_mode }}</span>
-				<span v-if="offering.waitlist.enabled" class="chip">Waitlist enabled</span>
+				<span v-if="offering.waitlist.enabled" class="chip">{{ __('Waitlist enabled') }}</span>
 				<span v-if="offering.payment.required" class="chip">
 					{{ currencyLabel(offering.payment.amount) }}
 				</span>
@@ -27,24 +27,24 @@
 
 		<div class="mt-4 grid gap-3 md:grid-cols-2">
 			<div class="rounded-xl border border-line-soft bg-surface-soft p-3">
-				<p class="type-label">Logistics</p>
+				<p class="type-label">{{ __('Logistics') }}</p>
 				<p class="mt-1 type-caption text-ink/80">
 					{{
 						offering.activity_context.logistics_location_label ||
-						'Location shared by school update'
+						__('Location shared by school update')
 					}}
 				</p>
 				<p
 					v-if="offering.activity_context.logistics_pickup_instructions"
 					class="type-caption text-ink/70"
 				>
-					Pickup: {{ offering.activity_context.logistics_pickup_instructions }}
+					{{ __('Pickup: {0}', [offering.activity_context.logistics_pickup_instructions]) }}
 				</p>
 				<p
 					v-if="offering.activity_context.logistics_dropoff_instructions"
 					class="type-caption text-ink/70"
 				>
-					Drop-off: {{ offering.activity_context.logistics_dropoff_instructions }}
+					{{ __('Drop-off: {0}', [offering.activity_context.logistics_dropoff_instructions]) }}
 				</p>
 				<a
 					v-if="offering.activity_context.logistics_map_url"
@@ -53,16 +53,15 @@
 					target="_blank"
 					rel="noopener"
 				>
-					Open map
+					{{ __('Open map') }}
 				</a>
 			</div>
 
 			<div class="rounded-xl border border-line-soft bg-surface-soft p-3">
-				<p class="type-label">Policy</p>
-				<p class="mt-1 type-caption text-ink/80">Age: {{ ageLabel }}</p>
+				<p class="type-label">{{ __('Policy') }}</p>
+				<p class="mt-1 type-caption text-ink/80">{{ __('Age: {0}', [ageLabel]) }}</p>
 				<p class="type-caption text-ink/70">
-					Role access:
-					{{ roleAccessLabel }}
+					{{ __('Role access: {0}', [roleAccessLabel]) }}
 				</p>
 				<a
 					v-if="offering.activity_context.media_gallery_link"
@@ -71,13 +70,13 @@
 					target="_blank"
 					rel="noopener"
 				>
-					View activity media
+					{{ __('View activity media') }}
 				</a>
 			</div>
 		</div>
 
 		<div class="mt-4 space-y-2">
-			<p class="type-label">Sections</p>
+			<p class="type-label">{{ __('Sections') }}</p>
 			<ul class="space-y-2">
 				<li
 					v-for="section in offering.sections"
@@ -92,7 +91,7 @@
 							</p>
 						</div>
 						<p v-if="section.next_slot" class="type-caption text-ink/70">
-							Next: {{ dateTimeLabel(section.next_slot.start) }}
+							{{ __('Next: {0}', [dateTimeLabel(section.next_slot.start)]) }}
 						</p>
 					</div>
 				</li>
@@ -108,6 +107,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+import { __ } from '@/lib/i18n';
 import type { ActivityOffering } from '@/types/contracts/activity_booking/get_activity_portal_board';
 
 const props = defineProps<{
@@ -119,38 +119,38 @@ const bookingWindowLabel = computed(() => {
 	const openTo = props.offering.booking_window.open_to;
 	if (!openFrom && !openTo) {
 		return props.offering.booking_window.is_open_now
-			? 'Booking is currently open.'
-			: 'Booking window will be published by the school.';
+			? __('Booking is currently open.')
+			: __('Booking window will be published by the school.');
 	}
-	const from = openFrom ? dateTimeLabel(openFrom) : 'Now';
-	const to = openTo ? dateTimeLabel(openTo) : 'No closing date';
+	const from = openFrom ? dateTimeLabel(openFrom) : __('Now');
+	const to = openTo ? dateTimeLabel(openTo) : __('No closing date');
 	if (props.offering.booking_window.is_open_now) {
-		return `Open now · ${from} to ${to}`;
+		return __('Open now · {0} to {1}', [from, to]);
 	}
-	return `Booking window · ${from} to ${to}`;
+	return __('Booking window · {0} to {1}', [from, to]);
 });
 
 const ageLabel = computed(() => {
 	const min = props.offering.age_limits.min_years;
 	const max = props.offering.age_limits.max_years;
-	if (min == null && max == null) return 'No age restriction';
-	if (min != null && max != null) return `${min} to ${max} years`;
-	if (min != null) return `${min}+ years`;
-	return `Up to ${max} years`;
+	if (min == null && max == null) return __('No age restriction');
+	if (min != null && max != null) return __('{0} to {1} years', [min, max]);
+	if (min != null) return __('{0}+ years', [min]);
+	return __('Up to {0} years', [max]);
 });
 
 const roleAccessLabel = computed(() => {
 	const parts: string[] = [];
-	if (props.offering.booking_roles.allow_student) parts.push('Students');
-	if (props.offering.booking_roles.allow_guardian) parts.push('Guardians');
-	if (!parts.length) return 'School-managed only';
+	if (props.offering.booking_roles.allow_student) parts.push(__('Students'));
+	if (props.offering.booking_roles.allow_guardian) parts.push(__('Guardians'));
+	if (!parts.length) return __('School-managed only');
 	return parts.join(', ');
 });
 
 function sectionCapacityLabel(capacity?: number | null, remaining?: number | null): string {
-	if (capacity == null) return 'Open capacity';
-	if (remaining == null) return `${capacity} seats`;
-	return `${remaining} of ${capacity} seats remaining`;
+	if (capacity == null) return __('Open capacity');
+	if (remaining == null) return __('{0} seats', [capacity]);
+	return __('{0} of {1} seats remaining', [remaining, capacity]);
 }
 
 function currencyLabel(amount: number): string {
@@ -160,7 +160,7 @@ function currencyLabel(amount: number): string {
 }
 
 function dateTimeLabel(value: string | null | undefined): string {
-	if (!value) return 'TBD';
+	if (!value) return __('TBD');
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) return String(value);
 	return date.toLocaleString();

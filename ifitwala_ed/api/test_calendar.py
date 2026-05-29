@@ -354,6 +354,75 @@ class TestCalendarApi(TestCase):
         self.assertIn("Student Example", str(exc.exception))
         self.assertIn("Class: Biology", str(exc.exception))
 
+    def test_suggest_meeting_rooms_rechecks_location_booking_each_request(self):
+        rooms = [
+            frappe._dict(
+                {
+                    "name": "D202",
+                    "location_name": "D202",
+                    "parent_location": None,
+                    "maximum_capacity": 20,
+                    "location_type": None,
+                    "location_type_name": None,
+                    "is_group": 0,
+                }
+            ),
+            frappe._dict(
+                {
+                    "name": "D204",
+                    "location_name": "D204",
+                    "parent_location": None,
+                    "maximum_capacity": 20,
+                    "location_type": None,
+                    "location_type_name": None,
+                    "is_group": 0,
+                }
+            ),
+        ]
+        conflict_rows = [
+            [],
+            [
+                {
+                    "source_doctype": "Student Group",
+                    "source_name": "25-26-G6-Eng/IIS 2025-2026",
+                    "location": "D202",
+                    "from": datetime(2026, 5, 29, 10, 15, 0),
+                    "to": datetime(2026, 5, 29, 11, 10, 0),
+                }
+            ],
+        ]
+
+        with (
+            patch(
+                "ifitwala_ed.api.calendar_quick_create.frappe.session",
+                frappe._dict({"user": "staff@example.com"}),
+            ),
+            patch("ifitwala_ed.api.calendar_quick_create.frappe.has_permission", return_value=True),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_school", return_value="SCHOOL-1"),
+            patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_location_type", return_value=None),
+            patch("ifitwala_ed.api.calendar_quick_create._room_rows_for_school_scope", return_value=rooms),
+            patch("ifitwala_ed.api.calendar_quick_create.find_room_conflicts", side_effect=conflict_rows),
+        ):
+            first = calendar_quick_create.suggest_meeting_rooms(
+                school="SCHOOL-1",
+                date="2026-05-29",
+                start_time="10:15",
+                end_time="10:35",
+                capacity_needed=2,
+                limit=8,
+            )
+            second = calendar_quick_create.suggest_meeting_rooms(
+                school="SCHOOL-1",
+                date="2026-05-29",
+                start_time="10:15",
+                end_time="10:35",
+                capacity_needed=2,
+                limit=8,
+            )
+
+        self.assertEqual([room["value"] for room in first["rooms"]], ["D202", "D204"])
+        self.assertEqual([room["value"] for room in second["rooms"]], ["D204"])
+
     def test_create_meeting_quick_checks_student_availability_before_insert(self):
         cache = _DummyCache()
 
