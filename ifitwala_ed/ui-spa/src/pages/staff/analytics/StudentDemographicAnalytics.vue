@@ -13,6 +13,7 @@ import HistogramBuckets from '@/components/analytics/HistogramBuckets.vue';
 import TagCloudBar from '@/components/analytics/TagCloudBar.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { openAnalyticsChartOverlay } from '@/lib/analyticsOverlay';
+import { __ } from '@/lib/i18n';
 
 type ViewPreset = 'student' | 'admissions' | 'marketing';
 type ChartOption = Record<string, unknown>;
@@ -80,9 +81,9 @@ type DashboardResponse = {
 };
 
 const viewPresets: { id: ViewPreset; label: string }[] = [
-	{ id: 'student', label: 'Student View' },
-	{ id: 'admissions', label: 'Admissions View' },
-	{ id: 'marketing', label: 'Marketing View' },
+	{ id: 'student', label: __('Student View') },
+	{ id: 'admissions', label: __('Admissions View') },
+	{ id: 'marketing', label: __('Marketing View') },
 ];
 
 const filters = ref<FilterState>({
@@ -183,37 +184,37 @@ watch(
 const kpiItems = computed(() => [
 	{
 		id: 'total_students',
-		label: 'Total Students (filtered)',
+		label: __('Total Students (filtered)'),
 		value: dashboard.value.kpis.total_students,
 	},
 	{
 		id: 'total_cohorts',
-		label: 'Total Cohorts Represented',
+		label: __('Total Cohorts Represented'),
 		value: dashboard.value.kpis.cohorts_represented,
 	},
 	{
 		id: 'unique_nationalities',
-		label: 'Unique Nationalities',
+		label: __('Unique Nationalities'),
 		value: dashboard.value.kpis.unique_nationalities,
 	},
 	{
 		id: 'unique_home_languages',
-		label: 'Unique Home Languages',
+		label: __('Unique Home Languages'),
 		value: dashboard.value.kpis.unique_home_languages,
 	},
 	{
 		id: 'residency_split',
-		label: 'Residency Split (Local / Expat / Boarder)',
+		label: __('Residency Split (Local / Expat / Boarder)'),
 		value: `${dashboard.value.kpis.residency_split_pct.local}% / ${dashboard.value.kpis.residency_split_pct.expat}% / ${dashboard.value.kpis.residency_split_pct.boarder}%`,
 	},
 	{
 		id: 'siblings_pct',
-		label: '% with siblings enrolled',
+		label: __('% with siblings enrolled'),
 		value: `${dashboard.value.kpis.pct_with_siblings}%`,
 	},
 	{
 		id: 'guardian_diversity',
-		label: 'Guardian Diversity Score',
+		label: __('Guardian Diversity Score'),
 		value: dashboard.value.kpis.guardian_diversity_score,
 	},
 ]);
@@ -221,33 +222,33 @@ const kpiItems = computed(() => [
 const familyKpis = computed(() => [
 	{
 		id: 'family_count',
-		label: 'Number of Families',
+		label: __('Number of Families'),
 		value: dashboard.value.family_kpis.family_count,
 	},
 	{
 		id: 'avg_children',
-		label: 'Avg. number of children per family',
+		label: __('Avg. number of children per family'),
 		value: dashboard.value.family_kpis.avg_children_per_family,
 	},
 	{
 		id: 'pct_two_plus',
-		label: '% families with 2+ enrolled children',
+		label: __('% families with 2+ enrolled children'),
 		value: `${dashboard.value.family_kpis.pct_families_with_2_plus}%`,
 	},
 ]);
 
 const stackedGenderSeries = [
-	{ key: 'female', label: 'Female', color: '#fb7185' },
-	{ key: 'male', label: 'Male', color: '#38bdf8' },
-	{ key: 'other', label: 'Other', color: '#a855f7' },
-	{ key: 'suppressed', label: 'Suppressed', color: '#64748b' },
+	{ key: 'female', label: __('Female'), color: '#fb7185' },
+	{ key: 'male', label: __('Male'), color: '#38bdf8' },
+	{ key: 'other', label: __('Other'), color: '#a855f7' },
+	{ key: 'suppressed', label: __('Suppressed'), color: '#64748b' },
 ];
 
 const siblingSeries = [
-	{ key: 'none', label: 'No siblings', color: '#94a3b8' },
-	{ key: 'older', label: 'Has older siblings', color: '#38bdf8' },
-	{ key: 'younger', label: 'Has younger siblings', color: '#fbbf24' },
-	{ key: 'suppressed', label: 'Suppressed', color: '#64748b' },
+	{ key: 'none', label: __('No siblings'), color: '#94a3b8' },
+	{ key: 'older', label: __('Has older siblings'), color: '#38bdf8' },
+	{ key: 'younger', label: __('Has younger siblings'), color: '#fbbf24' },
+	{ key: 'suppressed', label: __('Suppressed'), color: '#64748b' },
 ];
 
 const nationalityHeatmapPalette = ['#fff7ed', '#f9a03f', '#e76f51', '#7f1d1d'];
@@ -305,18 +306,21 @@ function setPreset(preset: ViewPreset) {
 	<div class="analytics-shell">
 		<header class="page-header">
 			<div class="page-header__intro">
-				<h1 class="type-h1 text-canopy">Student Demographic Analytics</h1>
+				<h1 class="type-h1 text-canopy">{{ __('Student Demographic Analytics') }}</h1>
 				<p class="type-meta text-slate-token/80">
-					Active-student demographics for academic admin, academic assistants, admissions, and
-					marketing.
+					{{
+						__(
+							'Active-student demographics for academic admin, academic assistants, admissions, and marketing.'
+						)
+					}}
 				</p>
 			</div>
 		</header>
 
 		<div v-if="accessDenied" class="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
-			<h2 class="text-sm font-semibold text-amber-900">Access restricted</h2>
+			<h2 class="text-sm font-semibold text-amber-900">{{ __('Access restricted') }}</h2>
 			<p class="mt-1 text-xs text-amber-800">
-				You can only view demographic analytics for students you teach...
+				{{ __('You can only view demographic analytics for students you teach...') }}
 			</p>
 		</div>
 
@@ -324,7 +328,7 @@ function setPreset(preset: ViewPreset) {
 			<FiltersBar>
 				<div class="flex flex-col gap-1 w-64">
 					<label class="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
-						School
+						{{ __('School') }}
 					</label>
 					<select
 						v-model="filters.school"
@@ -338,13 +342,13 @@ function setPreset(preset: ViewPreset) {
 
 				<div class="flex flex-col gap-1 w-40">
 					<label class="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
-						Cohort
+						{{ __('Cohort') }}
 					</label>
 					<select
 						v-model="filters.cohort"
 						class="h-8 rounded-md border border-slate-200 px-2 text-xs"
 					>
-						<option value="">All</option>
+						<option value="">{{ __('All') }}</option>
 						<option v-for="c in cohorts" :key="c.name" :value="c.name">
 							{{ c.label || c.name }}
 						</option>
@@ -353,7 +357,7 @@ function setPreset(preset: ViewPreset) {
 
 				<div class="flex flex-col gap-1">
 					<label class="text-[0.65rem] font-medium uppercase tracking-wide text-slate-500">
-						View Preset
+						{{ __('View Preset') }}
 					</label>
 					<div class="flex items-center gap-2">
 						<button
@@ -378,41 +382,41 @@ function setPreset(preset: ViewPreset) {
 
 				<div class="grid gap-4 lg:grid-cols-2">
 					<HorizontalBarTopN
-						title="Nationality Distribution (Top 10 + Other)"
+						:title="__('Nationality Distribution (Top 10 + Other)')"
 						:items="dashboard.nationality_distribution"
 						expandable
 						@expand="
-							option => openChartOverlay('Nationality Distribution (Top 10 + Other)', option)
+							option => openChartOverlay(__('Nationality Distribution (Top 10 + Other)'), option)
 						"
 					/>
 					<HeatmapChart
-						title="Nationality by Cohort"
+						:title="__('Nationality by Cohort')"
 						:rows="nationalityHeatmapRows"
 						:color-range="nationalityHeatmapPalette"
 						expandable
-						@expand="option => openChartOverlay('Nationality by Cohort', option)"
+						@expand="option => openChartOverlay(__('Nationality by Cohort'), option)"
 					/>
 					<StackedBarChart
-						title="Gender Split by Cohort"
+						:title="__('Gender Split by Cohort')"
 						:series="stackedGenderSeries"
 						:rows="genderRows"
 						expandable
-						@expand="option => openChartOverlay('Gender Split by Cohort', option)"
+						@expand="option => openChartOverlay(__('Gender Split by Cohort'), option)"
 					/>
 					<HeatmapChart
-						title="Student House by Cohort"
+						:title="__('Student House by Cohort')"
 						:rows="studentHouseHeatmapRows"
 						expandable
-						@expand="option => openChartOverlay('Student House by Cohort', option)"
+						@expand="option => openChartOverlay(__('Student House by Cohort'), option)"
 					/>
 					<DonutSplit
-						title="Residency Status"
+						:title="__('Residency Status')"
 						:items="dashboard.residency_status"
 						expandable
-						@expand="option => openChartOverlay('Residency Status', option)"
+						@expand="option => openChartOverlay(__('Residency Status'), option)"
 					/>
 					<HistogramBuckets
-						title="Age Distribution"
+						:title="__('Age Distribution')"
 						:buckets="
 							dashboard.age_distribution.map(b => ({
 								label: b.bucket,
@@ -420,40 +424,40 @@ function setPreset(preset: ViewPreset) {
 							}))
 						"
 						expandable
-						@expand="option => openChartOverlay('Age Distribution', option)"
+						@expand="option => openChartOverlay(__('Age Distribution'), option)"
 					/>
 				</div>
 
 				<div class="grid gap-4 lg:grid-cols-2">
 					<DonutSplit
-						title="Home Language Distribution"
+						:title="__('Home Language Distribution')"
 						:items="dashboard.home_language"
 						expandable
-						@expand="option => openChartOverlay('Home Language Distribution', option)"
+						@expand="option => openChartOverlay(__('Home Language Distribution'), option)"
 					/>
 					<DonutSplit
-						title="Multilingual Profile (1 / 2 / 3+)"
+						:title="__('Multilingual Profile (1 / 2 / 3+)')"
 						:items="dashboard.multilingual_profile"
 						expandable
-						@expand="option => openChartOverlay('Multilingual Profile (1 / 2 / 3+)', option)"
+						@expand="option => openChartOverlay(__('Multilingual Profile (1 / 2 / 3+)'), option)"
 					/>
 				</div>
 
 				<section class="space-y-3">
 					<h2 class="text-sm font-semibold text-slate-700">
-						Family Structure & Sibling Analytics
+						{{ __('Family Structure & Sibling Analytics') }}
 					</h2>
 					<KpiRow :items="familyKpis" />
 					<div class="grid gap-4 lg:grid-cols-2">
 						<StackedBarChart
-							title="Sibling Distribution"
+							:title="__('Sibling Distribution')"
 							:series="siblingSeries"
 							:rows="siblingRows"
 							expandable
-							@expand="option => openChartOverlay('Sibling Distribution', option)"
+							@expand="option => openChartOverlay(__('Sibling Distribution'), option)"
 						/>
 						<HistogramBuckets
-							title="Family Size Histogram"
+							:title="__('Family Size Histogram')"
 							:buckets="
 								dashboard.family_size_histogram.map(b => ({
 									label: b.bucket,
@@ -461,50 +465,52 @@ function setPreset(preset: ViewPreset) {
 								}))
 							"
 							expandable
-							@expand="option => openChartOverlay('Family Size Histogram', option)"
+							@expand="option => openChartOverlay(__('Family Size Histogram'), option)"
 						/>
 					</div>
 				</section>
 
 				<section class="space-y-3">
-					<h2 class="text-sm font-semibold text-slate-700">Guardian Demographics</h2>
+					<h2 class="text-sm font-semibold text-slate-700">
+						{{ __('Guardian Demographics') }}
+					</h2>
 					<div class="grid gap-4 lg:grid-cols-2">
 						<HorizontalBarTopN
-							title="Guardian Nationality (Top)"
+							:title="__('Guardian Nationality (Top)')"
 							:items="dashboard.guardian_nationality"
 							expandable
-							@expand="option => openChartOverlay('Guardian Nationality (Top)', option)"
+							@expand="option => openChartOverlay(__('Guardian Nationality (Top)'), option)"
 						/>
 						<DonutSplit
-							title="Preferred Communication Language"
+							:title="__('Preferred Communication Language')"
 							:items="dashboard.guardian_comm_language"
 							expandable
-							@expand="option => openChartOverlay('Preferred Communication Language', option)"
+							@expand="option => openChartOverlay(__('Preferred Communication Language'), option)"
 						/>
 						<HorizontalBarTopN
-							title="Guardian Residence (Country)"
+							:title="__('Guardian Residence (Country)')"
 							:items="dashboard.guardian_residence_country"
 							expandable
-							@expand="option => openChartOverlay('Guardian Residence (Country)', option)"
+							@expand="option => openChartOverlay(__('Guardian Residence (Country)'), option)"
 						/>
 						<TagCloudBar
-							title="Guardian Residence (City)"
+							:title="__('Guardian Residence (City)')"
 							:items="dashboard.guardian_residence_city"
 							:max="12"
 							expandable
-							@expand="option => openChartOverlay('Guardian Residence (City)', option)"
+							@expand="option => openChartOverlay(__('Guardian Residence (City)'), option)"
 						/>
 						<HorizontalBarTopN
-							title="Guardian Employment Sector"
+							:title="__('Guardian Employment Sector')"
 							:items="dashboard.guardian_sector"
 							expandable
-							@expand="option => openChartOverlay('Guardian Employment Sector', option)"
+							@expand="option => openChartOverlay(__('Guardian Employment Sector'), option)"
 						/>
 						<DonutSplit
-							title="Financial Guardian Spread"
+							:title="__('Financial Guardian Spread')"
 							:items="dashboard.financial_guardian"
 							expandable
-							@expand="option => openChartOverlay('Financial Guardian Spread', option)"
+							@expand="option => openChartOverlay(__('Financial Guardian Spread'), option)"
 						/>
 					</div>
 				</section>

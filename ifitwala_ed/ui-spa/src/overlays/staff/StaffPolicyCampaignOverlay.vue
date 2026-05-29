@@ -33,10 +33,15 @@
 					<DialogPanel class="if-overlay__panel">
 						<div class="flex items-start justify-between gap-4 px-6 pt-6">
 							<div class="min-w-0">
-								<DialogTitle class="type-h2 text-ink">Policy Signature Campaign</DialogTitle>
+								<DialogTitle class="type-h2 text-ink">
+									{{ __('Policy Signature Campaign') }}
+								</DialogTitle>
 								<p class="mt-1 type-caption text-ink/60">
-									Review audience coverage before launch. Staff audiences use internal tasks;
-									guardian and student audiences are tracked through their portals.
+									{{
+										__(
+											'Review audience coverage before launch. Staff audiences use internal tasks; guardian and student audiences are tracked through their portals.'
+										)
+									}}
 								</p>
 							</div>
 							<button
@@ -44,7 +49,7 @@
 								type="button"
 								class="if-overlay__icon-button shrink-0"
 								@click="emitClose('programmatic')"
-								aria-label="Close"
+								:aria-label="__('Close')"
 							>
 								<FeatherIcon name="x" class="h-4 w-4" />
 							</button>
@@ -56,7 +61,9 @@
 								class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 shadow-soft"
 								role="alert"
 							>
-								<p class="type-body-strong text-rose-900">Unable to process this request</p>
+								<p class="type-body-strong text-rose-900">
+									{{ __('Unable to process this request') }}
+								</p>
 								<p class="mt-1 type-caption text-rose-900/80 whitespace-pre-wrap">
 									{{ errorMessage }}
 								</p>
@@ -68,22 +75,22 @@
 							>
 								<p class="type-body-strong text-emerald-900">{{ successMessage }}</p>
 								<p class="mt-1 type-caption text-emerald-900/80">
-									Employees will see this in Focus as a policy acknowledgement action.
+									{{ __('Employees will see this in Focus as a policy acknowledgement action.') }}
 								</p>
 							</div>
 
 							<section class="grid gap-4 md:grid-cols-2">
 								<div class="flex min-w-0 flex-col gap-1">
-									<label for="policy-campaign-organization" class="type-label leading-tight"
-										>Organization</label
-									>
+									<label for="policy-campaign-organization" class="type-label leading-tight">{{
+										__('Organization')
+									}}</label>
 									<select
 										id="policy-campaign-organization"
 										v-model="form.organization"
 										class="if-overlay__input"
 										:disabled="busyOptions || busyLaunch"
 									>
-										<option value="">Select organization</option>
+										<option value="">{{ __('Select organization') }}</option>
 										<option v-for="org in options.organizations" :key="org" :value="org">
 											{{ org }}
 										</option>
@@ -91,16 +98,16 @@
 								</div>
 
 								<div class="flex min-w-0 flex-col gap-1">
-									<label for="policy-campaign-school" class="type-label leading-tight"
-										>School (optional)</label
-									>
+									<label for="policy-campaign-school" class="type-label leading-tight">{{
+										__('School (optional)')
+									}}</label>
 									<select
 										id="policy-campaign-school"
 										v-model="form.school"
 										class="if-overlay__input"
 										:disabled="busyOptions || busyLaunch || !form.organization"
 									>
-										<option value="">All schools in scope</option>
+										<option value="">{{ __('All schools in scope') }}</option>
 										<option v-for="school in options.schools" :key="school" :value="school">
 											{{ school }}
 										</option>
@@ -108,16 +115,16 @@
 								</div>
 
 								<div class="flex min-w-0 flex-col gap-1">
-									<label for="policy-campaign-employee-group" class="type-label leading-tight"
-										>Employee Group (optional)</label
-									>
+									<label for="policy-campaign-employee-group" class="type-label leading-tight">{{
+										__('Employee Group (optional)')
+									}}</label>
 									<select
 										id="policy-campaign-employee-group"
 										v-model="form.employee_group"
 										class="if-overlay__input"
 										:disabled="busyOptions || busyLaunch || !form.organization"
 									>
-										<option value="">All groups</option>
+										<option value="">{{ __('All groups') }}</option>
 										<option v-for="group in options.employee_groups" :key="group" :value="group">
 											{{ group }}
 										</option>
@@ -125,16 +132,16 @@
 								</div>
 
 								<div class="flex min-w-0 flex-col gap-1">
-									<label for="policy-campaign-policy-version" class="type-label leading-tight"
-										>Policy Version</label
-									>
+									<label for="policy-campaign-policy-version" class="type-label leading-tight">{{
+										__('Policy Version')
+									}}</label>
 									<select
 										id="policy-campaign-policy-version"
 										v-model="form.policy_version"
 										class="if-overlay__input"
 										:disabled="busyOptions || busyLaunch || !form.organization"
 									>
-										<option value="">Select policy version</option>
+										<option value="">{{ __('Select policy version') }}</option>
 										<option
 											v-for="policy in options.policies"
 											:key="policy.policy_version"
@@ -146,9 +153,9 @@
 								</div>
 
 								<div class="flex min-w-0 flex-col gap-1">
-									<label for="policy-campaign-due-date" class="type-label leading-tight"
-										>Due Date (optional)</label
-									>
+									<label for="policy-campaign-due-date" class="type-label leading-tight">{{
+										__('Due Date (optional)')
+									}}</label>
 									<input
 										id="policy-campaign-due-date"
 										v-model="form.due_date"
@@ -159,24 +166,26 @@
 								</div>
 
 								<div class="flex min-w-0 flex-col gap-1 md:col-span-2">
-									<label for="policy-campaign-message" class="type-label leading-tight"
-										>Assignment Message (optional)</label
-									>
+									<label for="policy-campaign-message" class="type-label leading-tight">{{
+										__('Assignment Message (optional)')
+									}}</label>
 									<textarea
 										id="policy-campaign-message"
 										v-model="form.message"
 										rows="3"
 										class="if-textarea"
 										:disabled="busyLaunch"
-										placeholder="Optional note shown in the assigned ToDo."
+										:placeholder="__('Optional note shown in the assigned ToDo.')"
 									/>
 								</div>
 							</section>
 
 							<section class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-soft">
 								<div class="flex items-center justify-between gap-3">
-									<p class="type-body-strong text-ink">Audience preview</p>
-									<p v-if="busyOptions" class="type-caption text-slate-500">Refreshing preview…</p>
+									<p class="type-body-strong text-ink">{{ __('Audience preview') }}</p>
+									<p v-if="busyOptions" class="type-caption text-slate-500">
+										{{ __('Refreshing preview…') }}
+									</p>
 								</div>
 								<div v-if="preview.policy_audiences.length" class="mt-3 flex flex-wrap gap-2">
 									<span
@@ -208,25 +217,27 @@
 														: 'bg-white text-slate-500'
 												"
 											>
-												{{ audience.supports_campaign_launch ? 'Launchable' : 'Tracked only' }}
+												{{
+													audience.supports_campaign_launch ? __('Launchable') : __('Tracked only')
+												}}
 											</span>
 										</div>
 										<div class="mt-3 grid grid-cols-2 gap-2">
 											<div>
-												<p class="type-caption text-slate-500">Eligible</p>
+												<p class="type-caption text-slate-500">{{ __('Eligible') }}</p>
 												<p class="type-body-strong text-ink">{{ audience.eligible_targets }}</p>
 											</div>
 											<div>
-												<p class="type-caption text-slate-500">Signed</p>
+												<p class="type-caption text-slate-500">{{ __('Signed') }}</p>
 												<p class="type-body-strong text-ink">{{ audience.signed }}</p>
 											</div>
 											<div>
-												<p class="type-caption text-slate-500">Pending</p>
+												<p class="type-caption text-slate-500">{{ __('Pending') }}</p>
 												<p class="type-body-strong text-ink">{{ audience.pending }}</p>
 											</div>
 											<div>
 												<p class="type-caption text-slate-500">
-													{{ audience.supports_campaign_launch ? 'To create' : 'Skipped' }}
+													{{ audience.supports_campaign_launch ? __('To create') : __('Skipped') }}
 												</p>
 												<p class="type-body-strong text-ink">
 													{{
@@ -242,7 +253,9 @@
 										v-if="!audiencePreviews.length"
 										class="rounded-xl border border-dashed border-slate-300 px-3 py-4 type-caption text-slate-500"
 									>
-										Select organization and policy version to preview audience coverage.
+										{{
+											__('Select organization and policy version to preview audience coverage.')
+										}}
 									</div>
 								</div>
 							</section>
@@ -258,11 +271,11 @@
 								rel="noopener"
 								class="type-caption text-jacaranda hover:underline"
 							>
-								Open signature dashboard
+								{{ __('Open signature dashboard') }}
 							</RouterLink>
-							<span v-else class="type-caption text-ink/50"
-								>Select organization and policy first.</span
-							>
+							<span v-else class="type-caption text-ink/50">{{
+								__('Select organization and policy first.')
+							}}</span>
 
 							<div
 								class="flex w-full flex-col-reverse gap-2 sm:w-auto sm:flex-row sm:items-center"
@@ -272,7 +285,7 @@
 									class="w-full rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/70 sm:w-auto"
 									@click="emitClose('programmatic')"
 								>
-									Cancel
+									{{ __('Cancel') }}
 								</button>
 								<button
 									type="button"
@@ -280,7 +293,7 @@
 									:disabled="!canLaunch || busyLaunch"
 									@click="launchCampaign"
 								>
-									{{ busyLaunch ? 'Creating…' : 'Create staff signature tasks' }}
+									{{ busyLaunch ? __('Creating…') : __('Create staff signature tasks') }}
 								</button>
 							</div>
 						</div>
@@ -303,6 +316,7 @@ import {
 } from '@headlessui/vue';
 import { FeatherIcon } from 'frappe-ui';
 
+import { __ } from '@/lib/i18n';
 import { createPolicySignatureService } from '@/lib/services/policySignature/policySignatureService';
 
 import type {
@@ -413,8 +427,8 @@ function emitAfterLeave() {
 	emit('after-leave');
 }
 
-function onDialogClose(_payload: unknown) {
-	// no-op by design
+function onDialogClose(payload: unknown) {
+	void payload;
 }
 
 function policyLabel(policy: PolicyOption) {
@@ -481,7 +495,7 @@ async function refreshOptions() {
 		normalizeSelection();
 	} catch (err: unknown) {
 		errorMessage.value =
-			err instanceof Error && err.message ? err.message : 'Unable to load options.';
+			err instanceof Error && err.message ? err.message : __('Unable to load options.');
 	} finally {
 		busyOptions.value = false;
 	}
@@ -504,15 +518,15 @@ async function launchCampaign() {
 	resetFeedback();
 
 	if (!form.organization) {
-		errorMessage.value = 'Organization is required.';
+		errorMessage.value = __('Organization is required.');
 		return;
 	}
 	if (!form.policy_version) {
-		errorMessage.value = 'Policy Version is required.';
+		errorMessage.value = __('Policy Version is required.');
 		return;
 	}
 	if (preview.to_create <= 0) {
-		errorMessage.value = 'No eligible employees need new tasks for this scope.';
+		errorMessage.value = __('No eligible employees need new tasks for this scope.');
 		return;
 	}
 
@@ -531,12 +545,12 @@ async function launchCampaign() {
 		const created = response.counts?.created || 0;
 		successMessage.value =
 			created > 0
-				? `Created ${created} signature tasks successfully.`
-				: 'No new tasks were created because everyone is already signed or already assigned.';
+				? __('Created {0} signature tasks successfully.', [created])
+				: __('No new tasks were created because everyone is already signed or already assigned.');
 		await refreshOptions();
 	} catch (err: unknown) {
 		errorMessage.value =
-			err instanceof Error && err.message ? err.message : 'Unable to launch campaign.';
+			err instanceof Error && err.message ? err.message : __('Unable to launch campaign.');
 	} finally {
 		busyLaunch.value = false;
 	}

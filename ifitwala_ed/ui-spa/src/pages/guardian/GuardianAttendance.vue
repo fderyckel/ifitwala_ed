@@ -4,35 +4,38 @@
 		<header class="card-surface p-5 sm:p-6">
 			<div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
 				<div>
-					<p class="type-overline text-ink/60">Guardian Portal</p>
-					<h1 class="type-h1 text-ink">Family Attendance</h1>
+					<p class="type-overline text-ink/60">{{ __('Guardian Portal') }}</p>
+					<h1 class="type-h1 text-ink">{{ __('Family Attendance') }}</h1>
 					<p class="type-body text-ink/70">
-						Check daily attendance for your child or children in one place, then filter by child
-						when needed.
+						{{
+							__(
+								'Check daily attendance for your child or children in one place, then filter by child when needed.'
+							)
+						}}
 					</p>
 				</div>
 				<div class="grid gap-3 sm:grid-cols-3">
 					<label class="space-y-1">
-						<span class="type-caption text-ink/60">Child filter</span>
+						<span class="type-caption text-ink/60">{{ __('Child filter') }}</span>
 						<select
 							v-model="selectedStudent"
 							class="w-full rounded-xl border border-line-soft bg-white px-3 py-2 type-body text-ink"
 						>
-							<option value="">All linked children</option>
+							<option value="">{{ __('All linked children') }}</option>
 							<option v-for="child in children" :key="child.student" :value="child.student">
 								{{ child.full_name }}
 							</option>
 						</select>
 					</label>
 					<label class="space-y-1">
-						<span class="type-caption text-ink/60">Window</span>
+						<span class="type-caption text-ink/60">{{ __('Window') }}</span>
 						<select
 							v-model.number="selectedDays"
 							class="w-full rounded-xl border border-line-soft bg-white px-3 py-2 type-body text-ink"
 						>
-							<option :value="30">30 days</option>
-							<option :value="60">60 days</option>
-							<option :value="90">90 days</option>
+							<option :value="30">{{ __('30 days') }}</option>
+							<option :value="60">{{ __('60 days') }}</option>
+							<option :value="90">{{ __('90 days') }}</option>
 						</select>
 					</label>
 					<div class="flex items-end">
@@ -42,7 +45,7 @@
 							:disabled="loading"
 							@click="loadSnapshot"
 						>
-							Refresh
+							{{ __('Refresh') }}
 						</button>
 					</div>
 				</div>
@@ -51,25 +54,25 @@
 
 		<section class="grid grid-cols-2 gap-3 lg:grid-cols-4">
 			<article class="card-surface p-4" :class="summaryCardClass('tracked')">
-				<p class="type-caption">Tracked days</p>
+				<p class="type-caption">{{ __('Tracked days') }}</p>
 				<p class="type-h3" :class="summaryValueClass('tracked')">{{ counts.tracked_days }}</p>
 			</article>
 			<article class="card-surface p-4" :class="summaryCardClass('present')">
-				<p class="type-caption">On-track days</p>
+				<p class="type-caption">{{ __('On-track days') }}</p>
 				<p class="type-h3" :class="summaryValueClass('present')">{{ counts.present_days }}</p>
 			</article>
 			<article class="card-surface p-4" :class="summaryCardClass('late')">
-				<p class="type-caption">Late days</p>
+				<p class="type-caption">{{ __('Late days') }}</p>
 				<p class="type-h3" :class="summaryValueClass('late')">{{ counts.late_days }}</p>
 			</article>
 			<article class="card-surface p-4" :class="summaryCardClass('absence')">
-				<p class="type-caption">Absence days</p>
+				<p class="type-caption">{{ __('Absence days') }}</p>
 				<p class="type-h3" :class="summaryValueClass('absence')">{{ counts.absence_days }}</p>
 			</article>
 		</section>
 
 		<section class="card-surface p-5">
-			<h2 class="mb-3 type-h3 text-ink">How to read this view</h2>
+			<h2 class="mb-3 type-h3 text-ink">{{ __('How to read this view') }}</h2>
 			<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 				<div
 					class="rounded-xl border-2 bg-moss/10 p-4"
@@ -80,48 +83,52 @@
 						style="border-color: rgb(var(--moss-rgb) / 0.52)"
 					/>
 					<p class="text-lg font-semibold tracking-tight" style="color: rgb(var(--moss-rgb) / 1)">
-						On track
+						{{ __('On track') }}
 					</p>
-					<p class="type-body text-ink/75">Attendance is recorded as present for that day.</p>
+					<p class="type-body text-ink/75">
+						{{ __('Attendance is recorded as present for that day.') }}
+					</p>
 				</div>
 				<div
 					class="rounded-xl border-2 border-[rgb(var(--jacaranda-rgb)/0.55)] bg-jacaranda/10 p-4"
 				>
 					<div class="mb-2 h-8 w-8 rounded-lg border border-jacaranda/40 bg-jacaranda/20" />
-					<p class="text-lg font-semibold tracking-tight text-jacaranda">Late or tardy</p>
+					<p class="text-lg font-semibold tracking-tight text-jacaranda">
+						{{ __('Late or tardy') }}
+					</p>
 					<p class="type-body text-ink/75">
-						The day includes a late arrival or another tardy attendance signal.
+						{{ __('The day includes a late arrival or another tardy attendance signal.') }}
 					</p>
 				</div>
 				<div class="rounded-xl border-2 border-[rgb(var(--flame-rgb)/0.55)] bg-flame/10 p-4">
 					<div class="mb-2 h-8 w-8 rounded-lg border border-flame/40 bg-flame/20" />
-					<p class="text-lg font-semibold tracking-tight text-flame">Absent</p>
+					<p class="text-lg font-semibold tracking-tight text-flame">{{ __('Absent') }}</p>
 					<p class="type-body text-ink/75">
-						The day includes an absence or other non-present code.
+						{{ __('The day includes an absence or other non-present code.') }}
 					</p>
 				</div>
 				<div class="rounded-xl border-2 border-line-soft bg-surface-soft p-4">
 					<div class="mb-2 h-8 w-8 rounded-lg border border-dashed border-line-soft bg-white/70" />
-					<p class="text-lg font-semibold tracking-tight text-ink">No record</p>
+					<p class="text-lg font-semibold tracking-tight text-ink">{{ __('No record') }}</p>
 					<p class="type-body text-ink/75">
-						No attendance record is available for that date in this window.
+						{{ __('No attendance record is available for that date in this window.') }}
 					</p>
 				</div>
 			</div>
 		</section>
 
 		<section v-if="loading" class="card-surface p-5">
-			<p class="type-body text-ink/70">Loading family attendance...</p>
+			<p class="type-body text-ink/70">{{ __('Loading family attendance...') }}</p>
 		</section>
 
 		<section v-else-if="errorMessage" class="card-surface p-5">
-			<p class="type-body-strong text-flame">Could not load family attendance.</p>
+			<p class="type-body-strong text-flame">{{ __('Could not load family attendance.') }}</p>
 			<p class="type-body text-ink/70">{{ errorMessage }}</p>
 		</section>
 
 		<section v-else-if="!students.length" class="card-surface p-5">
 			<p class="type-body text-ink/70">
-				No linked children are available in this attendance view.
+				{{ __('No linked children are available in this attendance view.') }}
 			</p>
 		</section>
 
@@ -131,12 +138,18 @@
 					<div>
 						<h2 class="type-h3 text-ink">{{ student.student_name }}</h2>
 						<p class="type-caption text-ink/60">
-							Last {{ selectedDays }} days from {{ filters.start_date }} to {{ filters.end_date }}
+							{{
+								__('Last {0} days from {1} to {2}', [
+									selectedDays,
+									filters.start_date,
+									filters.end_date,
+								])
+							}}
 						</p>
 					</div>
 					<div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-full">
 						<div class="rounded-xl border px-4 py-3" :class="summaryCardClass('tracked')">
-							<p class="text-sm font-semibold text-ink/80 sm:text-base">Tracked</p>
+							<p class="text-sm font-semibold text-ink/80 sm:text-base">{{ __('Tracked') }}</p>
 							<p
 								class="mt-1 text-xl font-semibold sm:text-2xl"
 								:class="summaryValueClass('tracked')"
@@ -145,7 +158,7 @@
 							</p>
 						</div>
 						<div class="rounded-xl border px-4 py-3" :class="summaryCardClass('present')">
-							<p class="text-sm font-semibold text-ink/80 sm:text-base">On track</p>
+							<p class="text-sm font-semibold text-ink/80 sm:text-base">{{ __('On track') }}</p>
 							<p
 								class="mt-1 text-xl font-semibold sm:text-2xl"
 								:class="summaryValueClass('present')"
@@ -154,13 +167,13 @@
 							</p>
 						</div>
 						<div class="rounded-xl border px-4 py-3" :class="summaryCardClass('late')">
-							<p class="text-sm font-semibold text-ink/80 sm:text-base">Late</p>
+							<p class="text-sm font-semibold text-ink/80 sm:text-base">{{ __('Late') }}</p>
 							<p class="mt-1 text-xl font-semibold sm:text-2xl" :class="summaryValueClass('late')">
 								{{ student.summary.late_days }}
 							</p>
 						</div>
 						<div class="rounded-xl border px-4 py-3" :class="summaryCardClass('absence')">
-							<p class="text-sm font-semibold text-ink/80 sm:text-base">Absent</p>
+							<p class="text-sm font-semibold text-ink/80 sm:text-base">{{ __('Absent') }}</p>
 							<p
 								class="mt-1 text-xl font-semibold sm:text-2xl"
 								:class="summaryValueClass('absence')"
@@ -172,7 +185,7 @@
 				</div>
 
 				<div v-if="!student.days.length" class="mt-4 type-body text-ink/70">
-					No attendance records in this window.
+					{{ __('No attendance records in this window.') }}
 				</div>
 
 				<div v-else class="mt-5 space-y-5">
@@ -184,7 +197,9 @@
 						>
 							<div class="mb-3 flex items-center justify-between">
 								<h3 class="type-body-strong text-ink">{{ month.label }}</h3>
-								<p class="type-caption text-ink/60">{{ month.activeDays }} tracked days</p>
+								<p class="type-caption text-ink/60">
+									{{ __('{0} tracked days', [month.activeDays]) }}
+								</p>
 							</div>
 
 							<div class="mb-2 grid grid-cols-7 gap-2">
@@ -232,6 +247,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import { __ } from '@/lib/i18n';
 import { getGuardianAttendanceSnapshot } from '@/lib/services/guardianAttendance/guardianAttendanceService';
 
 import type {
@@ -256,7 +272,15 @@ type CalendarMonth = {
 
 type SummaryTone = 'tracked' | 'present' | 'late' | 'absence';
 
-const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const weekdayLabels = [
+	__('Mon'),
+	__('Tue'),
+	__('Wed'),
+	__('Thu'),
+	__('Fri'),
+	__('Sat'),
+	__('Sun'),
+];
 
 const overlay = useOverlayStack();
 
@@ -313,7 +337,7 @@ async function loadSnapshot() {
 		});
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		errorMessage.value = message || 'Unknown error';
+		errorMessage.value = message || __('Unknown error');
 	} finally {
 		loading.value = false;
 	}
@@ -383,15 +407,15 @@ function cellStyle(cell: CalendarCell): Record<string, string> | undefined {
 
 function cellAriaLabel(studentName: string, cell: CalendarCell): string {
 	if (cell.state === 'none') {
-		return `${studentName} on ${cell.date}: no attendance record`;
+		return __('{0} on {1}: no attendance record', [studentName, cell.date]);
 	}
-	return `${studentName} on ${cell.date}: ${detailStateLabel(cell.state)}`;
+	return __('{0} on {1}: {2}', [studentName, cell.date, detailStateLabel(cell.state)]);
 }
 
 function detailStateLabel(state: GuardianAttendanceDay['state']): string {
-	if (state === 'late') return 'Late or tardy';
-	if (state === 'absence') return 'Absence recorded';
-	return 'Present';
+	if (state === 'late') return __('Late or tardy');
+	if (state === 'absence') return __('Absence recorded');
+	return __('Present');
 }
 
 function summaryCardClass(tone: SummaryTone): string {

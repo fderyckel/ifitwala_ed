@@ -3,16 +3,19 @@
 		<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 				<div class="space-y-1">
-					<p class="type-overline text-ink/55">Class event</p>
+					<p class="type-overline text-ink/55">{{ __('Class event') }}</p>
 					<div class="flex flex-wrap items-center gap-2">
-						<h3 class="type-h3 text-ink">Locked context</h3>
+						<h3 class="type-h3 text-ink">{{ __('Locked context') }}</h3>
 						<span class="rounded-full bg-sky/25 px-3 py-1 type-caption text-canopy">
-							Auto applied
+							{{ __('Auto applied') }}
 						</span>
 					</div>
 					<p class="type-caption text-ink/65">
-						The selected class event keeps scope, history, and archive context in sync
-						automatically.
+						{{
+							__(
+								'The selected class event keeps scope, history, and archive context in sync automatically.'
+							)
+						}}
 					</p>
 				</div>
 			</div>
@@ -36,32 +39,35 @@
 
 		<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
 			<div class="space-y-1">
-				<p class="type-overline text-ink/55">Message</p>
-				<h3 class="type-h3 text-ink">Announcement</h3>
+				<p class="type-overline text-ink/55">{{ __('Message') }}</p>
+				<h3 class="type-h3 text-ink">{{ __('Announcement') }}</h3>
 				<p class="type-caption text-ink/65">
-					Write the announcement once. Class context, issuing scope, and thread rules are applied
-					automatically.
+					{{
+						__(
+							'Write the announcement once. Class context, issuing scope, and thread rules are applied automatically.'
+						)
+					}}
 				</p>
 			</div>
 
 			<div class="mt-4 space-y-1">
-				<label class="type-label">Title</label>
+				<label class="type-label">{{ __('Title') }}</label>
 				<FormControl
 					v-model="form.title"
 					type="text"
-					placeholder="Class announcement"
+					:placeholder="__('Class announcement')"
 					:disabled="submitting"
 				/>
 			</div>
 
 			<div class="mt-4 space-y-1">
-				<label class="type-label">Message</label>
+				<label class="type-label">{{ __('Message') }}</label>
 				<div
 					class="if-org-communication-message-editor overflow-hidden rounded-2xl border border-border/80 bg-white shadow-sm"
 				>
 					<TextEditor
 						:content="form.message"
-						placeholder="Share the update, reminder, or call to action."
+						:placeholder="__('Share the update, reminder, or call to action.')"
 						:editable="!submitting"
 						:fixed-menu="messageEditorButtons"
 						editor-class="prose prose-sm max-w-none min-h-[14rem] bg-white px-4 py-3 text-sm text-ink focus:outline-none"
@@ -82,11 +88,14 @@
 
 		<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
 			<div class="space-y-1">
-				<p class="type-overline text-ink/55">Delivery</p>
-				<h3 class="type-h3 text-ink">Send options</h3>
+				<p class="type-overline text-ink/55">{{ __('Delivery') }}</p>
+				<h3 class="type-h3 text-ink">{{ __('Send options') }}</h3>
 				<p class="type-caption text-ink/65">
-					Pick whether to save this draft, schedule it, or publish it now. Students in the selected
-					class are always included.
+					{{
+						__(
+							'Pick whether to save this draft, schedule it, or publish it now. Students in the selected class are always included.'
+						)
+					}}
 				</p>
 			</div>
 
@@ -104,12 +113,12 @@
 					:disabled="submitting"
 					@click="form.status = statusOption"
 				>
-					{{ statusOption }}
+					{{ statusOptionLabel(statusOption) }}
 				</button>
 			</div>
 
 			<div v-if="form.status === 'Scheduled'" class="mt-4 space-y-1">
-				<label class="type-label">Publish from</label>
+				<label class="type-label">{{ __('Publish from') }}</label>
 				<input
 					v-model="form.publish_from"
 					type="datetime-local"
@@ -117,14 +126,14 @@
 					:disabled="submitting"
 				/>
 				<p class="type-caption text-ink/55">
-					Schedule when this announcement should become visible.
+					{{ __('Schedule when this announcement should become visible.') }}
 				</p>
 			</div>
 
 			<div class="mt-4 rounded-[24px] border border-border/70 bg-surface-soft/70 p-4">
 				<div class="space-y-1">
-					<p class="type-overline text-ink/55">Recipients</p>
-					<h4 class="type-h4 text-ink">Audience</h4>
+					<p class="type-overline text-ink/55">{{ __('Recipients') }}</p>
+					<h4 class="type-h4 text-ink">{{ __('Audience') }}</h4>
 				</div>
 
 				<div
@@ -140,9 +149,9 @@
 							disabled
 						/>
 						<div>
-							<p class="type-body-strong text-ink">Students</p>
+							<p class="type-body-strong text-ink">{{ __('Students') }}</p>
 							<p class="mt-1 type-caption text-ink/65">
-								The selected student group is always included.
+								{{ __('The selected student group is always included.') }}
 							</p>
 						</div>
 					</div>
@@ -158,9 +167,13 @@
 							:disabled="submitting"
 						/>
 						<div>
-							<p class="type-body-strong text-ink">Visible to guardians</p>
+							<p class="type-body-strong text-ink">{{ __('Visible to guardians') }}</p>
 							<p class="mt-1 type-caption text-ink/65">
-								Turn this on only when guardians should also receive the class announcement.
+								{{
+									__(
+										'Turn this on only when guardians should also receive the class announcement.'
+									)
+								}}
 							</p>
 						</div>
 					</label>
@@ -172,27 +185,27 @@
 			<summary class="cursor-pointer list-none">
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 					<div class="space-y-1">
-						<p class="type-overline text-ink/55">Staff note</p>
-						<h3 class="type-h3 text-ink">Internal note</h3>
+						<p class="type-overline text-ink/55">{{ __('Staff note') }}</p>
+						<h3 class="type-h3 text-ink">{{ __('Internal note') }}</h3>
 						<p class="type-caption text-ink/65">
-							Optional context for staff managing this communication later.
+							{{ __('Optional context for staff managing this communication later.') }}
 						</p>
 					</div>
 					<span
 						class="rounded-full border border-border/80 bg-surface px-3 py-1.5 type-caption text-ink/65"
 					>
-						Optional
+						{{ __('Optional') }}
 					</span>
 				</div>
 			</summary>
 
 			<div class="mt-4 space-y-1">
-				<label class="type-label">Internal note</label>
+				<label class="type-label">{{ __('Internal note') }}</label>
 				<FormControl
 					v-model="form.internal_note"
 					type="textarea"
 					:rows="3"
-					placeholder="Optional staff note for managing this communication."
+					:placeholder="__('Optional staff note for managing this communication.')"
 					:disabled="submitting"
 				/>
 			</div>
@@ -203,6 +216,7 @@
 <script setup lang="ts">
 import { FormControl, TextEditor } from 'frappe-ui';
 
+import { __ } from '@/lib/i18n';
 import OrgCommunicationQuickCreateAttachmentSection from './OrgCommunicationQuickCreateAttachmentSection.vue';
 import type {
 	AttachmentSectionState,
@@ -236,6 +250,13 @@ const emit = defineEmits<{
 	(e: 'submit-link'): void;
 	(e: 'delete-attachment', attachment: OrgCommunicationAttachmentRow): void;
 }>();
+
+function statusOptionLabel(status: string) {
+	if (status === 'Draft') return __('Draft');
+	if (status === 'Scheduled') return __('Scheduled');
+	if (status === 'Published') return __('Published');
+	return status;
+}
 </script>
 
 <style scoped>

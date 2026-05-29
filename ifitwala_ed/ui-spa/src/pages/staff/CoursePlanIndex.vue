@@ -7,21 +7,24 @@
 					class="inline-flex items-center gap-2 type-caption text-ink/70 transition hover:text-ink"
 				>
 					<span>←</span>
-					<span>Back to Staff Home</span>
+					<span>{{ __('Back to Staff Home') }}</span>
 				</RouterLink>
 				<div class="page-header">
 					<div class="page-header__intro">
-						<p class="type-overline text-ink/60">Shared Curriculum Planning</p>
-						<h1 class="mt-2 type-h1 text-canopy">Course Plans</h1>
+						<p class="type-overline text-ink/60">{{ __('Shared Curriculum Planning') }}</p>
+						<h1 class="mt-2 type-h1 text-canopy">{{ __('Course Plans') }}</h1>
 						<p class="mt-2 max-w-3xl type-meta text-slate-token/80">
-							Open the governed course backbone, shared unit resources, and cross-class reflections
-							from one staff workspace.
+							{{
+								__(
+									'Open the governed course backbone, shared unit resources, and cross-class reflections from one staff workspace.'
+								)
+							}}
 						</p>
 					</div>
 					<div class="page-header__actions">
-						<span class="chip">{{ coursePlans.length }} course plans</span>
+						<span class="chip">{{ __('{0} course plans', [coursePlans.length]) }}</span>
 						<span v-if="canCreateCoursePlans" class="chip">
-							{{ courseOptions.length }} courses ready to plan
+							{{ __('{0} courses ready to plan', [courseOptions.length]) }}
 						</span>
 					</div>
 				</div>
@@ -32,7 +35,7 @@
 			v-if="errorMessage"
 			class="rounded-2xl border border-flame/30 bg-[var(--flame)]/5 px-5 py-4"
 		>
-			<p class="type-body-strong text-flame">Could not load the course plans.</p>
+			<p class="type-body-strong text-flame">{{ __('Could not load the course plans.') }}</p>
 			<p class="mt-1 type-caption text-ink/70">{{ errorMessage }}</p>
 		</section>
 
@@ -40,7 +43,7 @@
 			v-else-if="loading && !surface"
 			class="rounded-2xl border border-line-soft bg-white px-5 py-8"
 		>
-			<p class="type-body text-ink/70">Loading shared course plans...</p>
+			<p class="type-body text-ink/70">{{ __('Loading shared course plans...') }}</p>
 		</section>
 
 		<section
@@ -48,28 +51,31 @@
 			class="grid gap-6 xl:grid-cols-[minmax(0,1.2fr),minmax(0,0.95fr)]"
 		>
 			<div class="rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft">
-				<p class="type-overline text-ink/60">Shared Planning Workflow</p>
+				<p class="type-overline text-ink/60">{{ __('Shared Planning Workflow') }}</p>
 				<h2 class="mt-2 type-h2 text-ink">
-					Start the governed backbone where teachers already work
+					{{ __('Start the governed backbone where teachers already work') }}
 				</h2>
 				<p class="mt-3 max-w-2xl type-body text-ink/80">
-					Create the shared course plan here, then move straight into units, shared resources, quiz
-					banks, and assign-ready curriculum assets without switching tools.
+					{{
+						__(
+							'Create the shared course plan here, then move straight into units, shared resources, quiz banks, and assign-ready curriculum assets without switching tools.'
+						)
+					}}
 				</p>
 				<div class="mt-5 flex flex-wrap gap-2">
-					<span class="chip">One SPA-first workflow</span>
-					<span class="chip">Multiple plans per course allowed</span>
-					<span class="chip">Direct handoff into the governed workspace</span>
+					<span class="chip">{{ __('One SPA-first workflow') }}</span>
+					<span class="chip">{{ __('Multiple plans per course allowed') }}</span>
+					<span class="chip">{{ __('Direct handoff into the governed workspace') }}</span>
 				</div>
 			</div>
 
 			<section class="rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft">
 				<div class="flex items-start justify-between gap-4">
 					<div>
-						<p class="type-overline text-ink/60">New Course Plan</p>
-						<h2 class="mt-2 type-h3 text-ink">Create and open the workspace</h2>
+						<p class="type-overline text-ink/60">{{ __('New Course Plan') }}</p>
+						<h2 class="mt-2 type-h3 text-ink">{{ __('Create and open the workspace') }}</h2>
 					</div>
-					<span class="chip">{{ canCreateCoursePlans ? 'Ready' : 'Blocked' }}</span>
+					<span class="chip">{{ canCreateCoursePlans ? __('Ready') : __('Blocked') }}</span>
 				</div>
 
 				<div
@@ -88,24 +94,24 @@
 					</div>
 
 					<label class="block space-y-2">
-						<span class="type-caption text-ink/70">Find Course</span>
+						<span class="type-caption text-ink/70">{{ __('Find Course') }}</span>
 						<input
 							v-model="courseSearch"
 							type="text"
 							class="if-input w-full"
 							:disabled="!courseOptions.length || createPending"
-							placeholder="Search by course, group, or school"
+							:placeholder="__('Search by course, group, or school')"
 						/>
 					</label>
 
 					<label class="block space-y-2">
-						<span class="type-caption text-ink/70">Course</span>
+						<span class="type-caption text-ink/70">{{ __('Course') }}</span>
 						<select
 							v-model="createForm.course"
 							class="if-input w-full"
 							:disabled="!courseOptions.length || createPending"
 						>
-							<option value="">Select the course to govern</option>
+							<option value="">{{ __('Select the course to govern') }}</option>
 							<option
 								v-for="course in visibleCourseOptions"
 								:key="course.course"
@@ -120,30 +126,30 @@
 							v-if="courseOptions.length && !visibleCourseOptions.length"
 							class="type-caption text-ink/60"
 						>
-							No courses match that search yet.
+							{{ __('No courses match that search yet.') }}
 						</p>
 					</label>
 
 					<label class="block space-y-2">
-						<span class="type-caption text-ink/70">Course Plan Title</span>
+						<span class="type-caption text-ink/70">{{ __('Course Plan Title') }}</span>
 						<input
 							v-model="createForm.title"
 							type="text"
 							class="if-input w-full"
 							:disabled="createPending"
-							placeholder="Defaults to the course name"
+							:placeholder="__('Defaults to the course name')"
 						/>
 					</label>
 
 					<div class="grid gap-4 lg:grid-cols-2">
 						<label class="block space-y-2">
-							<span class="type-caption text-ink/70">Academic Year</span>
+							<span class="type-caption text-ink/70">{{ __('Academic Year') }}</span>
 							<select
 								v-model="createForm.academic_year"
 								class="if-input w-full"
 								:disabled="createPending || !selectedCourseAcademicYearOptions.length"
 							>
-								<option value="">Optional academic year</option>
+								<option value="">{{ __('Optional academic year') }}</option>
 								<option
 									v-for="option in selectedCourseAcademicYearOptions"
 									:key="option.value"
@@ -156,46 +162,56 @@
 								{{
 									createForm.course
 										? selectedCourseAcademicYearOptions.length
-											? 'Only Academic Year records in this course school scope are available here.'
-											: 'No Academic Year records are available for this course school yet.'
-										: 'Choose a course first to load Academic Year records.'
+											? __(
+													'Only Academic Year records in this course school scope are available here.'
+												)
+											: __('No Academic Year records are available for this course school yet.')
+										: __('Choose a course first to load Academic Year records.')
 								}}
 							</p>
 						</label>
 
 						<label class="block space-y-2">
-							<span class="type-caption text-ink/70">Cycle Label</span>
+							<span class="type-caption text-ink/70">{{ __('Cycle Label') }}</span>
 							<input
 								v-model="createForm.cycle_label"
 								type="text"
 								class="if-input w-full"
 								:disabled="createPending"
-								placeholder="e.g. Semester 1"
+								:placeholder="__('e.g. Semester 1')"
 							/>
 						</label>
 					</div>
 
 					<label class="block space-y-2">
-						<span class="type-caption text-ink/70">Publishing Status</span>
+						<span class="type-caption text-ink/70">{{ __('Publishing Status') }}</span>
 						<select
 							v-model="createForm.plan_status"
 							class="if-input w-full"
 							:disabled="createPending"
 						>
-							<option v-for="option in coursePlanStatusOptions" :key="option" :value="option">
-								{{ option }}
+							<option
+								v-for="option in coursePlanStatusOptions"
+								:key="option.value"
+								:value="option.value"
+							>
+								{{ option.label }}
 							</option>
 						</select>
 					</label>
 
 					<label class="block space-y-2">
-						<span class="type-caption text-ink/70">Summary</span>
+						<span class="type-caption text-ink/70">{{ __('Summary') }}</span>
 						<textarea
 							v-model="createForm.summary"
 							rows="4"
 							class="if-input min-h-[7.5rem] w-full resize-y"
 							:disabled="createPending"
-							placeholder="Capture the shared intent and non-negotiables, or leave this for the workspace."
+							:placeholder="
+								__(
+									'Capture the shared intent and non-negotiables, or leave this for the workspace.'
+								)
+							"
 						/>
 					</label>
 
@@ -207,7 +223,7 @@
 							class="if-action"
 							:disabled="createPending || !createForm.course || !courseOptions.length"
 						>
-							{{ createPending ? 'Creating...' : 'Create Course Plan' }}
+							{{ createPending ? __('Creating...') : __('Create Course Plan') }}
 						</button>
 					</div>
 				</form>
@@ -218,13 +234,17 @@
 			v-if="surface && !coursePlans.length"
 			class="rounded-[2rem] border border-line-soft bg-white p-6 shadow-soft"
 		>
-			<p class="type-body-strong text-ink">No governed course plans are available yet.</p>
+			<p class="type-body-strong text-ink">
+				{{ __('No governed course plans are available yet.') }}
+			</p>
 			<p class="mt-2 type-body text-ink/70">
 				{{
 					canCreateCoursePlans
-						? 'Start the first shared course plan above so teachers and curriculum coordinators can work inside one governed backbone.'
+						? __(
+								'Start the first shared course plan above so teachers and curriculum coordinators can work inside one governed backbone.'
+							)
 						: createBlockReason ||
-							'A curriculum lead needs to create the first governed course plan.'
+							__('A curriculum lead needs to create the first governed course plan.')
 				}}
 			</p>
 		</section>
@@ -247,14 +267,14 @@
 							{{ plan.summary }}
 						</p>
 					</div>
-					<span class="chip">{{ plan.plan_status || 'Draft' }}</span>
+					<span class="chip">{{ plan.plan_status || __('Draft') }}</span>
 				</div>
 
 				<div class="mt-5 flex flex-wrap gap-2">
 					<span v-if="plan.course_group" class="chip">{{ plan.course_group }}</span>
 					<span v-if="plan.cycle_label" class="chip">{{ plan.cycle_label }}</span>
 					<span class="chip">
-						{{ plan.can_manage_resources ? 'Can edit resources' : 'Read-only access' }}
+						{{ plan.can_manage_resources ? __('Can edit resources') : __('Read-only access') }}
 					</span>
 				</div>
 			</RouterLink>
@@ -268,6 +288,7 @@ import { RouterLink, useRouter } from 'vue-router';
 
 import { toast } from 'frappe-ui';
 
+import { __ } from '@/lib/i18n';
 import {
 	createCoursePlan,
 	getStaffCoursePlanIndex,
@@ -282,7 +303,11 @@ const createPending = ref(false);
 const createError = ref('');
 const courseSearch = ref('');
 
-const coursePlanStatusOptions = ['Draft', 'Active', 'Archived'];
+const coursePlanStatusOptions = [
+	{ value: 'Draft', label: __('Draft') },
+	{ value: 'Active', label: __('Active') },
+	{ value: 'Archived', label: __('Archived') },
+];
 const createForm = reactive({
 	course: '',
 	title: '',
@@ -316,7 +341,7 @@ const createBlockReason = computed(() => surface.value?.access?.create_block_rea
 
 function defaultTitleForCourse(course: string | null | undefined): string {
 	const selected = courseOptions.value.find(option => option.course === course);
-	return selected?.course_name ? `${selected.course_name} Plan` : '';
+	return selected?.course_name ? __('{0} Plan', [selected.course_name]) : '';
 }
 
 async function loadIndex() {
@@ -326,7 +351,7 @@ async function loadIndex() {
 		surface.value = await getStaffCoursePlanIndex();
 	} catch (error) {
 		surface.value = null;
-		errorMessage.value = error instanceof Error ? error.message : 'Unknown error';
+		errorMessage.value = error instanceof Error ? error.message : __('Unknown error');
 	} finally {
 		loading.value = false;
 	}
@@ -334,7 +359,7 @@ async function loadIndex() {
 
 async function handleCreateCoursePlan() {
 	if (!createForm.course) {
-		createError.value = 'Choose a course before creating the shared plan.';
+		createError.value = __('Choose a course before creating the shared plan.');
 		return;
 	}
 
@@ -349,14 +374,14 @@ async function handleCreateCoursePlan() {
 			plan_status: createForm.plan_status || 'Draft',
 			summary: createForm.summary.trim() || undefined,
 		});
-		toast.success('Course plan created.');
+		toast.success(__('Course plan created.'));
 		await router.push({
 			name: 'staff-course-plan',
 			params: { coursePlan: payload.course_plan },
 		});
 	} catch (error) {
 		createError.value =
-			error instanceof Error ? error.message : 'Could not create the course plan.';
+			error instanceof Error ? error.message : __('Could not create the course plan.');
 		toast.error(createError.value);
 	} finally {
 		createPending.value = false;
