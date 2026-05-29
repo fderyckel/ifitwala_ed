@@ -194,7 +194,7 @@ def ensure_canonical_role_records():
 
 
 def ensure_leave_roles():
-    for role_name in ["Leave Approver"]:
+    for role_name in ["Leave Approver", "Expense Approver"]:
         if not frappe.db.exists("Role", role_name):
             frappe.get_doc({"doctype": "Role", "role_name": role_name}).insert(ignore_permissions=True)
 

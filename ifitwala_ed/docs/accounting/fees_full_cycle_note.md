@@ -194,6 +194,7 @@ There are two implemented server-side draft-invoice shortcuts. These are specifi
 
 - paid activity booking can create a draft tuition invoice tied to a `Program Offering`
 - an accepted admissions offer can create one draft admissions deposit invoice from the linked `Applicant Enrollment Plan`
+- an initial enrollment billing package can create draft one-off invoices for first-time `Program Enrollment` rows
 
 ### 3.6 Admissions deposit invoices
 
@@ -221,6 +222,35 @@ What it does not do:
 - replace finance review of the draft invoice
 
 If the deposit terms differ from the school default, the AEP treats them as a manual override. That override must be approved by both the academic side (`Academic Admin` or `System Manager`) and finance (`Accounts Manager` or `System Manager`) within employee scope before the draft invoice can be generated.
+
+### 3.7 Initial enrollment one-off invoices
+
+Status: Implemented
+Code refs: `ifitwala_ed/accounting/doctype/initial_enrollment_billing_package/initial_enrollment_billing_package.py`, `ifitwala_ed/accounting/doctype/initial_enrollment_billing_package/initial_enrollment_billing_package.json`, `ifitwala_ed/accounting/doctype/sales_invoice/sales_invoice.json`
+Test refs: `ifitwala_ed/accounting/doctype/initial_enrollment_billing_package/test_initial_enrollment_billing_package.py`
+
+New-entrant one-off billing is separate from recurring program billing.
+
+Use `Initial Enrollment Billing Package` for charges that should apply only when a student first joins after enrollment, such as:
+
+- testing / assessment fees
+- admissions administration fees
+- first-time registration or entry fees
+- other one-off new-entrant fees that post to income
+
+The package:
+
+- is scoped by organization and optional school / academic year / program / program offering
+- must include at least one school, academic year, program, or program offering scope
+- uses existing `Billable Offering` records for each row
+- creates draft `Sales Invoice` records only
+- links each invoice to the source `Program Enrollment` and package
+- skips returning students when generating from the package
+- is idempotent for each package + program enrollment pair
+
+The package must not contain `Program` billable offerings. Tuition and annual/term fees that every enrolled student pays belong in `Program Billing Plan`.
+
+Refundable deposits remain outside this package because the current `Billable Offering` and `Sales Invoice Item` contract posts billable rows to income accounts. Refundable security deposits should be handled through the advance/liability flow until a first-class refundable-deposit contract is approved.
 
 ## 4. Receiving Payment
 
@@ -386,6 +416,7 @@ Important limits:
 - bulk generation creates draft invoices only
 - payment schedules still come from `Payment Terms Template` if used on the billing run
 - cancelling or deleting a generated invoice resets the linked billing rows back to `Pending`
+- first-time applicant/new-entrant fees are intentionally excluded; use `Initial Enrollment Billing Package` for those one-off fees
 
 ## 9. Contract Matrix
 
@@ -400,6 +431,7 @@ Test refs: `ifitwala_ed/accounting/doctype/sales_invoice/test_sales_invoice.py`,
 | Student linkage | Implemented | `Student.account_holder` |
 | Tax grouping | Implemented | `Tax Category` + `Sales Taxes and Charges Template` |
 | Invoice document | Implemented | `Sales Invoice` |
+| New-entrant one-off fee package | Implemented | `Initial Enrollment Billing Package` |
 | Installment schedules | Implemented | `Payment Terms Template` + `Sales Invoice Payment Schedule` |
 | Invoice line attribution | Implemented | `Sales Invoice Item` |
 | Invoice collection status | Implemented | `Sales Invoice.status` |

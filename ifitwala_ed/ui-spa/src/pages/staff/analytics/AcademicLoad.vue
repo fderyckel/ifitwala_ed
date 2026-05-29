@@ -3,35 +3,42 @@
 	<div class="analytics-shell space-y-5">
 		<header class="page-header">
 			<div class="page-header__intro">
-				<h1 class="type-h1 text-canopy">Academic Load</h1>
+				<h1 class="type-h1 text-canopy">{{ __('Academic Load') }}</h1>
 				<p class="type-meta text-slate-token/80">
-					See current workload shape for academic staff, compare fairness, and support substitute
-					decisions with school-configurable scoring.
+					{{
+						__(
+							'See current workload shape for academic staff, compare fairness, and support substitute decisions with school-configurable scoring.'
+						)
+					}}
 				</p>
 				<div v-if="policySummary" class="mt-2 flex flex-wrap items-center gap-2">
 					<span
 						class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600"
 					>
-						{{ policySummary.was_customized ? 'Custom policy' : 'Default policy' }}
+						{{ policySummary.was_customized ? __('Custom policy') : __('Default policy') }}
 					</span>
 					<span class="text-xs text-slate-500">
-						Meetings: {{ policySummary.meeting_blend_mode }} ·
-						{{ policySummary.meeting_window_days }} day lookback ·
-						{{ policySummary.future_horizon_days }} day horizon
+						{{
+							__('Meetings: {0} · {1} day lookback · {2} day horizon', [
+								policySummary.meeting_blend_mode,
+								policySummary.meeting_window_days,
+								policySummary.future_horizon_days,
+							])
+						}}
 					</span>
 				</div>
 			</div>
 			<div v-if="policySummary?.name" class="page-header__actions">
 				<button type="button" class="if-button if-button--secondary" @click="openPolicySettings">
 					<FeatherIcon name="sliders" class="h-4 w-4" />
-					<span>Workload settings</span>
+					<span>{{ __('Workload settings') }}</span>
 				</button>
 			</div>
 		</header>
 
 		<FiltersBar>
 			<div class="flex flex-col gap-1">
-				<label class="type-label">School</label>
+				<label class="type-label">{{ __('School') }}</label>
 				<select v-model="filters.school" class="h-9 min-w-[180px] rounded-md border px-2 text-sm">
 					<option v-for="school in schoolOptions" :key="school.name" :value="school.name">
 						{{ school.label }}
@@ -40,12 +47,12 @@
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Academic Year</label>
+				<label class="type-label">{{ __('Academic Year') }}</label>
 				<select
 					v-model="filters.academic_year"
 					class="h-9 min-w-[180px] rounded-md border px-2 text-sm"
 				>
-					<option value="">All academic years</option>
+					<option value="">{{ __('All academic years') }}</option>
 					<option v-for="year in academicYearOptions" :key="year.name" :value="year.name">
 						{{ year.label || year.name }}
 					</option>
@@ -53,7 +60,7 @@
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Time Mode</label>
+				<label class="type-label">{{ __('Time Mode') }}</label>
 				<select
 					v-model="filters.time_mode"
 					class="h-9 min-w-[180px] rounded-md border px-2 text-sm"
@@ -65,12 +72,12 @@
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Staff Role</label>
+				<label class="type-label">{{ __('Staff Role') }}</label>
 				<select
 					v-model="filters.staff_role"
 					class="h-9 min-w-[180px] rounded-md border px-2 text-sm"
 				>
-					<option value="">All roles</option>
+					<option value="">{{ __('All roles') }}</option>
 					<option v-for="role in staffRoleOptions" :key="role.value" :value="role.value">
 						{{ role.label }}
 					</option>
@@ -78,20 +85,20 @@
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Search</label>
+				<label class="type-label">{{ __('Search') }}</label>
 				<input
 					v-model="filters.search"
 					type="search"
 					class="h-9 min-w-[220px] rounded-md border px-3 text-sm"
-					placeholder="Find an educator"
+					:placeholder="__('Find an educator')"
 				/>
 			</div>
 		</FiltersBar>
 
 		<div v-if="accessDenied" class="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
-			<h2 class="text-sm font-semibold text-amber-900">Access restricted</h2>
+			<h2 class="text-sm font-semibold text-amber-900">{{ __('Access restricted') }}</h2>
 			<p class="mt-1 text-xs text-amber-800">
-				Academic Load is available only to academic admin and coordinator roles.
+				{{ __('Academic Load is available only to academic admin and coordinator roles.') }}
 			</p>
 		</div>
 
@@ -105,7 +112,7 @@
 		<div v-else class="space-y-5">
 			<KpiRow :items="kpiItems" />
 
-			<nav class="flex flex-wrap gap-2" aria-label="Academic load views">
+			<nav class="flex flex-wrap gap-2" :aria-label="__('Academic load views')">
 				<button
 					v-for="tab in tabs"
 					:key="tab.value"
@@ -131,16 +138,16 @@
 					<table class="min-w-full divide-y divide-slate-200 text-sm">
 						<thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
 							<tr>
-								<th class="px-4 py-3">Educator</th>
-								<th class="px-4 py-3">School</th>
-								<th class="px-4 py-3 text-right">Teaching</th>
-								<th class="px-4 py-3 text-right">Students</th>
-								<th class="px-4 py-3 text-right">Activities</th>
-								<th class="px-4 py-3 text-right">Meetings</th>
-								<th class="px-4 py-3 text-right">Events</th>
-								<th class="px-4 py-3 text-right">Total</th>
-								<th class="px-4 py-3">Load Band</th>
-								<th class="px-4 py-3 text-right">Free Blocks</th>
+								<th class="px-4 py-3">{{ __('Educator') }}</th>
+								<th class="px-4 py-3">{{ __('School') }}</th>
+								<th class="px-4 py-3 text-right">{{ __('Teaching') }}</th>
+								<th class="px-4 py-3 text-right">{{ __('Students') }}</th>
+								<th class="px-4 py-3 text-right">{{ __('Activities') }}</th>
+								<th class="px-4 py-3 text-right">{{ __('Meetings') }}</th>
+								<th class="px-4 py-3 text-right">{{ __('Events') }}</th>
+								<th class="px-4 py-3 text-right">{{ __('Total') }}</th>
+								<th class="px-4 py-3">{{ __('Load Band') }}</th>
+								<th class="px-4 py-3 text-right">{{ __('Free Blocks') }}</th>
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-slate-100">
@@ -189,30 +196,32 @@
 
 			<section v-else-if="activeTab === 'fairness'" class="grid gap-4 xl:grid-cols-2">
 				<article class="analytics-card">
-					<h3 class="analytics-card__title">Workload Distribution</h3>
-					<p class="analytics-card__meta mt-1">Grouped by total weekly-equivalent score.</p>
+					<h3 class="analytics-card__title">{{ __('Workload Distribution') }}</h3>
+					<p class="analytics-card__meta mt-1">
+						{{ __('Grouped by total weekly-equivalent score.') }}
+					</p>
 					<AnalyticsChart class="mt-4 h-[320px]" :option="distributionOption" />
 				</article>
 				<article class="analytics-card">
-					<h3 class="analytics-card__title">Teaching vs Non-Teaching</h3>
+					<h3 class="analytics-card__title">{{ __('Teaching vs Non-Teaching') }}</h3>
 					<p class="analytics-card__meta mt-1">
-						Compare stable teaching load against meetings, events, and activities.
+						{{ __('Compare stable teaching load against meetings, events, and activities.') }}
 					</p>
 					<AnalyticsChart class="mt-4 h-[320px]" :option="scatterOption" />
 				</article>
 				<article class="analytics-card xl:col-span-2">
-					<h3 class="analytics-card__title">Ranked by Total Load</h3>
+					<h3 class="analytics-card__title">{{ __('Ranked by Total Load') }}</h3>
 					<p class="analytics-card__meta mt-1">
-						Use the score for comparison, then read the breakdown in the drawer.
+						{{ __('Use the score for comparison, then read the breakdown in the drawer.') }}
 					</p>
 					<div class="mt-4 overflow-x-auto">
 						<table class="min-w-full divide-y divide-slate-200 text-sm">
 							<thead class="text-left text-xs uppercase tracking-wide text-slate-500">
 								<tr>
-									<th class="pb-3 pr-4">Educator</th>
-									<th class="pb-3 pr-4">School</th>
-									<th class="pb-3 pr-4 text-right">Total</th>
-									<th class="pb-3">Band</th>
+									<th class="pb-3 pr-4">{{ __('Educator') }}</th>
+									<th class="pb-3 pr-4">{{ __('School') }}</th>
+									<th class="pb-3 pr-4 text-right">{{ __('Total') }}</th>
+									<th class="pb-3">{{ __('Band') }}</th>
 								</tr>
 							</thead>
 							<tbody class="divide-y divide-slate-100">
@@ -232,27 +241,30 @@
 
 			<section v-else class="space-y-4">
 				<article class="analytics-card">
-					<h3 class="analytics-card__title">Assignment Support</h3>
+					<h3 class="analytics-card__title">{{ __('Assignment Support') }}</h3>
 					<p class="analytics-card__meta mt-1">
-						Rank substitute candidates by fit and current load. Strong fit prefers the same student
-						group first, then course/program alignment.
+						{{
+							__(
+								'Rank substitute candidates by fit and current load. Strong fit prefers the same student group first, then course/program alignment.'
+							)
+						}}
 					</p>
 
 					<div class="mt-4 grid gap-3 lg:grid-cols-4">
 						<div class="flex flex-col gap-1">
-							<label class="type-label">Student Group</label>
+							<label class="type-label">{{ __('Student Group') }}</label>
 							<select
 								v-model="assignment.student_group"
 								class="h-9 rounded-md border px-2 text-sm"
 							>
-								<option value="">Select student group</option>
+								<option value="">{{ __('Select student group') }}</option>
 								<option v-for="group in studentGroupOptions" :key="group.name" :value="group.name">
 									{{ group.label }}
 								</option>
 							</select>
 						</div>
 						<div class="flex flex-col gap-1">
-							<label class="type-label">Date</label>
+							<label class="type-label">{{ __('Date') }}</label>
 							<input
 								v-model="assignment.date"
 								type="date"
@@ -260,7 +272,7 @@
 							/>
 						</div>
 						<div class="flex flex-col gap-1">
-							<label class="type-label">Start</label>
+							<label class="type-label">{{ __('Start') }}</label>
 							<input
 								v-model="assignment.start_time"
 								type="time"
@@ -268,7 +280,7 @@
 							/>
 						</div>
 						<div class="flex flex-col gap-1">
-							<label class="type-label">End</label>
+							<label class="type-label">{{ __('End') }}</label>
 							<input
 								v-model="assignment.end_time"
 								type="time"
@@ -283,13 +295,13 @@
 				<article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 					<div class="flex items-center justify-between border-b border-slate-200 px-4 py-3">
 						<div>
-							<h3 class="text-sm font-semibold text-slate-800">Cover Candidates</h3>
+							<h3 class="text-sm font-semibold text-slate-800">{{ __('Cover Candidates') }}</h3>
 							<p class="text-xs text-slate-500">
-								Unavailable rows remain visible with explicit reasons.
+								{{ __('Unavailable rows remain visible with explicit reasons.') }}
 							</p>
 						</div>
 						<span v-if="coverRows.length" class="text-xs text-slate-500">
-							{{ coverRows.length }} candidates
+							{{ __('{0} candidates', [coverRows.length]) }}
 						</span>
 					</div>
 					<div v-if="coverLoading" class="py-10 text-center text-sm text-slate-500">
@@ -299,11 +311,11 @@
 						<table class="min-w-full divide-y divide-slate-200 text-sm">
 							<thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
 								<tr>
-									<th class="px-4 py-3">Educator</th>
-									<th class="px-4 py-3">Suitability</th>
-									<th class="px-4 py-3 text-right">Current Load</th>
-									<th class="px-4 py-3 text-right">Free Blocks</th>
-									<th class="px-4 py-3">Why</th>
+									<th class="px-4 py-3">{{ __('Educator') }}</th>
+									<th class="px-4 py-3">{{ __('Suitability') }}</th>
+									<th class="px-4 py-3 text-right">{{ __('Current Load') }}</th>
+									<th class="px-4 py-3 text-right">{{ __('Free Blocks') }}</th>
+									<th class="px-4 py-3">{{ __('Why') }}</th>
 								</tr>
 							</thead>
 							<tbody class="divide-y divide-slate-100">
@@ -328,7 +340,7 @@
 								</tr>
 								<tr v-if="!coverRows.length">
 									<td class="px-4 py-6 text-center text-slate-500" colspan="5">
-										Select a student group and time window to load candidates.
+										{{ __('Select a student group and time window to load candidates.') }}
 									</td>
 								</tr>
 							</tbody>
@@ -374,7 +386,7 @@
 								>
 									<div class="flex items-start justify-between gap-3">
 										<div>
-											<p class="type-overline text-ink/60">Academic Load Detail</p>
+											<p class="type-overline text-ink/60">{{ __('Academic Load Detail') }}</p>
 											<DialogTitle class="type-h3 mt-2 text-ink">
 												{{ drawerDetail?.educator?.full_name || 'Loading...' }}
 											</DialogTitle>
@@ -383,7 +395,7 @@
 											ref="drawerCloseButtonRef"
 											type="button"
 											class="if-overlay__icon-button"
-											aria-label="Close"
+											:aria-label="__('Close')"
 											@click="closeDrawer"
 										>
 											<FeatherIcon name="x" class="h-4 w-4" />
@@ -420,29 +432,35 @@
 									<div v-else-if="drawerDetail" class="space-y-4">
 										<div v-if="drawerTab === 'overview'" class="grid gap-3 md:grid-cols-2">
 											<div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-												<p class="text-xs uppercase tracking-wide text-slate-500">Teaching</p>
+												<p class="text-xs uppercase tracking-wide text-slate-500">
+													{{ __('Teaching') }}
+												</p>
 												<p class="mt-2 text-2xl font-semibold text-slate-800">
 													{{ formatNumber(drawerDetail.facts.teaching_hours) }}
 												</p>
-												<p class="text-xs text-slate-500">Weekly-equivalent hours</p>
-											</div>
-											<div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-												<p class="text-xs uppercase tracking-wide text-slate-500">Students</p>
-												<p class="mt-2 text-2xl font-semibold text-slate-800">
-													{{ drawerDetail.facts.students_taught }}
-												</p>
-												<p class="text-xs text-slate-500">Roster load adjustment</p>
-											</div>
-											<div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-												<p class="text-xs uppercase tracking-wide text-slate-500">Activities</p>
-												<p class="mt-2 text-2xl font-semibold text-slate-800">
-													{{ formatNumber(drawerDetail.facts.activity_hours) }}
-												</p>
-												<p class="text-xs text-slate-500">Weekly-equivalent hours</p>
+												<p class="text-xs text-slate-500">{{ __('Weekly-equivalent hours') }}</p>
 											</div>
 											<div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
 												<p class="text-xs uppercase tracking-wide text-slate-500">
-													Meetings + Events
+													{{ __('Students') }}
+												</p>
+												<p class="mt-2 text-2xl font-semibold text-slate-800">
+													{{ drawerDetail.facts.students_taught }}
+												</p>
+												<p class="text-xs text-slate-500">{{ __('Roster load adjustment') }}</p>
+											</div>
+											<div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+												<p class="text-xs uppercase tracking-wide text-slate-500">
+													{{ __('Activities') }}
+												</p>
+												<p class="mt-2 text-2xl font-semibold text-slate-800">
+													{{ formatNumber(drawerDetail.facts.activity_hours) }}
+												</p>
+												<p class="text-xs text-slate-500">{{ __('Weekly-equivalent hours') }}</p>
+											</div>
+											<div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+												<p class="text-xs uppercase tracking-wide text-slate-500">
+													{{ __('Meetings + Events') }}
 												</p>
 												<p class="mt-2 text-2xl font-semibold text-slate-800">
 													{{
@@ -452,7 +470,7 @@
 														)
 													}}
 												</p>
-												<p class="text-xs text-slate-500">Weekly-equivalent hours</p>
+												<p class="text-xs text-slate-500">{{ __('Weekly-equivalent hours') }}</p>
 											</div>
 										</div>
 
@@ -492,8 +510,8 @@
 													{{ entry.kind }} ·
 													{{
 														entry.from_datetime
-															? `${entry.from_datetime} to ${entry.to_datetime}`
-															: `${entry.hours} hrs`
+															? __('{0} to {1}', [entry.from_datetime, entry.to_datetime])
+															: __('{0} hrs', [entry.hours])
 													}}
 												</p>
 											</article>
@@ -543,6 +561,7 @@ import { createResource, FeatherIcon } from 'frappe-ui';
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
+import { __ } from '@/lib/i18n';
 
 type FilterMetaResponse = {
 	schools: Array<{ name: string; label: string }>;
@@ -647,19 +666,19 @@ type DrawerTab =
 	| 'notes';
 
 const tabs: Array<{ value: AnalyticsTab; label: string }> = [
-	{ value: 'overview', label: 'Overview' },
-	{ value: 'fairness', label: 'Fairness' },
-	{ value: 'assignment', label: 'Assignment Support' },
+	{ value: 'overview', label: __('Overview') },
+	{ value: 'fairness', label: __('Fairness') },
+	{ value: 'assignment', label: __('Assignment Support') },
 ];
 
 const drawerTabs: Array<{ value: DrawerTab; label: string }> = [
-	{ value: 'overview', label: 'Overview' },
-	{ value: 'teaching', label: 'Teaching' },
-	{ value: 'activities', label: 'Activities' },
-	{ value: 'meetings', label: 'Meetings' },
-	{ value: 'events', label: 'Events' },
-	{ value: 'timeline', label: 'Timeline' },
-	{ value: 'notes', label: 'Assignment Notes' },
+	{ value: 'overview', label: __('Overview') },
+	{ value: 'teaching', label: __('Teaching') },
+	{ value: 'activities', label: __('Activities') },
+	{ value: 'meetings', label: __('Meetings') },
+	{ value: 'events', label: __('Events') },
+	{ value: 'timeline', label: __('Timeline') },
+	{ value: 'notes', label: __('Assignment Notes') },
 ];
 
 const filters = reactive({
@@ -734,28 +753,28 @@ const rankedRows = computed(() => dashboard.value?.fairness?.ranked || []);
 const coverRows = computed(() => cover.value?.rows || []);
 
 const teachingColumns = [
-	{ key: 'student_group_name', label: 'Student Group' },
-	{ key: 'course', label: 'Course' },
-	{ key: 'student_count', label: 'Students' },
-	{ key: 'hours', label: 'Hours' },
+	{ key: 'student_group_name', label: __('Student Group') },
+	{ key: 'course', label: __('Course') },
+	{ key: 'student_count', label: __('Students') },
+	{ key: 'hours', label: __('Hours') },
 ];
 const activityColumns = [
-	{ key: 'student_group_name', label: 'Activity Group' },
-	{ key: 'program', label: 'Program' },
-	{ key: 'student_count', label: 'Students' },
-	{ key: 'hours', label: 'Hours' },
+	{ key: 'student_group_name', label: __('Activity Group') },
+	{ key: 'program', label: __('Program') },
+	{ key: 'student_count', label: __('Students') },
+	{ key: 'hours', label: __('Hours') },
 ];
 const meetingColumns = [
-	{ key: 'meeting_name', label: 'Meeting' },
-	{ key: 'meeting_category', label: 'Category' },
-	{ key: 'from_datetime', label: 'From' },
-	{ key: 'hours', label: 'Hours' },
+	{ key: 'meeting_name', label: __('Meeting') },
+	{ key: 'meeting_category', label: __('Category') },
+	{ key: 'from_datetime', label: __('From') },
+	{ key: 'hours', label: __('Hours') },
 ];
 const eventColumns = [
-	{ key: 'subject', label: 'Event' },
-	{ key: 'event_category', label: 'Category' },
-	{ key: 'starts_on', label: 'Starts' },
-	{ key: 'hours', label: 'Hours' },
+	{ key: 'subject', label: __('Event') },
+	{ key: 'event_category', label: __('Category') },
+	{ key: 'starts_on', label: __('Starts') },
+	{ key: 'hours', label: __('Hours') },
 ];
 
 const distributionOption = computed(() => {
@@ -778,8 +797,8 @@ const scatterOption = computed(() => {
 	const rows = dashboard.value?.fairness?.scatter || [];
 	return {
 		grid: { left: 48, right: 16, top: 20, bottom: 40 },
-		xAxis: { type: 'value', name: 'Teaching' },
-		yAxis: { type: 'value', name: 'Non-Teaching' },
+		xAxis: { type: 'value', name: __('Teaching') },
+		yAxis: { type: 'value', name: __('Non-Teaching') },
 		tooltip: {
 			trigger: 'item',
 		},
@@ -833,7 +852,7 @@ async function loadFilterMeta() {
 		accessDenied.value = /permission|not permitted|not have permission/i.test(message);
 		pageError.value = accessDenied.value
 			? null
-			: message || 'Failed to load Academic Load filters.';
+			: message || __('Failed to load Academic Load filters.');
 	} finally {
 		syncingMeta.value = false;
 	}
@@ -852,7 +871,7 @@ async function loadDashboard() {
 	} catch (error: any) {
 		const message = String(error?.message || error || '');
 		accessDenied.value = /permission|not permitted|not have permission/i.test(message);
-		pageError.value = accessDenied.value ? null : message || 'Failed to load Academic Load.';
+		pageError.value = accessDenied.value ? null : message || __('Failed to load Academic Load.');
 	} finally {
 		dashboardLoading.value = false;
 	}
@@ -870,7 +889,7 @@ async function openDrawer(employee: string) {
 			employee,
 		})) as DetailResponse;
 	} catch (error: any) {
-		detailError.value = String(error?.message || error || 'Failed to load educator detail.');
+		detailError.value = String(error?.message || error || __('Failed to load educator detail.'));
 	} finally {
 		detailLoading.value = false;
 	}
@@ -914,7 +933,9 @@ async function loadCoverCandidates() {
 			to_datetime: datetimes.to_datetime,
 		})) as CoverResponse;
 	} catch (error: any) {
-		assignmentError.value = String(error?.message || error || 'Failed to load cover candidates.');
+		assignmentError.value = String(
+			error?.message || error || __('Failed to load cover candidates.')
+		);
 	} finally {
 		coverLoading.value = false;
 	}

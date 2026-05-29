@@ -167,6 +167,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/staff/calendar-sync', name: 'staff-calendar-sync', component: () => import('@/pages/staff/StaffCalendarSync.vue'), meta: { layout: 'staff' } },
   { path: '/staff/portfolio', name: 'staff-portfolio', component: () => import('@/pages/staff/StaffPortfolioFeed.vue'), meta: { layout: 'staff', portal: 'Staff' } },
   { path: '/staff/professional-development', name: 'staff-professional-development', component: () => import('@/pages/staff/ProfessionalDevelopment.vue'), meta: { layout: 'staff' } },
+  { path: '/staff/expenses', name: 'staff-expense-claims', component: () => import('@/pages/staff/ExpenseClaims.vue'), meta: { layout: 'staff' } },
   { path: '/staff/organization-chart', name: 'staff-organization-chart', component: () => import('@/pages/staff/organization_chart/OrganizationChart.vue'), meta: { layout: 'staff' } },
   {
     path: '/staff/course-plans',

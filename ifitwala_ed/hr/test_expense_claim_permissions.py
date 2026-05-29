@@ -1,0 +1,132 @@
+# Copyright (c) 2026, François de Ryckel and contributors
+# For license information, please see license.txt
+
+from unittest.mock import patch
+
+import frappe
+from frappe.tests.utils import FrappeTestCase
+
+from ifitwala_ed.hr import expense_claim_permissions
+
+
+class TestExpenseClaimPermissions(FrappeTestCase):
+    def test_expense_claim_pqc_is_self_or_approver_scoped_for_employee(self):
+        with (
+            patch(
+                "ifitwala_ed.hr.expense_claim_permissions.frappe.get_roles",
+                return_value=["Employee"],
+            ),
+            patch(
+                "ifitwala_ed.hr.expense_claim_permissions.frappe.db.get_value",
+                return_value="HR-EMP-0001",
+            ),
+            patch(
+                "ifitwala_ed.hr.expense_claim_permissions.frappe.db.escape",
+                side_effect=lambda value: f"'{value}'",
+            ),
+        ):
+            condition = expense_claim_permissions.expense_claim_pqc(user="teacher@example.com")
+
+        self.assertEqual(
+            condition,
+            "((`tabExpense Claim`.`employee` = 'HR-EMP-0001') OR "
+            "(`tabExpense Claim`.`expense_approver` = 'teacher@example.com'))",
+        )
+
+    def test_expense_claim_pqc_is_org_and_school_scoped_for_finance(self):
+        with (
+            patch(
+                "ifitwala_ed.hr.expense_claim_permissions.frappe.get_roles",
+                return_value=["Accounts User"],
+            ),
+            patch(
+                "ifitwala_ed.hr.expense_claim_permissions.get_user_base_org",
+                return_value="ORG-ROOT",
+            ),
+            patch(
+                "ifitwala_ed.hr.expense_claim_permissions.get_descendant_organizations",
+                return_value=["ORG-ROOT", "ORG-CHILD"],
+            ),
+            patch(
+                "ifitwala_ed.hr.expense_claim_permissions.get_user_base_school",
+                return_value="SCH-ROOT",
+            ),
+            patch(
+                "ifitwala_ed.hr.expense_claim_permissions.get_descendant_schools",
+                return_value=["SCH-ROOT", "SCH-LEAF"],
+            ),
+            patch(
+                "ifitwala_ed.hr.expense_claim_permissions.frappe.db.escape",
+                side_effect=lambda value: f"'{value}'",
+            ),
+        ):
+            condition = expense_claim_permissions.expense_claim_pqc(user="finance@example.com")
+
+        self.assertEqual(
+            condition,
+            "`tabExpense Claim`.`organization` IN ('ORG-CHILD', 'ORG-ROOT') AND "
+            "(`tabExpense Claim`.`school` IN ('SCH-LEAF', 'SCH-ROOT') OR "
+            "COALESCE(`tabExpense Claim`.`school`, '') = '')",
+        )
+
+    def test_expense_claim_doc_permission_allows_claimant(self):
+        doc = frappe._dict(
+            doctype="Expense Claim",
+            employee="HR-EMP-0001",
+            expense_approver="approver@example.com",
+            organization="ORG-1",
+            school="SCH-1",
+        )
+        with patch(
+            "ifitwala_ed.hr.expense_claim_permissions.frappe.db.get_value",
+            return_value="HR-EMP-0001",
+        ):
+            allowed = expense_claim_permissions.expense_claim_has_permission(
+                doc,
+                user="teacher@example.com",
+                ptype="read",
+            )
+
+        self.assertTrue(allowed)
+
+    def test_expense_claim_doc_permission_blocks_out_of_scope_finance(self):
+        doc = frappe._dict(
+            doctype="Expense Claim",
+            employee="HR-EMP-0002",
+            expense_approver="approver@example.com",
+            organization="ORG-OTHER",
+            school="SCH-1",
+        )
+        with (
+            patch(
+                "ifitwala_ed.hr.expense_claim_permissions.frappe.get_roles",
+                return_value=["Accounts User"],
+            ),
+            patch(
+                "ifitwala_ed.hr.expense_claim_permissions.frappe.db.get_value",
+                return_value=None,
+            ),
+            patch(
+                "ifitwala_ed.hr.expense_claim_permissions.get_user_base_org",
+                return_value="ORG-ROOT",
+            ),
+            patch(
+                "ifitwala_ed.hr.expense_claim_permissions.get_descendant_organizations",
+                return_value=["ORG-ROOT"],
+            ),
+            patch(
+                "ifitwala_ed.hr.expense_claim_permissions.get_user_base_school",
+                return_value="SCH-ROOT",
+            ),
+            patch(
+                "ifitwala_ed.hr.expense_claim_permissions.get_descendant_schools",
+                return_value=["SCH-ROOT"],
+            ),
+        ):
+            allowed = expense_claim_permissions.expense_claim_has_permission(
+                doc,
+                user="finance@example.com",
+                ptype="read",
+            )
+
+        self.assertFalse(allowed)

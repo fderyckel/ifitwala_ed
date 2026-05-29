@@ -39,7 +39,7 @@
 							tabindex="0"
 							@click="emitClose('programmatic')"
 						>
-							Close
+							{{ __('Close') }}
 						</button>
 
 						<div class="if-overlay__header px-6 pt-6">
@@ -52,7 +52,7 @@
 							<button
 								type="button"
 								class="if-overlay__close"
-								aria-label="Close"
+								:aria-label="__('Close')"
 								@click="emitClose('programmatic')"
 							>
 								<FeatherIcon name="x" class="h-5 w-5" />
@@ -67,7 +67,7 @@
 							>
 								<div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
 									<div class="min-w-0">
-										<p class="type-body-strong text-rose-900">Action blocked</p>
+										<p class="type-body-strong text-rose-900">{{ __('Action blocked') }}</p>
 										<p class="mt-1 whitespace-pre-wrap type-caption text-rose-900/80">
 											{{ errorMessage }}
 										</p>
@@ -75,8 +75,11 @@
 											v-if="showStudentConflictRecovery"
 											class="mt-2 type-caption text-rose-900/70"
 										>
-											The form is still open. Use the common time finder to pick the next free slot
-											for this group.
+											{{
+												__(
+													'The form is still open. Use the common time finder to pick the next free slot for this group.'
+												)
+											}}
 										</p>
 									</div>
 									<button
@@ -86,7 +89,7 @@
 										:disabled="submitting || slotLoading"
 										@click="recoverFromStudentConflict"
 									>
-										Find common times
+										{{ __('Find common times') }}
 									</button>
 								</div>
 							</div>
@@ -112,7 +115,7 @@
 										v-if="typeLocked"
 										class="rounded-full bg-sky/25 px-2.5 py-1 type-caption text-canopy"
 									>
-										Mode locked by entry context
+										{{ __('Mode locked by entry context') }}
 									</span>
 								</div>
 							</div>
@@ -130,7 +133,7 @@
 									<div class="rounded-2xl border border-border/70 bg-white p-4 shadow-soft">
 										<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 											<div class="space-y-1">
-												<p class="type-overline text-ink/55">Meeting workflow</p>
+												<p class="type-overline text-ink/55">{{ __('Meeting workflow') }}</p>
 												<h3 class="type-h3 text-ink">{{ meetingModeTitle }}</h3>
 												<p class="type-caption text-ink/70">
 													{{ meetingModeDescription }}
@@ -145,18 +148,18 @@
 											class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)]"
 										>
 											<div class="space-y-1">
-												<label class="type-label">Meeting name</label>
+												<label class="type-label">{{ __('Meeting name') }}</label>
 												<FormControl
 													type="text"
 													:model-value="meetingForm.meeting_name"
-													placeholder="Family support meeting"
+													:placeholder="__('Family support meeting')"
 													:disabled="submitting"
 													@update:modelValue="value => updateMeetingField('meeting_name', value)"
 												/>
 											</div>
 
 											<div class="space-y-1">
-												<label class="type-label">Host school</label>
+												<label class="type-label">{{ __('Host school') }}</label>
 												<FormControl
 													type="select"
 													:options="schoolSelectOptions"
@@ -170,7 +173,7 @@
 										</div>
 
 										<div class="mt-4 space-y-2">
-											<label class="type-label">Planning format</label>
+											<label class="type-label">{{ __('Planning format') }}</label>
 											<div class="flex flex-wrap gap-2">
 												<button
 													v-for="format in meetingFormatOptions"
@@ -189,8 +192,11 @@
 												</button>
 											</div>
 											<p class="type-caption text-ink/60">
-												Virtual meetings skip room suggestions. Hybrid keeps both room and link
-												fields available.
+												{{
+													__(
+														'Virtual meetings skip room suggestions. Hybrid keeps both room and link fields available.'
+													)
+												}}
 											</p>
 										</div>
 									</div>
@@ -198,10 +204,13 @@
 									<div class="rounded-2xl border border-border/70 bg-white p-4 shadow-soft">
 										<div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
 											<div class="space-y-1">
-												<h3 class="type-h3 text-ink">Attendees</h3>
+												<h3 class="type-h3 text-ink">{{ __('Attendees') }}</h3>
 												<p class="type-caption text-ink/70">
-													Add colleagues, students, and guardians directly. The organizer is always
-													included automatically.
+													{{
+														__(
+															'Add colleagues, students, and guardians directly. The organizer is always included automatically.'
+														)
+													}}
 												</p>
 											</div>
 											<span
@@ -223,7 +232,7 @@
 														{{ attendeeKindLabel(attendee.kind) }}
 														<span v-if="attendee.meta"> · {{ attendee.meta }}</span>
 														<span v-if="isLockedTeamAttendee(attendee.value)">
-															· Team context</span
+															{{ __('· Team context') }}</span
 														>
 													</p>
 												</div>
@@ -246,7 +255,7 @@
 										</div>
 
 										<div class="mt-4 space-y-2">
-											<label class="type-label">Search people</label>
+											<label class="type-label">{{ __('Search people') }}</label>
 											<div class="flex flex-wrap gap-2">
 												<button
 													v-for="kind in attendeeKindOptions"
@@ -273,7 +282,7 @@
 											<FormControl
 												type="text"
 												:model-value="attendeeSearchQuery"
-												placeholder="Search by name or email"
+												:placeholder="__('Search by name or email')"
 												:disabled="submitting"
 												@update:modelValue="value => updateAttendeeSearchQuery(value)"
 											/>
@@ -282,7 +291,7 @@
 												class="flex items-center gap-2 rounded-2xl bg-slate-50 px-3 py-2 text-ink/70"
 											>
 												<Spinner class="h-4 w-4" />
-												<span class="type-caption">Searching people...</span>
+												<span class="type-caption">{{ __('Searching people...') }}</span>
 											</div>
 											<div
 												v-else-if="
@@ -310,7 +319,7 @@
 													<span
 														class="rounded-full bg-jacaranda px-3 py-1.5 type-button-label text-white"
 													>
-														Add
+														{{ __('Add') }}
 													</span>
 												</button>
 											</div>
@@ -336,7 +345,9 @@
 											<div class="space-y-1">
 												<label class="type-label">
 													{{
-														effectiveMeetingMode === 'team' ? 'Team context' : 'Bulk-add a team'
+														effectiveMeetingMode === 'team'
+															? __('Team context')
+															: __('Bulk-add a team')
 													}}
 												</label>
 												<FormControl
@@ -359,7 +370,9 @@
 													<Spinner v-if="teamHydrating" class="h-4 w-4" />
 													<span>
 														{{
-															effectiveMeetingMode === 'team' ? 'Refresh team roster' : 'Add team'
+															effectiveMeetingMode === 'team'
+																? __('Refresh team roster')
+																: __('Add team')
 														}}
 													</span>
 												</button>
@@ -368,8 +381,12 @@
 										<p class="mt-2 type-caption text-ink/60">
 											{{
 												effectiveMeetingMode === 'team'
-													? 'Team attendees are locked because this workflow was opened from team context.'
-													: 'Team bulk-add only affects the attendee list. This stays an ad-hoc meeting unless a dedicated team entry point opens it in team mode.'
+													? __(
+															'Team attendees are locked because this workflow was opened from team context.'
+														)
+													: __(
+															'Team bulk-add only affects the attendee list. This stays an ad-hoc meeting unless a dedicated team entry point opens it in team mode.'
+														)
 											}}
 										</p>
 									</div>
@@ -380,11 +397,13 @@
 									>
 										<div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
 											<div class="space-y-1">
-												<h3 class="type-h3 text-ink">Common time finder</h3>
+												<h3 class="type-h3 text-ink">{{ __('Common time finder') }}</h3>
 												<p class="type-caption text-ink/70">
-													Server-side suggestions use batched attendee availability checks and, for
-													in-person or hybrid meetings, only keep exact matches that still have a
-													free room in the selected school.
+													{{
+														__(
+															'Server-side suggestions use batched attendee availability checks and, for in-person or hybrid meetings, only keep exact matches that still have a free room in the selected school.'
+														)
+													}}
 												</p>
 											</div>
 											<button
@@ -394,13 +413,13 @@
 												@click="findCommonTimes"
 											>
 												<Spinner v-if="slotLoading" class="h-4 w-4" />
-												<span>Find common times</span>
+												<span>{{ __('Find common times') }}</span>
 											</button>
 										</div>
 
 										<div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
 											<div class="space-y-1">
-												<label class="type-label">Duration (minutes)</label>
+												<label class="type-label">{{ __('Duration (minutes)') }}</label>
 												<input
 													v-model="meetingForm.duration_minutes"
 													type="number"
@@ -412,7 +431,7 @@
 												/>
 											</div>
 											<div class="space-y-1">
-												<label class="type-label">Search from</label>
+												<label class="type-label">{{ __('Search from') }}</label>
 												<input
 													v-model="meetingForm.date_from"
 													type="date"
@@ -421,7 +440,7 @@
 												/>
 											</div>
 											<div class="space-y-1">
-												<label class="type-label">Search to</label>
+												<label class="type-label">{{ __('Search to') }}</label>
 												<input
 													v-model="meetingForm.date_to"
 													type="date"
@@ -430,7 +449,7 @@
 												/>
 											</div>
 											<div class="space-y-1">
-												<label class="type-label">Earliest start</label>
+												<label class="type-label">{{ __('Earliest start') }}</label>
 												<input
 													v-model="meetingForm.day_start_time"
 													type="time"
@@ -439,7 +458,7 @@
 												/>
 											</div>
 											<div class="space-y-1">
-												<label class="type-label">Latest end</label>
+												<label class="type-label">{{ __('Latest end') }}</label>
 												<input
 													v-model="meetingForm.day_end_time"
 													type="time"
@@ -452,7 +471,7 @@
 										<div class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
 											<div class="space-y-2">
 												<div class="flex items-center justify-between gap-2">
-													<h4 class="type-body-strong text-ink">Best common times</h4>
+													<h4 class="type-body-strong text-ink">{{ __('Best common times') }}</h4>
 													<span class="type-caption text-ink/55">
 														{{ exactMatchSummary }}
 													</span>
@@ -474,7 +493,13 @@
 																{{ slotDisplayLabel(slot) }}
 															</p>
 															<p class="type-caption text-ink/60">
-																{{ slot.date }} · {{ slot.start_time }} to {{ slot.end_time }}
+																{{
+																	__('{0} · {1} to {2}', [
+																		slot.date,
+																		slot.start_time,
+																		slot.end_time,
+																	])
+																}}
 															</p>
 															<p v-if="slot.suggested_room" class="type-caption text-canopy">
 																{{ slotRoomSummary(slot) }}
@@ -488,7 +513,7 @@
 																	: 'bg-slate-100 text-slate-token'
 															"
 														>
-															{{ index === 0 ? 'Best match' : 'Apply' }}
+															{{ index === 0 ? __('Best match') : __('Apply') }}
 														</span>
 													</button>
 												</div>
@@ -502,9 +527,11 @@
 
 											<div class="space-y-2">
 												<div class="flex items-center justify-between gap-2">
-													<h4 class="type-body-strong text-ink">Nearest alternatives</h4>
+													<h4 class="type-body-strong text-ink">
+														{{ __('Nearest alternatives') }}
+													</h4>
 													<span class="type-caption text-ink/55">
-														{{ fallbackSlotSuggestions.length }} partial matches
+														{{ __('{0} partial matches', [fallbackSlotSuggestions.length]) }}
 													</span>
 												</div>
 												<div
@@ -524,7 +551,13 @@
 																{{ slotDisplayLabel(slot) }}
 															</p>
 															<p class="type-caption text-ink/60">
-																{{ slot.date }} · {{ slot.start_time }} to {{ slot.end_time }}
+																{{
+																	__('{0} · {1} to {2}', [
+																		slot.date,
+																		slot.start_time,
+																		slot.end_time,
+																	])
+																}}
 															</p>
 															<p
 																v-if="showRoomAssistant"
@@ -537,8 +570,10 @@
 														<span
 															class="rounded-full bg-amber-100 px-2.5 py-1 type-caption text-amber-700"
 														>
-															{{ slot.blocked_count }} conflict{{
-																slot.blocked_count === 1 ? '' : 's'
+															{{
+																slot.blocked_count === 1
+																	? __('{0} conflict', [slot.blocked_count])
+																	: __('{0} conflicts', [slot.blocked_count])
 															}}
 														</span>
 													</button>
@@ -560,7 +595,7 @@
 
 										<div class="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
 											<div class="space-y-1">
-												<label class="type-label">Meeting date</label>
+												<label class="type-label">{{ __('Meeting date') }}</label>
 												<input
 													v-model="meetingForm.date"
 													type="date"
@@ -569,7 +604,7 @@
 												/>
 											</div>
 											<div class="space-y-1">
-												<label class="type-label">Start time</label>
+												<label class="type-label">{{ __('Start time') }}</label>
 												<input
 													v-model="meetingForm.start_time"
 													type="time"
@@ -578,7 +613,7 @@
 												/>
 											</div>
 											<div class="space-y-1">
-												<label class="type-label">End time</label>
+												<label class="type-label">{{ __('End time') }}</label>
 												<input
 													v-model="meetingForm.end_time"
 													type="time"
@@ -588,7 +623,11 @@
 											</div>
 										</div>
 										<p class="mt-2 type-caption text-ink/60">
-											You can accept a suggestion above or set the final date and time manually.
+											{{
+												__(
+													'You can accept a suggestion above or set the final date and time manually.'
+												)
+											}}
 										</p>
 									</div>
 
@@ -598,11 +637,13 @@
 									>
 										<div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
 											<div class="space-y-1">
-												<h3 class="type-h3 text-ink">Room suggestions</h3>
+												<h3 class="type-h3 text-ink">{{ __('Room suggestions') }}</h3>
 												<p class="type-caption text-ink/70">
-													Available rooms are ranked server-side from live location bookings.
-													Applying a room-aware common time also prefills the best-ranked free
-													room.
+													{{
+														__(
+															'Available rooms are ranked server-side from live location bookings. Applying a room-aware common time also prefills the best-ranked free room.'
+														)
+													}}
 												</p>
 											</div>
 											<button
@@ -612,7 +653,7 @@
 												@click="findRoomSuggestions"
 											>
 												<Spinner v-if="roomLoading" class="h-4 w-4" />
-												<span>Suggest rooms</span>
+												<span>{{ __('Suggest rooms') }}</span>
 											</button>
 										</div>
 
@@ -645,14 +686,14 @@
 															</span>
 															<span v-if="room.location_type_name && room.max_capacity"> · </span>
 															<span v-if="room.max_capacity">
-																Capacity {{ room.max_capacity }}
+																{{ __('Capacity {0}', [room.max_capacity]) }}
 															</span>
 														</p>
 													</div>
 													<span
 														class="rounded-full bg-slate-100 px-2.5 py-1 type-caption text-slate-token"
 													>
-														Use room
+														{{ __('Use room') }}
 													</span>
 												</button>
 											</div>
@@ -665,7 +706,7 @@
 
 											<div class="space-y-3">
 												<div class="space-y-1">
-													<label class="type-label">Room type filter</label>
+													<label class="type-label">{{ __('Room type filter') }}</label>
 													<FormControl
 														type="select"
 														:options="meetingLocationTypeSelectOptions"
@@ -679,7 +720,7 @@
 													/>
 												</div>
 												<div class="space-y-1">
-													<label class="type-label">Location (optional)</label>
+													<label class="type-label">{{ __('Location (optional)') }}</label>
 													<FormControl
 														type="select"
 														:options="meetingLocationSelectOptions"
@@ -691,7 +732,11 @@
 													/>
 												</div>
 												<p class="type-caption text-ink/60">
-													Capacity target: {{ roomCapacityTarget }} people including organizer.
+													{{
+														__('Capacity target: {0} people including organizer.', [
+															roomCapacityTarget,
+														])
+													}}
 												</p>
 											</div>
 										</div>
@@ -707,7 +752,7 @@
 										<div class="rounded-2xl border border-border/70 bg-white p-4 shadow-soft">
 											<div class="space-y-3">
 												<div class="space-y-1">
-													<label class="type-label">Meeting category (optional)</label>
+													<label class="type-label">{{ __('Meeting category (optional)') }}</label>
 													<FormControl
 														type="select"
 														:options="meetingCategorySelectOptions"
@@ -721,11 +766,11 @@
 													/>
 												</div>
 												<div class="space-y-1">
-													<label class="type-label">Virtual link (optional)</label>
+													<label class="type-label">{{ __('Virtual link (optional)') }}</label>
 													<FormControl
 														type="text"
 														:model-value="meetingForm.virtual_meeting_link"
-														placeholder="https://..."
+														:placeholder="__('https://...')"
 														:disabled="submitting"
 														@update:modelValue="
 															value => updateMeetingField('virtual_meeting_link', value)
@@ -737,13 +782,13 @@
 
 										<div class="rounded-2xl border border-border/70 bg-white p-4 shadow-soft">
 											<div class="space-y-1">
-												<label class="type-label">Agenda (optional)</label>
+												<label class="type-label">{{ __('Agenda (optional)') }}</label>
 												<FormControl
 													type="textarea"
 													:rows="6"
 													:model-value="meetingForm.agenda"
 													:disabled="submitting"
-													placeholder="Purpose, outcomes, or discussion points..."
+													:placeholder="__('Purpose, outcomes, or discussion points...')"
 													@update:modelValue="value => updateMeetingField('agenda', value)"
 												/>
 											</div>
@@ -753,11 +798,11 @@
 
 								<section v-else class="space-y-4">
 									<div class="space-y-1">
-										<label class="type-label">Event subject</label>
+										<label class="type-label">{{ __('Event subject') }}</label>
 										<FormControl
 											type="text"
 											:model-value="schoolEventForm.subject"
-											placeholder="Parent workshop: assessment reporting"
+											:placeholder="__('Parent workshop: assessment reporting')"
 											:disabled="submitting"
 											@update:modelValue="value => updateSchoolEventField('subject', value)"
 										/>
@@ -765,7 +810,7 @@
 
 									<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
 										<div class="space-y-1">
-											<label class="type-label">School</label>
+											<label class="type-label">{{ __('School') }}</label>
 											<FormControl
 												type="select"
 												:options="schoolSelectOptions"
@@ -777,7 +822,7 @@
 											/>
 										</div>
 										<div class="space-y-1">
-											<label class="type-label">Event category</label>
+											<label class="type-label">{{ __('Event category') }}</label>
 											<FormControl
 												type="select"
 												:options="schoolEventCategorySelectOptions"
@@ -794,7 +839,7 @@
 
 									<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
 										<div class="space-y-1">
-											<label class="type-label">Starts on</label>
+											<label class="type-label">{{ __('Starts on') }}</label>
 											<input
 												v-model="schoolEventForm.starts_on"
 												type="datetime-local"
@@ -803,7 +848,7 @@
 											/>
 										</div>
 										<div class="space-y-1">
-											<label class="type-label">Ends on</label>
+											<label class="type-label">{{ __('Ends on') }}</label>
 											<input
 												v-model="schoolEventForm.ends_on"
 												type="datetime-local"
@@ -814,7 +859,7 @@
 									</div>
 
 									<div class="space-y-1">
-										<label class="type-label">Audience type</label>
+										<label class="type-label">{{ __('Audience type') }}</label>
 										<FormControl
 											type="select"
 											:options="audienceTypeSelectOptions"
@@ -830,7 +875,7 @@
 										v-if="schoolEventForm.audience_type === 'Employees in Team'"
 										class="space-y-1"
 									>
-										<label class="type-label">Audience team</label>
+										<label class="type-label">{{ __('Audience team') }}</label>
 										<FormControl
 											type="select"
 											:options="schoolEventTeamSelectOptions"
@@ -846,7 +891,7 @@
 										v-if="schoolEventForm.audience_type === 'Students in Student Group'"
 										class="space-y-1"
 									>
-										<label class="type-label">Audience student group</label>
+										<label class="type-label">{{ __('Audience student group') }}</label>
 										<FormControl
 											type="select"
 											:options="studentGroupSelectOptions"
@@ -862,7 +907,7 @@
 
 									<div class="grid grid-cols-1 gap-3 md:grid-cols-2">
 										<div class="space-y-1">
-											<label class="type-label">Location (optional)</label>
+											<label class="type-label">{{ __('Location (optional)') }}</label>
 											<FormControl
 												type="select"
 												:options="schoolEventLocationSelectOptions"
@@ -881,7 +926,7 @@
 													class="rounded border-border/70"
 													:disabled="submitting"
 												/>
-												All-day event
+												{{ __('All-day event') }}
 											</label>
 											<label class="flex items-center gap-2 type-caption text-ink/80">
 												<input
@@ -890,7 +935,7 @@
 													class="rounded border-border/70"
 													:disabled="submitting"
 												/>
-												Include guardians
+												{{ __('Include guardians') }}
 											</label>
 											<label class="flex items-center gap-2 type-caption text-ink/80">
 												<input
@@ -899,31 +944,33 @@
 													class="rounded border-border/70"
 													:disabled="submitting"
 												/>
-												Include students
+												{{ __('Include students') }}
 											</label>
 										</div>
 									</div>
 
 									<div class="space-y-1">
-										<label class="type-label">Description (optional)</label>
+										<label class="type-label">{{ __('Description (optional)') }}</label>
 										<FormControl
 											type="textarea"
 											:rows="5"
 											:model-value="schoolEventForm.description"
 											:disabled="submitting"
-											placeholder="Share event details and expectations..."
+											:placeholder="__('Share event details and expectations...')"
 											@update:modelValue="value => updateSchoolEventField('description', value)"
 										/>
 									</div>
 
 									<div class="rounded-2xl border border-border/70 bg-sand/20 p-4 shadow-soft">
 										<div class="space-y-1">
-											<p class="type-overline text-ink/55">Communications</p>
-											<h3 class="type-h3 text-ink">Calendar item vs announcement</h3>
+											<p class="type-overline text-ink/55">{{ __('Communications') }}</p>
+											<h3 class="type-h3 text-ink">{{ __('Calendar item vs announcement') }}</h3>
 											<p class="type-caption text-ink/70">
-												This school event creates the calendar item. If families or students also
-												need a portal announcement with read-state, publish it here in the same
-												workflow.
+												{{
+													__(
+														'This school event creates the calendar item. If families or students also need a portal announcement with read-state, publish it here in the same workflow.'
+													)
+												}}
 											</p>
 										</div>
 
@@ -941,11 +988,14 @@
 											/>
 											<span>
 												<span class="block type-body-strong text-ink">
-													Also publish announcement
+													{{ __('Also publish announcement') }}
 												</span>
 												<span class="mt-1 block type-caption text-ink/65">
-													Recommended when this event is for guardians or students and should
-													appear in Communications as well as the calendar.
+													{{
+														__(
+															'Recommended when this event is for guardians or students and should appear in Communications as well as the calendar.'
+														)
+													}}
 												</span>
 											</span>
 										</label>
@@ -958,19 +1008,21 @@
 										</p>
 
 										<div v-if="schoolEventForm.publish_announcement" class="mt-4 space-y-1">
-											<label class="type-label">Announcement message (optional)</label>
+											<label class="type-label">{{ __('Announcement message (optional)') }}</label>
 											<FormControl
 												type="textarea"
 												:rows="5"
 												:model-value="schoolEventForm.announcement_message"
 												:disabled="submitting"
-												placeholder="What should families or students read in Communications?"
+												:placeholder="
+													__('What should families or students read in Communications?')
+												"
 												@update:modelValue="
 													value => updateSchoolEventField('announcement_message', value)
 												"
 											/>
 											<p class="type-caption text-ink/60">
-												If you leave this blank, the event description above is reused.
+												{{ __('If you leave this blank, the event description above is reused.') }}
 											</p>
 										</div>
 									</div>
@@ -979,7 +1031,7 @@
 										v-if="schoolEventForm.audience_type === 'Custom Users'"
 										class="type-caption text-ink/65"
 									>
-										Custom Users audience will include you as the initial participant.
+										{{ __('Custom Users audience will include you as the initial participant.') }}
 									</p>
 								</section>
 							</form>
@@ -994,7 +1046,7 @@
 								:disabled="submitting"
 								@click="emitClose('programmatic')"
 							>
-								Cancel
+								{{ __('Cancel') }}
 							</button>
 							<button
 								type="button"
@@ -1024,6 +1076,7 @@ import {
 import { FeatherIcon, FormControl, Spinner } from 'frappe-ui';
 
 import { formatHumanDateTimeFields } from '@/lib/datetime';
+import { __ } from '@/lib/i18n';
 import {
 	createMeetingQuick,
 	createSchoolEventQuick,
@@ -1152,9 +1205,9 @@ const schoolEventForm = reactive({
 });
 
 const meetingFormatOptions: MeetingFormatOption[] = [
-	{ value: 'in_person', label: 'In person' },
-	{ value: 'virtual', label: 'Virtual' },
-	{ value: 'hybrid', label: 'Hybrid' },
+	{ value: 'in_person', label: __('In person') },
+	{ value: 'virtual', label: __('Virtual') },
+	{ value: 'hybrid', label: __('Hybrid') },
 ];
 
 const typeLocked = computed(() => Boolean(props.lockEventType && props.eventType));
@@ -1173,30 +1226,38 @@ const hasMeetingAccess = computed(() => Boolean(options.value?.can_create_meetin
 const hasSchoolEventAccess = computed(() => Boolean(options.value?.can_create_school_event));
 
 const overlayTitle = computed(() => {
-	if (hasMeetingAccess.value && !hasSchoolEventAccess.value) return 'Schedule meeting';
-	return 'Create event';
+	if (hasMeetingAccess.value && !hasSchoolEventAccess.value) return __('Schedule meeting');
+	return __('Create event');
 });
 
 const overlayDescription = computed(() => {
 	if (activeType.value === 'meeting') {
-		return 'Invite colleagues, students, or guardians, rank common free times, and pick an available room without leaving Staff Home.';
+		return __(
+			'Invite colleagues, students, or guardians, rank common free times, and pick an available room without leaving Staff Home.'
+		);
 	}
-	return 'Create a school event with the same validations and workflows as the core calendar DocTypes.';
+	return __(
+		'Create a school event with the same validations and workflows as the core calendar DocTypes.'
+	);
 });
 
 const meetingModeTitle = computed(() =>
-	effectiveMeetingMode.value === 'team' ? 'Team scheduling' : 'Ad-hoc scheduling'
+	effectiveMeetingMode.value === 'team' ? __('Team scheduling') : __('Ad-hoc scheduling')
 );
 
 const meetingModeDescription = computed(() => {
 	if (effectiveMeetingMode.value === 'team') {
-		return 'The team context owns the core attendee list. You can still add extra people around that team.';
+		return __(
+			'The team context owns the core attendee list. You can still add extra people around that team.'
+		);
 	}
-	return 'Start from the people you need, then let the system rank common times and free rooms.';
+	return __(
+		'Start from the people you need, then let the system rank common times and free rooms.'
+	);
 });
 
 const meetingModeBadge = computed(() =>
-	effectiveMeetingMode.value === 'team' ? 'Team context' : 'Flexible attendee list'
+	effectiveMeetingMode.value === 'team' ? __('Team context') : __('Flexible attendee list')
 );
 
 const canSwitchType = computed(
@@ -1204,8 +1265,8 @@ const canSwitchType = computed(
 );
 
 const typeOptions = computed<TypeOption[]>(() => [
-	{ value: 'meeting', label: 'Meeting', enabled: hasMeetingAccess.value },
-	{ value: 'school_event', label: 'School event', enabled: hasSchoolEventAccess.value },
+	{ value: 'meeting', label: __('Meeting'), enabled: hasMeetingAccess.value },
+	{ value: 'school_event', label: __('School event'), enabled: hasSchoolEventAccess.value },
 ]);
 
 const attendeeKindOptions = computed<AttendeeKindOption[]>(
@@ -1215,18 +1276,19 @@ const attendeeKindOptions = computed<AttendeeKindOption[]>(
 const teamSelectOptions = computed<SelectOption[]>(() => [
 	{
 		value: '',
-		label: effectiveMeetingMode.value === 'team' ? 'Select team' : 'Select team to bulk-add',
+		label:
+			effectiveMeetingMode.value === 'team' ? __('Select team') : __('Select team to bulk-add'),
 	},
 	...(options.value?.teams || []),
 ]);
 
 const schoolEventTeamSelectOptions = computed<SelectOption[]>(() => [
-	{ value: '', label: 'Select team' },
+	{ value: '', label: __('Select team') },
 	...(options.value?.teams || []),
 ]);
 
 const schoolSelectOptions = computed<SelectOption[]>(() => [
-	{ value: '', label: 'Select school' },
+	{ value: '', label: __('Select school') },
 	...(options.value?.schools || []),
 ]);
 
@@ -1251,7 +1313,7 @@ function schoolScopedLocationTypeRows(school: string, fallback: SelectOption[] =
 }
 
 const studentGroupSelectOptions = computed<SelectOption[]>(() => [
-	{ value: '', label: 'Select student group' },
+	{ value: '', label: __('Select student group') },
 	...(options.value?.student_groups || []),
 ]);
 
@@ -1263,12 +1325,12 @@ const meetingLocationRows = computed<LocationOption[]>(() => {
 });
 
 const meetingLocationTypeSelectOptions = computed<SelectOption[]>(() => [
-	{ value: '', label: 'All room types' },
+	{ value: '', label: __('All room types') },
 	...schoolScopedLocationTypeRows(meetingForm.school, options.value?.location_types || []),
 ]);
 
 const meetingLocationSelectOptions = computed<SelectOption[]>(() => [
-	{ value: '', label: 'No location' },
+	{ value: '', label: __('No location') },
 	...meetingLocationRows.value.map(row => ({
 		value: row.value,
 		label: row.label,
@@ -1276,7 +1338,7 @@ const meetingLocationSelectOptions = computed<SelectOption[]>(() => [
 ]);
 
 const schoolEventLocationSelectOptions = computed<SelectOption[]>(() => [
-	{ value: '', label: 'No location' },
+	{ value: '', label: __('No location') },
 	...schoolScopedLocationRows(schoolEventForm.school, options.value?.locations || []).map(row => ({
 		value: row.value,
 		label: row.label,
@@ -1284,7 +1346,7 @@ const schoolEventLocationSelectOptions = computed<SelectOption[]>(() => [
 ]);
 
 const meetingCategorySelectOptions = computed<SelectOption[]>(() => [
-	{ value: '', label: 'No category' },
+	{ value: '', label: __('No category') },
 	...((options.value?.meeting_categories || []).map(value => ({
 		value,
 		label: value,
@@ -1313,14 +1375,16 @@ const publishAnnouncementBlockedReason = computed(() => {
 	if (!announcementPublishCapability.value?.enabled) {
 		return (
 			announcementPublishCapability.value?.blocked_reason ||
-			'You do not currently have access to publish org communications from this workflow.'
+			__('You do not currently have access to publish org communications from this workflow.')
 		);
 	}
 	if (schoolEventForm.audience_type === 'Custom Users') {
-		return 'Custom Users events can stay calendar-only here. Publish a separate communication if you need message history.';
+		return __(
+			'Custom Users events can stay calendar-only here. Publish a separate communication if you need message history.'
+		);
 	}
 	if (schoolEventForm.audience_type === 'Employees in Team' && schoolEventForm.include_students) {
-		return "Team announcements cannot mirror 'Include students' from this event audience.";
+		return __("Team announcements cannot mirror 'Include students' from this event audience.");
 	}
 	return '';
 });
@@ -1332,13 +1396,17 @@ const canPublishAnnouncement = computed(
 );
 
 const submitLabel = computed(() => {
-	if (activeType.value === 'meeting') return 'Create meeting';
-	return schoolEventForm.publish_announcement ? 'Create event and publish' : 'Create school event';
+	if (activeType.value === 'meeting') return __('Create meeting');
+	return schoolEventForm.publish_announcement
+		? __('Create event and publish')
+		: __('Create school event');
 });
 
 const selectedAttendeeCountLabel = computed(() => {
 	const invitees = selectedAttendees.value.length;
-	return `${invitees} invitee${invitees === 1 ? '' : 's'} + organizer`;
+	return invitees === 1
+		? __('{0} invitee + organizer', [invitees])
+		: __('{0} invitees + organizer', [invitees]);
 });
 
 const selectedAttendeeInputs = computed<MeetingAttendeeInput[]>(() =>
@@ -1364,9 +1432,13 @@ const showStudentConflictRecovery = computed(
 
 const exactMatchSummary = computed(() => {
 	if (!showRoomAssistant.value) {
-		return `${slotSuggestions.value.length} exact match${slotSuggestions.value.length === 1 ? '' : 'es'}`;
+		return slotSuggestions.value.length === 1
+			? __('{0} exact match', [slotSuggestions.value.length])
+			: __('{0} exact matches', [slotSuggestions.value.length]);
 	}
-	return `${slotSuggestions.value.length} room-safe match${slotSuggestions.value.length === 1 ? '' : 'es'}`;
+	return slotSuggestions.value.length === 1
+		? __('{0} room-safe match', [slotSuggestions.value.length])
+		: __('{0} room-safe matches', [slotSuggestions.value.length]);
 });
 
 function emitAfterLeave() {
@@ -1760,11 +1832,11 @@ function updateAttendeeSearchQuery(value: unknown) {
 function attendeeKindLabel(kind: MeetingAttendeeKind) {
 	switch (kind) {
 		case 'employee':
-			return 'Employee';
+			return __('Employee');
 		case 'student':
-			return 'Student';
+			return __('Student');
 		case 'guardian':
-			return 'Guardian';
+			return __('Guardian');
 		default:
 			return kind;
 	}
@@ -1830,13 +1902,13 @@ function addAttendee(attendee: MeetingAttendee) {
 	clearErrorState();
 	const added = mergeSelectedAttendees([attendee]);
 	attendeePanelMessage.value = added
-		? `${attendee.label} added to the meeting.`
-		: `${attendee.label} is already in the attendee list.`;
+		? __('{0} added to the meeting.', [attendee.label])
+		: __('{0} is already in the attendee list.', [attendee.label]);
 }
 
 function removeAttendee(userId: string) {
 	if (isLockedTeamAttendee(userId)) {
-		attendeePanelMessage.value = 'Team attendees are locked by the current entry context.';
+		attendeePanelMessage.value = __('Team attendees are locked by the current entry context.');
 		return;
 	}
 	clearErrorState();
@@ -1880,7 +1952,7 @@ async function runAttendeeSearch() {
 async function addTeamAttendees(optionsArg?: { auto?: boolean }) {
 	if (teamHydrating.value) return;
 	if (!meetingForm.team) {
-		setErrorState('Choose a team before loading team attendees.');
+		setErrorState(__('Choose a team before loading team attendees.'));
 		return;
 	}
 	if (optionsArg?.auto && teamHydratedFor.value === meetingForm.team) return;
@@ -1897,15 +1969,19 @@ async function addTeamAttendees(optionsArg?: { auto?: boolean }) {
 		if (effectiveMeetingMode.value === 'team') {
 			applyLockedTeamAttendees(teamMembers);
 			attendeePanelMessage.value = teamMembers.length
-				? `${teamMembers.length} team attendee${teamMembers.length === 1 ? '' : 's'} loaded.`
-				: 'The selected team has no active users to invite.';
+				? teamMembers.length === 1
+					? __('{0} team attendee loaded.', [teamMembers.length])
+					: __('{0} team attendees loaded.', [teamMembers.length])
+				: __('The selected team has no active users to invite.');
 		} else {
 			const added = mergeSelectedAttendees(teamMembers);
 			attendeePanelMessage.value = !teamMembers.length
-				? 'The selected team has no active users to invite.'
+				? __('The selected team has no active users to invite.')
 				: added
-					? `Added ${added} team attendee${added === 1 ? '' : 's'}.`
-					: 'All team members are already in the attendee list.';
+					? added === 1
+						? __('Added {0} team attendee.', [added])
+						: __('Added {0} team attendees.', [added])
+					: __('All team members are already in the attendee list.');
 		}
 
 		teamHydratedFor.value = requestedTeam;
@@ -1921,39 +1997,41 @@ async function addTeamAttendees(optionsArg?: { auto?: boolean }) {
 
 function validateCommonTimeRequest() {
 	if (!selectedAttendees.value.length) {
-		return 'Add at least one attendee before asking for common times.';
+		return __('Add at least one attendee before asking for common times.');
 	}
 	if (showRoomAssistant.value && !meetingForm.school) {
-		return 'Host school is required before ranking common times that include room availability.';
+		return __(
+			'Host school is required before ranking common times that include room availability.'
+		);
 	}
 	if (!meetingForm.date_from || !meetingForm.date_to) {
-		return 'Search start and end dates are required.';
+		return __('Search start and end dates are required.');
 	}
 	if (!meetingForm.day_start_time || !meetingForm.day_end_time) {
-		return 'Earliest start and latest end are required.';
+		return __('Earliest start and latest end are required.');
 	}
 
 	const duration = coerceDurationMinutes(meetingForm.duration_minutes);
 	if (!duration) {
-		return 'Duration must be between 15 and 240 minutes.';
+		return __('Duration must be between 15 and 240 minutes.');
 	}
 
 	const start = parseDateTime(`${meetingForm.date_from}T${meetingForm.day_start_time}`);
 	const end = parseDateTime(`${meetingForm.date_from}T${meetingForm.day_end_time}`);
 	if (!start || !end || end <= start) {
-		return 'Latest end must be later than earliest start.';
+		return __('Latest end must be later than earliest start.');
 	}
 
 	const from = parseDateTime(`${meetingForm.date_from}T00:00`);
 	const to = parseDateTime(`${meetingForm.date_to}T00:00`);
 	if (!from || !to || to < from) {
-		return 'Search end date must be on or after search start date.';
+		return __('Search end date must be on or after search start date.');
 	}
 
 	const rangeMs = to.getTime() - from.getTime();
 	const rangeDays = Math.floor(rangeMs / (24 * 60 * 60 * 1000)) + 1;
 	if (rangeDays > 14) {
-		return 'Search window cannot exceed 14 days.';
+		return __('Search window cannot exceed 14 days.');
 	}
 
 	return null;
@@ -1961,72 +2039,74 @@ function validateCommonTimeRequest() {
 
 function validateRoomRequest() {
 	if (meetingForm.meeting_format === 'virtual') {
-		return 'Virtual meetings do not require a room.';
+		return __('Virtual meetings do not require a room.');
 	}
-	if (!meetingForm.school) return 'Host school is required before suggesting rooms.';
-	if (!meetingForm.date) return 'Meeting date is required before suggesting rooms.';
+	if (!meetingForm.school) return __('Host school is required before suggesting rooms.');
+	if (!meetingForm.date) return __('Meeting date is required before suggesting rooms.');
 	if (!meetingForm.start_time || !meetingForm.end_time) {
-		return 'Start and end times are required before suggesting rooms.';
+		return __('Start and end times are required before suggesting rooms.');
 	}
 
 	const start = parseDateTime(`${meetingForm.date}T${meetingForm.start_time}`);
 	const end = parseDateTime(`${meetingForm.date}T${meetingForm.end_time}`);
 	if (!start || !end || end <= start) {
-		return 'Meeting end time must be later than the start time before suggesting rooms.';
+		return __('Meeting end time must be later than the start time before suggesting rooms.');
 	}
 
 	return null;
 }
 
 function validateMeeting() {
-	if (!meetingForm.meeting_name) return 'Meeting name is required.';
-	if (!meetingForm.school) return 'Host school is required.';
+	if (!meetingForm.meeting_name) return __('Meeting name is required.');
+	if (!meetingForm.school) return __('Host school is required.');
 	if (!selectedAttendees.value.length) {
-		return 'Add at least one attendee before creating the meeting.';
+		return __('Add at least one attendee before creating the meeting.');
 	}
-	if (!meetingForm.date) return 'Meeting date is required.';
+	if (!meetingForm.date) return __('Meeting date is required.');
 	if (!meetingForm.start_time || !meetingForm.end_time) {
-		return 'Start and end times are required.';
+		return __('Start and end times are required.');
 	}
 
 	const start = parseDateTime(`${meetingForm.date}T${meetingForm.start_time}`);
 	const end = parseDateTime(`${meetingForm.date}T${meetingForm.end_time}`);
-	if (!start || !end) return 'Meeting date/time is invalid.';
-	if (end <= start) return 'Meeting end time must be later than start time.';
+	if (!start || !end) return __('Meeting date/time is invalid.');
+	if (end <= start) return __('Meeting end time must be later than start time.');
 	return null;
 }
 
 function validateSchoolEvent() {
-	if (!schoolEventForm.subject) return 'Event subject is required.';
-	if (!schoolEventForm.school) return 'School is required.';
+	if (!schoolEventForm.subject) return __('Event subject is required.');
+	if (!schoolEventForm.school) return __('School is required.');
 	if (!schoolEventForm.starts_on || !schoolEventForm.ends_on) {
-		return 'Start and end datetime are required.';
+		return __('Start and end datetime are required.');
 	}
-	if (!schoolEventForm.audience_type) return 'Audience type is required.';
+	if (!schoolEventForm.audience_type) return __('Audience type is required.');
 
 	const start = parseDateTime(schoolEventForm.starts_on);
 	const end = parseDateTime(schoolEventForm.ends_on);
-	if (!start || !end) return 'School event datetime is invalid.';
-	if (end <= start) return 'School event end datetime must be later than start.';
+	if (!start || !end) return __('School event datetime is invalid.');
+	if (end <= start) return __('School event end datetime must be later than start.');
 
 	if (schoolEventForm.audience_type === 'Employees in Team' && !schoolEventForm.audience_team) {
-		return "Audience Team is required when audience type is 'Employees in Team'.";
+		return __('Audience team is required for this audience type.');
 	}
 	if (
 		schoolEventForm.audience_type === 'Students in Student Group' &&
 		!schoolEventForm.audience_student_group
 	) {
-		return "Audience Student Group is required when audience type is 'Students in Student Group'.";
+		return __('Audience student group is required for this audience type.');
 	}
 	if (schoolEventForm.publish_announcement) {
 		if (!canPublishAnnouncement.value) {
 			return (
 				publishAnnouncementBlockedReason.value ||
-				'Announcement publishing is not available for this event.'
+				__('Announcement publishing is not available for this event.')
 			);
 		}
 		if (!schoolEventForm.announcement_message.trim() && !schoolEventForm.description.trim()) {
-			return 'Add an announcement message or event description before publishing the announcement.';
+			return __(
+				'Add an announcement message or event description before publishing the announcement.'
+			);
 		}
 	}
 
@@ -2045,7 +2125,7 @@ async function findCommonTimes() {
 
 	const duration = coerceDurationMinutes(meetingForm.duration_minutes);
 	if (!duration) {
-		setErrorState('Duration must be between 15 and 240 minutes.');
+		setErrorState(__('Duration must be between 15 and 240 minutes.'));
 		return;
 	}
 
@@ -2103,8 +2183,12 @@ function slotRoomSummary(slot: MeetingSlotSuggestion) {
 	if (!slot.suggested_room) return '';
 	const roomCount = slot.available_room_count || 0;
 	const roomCountLabel =
-		roomCount > 1 ? ` · ${roomCount} rooms free` : roomCount === 1 ? ' · 1 room free' : '';
-	return `Best room: ${slot.suggested_room.label}${roomCountLabel}`;
+		roomCount > 1
+			? __(' · {0} rooms free', [roomCount])
+			: roomCount === 1
+				? __(' · 1 room free')
+				: '';
+	return __('Best room: {0}{1}', [slot.suggested_room.label, roomCountLabel]);
 }
 
 function fallbackRoomSummary(slot: MeetingSlotSuggestion) {
@@ -2204,7 +2288,7 @@ async function loadOptions() {
 		initializeForms();
 
 		if (!payload.can_create_meeting && !payload.can_create_school_event) {
-			setErrorState('You do not have permission to create meetings or school events.');
+			setErrorState(__('You do not have permission to create meetings or school events.'));
 			return;
 		}
 

@@ -12,6 +12,8 @@
   "school",
   "program",
   "program_offering",
+  "source_program_enrollment",
+  "initial_enrollment_billing_package",
   "adjustment_type",
   "against_sales_invoice",
   "posting_date",
@@ -81,6 +83,20 @@
    "fieldtype": "Link",
    "label": "Program Offering",
    "options": "Program Offering"
+  },
+  {
+   "fieldname": "source_program_enrollment",
+   "fieldtype": "Link",
+   "label": "Source Program Enrollment",
+   "options": "Program Enrollment",
+   "read_only": 1
+  },
+  {
+   "fieldname": "initial_enrollment_billing_package",
+   "fieldtype": "Link",
+   "label": "Initial Enrollment Billing Package",
+   "options": "Initial Enrollment Billing Package",
+   "read_only": 1
   },
   {
    "fieldname": "adjustment_type",
@@ -182,7 +198,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-01 00:00:00.000000",
+ "modified": "2026-05-29 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Sales Invoice",

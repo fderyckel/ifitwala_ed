@@ -270,6 +270,41 @@ class AccountingTestMixin:
         doc.insert()
         return doc
 
+    def make_initial_enrollment_billing_package(
+        self,
+        organization,
+        billable_offering,
+        program_offering=None,
+        academic_year=None,
+        school=None,
+        program=None,
+        default_rate=100,
+        is_active=1,
+    ):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Initial Enrollment Billing Package",
+                "package_name": f"Initial Enrollment {frappe.generate_hash(length=6)}",
+                "organization": organization,
+                "school": school,
+                "academic_year": academic_year,
+                "program": program,
+                "program_offering": program_offering,
+                "is_active": is_active,
+                "default_due_days": 0,
+                "items": [
+                    {
+                        "billable_offering": billable_offering,
+                        "qty": 1,
+                        "default_rate": default_rate,
+                        "requires_student": 1,
+                    }
+                ],
+            }
+        )
+        doc.insert()
+        return doc
+
     def make_payment_terms_template(self, organization, title=None):
         doc = frappe.get_doc(
             {

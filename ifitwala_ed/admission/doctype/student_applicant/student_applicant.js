@@ -157,6 +157,18 @@ frappe.ui.form.on("Student Applicant", {
 				filters: { school: frm.doc.school },
 			};
 		});
+		frm.set_query("term", () => {
+			if (!frm.doc.school || !frm.doc.academic_year) {
+				return { filters: { name: "" } };
+			}
+			return {
+				query: "ifitwala_ed.admission.doctype.student_applicant.student_applicant.term_intent_query",
+				filters: {
+					school: frm.doc.school,
+					academic_year: frm.doc.academic_year,
+				},
+			};
+		});
 		if (!frm.doc || frm.is_new()) {
 			return;
 		}
@@ -170,6 +182,21 @@ frappe.ui.form.on("Student Applicant", {
 		add_recommendation_actions(frm);
 		add_schedule_interview_action(frm);
 		add_admissions_context_actions(frm);
+	},
+
+	school(frm) {
+		if (frm.doc.academic_year) {
+			frm.set_value("academic_year", null);
+		}
+		if (frm.doc.term) {
+			frm.set_value("term", null);
+		}
+	},
+
+	academic_year(frm) {
+		if (frm.doc.term) {
+			frm.set_value("term", null);
+		}
 	},
 
 	setup_governed_image_upload(frm) {

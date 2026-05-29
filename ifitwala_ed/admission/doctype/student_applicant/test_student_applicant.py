@@ -10,7 +10,10 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 from PIL import Image
 
-from ifitwala_ed.admission.doctype.student_applicant.student_applicant import academic_year_intent_query
+from ifitwala_ed.admission.doctype.student_applicant.student_applicant import (
+    academic_year_intent_query,
+    term_intent_query,
+)
 
 
 class TestStudentApplicant(FrappeTestCase):
@@ -110,6 +113,43 @@ class TestStudentApplicant(FrappeTestCase):
         names = {r[0] for r in rows}
         self.assertIn(parent_ay, names)
 
+    def test_term_query_filters_by_academic_year_visibility_and_scope(self):
+        visible_term = self._create_term(self.visible_ay, school=self.leaf_school, visible=1, archived=0)
+        archived_term = self._create_term(self.visible_ay, school=self.leaf_school, visible=1, archived=1)
+        hidden_term = self._create_term(self.visible_ay, school=self.leaf_school, visible=0, archived=0)
+        other_ay = self._create_academic_year(self.leaf_school, "2028-2029", archived=0, visible=1)
+        other_term = self._create_term(other_ay, school=self.leaf_school, visible=1, archived=0)
+
+        rows = term_intent_query(
+            "Term",
+            "",
+            "name",
+            0,
+            50,
+            {"school": self.leaf_school, "academic_year": self.visible_ay},
+        )
+        names = {r[0] for r in rows}
+        self.assertIn(visible_term, names)
+        self.assertNotIn(archived_term, names)
+        self.assertNotIn(hidden_term, names)
+        self.assertNotIn(other_term, names)
+
+    def test_term_query_scope_leaf_ancestor(self):
+        orphan_leaf = self._create_school("Term Orphan Leaf", "TOL", self.org, parent=self.parent_school, is_group=0)
+        parent_ay = self._create_academic_year(self.parent_school, "2026-2027", archived=0, visible=1)
+        parent_term = self._create_term(parent_ay, school=self.parent_school, visible=1, archived=0)
+
+        rows = term_intent_query(
+            "Term",
+            "",
+            "name",
+            0,
+            50,
+            {"school": orphan_leaf, "academic_year": parent_ay},
+        )
+        names = {r[0] for r in rows}
+        self.assertIn(parent_term, names)
+
     def test_validation_blocks_archived_ay(self):
         applicant = frappe.get_doc(
             {
@@ -122,6 +162,43 @@ class TestStudentApplicant(FrappeTestCase):
                 "application_status": "Draft",
             }
         )
+        with self.assertRaises(frappe.ValidationError):
+            applicant.insert(ignore_permissions=True)
+
+    def test_validation_blocks_term_from_different_academic_year(self):
+        other_ay = self._create_academic_year(self.leaf_school, "2028-2029", archived=0, visible=1)
+        other_term = self._create_term(other_ay, school=self.leaf_school, visible=1, archived=0)
+        applicant = frappe.get_doc(
+            {
+                "doctype": "Student Applicant",
+                "first_name": "Test",
+                "last_name": "Applicant",
+                "organization": self.org,
+                "school": self.leaf_school,
+                "academic_year": self.visible_ay,
+                "term": other_term,
+                "application_status": "Draft",
+            }
+        )
+
+        with self.assertRaises(frappe.ValidationError):
+            applicant.insert(ignore_permissions=True)
+
+    def test_validation_blocks_term_not_visible_to_admissions(self):
+        hidden_term = self._create_term(self.visible_ay, school=self.leaf_school, visible=0, archived=0)
+        applicant = frappe.get_doc(
+            {
+                "doctype": "Student Applicant",
+                "first_name": "Test",
+                "last_name": "Applicant",
+                "organization": self.org,
+                "school": self.leaf_school,
+                "academic_year": self.visible_ay,
+                "term": hidden_term,
+                "application_status": "Draft",
+            }
+        )
+
         with self.assertRaises(frappe.ValidationError):
             applicant.insert(ignore_permissions=True)
 
@@ -1891,6 +1968,21 @@ class TestStudentApplicant(FrappeTestCase):
             }
         ).insert(ignore_permissions=True)
         self._created.append(("Academic Year", doc.name))
+        return doc.name
+
+    def _create_term(self, academic_year, school=None, term_name=None, archived=0, visible=1):
+        doc = frappe.get_doc(
+            {
+                "doctype": "Term",
+                "academic_year": academic_year,
+                "term_name": term_name or f"Term {frappe.generate_hash(length=6)}",
+                "term_type": "Academic",
+                "school": school,
+                "archived": archived,
+                "visible_to_admission": visible,
+            }
+        ).insert(ignore_permissions=True)
+        self._created.append(("Term", doc.name))
         return doc.name
 
     def _create_student_applicant(self, **overrides):

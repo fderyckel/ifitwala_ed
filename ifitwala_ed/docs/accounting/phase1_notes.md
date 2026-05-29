@@ -27,6 +27,7 @@ Phase 1 does not move any GL logic outside `Sales Invoice`.
 | `Program Billing Plan` | Program-specific billing structure for one `Program Offering` + `Academic Year` | tax posting logic, debtor balances |
 | `Billing Schedule` | Derived per-enrollment billing state | ledger posting, payment allocation |
 | `Billing Run` | Batch control for “generate all draft invoices for this program/period” | fee catalog setup, manual A/R settlement |
+| `Initial Enrollment Billing Package` | First-enrollment one-off invoice package | recurring tuition billing, returning-student billing |
 | `Sales Invoice` | Legal accounting document and only GL-posting billing document | enrollment-derived schedule generation |
 
 Locked interpretation:
@@ -46,6 +47,7 @@ Test refs: `ifitwala_ed/accounting/doctype/sales_invoice/test_sales_invoice.py`
 - `Program Enrollment` remains the source of truth for who is enrolled in a `Program Offering`.
 - `Sales Invoice` and `Sales Invoice Item` remain the billing document model.
 - `Payment Terms Template` remains the installment schedule model.
+- `Initial Enrollment Billing Package` reuses `Billable Offering`, `Program Enrollment`, and `Sales Invoice` for new-entrant one-off fees.
 
 ## 3. New Phase 1 Objects
 
@@ -187,7 +189,38 @@ Rules:
 - the run groups rows by `Account Holder + period_key`
 - generated invoices are always draft
 
-### 3.6 Billing Run Item
+### 3.6 Initial Enrollment Billing Package
+
+Status: Implemented
+Code refs: `ifitwala_ed/accounting/doctype/initial_enrollment_billing_package/initial_enrollment_billing_package.py`, `ifitwala_ed/accounting/doctype/initial_enrollment_billing_package/initial_enrollment_billing_package.json`
+Test refs: `ifitwala_ed/accounting/doctype/initial_enrollment_billing_package/test_initial_enrollment_billing_package.py`
+
+Purpose: define one-off new-entrant charges that apply after a student has a real `Program Enrollment`, without placing new-only charges in recurring program billing.
+
+Fields:
+
+- `organization`
+- optional `school`
+- optional `academic_year`
+- optional `program`
+- optional `program_offering`
+- `is_active`
+- `default_due_days`
+- optional `payment_terms_template`
+- `items`
+
+Rules:
+
+- a package must include at least one school, academic year, program, or program offering scope
+- package rows point to existing `Billable Offering` records
+- `Program` billable offerings are not allowed in the package
+- generated invoices are always draft `Sales Invoice` records
+- generated invoices link back to `source_program_enrollment` and `initial_enrollment_billing_package`
+- generation is idempotent for each package + program enrollment pair
+- bulk package generation skips returning students by requiring the source enrollment to be the student's first program enrollment
+- recurring fees that every enrolled student pays remain in `Program Billing Plan`
+
+### 3.7 Billing Run Item
 
 Status: Implemented
 Code refs: `ifitwala_ed/accounting/doctype/billing_run_item/billing_run_item.json`

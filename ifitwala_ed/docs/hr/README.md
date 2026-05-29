@@ -4,7 +4,7 @@ Status: Canonical index
 Code refs: Listed by canonical doc below
 Test refs: Listed by canonical doc below
 
-This folder covers HR runtime contracts for Employee, Designation, Leave, Professional Development, and historical HR audit notes.
+This folder covers HR runtime contracts for Employee, Designation, Leave, Professional Development, Expense Reimbursement, and historical HR audit notes.
 
 Read in this order:
 
@@ -12,7 +12,8 @@ Read in this order:
 2. `employee.md`
 3. `leave_management.md`
 4. `professional_development_governance.md`
-5. `notes_and_audits.md` only for historical context
+5. `expense_reimbursement.md`
+6. `notes_and_audits.md` only for historical context
 
 Canonical docs:
 
@@ -28,6 +29,9 @@ Canonical docs:
 - `professional_development_governance.md` - partial Phase 1 contract for Professional Development; core runtime exists, but lifecycle and hot-path test coverage is incomplete.
   Code refs: `ifitwala_ed/api/professional_development.py`, `ifitwala_ed/hr/professional_development_utils.py`, `ifitwala_ed/hr/professional_development_permissions.py`, `ifitwala_ed/hr/doctype/professional_development_request/professional_development_request.py`, `ifitwala_ed/ui-spa/src/pages/staff/ProfessionalDevelopment.vue`.
   Test refs: `ifitwala_ed/hr/test_professional_development_permissions.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/ProfessionalDevelopment.test.ts`.
+- `expense_reimbursement.md` - active Phase 1A contract for category-first employee reimbursement, governed receipt upload, approver decision, payable posting, and employee payment.
+  Code refs: `ifitwala_ed/hr/doctype/expense_claim/`, `ifitwala_ed/hr/expense_claims.py`, `ifitwala_ed/hr/expense_claim_permissions.py`, `ifitwala_ed/api/expense_claims.py`, `ifitwala_ed/api/expense_claim_receipts.py`, `ifitwala_ed/ui-spa/src/pages/staff/ExpenseClaims.vue`.
+  Test refs: `ifitwala_ed/hr/test_expense_claim_permissions.py`; Frappe site workflow tests pending.
 
 Non-authoritative notes:
 
@@ -36,4 +40,5 @@ Non-authoritative notes:
 Open implementation notes:
 
 - Professional Development needs broader backend lifecycle, API permission, and hot-path query regression coverage before its contract can be marked fully implemented.
+- Expense Reimbursement needs full Frappe site coverage for approval, payable posting, Payment Entry cancellation, and governed receipt grants.
 - Legacy Employee list-filter cleanup and legacy `Designation.organization = "All Organizations"` remediation live in one-shot patches, not runtime compatibility code.

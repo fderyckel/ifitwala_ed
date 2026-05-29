@@ -67,7 +67,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Program Billing",
-   "link_count": 4,
+   "link_count": 5,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -78,6 +78,16 @@
    "label": "Billable Offering",
    "link_count": 0,
    "link_to": "Billable Offering",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Initial Enrollment Billing Package",
+   "link_count": 0,
+   "link_to": "Initial Enrollment Billing Package",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -320,7 +330,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-05-28 19:14:33.000000",
+ "modified": "2026-05-29 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Accounting",

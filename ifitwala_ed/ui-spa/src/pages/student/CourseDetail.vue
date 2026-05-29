@@ -39,7 +39,7 @@
 					</div>
 
 					<div class="min-w-0">
-						<p class="type-overline text-ink/60">Learning Space</p>
+						<p class="type-overline text-ink/60">{{ __('Learning Space') }}</p>
 						<h1 class="mt-2 type-h1 text-ink">{{ learningSpace.course.course_name }}</h1>
 						<p v-if="learningSpace.course.course_group" class="mt-2 type-caption text-ink/70">
 							{{ learningSpace.course.course_group }}
@@ -48,7 +48,7 @@
 							{{
 								learningFocus.statement ||
 								learningSpace.course.description ||
-								'Your next learning steps appear here first.'
+								__('Your next learning steps appear here first.')
 							}}
 						</p>
 
@@ -59,14 +59,16 @@
 								class="chip transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
 								@click="jumpToSection(SECTION_IDS.unitJourney)"
 							>
-								{{ learningSpace.curriculum.counts.units }} units
+								{{ __('{0} units', [learningSpace.curriculum.counts.units]) }}
 							</button>
 							<button
 								type="button"
 								class="chip transition hover:border-jacaranda/40 hover:bg-jacaranda/5"
 								@click="jumpToSection(SECTION_IDS.assignedWork)"
 							>
-								{{ learningSpace.curriculum.counts.open_assigned_work }} open assignments
+								{{
+									__('{0} open assignments', [learningSpace.curriculum.counts.open_assigned_work])
+								}}
 							</button>
 						</div>
 
@@ -74,11 +76,14 @@
 							class="mt-5 grid gap-4 rounded-2xl border border-line-soft bg-surface-soft p-4 lg:grid-cols-[minmax(0,1fr),auto]"
 						>
 							<div>
-								<p class="type-caption text-ink/70">Current class</p>
+								<p class="type-caption text-ink/70">{{ __('Current class') }}</p>
 								<p class="mt-1 type-body-strong text-ink">{{ resolvedClassLabel }}</p>
 								<p class="mt-1 type-caption text-ink/70">
-									Everything here is already filtered for your class, your current unit, and your
-									next steps.
+									{{
+										__(
+											'Everything here is already filtered for your class, your current unit, and your next steps.'
+										)
+									}}
 								</p>
 							</div>
 
@@ -86,7 +91,7 @@
 								v-if="learningSpace.access.student_group_options.length > 1"
 								class="block space-y-2 lg:min-w-[16rem]"
 							>
-								<span class="type-caption text-ink/70">Switch class</span>
+								<span class="type-caption text-ink/70">{{ __('Switch class') }}</span>
 								<select
 									:value="learningSpace.access.resolved_student_group || ''"
 									class="if-input w-full"
@@ -122,7 +127,7 @@
 							class="if-action"
 							@click="jumpToSection(SECTION_IDS.sessionJourney)"
 						>
-							Current session
+							{{ __('Current session') }}
 						</button>
 						<button
 							v-if="hasVisibleResources"
@@ -130,14 +135,14 @@
 							class="if-button if-button--secondary"
 							@click="jumpToSection(SECTION_IDS.resources)"
 						>
-							Resources
+							{{ __('Resources') }}
 						</button>
 						<button
 							type="button"
 							class="if-button if-button--secondary"
 							@click="jumpToSection(SECTION_IDS.assignedWork)"
 						>
-							Assignments
+							{{ __('Assignments') }}
 						</button>
 						<RouterLink
 							:to="classUpdatesHref"
@@ -148,7 +153,7 @@
 									: 'if-button--secondary'
 							"
 						>
-							<span>Class Updates</span>
+							<span>{{ __('Class Updates') }}</span>
 							<span v-if="classUpdatesBadge" class="chip chip-focus px-2 py-0.5">
 								{{ classUpdatesBadge }}
 							</span>
@@ -156,7 +161,7 @@
 					</div>
 
 					<nav
-						aria-label="Jump to course sections"
+						:aria-label="__('Jump to course sections')"
 						class="if-segmented overflow-x-auto pb-1 xl:flex-wrap xl:justify-end xl:overflow-visible xl:pb-0"
 					>
 						<button
@@ -175,23 +180,27 @@
 
 			<section class="grid gap-6 xl:grid-cols-[minmax(0,1.2fr),minmax(0,0.8fr)]">
 				<article :id="SECTION_IDS.focus" class="card-surface scroll-mt-40 p-6">
-					<p class="type-overline text-ink/60">Learning Focus</p>
+					<p class="type-overline text-ink/60">{{ __('Learning Focus') }}</p>
 					<h2 class="mt-2 type-h2 text-ink">
-						{{ learningFocus.current_unit?.title || selectedUnit?.title || 'Current learning' }}
+						{{
+							learningFocus.current_unit?.title || selectedUnit?.title || __('Current learning')
+						}}
 					</h2>
 					<p class="mt-3 type-body text-ink/80">
 						{{
 							learningFocus.statement ||
-							'Your class focus will appear here when the plan is published.'
+							__('Your class focus will appear here when the plan is published.')
 						}}
 					</p>
 
 					<div class="mt-5 grid gap-4 lg:grid-cols-2">
 						<article class="rounded-2xl border border-line-soft bg-surface-soft p-4">
-							<p class="type-overline text-ink/60">Current Unit</p>
+							<p class="type-overline text-ink/60">{{ __('Current Unit') }}</p>
 							<p class="mt-2 type-body-strong text-ink">
 								{{
-									learningFocus.current_unit?.title || selectedUnit?.title || 'Not available yet'
+									learningFocus.current_unit?.title ||
+									selectedUnit?.title ||
+									__('Not available yet')
 								}}
 							</p>
 							<p v-if="selectedUnit?.overview" class="mt-2 type-caption text-ink/70">
@@ -200,19 +209,19 @@
 						</article>
 
 						<article class="rounded-2xl border border-line-soft bg-surface-soft p-4">
-							<p class="type-overline text-ink/60">Next Class Experience</p>
+							<p class="type-overline text-ink/60">{{ __('Next Class Experience') }}</p>
 							<p class="mt-2 type-body-strong text-ink">
 								{{
 									learningFocus.current_session?.title ||
 									selectedSession?.title ||
-									'Your next class will appear here soon'
+									__('Your next class will appear here soon')
 								}}
 							</p>
 							<p class="mt-2 type-caption text-ink/70">
 								{{
 									learningFocus.current_session?.session_date ||
 									selectedSession?.session_date ||
-									'Date not published yet'
+									__('Date not published yet')
 								}}
 							</p>
 							<p
@@ -235,14 +244,14 @@
 							class="if-action"
 							@click="jumpToSection(SECTION_IDS.sessionJourney)"
 						>
-							Continue current session
+							{{ __('Continue current session') }}
 						</button>
 						<button
 							type="button"
 							class="if-button if-button--secondary"
 							@click="jumpToSection(SECTION_IDS.assignedWork)"
 						>
-							Open assignments
+							{{ __('Open assignments') }}
 						</button>
 					</div>
 				</article>
@@ -250,8 +259,8 @@
 				<article :id="SECTION_IDS.nextActions" class="card-surface scroll-mt-40 p-6">
 					<div class="flex items-center justify-between gap-3">
 						<div>
-							<p class="type-overline text-ink/60">Next Actions</p>
-							<h2 class="mt-2 type-h2 text-ink">What to do next</h2>
+							<p class="type-overline text-ink/60">{{ __('Next Actions') }}</p>
+							<h2 class="mt-2 type-h2 text-ink">{{ __('What to do next') }}</h2>
 						</div>
 						<span class="chip">{{ nextActions.length }}</span>
 					</div>
@@ -261,7 +270,11 @@
 						class="mt-5 rounded-2xl border border-dashed border-line-soft p-4"
 					>
 						<p class="type-body text-ink/70">
-							You are up to date for now. Check back here for the next session or assignment.
+							{{
+								__(
+									'You are up to date for now. Check back here for the next session or assignment.'
+								)
+							}}
 						</p>
 					</div>
 
@@ -305,10 +318,10 @@
 			>
 				<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
 					<div>
-						<p class="type-overline text-ink/60">Resources</p>
-						<h2 class="mt-2 type-h2 text-ink">What you need</h2>
+						<p class="type-overline text-ink/60">{{ __('Resources') }}</p>
+						<h2 class="mt-2 type-h2 text-ink">{{ __('What you need') }}</h2>
 					</div>
-					<span class="chip chip-focus">{{ resourceStreamCount }} items</span>
+					<span class="chip chip-focus">{{ __('{0} items', [resourceStreamCount]) }}</span>
 				</div>
 
 				<div class="mt-5 grid gap-4 xl:grid-cols-2">
@@ -359,9 +372,9 @@
 					<section :id="SECTION_IDS.unitJourney" class="card-surface scroll-mt-40 p-5">
 						<div class="mb-4 flex items-center justify-between gap-3">
 							<div>
-								<h2 class="type-h3 text-ink">Unit Journey</h2>
+								<h2 class="type-h3 text-ink">{{ __('Unit Journey') }}</h2>
 								<p class="mt-1 type-caption text-ink/70">
-									Follow the shared unit sequence for your class.
+									{{ __('Follow the shared unit sequence for your class.') }}
 								</p>
 							</div>
 							<span class="chip">{{ unitNavigation.length }}</span>
@@ -390,12 +403,19 @@
 								"
 								@click="selectUnit(unit.unit_plan)"
 							>
-								<p class="type-overline text-ink/60">Unit {{ unit.unit_order || '—' }}</p>
+								<p class="type-overline text-ink/60">
+									{{ __('Unit {0}', [unit.unit_order || '—']) }}
+								</p>
 								<p class="mt-1 type-body-strong text-ink">{{ unit.title }}</p>
 								<p class="mt-1 type-caption text-ink/70">
-									{{ unit.session_count }} sessions · {{ unit.open_assigned_work_count }} open
+									{{
+										__('{0} sessions · {1} open', [
+											unit.session_count,
+											unit.open_assigned_work_count,
+										])
+									}}
 									<span v-if="unit.completed_assigned_work_count">
-										· {{ unit.completed_assigned_work_count }} completed
+										{{ __('· {0} completed', [unit.completed_assigned_work_count]) }}
 									</span>
 								</p>
 							</button>
@@ -411,8 +431,10 @@
 						<div class="card-surface p-5">
 							<div class="mb-4 flex items-center justify-between gap-3">
 								<div>
-									<h2 class="type-h3 text-ink">Session Journey</h2>
-									<p class="mt-1 type-caption text-ink/70">See the class flow for this unit.</p>
+									<h2 class="type-h3 text-ink">{{ __('Session Journey') }}</h2>
+									<p class="mt-1 type-caption text-ink/70">
+										{{ __('See the class flow for this unit.') }}
+									</p>
 								</div>
 								<span class="chip">{{ selectedUnit.sessions.length }}</span>
 							</div>
@@ -422,7 +444,7 @@
 								class="rounded-2xl border border-dashed border-line-soft p-4"
 							>
 								<p class="type-caption text-ink/70">
-									Your teacher has not published class sessions for this unit yet.
+									{{ __('Your teacher has not published class sessions for this unit yet.') }}
 								</p>
 							</div>
 
@@ -450,7 +472,9 @@
 						<section v-if="selectedSession" class="card-surface p-6">
 							<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 								<div>
-									<p class="type-overline text-ink/60">Selected Class Experience</p>
+									<p class="type-overline text-ink/60">
+										{{ __('Selected Class Experience') }}
+									</p>
 									<h2 class="mt-2 type-h2 text-ink">{{ selectedSession.title }}</h2>
 									<p class="mt-2 type-body text-ink/80">
 										{{ sessionTimingLabel(selectedSession) }}
@@ -461,7 +485,7 @@
 										{{ selectedSession.session_date }}
 									</span>
 									<span v-if="selectedSession.activities.length" class="chip">
-										{{ selectedSession.activities.length }} activities
+										{{ __('{0} activities', [selectedSession.activities.length]) }}
 									</span>
 								</div>
 							</div>
@@ -470,13 +494,13 @@
 								v-if="selectedSession.learning_goal"
 								class="mt-5 rounded-2xl border border-line-soft bg-surface-soft p-4"
 							>
-								<p class="type-overline text-ink/60">Learning goal</p>
+								<p class="type-overline text-ink/60">{{ __('Learning goal') }}</p>
 								<p class="mt-2 type-body text-ink/80">{{ selectedSession.learning_goal }}</p>
 							</div>
 
 							<div class="mt-6 space-y-4">
 								<div class="flex items-center justify-between gap-3">
-									<h3 class="type-h3 text-ink">How this session works</h3>
+									<h3 class="type-h3 text-ink">{{ __('How this session works') }}</h3>
 									<span class="chip">{{ selectedSession.activities.length }}</span>
 								</div>
 
@@ -485,7 +509,7 @@
 									class="rounded-2xl border border-dashed border-line-soft p-4"
 								>
 									<p class="type-caption text-ink/70">
-										Activity details have not been published for this session yet.
+										{{ __('Activity details have not been published for this session yet.') }}
 									</p>
 								</div>
 
@@ -501,7 +525,7 @@
 												{{ activity.activity_type }}
 											</span>
 											<span v-if="activity.estimated_minutes" class="chip">
-												{{ activity.estimated_minutes }} min
+												{{ __('{0} min', [activity.estimated_minutes]) }}
 											</span>
 										</div>
 										<p v-if="activity.student_direction" class="mt-3 type-body text-ink/80">
@@ -516,7 +540,9 @@
 
 							<div v-if="selectedSession.assigned_work.length" class="mt-6 space-y-3">
 								<div class="flex items-center justify-between gap-3">
-									<h3 class="type-h3 text-ink">Work connected to this class</h3>
+									<h3 class="type-h3 text-ink">
+										{{ __('Work connected to this class') }}
+									</h3>
 									<span class="chip">{{ selectedSession.assigned_work.length }}</span>
 								</div>
 								<div class="grid gap-3">
@@ -538,13 +564,13 @@
 											</span>
 										</div>
 										<p v-if="item.due_date" class="mt-2 type-caption text-ink/70">
-											Due {{ item.due_date }}
+											{{ __('Due {0}', [item.due_date]) }}
 										</p>
 										<div
 											v-if="item.instructions_html"
 											class="mt-4 rounded-2xl border border-line-soft bg-white p-4"
 										>
-											<p class="type-caption text-ink/60">Instructions</p>
+											<p class="type-caption text-ink/60">{{ __('Instructions') }}</p>
 											<div
 												class="mt-3 prose prose-sm max-w-none text-ink/80"
 												v-html="item.instructions_html"
@@ -574,7 +600,7 @@
 
 						<section v-else class="card-surface p-6">
 							<p class="type-body text-ink/70">
-								Select a session to see what your class is doing.
+								{{ __('Select a session to see what your class is doing.') }}
 							</p>
 						</section>
 					</section>
@@ -582,7 +608,7 @@
 					<section :id="SECTION_IDS.unitOverview" class="card-surface scroll-mt-40 p-6">
 						<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 							<div>
-								<p class="type-overline text-ink/60">This Unit</p>
+								<p class="type-overline text-ink/60">{{ __('This Unit') }}</p>
 								<h2 class="mt-2 type-h2 text-ink">{{ selectedUnit.title }}</h2>
 								<p v-if="selectedUnit.essential_understanding" class="mt-3 type-body text-ink/80">
 									{{ selectedUnit.essential_understanding }}
@@ -592,7 +618,9 @@
 								</p>
 							</div>
 							<div class="flex flex-wrap gap-2">
-								<span class="chip">Unit {{ selectedUnit.unit_order || '—' }}</span>
+								<span class="chip">
+									{{ __('Unit {0}', [selectedUnit.unit_order || '—']) }}
+								</span>
 								<span v-if="selectedUnit.duration" class="chip">{{ selectedUnit.duration }}</span>
 								<span v-if="selectedUnit.estimated_duration" class="chip">
 									{{ selectedUnit.estimated_duration }}
@@ -605,21 +633,21 @@
 								v-if="selectedUnit.content"
 								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 							>
-								<p class="type-overline text-ink/60">What you will explore</p>
+								<p class="type-overline text-ink/60">{{ __('What you will explore') }}</p>
 								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.content }}</p>
 							</article>
 							<article
 								v-if="selectedUnit.skills"
 								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 							>
-								<p class="type-overline text-ink/60">Skills you will practice</p>
+								<p class="type-overline text-ink/60">{{ __('Skills you will practice') }}</p>
 								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.skills }}</p>
 							</article>
 							<article
 								v-if="selectedUnit.concepts"
 								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 							>
-								<p class="type-overline text-ink/60">Big ideas</p>
+								<p class="type-overline text-ink/60">{{ __('Big ideas') }}</p>
 								<p class="mt-2 type-body text-ink/80">{{ selectedUnit.concepts }}</p>
 							</article>
 						</div>
@@ -631,9 +659,9 @@
 							<summary class="cursor-pointer list-none">
 								<div class="flex items-center justify-between gap-3">
 									<div>
-										<p class="type-body-strong text-ink">Learning goals</p>
+										<p class="type-body-strong text-ink">{{ __('Learning goals') }}</p>
 										<p class="mt-1 type-caption text-ink/70">
-											See the published curriculum goals for this unit.
+											{{ __('See the published curriculum goals for this unit.') }}
 										</p>
 									</div>
 									<span class="chip">{{ selectedUnit.standards.length }}</span>
@@ -647,7 +675,7 @@
 								>
 									<div class="flex flex-wrap items-center gap-2">
 										<p class="type-body-strong text-ink">
-											{{ standard.standard_code || 'Learning goal' }}
+											{{ standard.standard_code || __('Learning goal') }}
 										</p>
 										<span v-if="standard.coverage_level" class="chip">{{
 											standard.coverage_level
@@ -664,29 +692,34 @@
 					<section :id="SECTION_IDS.reflections" class="card-surface scroll-mt-40 p-6">
 						<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 							<div>
-								<p class="type-overline text-ink/60">Reflection & Journal</p>
-								<h2 class="mt-2 type-h2 text-ink">Capture what you are learning</h2>
+								<p class="type-overline text-ink/60">{{ __('Reflection & Journal') }}</p>
+								<h2 class="mt-2 type-h2 text-ink">
+									{{ __('Capture what you are learning') }}
+								</h2>
 								<p class="mt-3 type-body text-ink/80">{{ reflectionPrompt }}</p>
 								<p class="mt-2 type-caption text-ink/60">{{ reflectionContextNote }}</p>
 							</div>
 							<RouterLink :to="{ name: 'student-portfolio' }" class="if-action">
-								Open full journal
+								{{ __('Open full journal') }}
 							</RouterLink>
 						</div>
 
 						<div class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,0.95fr),minmax(0,1.05fr)]">
 							<article class="rounded-2xl border border-line-soft bg-surface-soft p-4">
-								<p class="type-body-strong text-ink">New reflection</p>
+								<p class="type-body-strong text-ink">{{ __('New reflection') }}</p>
 								<p class="mt-2 type-caption text-ink/70">
-									Keep a quick record of what clicked, what feels hard, or what you want to ask
-									next.
+									{{
+										__(
+											'Keep a quick record of what clicked, what feels hard, or what you want to ask next.'
+										)
+									}}
 								</p>
 								<label class="mt-4 flex flex-col gap-2">
-									<span class="type-caption text-ink/60">Reflection</span>
+									<span class="type-caption text-ink/60">{{ __('Reflection') }}</span>
 									<textarea
 										v-model="reflectionBody"
 										rows="5"
-										placeholder="Write a short reflection..."
+										:placeholder="__('Write a short reflection...')"
 										class="if-input min-h-[9rem] resize-y"
 									/>
 								</label>
@@ -700,18 +733,20 @@
 										:disabled="reflectionSaving"
 										@click="saveReflection"
 									>
-										{{ reflectionSaving ? 'Saving…' : 'Save reflection' }}
+										{{ reflectionSaving ? __('Saving...') : __('Save reflection') }}
 									</button>
-									<span class="type-caption text-ink/60">Visible to you and your teachers.</span>
+									<span class="type-caption text-ink/60">
+										{{ __('Visible to you and your teachers.') }}
+									</span>
 								</div>
 							</article>
 
 							<article class="rounded-2xl border border-line-soft bg-surface-soft p-4">
 								<div class="flex items-center justify-between gap-3">
 									<div>
-										<p class="type-body-strong text-ink">Recent entries</p>
+										<p class="type-body-strong text-ink">{{ __('Recent entries') }}</p>
 										<p class="mt-1 type-caption text-ink/70">
-											Recent reflections from this class and course.
+											{{ __('Recent reflections from this class and course.') }}
 										</p>
 									</div>
 									<span class="chip">{{ reflectionEntries.length }}</span>
@@ -719,7 +754,7 @@
 
 								<div v-if="!reflectionEntries.length" class="mt-4 student-hub-empty">
 									<p class="type-body text-ink/70">
-										Your reflections will appear here after you save them.
+										{{ __('Your reflections will appear here after you save them.') }}
 									</p>
 								</div>
 
@@ -731,7 +766,7 @@
 									>
 										<div class="flex flex-wrap items-center gap-2">
 											<p class="type-body-strong text-ink">
-												{{ entry.entry_type || 'Reflection' }}
+												{{ entry.entry_type || __('Reflection') }}
 											</p>
 											<span v-if="entry.entry_date" class="chip">{{ entry.entry_date }}</span>
 											<span v-if="entry.visibility" class="chip">{{ entry.visibility }}</span>
@@ -751,7 +786,7 @@
 
 				<section v-else class="card-surface p-6">
 					<p class="type-body text-ink/70">
-						Select a unit to view the learning journey for this course.
+						{{ __('Select a unit to view the learning journey for this course.') }}
 					</p>
 				</section>
 			</section>
@@ -763,20 +798,22 @@
 			>
 				<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
 					<div>
-						<p class="type-overline text-ink/60">Assigned Work</p>
-						<h2 class="mt-2 type-h2 text-ink">Keep track of open work</h2>
+						<p class="type-overline text-ink/60">{{ __('Assigned Work') }}</p>
+						<h2 class="mt-2 type-h2 text-ink">{{ __('Keep track of open work') }}</h2>
 						<p class="mt-2 type-body text-ink/80">
 							{{
 								selectedUnit
-									? `This work is connected to ${selectedUnit.title}.`
-									: 'Published work for this course will appear here.'
+									? __('This work is connected to {0}.', [selectedUnit.title])
+									: __('Published work for this course will appear here.')
 							}}
 						</p>
 					</div>
 					<div class="flex flex-wrap gap-2">
-						<span class="chip chip-focus">{{ displayedOpenAssignedWork.length }} open</span>
+						<span class="chip chip-focus">
+							{{ __('{0} open', [displayedOpenAssignedWork.length]) }}
+						</span>
 						<span v-if="displayedCompletedAssignedWork.length" class="chip">
-							{{ displayedCompletedAssignedWork.length }} completed
+							{{ __('{0} completed', [displayedCompletedAssignedWork.length]) }}
 						</span>
 					</div>
 				</div>
@@ -787,7 +824,7 @@
 				>
 					<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
 						<div>
-							<p class="type-overline text-ink/60">Task Workspace</p>
+							<p class="type-overline text-ink/60">{{ __('Task Workspace') }}</p>
 							<h3 class="mt-2 type-h3 text-ink">{{ selectedTaskWorkspace.title }}</h3>
 							<p
 								v-if="assignedWorkContextLine(selectedTaskWorkspace)"
@@ -810,7 +847,7 @@
 								{{ assignedWorkStatusLabel(selectedTaskWorkspace) }}
 							</span>
 							<span v-if="selectedTaskWorkspace.requires_submission" class="chip">
-								Submission
+								{{ __('Submission') }}
 							</span>
 						</div>
 					</div>
@@ -821,7 +858,7 @@
 						v-if="selectedTaskWorkspace.instructions_html"
 						class="mt-4 rounded-2xl border border-line-soft bg-surface-soft p-4"
 					>
-						<p class="type-caption text-ink/60">Instructions</p>
+						<p class="type-caption text-ink/60">{{ __('Instructions') }}</p>
 						<div
 							class="mt-3 prose prose-sm max-w-none text-ink/80"
 							v-html="selectedTaskWorkspace.instructions_html"
@@ -830,7 +867,7 @@
 
 					<div v-if="selectedTaskWorkspace.materials.length" class="mt-4 space-y-3">
 						<div class="flex items-center justify-between gap-3">
-							<p class="type-caption text-ink/60">Attachments</p>
+							<p class="type-caption text-ink/60">{{ __('Attachments') }}</p>
 							<span class="chip">{{ selectedTaskWorkspace.materials.length }}</span>
 						</div>
 						<div class="grid gap-3 lg:grid-cols-2">
@@ -845,9 +882,9 @@
 					<div class="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr),minmax(0,1fr)]">
 						<section class="rounded-2xl border border-line-soft bg-surface-soft p-4">
 							<div class="flex items-center justify-between gap-3">
-								<p class="type-body-strong text-ink">Latest submission</p>
+								<p class="type-body-strong text-ink">{{ __('Latest submission') }}</p>
 								<span v-if="selectedTaskSubmission" class="chip">
-									Version {{ selectedTaskSubmission.version }}
+									{{ __('Version {0}', [selectedTaskSubmission.version]) }}
 								</span>
 							</div>
 							<p v-if="selectedTaskSubmissionLoading" class="mt-3 type-body text-ink/70">
@@ -859,13 +896,17 @@
 							<template v-else-if="selectedTaskWorkspace.requires_submission">
 								<div v-if="selectedTaskSubmission" class="mt-3 space-y-3">
 									<p class="type-caption text-ink/70">
-										Submitted {{ formatSubmissionTimestamp(selectedTaskSubmission.submitted_on) }}
+										{{
+											__('Submitted {0}', [
+												formatSubmissionTimestamp(selectedTaskSubmission.submitted_on),
+											])
+										}}
 									</p>
 									<div
 										v-if="selectedTaskSubmission.text_content"
 										class="rounded-2xl border border-line-soft bg-white p-3"
 									>
-										<p class="type-caption text-ink/60">Written response</p>
+										<p class="type-caption text-ink/60">{{ __('Written response') }}</p>
 										<p class="mt-2 whitespace-pre-wrap type-body text-ink/80">
 											{{ selectedTaskSubmission.text_content }}
 										</p>
@@ -874,7 +915,7 @@
 										v-if="selectedTaskSubmission.link_url"
 										class="rounded-2xl border border-line-soft bg-white p-3"
 									>
-										<p class="type-caption text-ink/60">Linked evidence</p>
+										<p class="type-caption text-ink/60">{{ __('Linked evidence') }}</p>
 										<a
 											:href="selectedTaskSubmission.link_url"
 											target="_blank"
@@ -888,7 +929,7 @@
 										v-if="selectedTaskSubmission.attachments.length"
 										class="rounded-2xl border border-line-soft bg-white p-3"
 									>
-										<p class="type-caption text-ink/60">Attachments</p>
+										<p class="type-caption text-ink/60">{{ __('Attachments') }}</p>
 										<div class="mt-2 space-y-2">
 											<div
 												v-for="attachment in selectedTaskSubmission.attachments"
@@ -904,7 +945,7 @@
 													:title="
 														attachment.attachment.display_name ||
 														attachment.file_name ||
-														'Attachment'
+														__('Attachment')
 													"
 													:description="attachment.description || null"
 												>
@@ -916,7 +957,7 @@
 													</template>
 												</AttachmentPreviewCard>
 												<p v-else class="type-caption text-ink/80">
-													{{ attachment.file_name || attachment.description || 'Attachment' }}
+													{{ attachment.file_name || attachment.description || __('Attachment') }}
 												</p>
 											</div>
 										</div>
@@ -937,34 +978,38 @@
 									{{ submissionButtonLabel }}
 								</p>
 								<p class="mt-2 type-caption text-ink/70">
-									Written responses, links, and document uploads are supported in this workspace.
+									{{
+										__(
+											'Written responses, links, and document uploads are supported in this workspace.'
+										)
+									}}
 								</p>
 								<p v-if="selectedTaskSubmissionBlocker" class="mt-3 type-body text-ink/70">
 									{{ selectedTaskSubmissionBlocker }}
 								</p>
 								<form v-else class="mt-3 space-y-3" @submit.prevent="submitSelectedTaskWorkspace">
 									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Written response</span>
+										<span class="type-caption text-ink/70">{{ __('Written response') }}</span>
 										<textarea
 											v-model="submissionTextDraft"
 											rows="6"
 											class="if-input min-h-[9rem] w-full"
-											placeholder="Summarize your work, reflection, or answer."
+											:placeholder="__('Summarize your work, reflection, or answer.')"
 											@input="submissionDirty = true"
 										/>
 									</label>
 									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Link to your work</span>
+										<span class="type-caption text-ink/70">{{ __('Link to your work') }}</span>
 										<input
 											v-model="submissionLinkDraft"
 											type="url"
 											class="if-input w-full"
-											placeholder="https://example.com/your-work"
+											:placeholder="__('https://example.com/your-work')"
 											@input="submissionDirty = true"
 										/>
 									</label>
 									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Attach documents</span>
+										<span class="type-caption text-ink/70">{{ __('Attach documents') }}</span>
 										<input
 											ref="submissionFileInput"
 											type="file"
@@ -978,13 +1023,13 @@
 										class="rounded-2xl border border-line-soft bg-white p-3"
 									>
 										<div class="flex items-center justify-between gap-3">
-											<p class="type-caption text-ink/60">Selected files</p>
+											<p class="type-caption text-ink/60">{{ __('Selected files') }}</p>
 											<button
 												type="button"
 												class="type-caption text-jacaranda underline"
 												@click="clearSubmissionFiles"
 											>
-												Clear
+												{{ __('Clear') }}
 											</button>
 										</div>
 										<div class="mt-2 space-y-2">
@@ -1008,7 +1053,7 @@
 									</p>
 									<div class="flex flex-wrap items-center gap-3">
 										<button type="submit" class="if-action" :disabled="submissionSaving">
-											{{ submissionSaving ? 'Saving...' : submissionButtonLabel }}
+											{{ submissionSaving ? __('Saving...') : submissionButtonLabel }}
 										</button>
 									</div>
 								</form>
@@ -1018,7 +1063,11 @@
 									{{ taskCompletionButtonLabel }}
 								</p>
 								<p class="mt-2 type-caption text-ink/70">
-									Mark this assign-only task complete here once you finish the assigned work.
+									{{
+										__(
+											'Mark this assign-only task complete here once you finish the assigned work.'
+										)
+									}}
 								</p>
 								<p v-if="selectedTaskDirectCompletionBlocker" class="mt-3 type-body text-ink/70">
 									{{ selectedTaskDirectCompletionBlocker }}
@@ -1042,9 +1091,13 @@
 								</div>
 							</template>
 							<template v-else>
-								<p class="type-body-strong text-ink">Task brief</p>
+								<p class="type-body-strong text-ink">{{ __('Task brief') }}</p>
 								<p class="mt-2 type-caption text-ink/70">
-									This task stays in your course workspace and does not require a submission.
+									{{
+										__(
+											'This task stays in your course workspace and does not require a submission.'
+										)
+									}}
 								</p>
 							</template>
 						</section>
@@ -1056,21 +1109,26 @@
 					>
 						<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
 							<div>
-								<p class="type-body-strong text-ink">Released result</p>
+								<p class="type-body-strong text-ink">{{ __('Released result') }}</p>
 								<p class="mt-2 type-caption text-ink/70">
-									Scores and feedback appear here after they are released for your view.
+									{{
+										__('Scores and feedback appear here after they are released for your view.')
+									}}
 								</p>
 							</div>
 							<div class="flex flex-wrap gap-2">
 								<span v-if="selectedTaskReleasedResult?.feedback?.submission_version" class="chip">
-									Feedback on version
-									{{ selectedTaskReleasedResult.feedback.submission_version }}
+									{{
+										__('Feedback on version {0}', [
+											selectedTaskReleasedResult.feedback.submission_version,
+										])
+									}}
 								</span>
 								<span v-if="selectedTaskReleasedResult?.grade_visible" class="chip chip-focus">
-									Grade released
+									{{ __('Grade released') }}
 								</span>
 								<span v-if="selectedTaskReleasedResult?.feedback_visible" class="chip chip-warm">
-									Feedback released
+									{{ __('Feedback released') }}
 								</span>
 							</div>
 						</div>
@@ -1081,17 +1139,21 @@
 						<template v-else-if="selectedTaskReleasedResult">
 							<div class="mt-3 flex flex-wrap gap-2">
 								<span v-if="selectedTaskReleasedResult.official.score != null" class="chip">
-									Score {{ formatReleasedScore(selectedTaskReleasedResult.official.score) }}
+									{{
+										__('Score {0}', [
+											formatReleasedScore(selectedTaskReleasedResult.official.score),
+										])
+									}}
 								</span>
 								<span v-if="selectedTaskReleasedResult.official.grade" class="chip">
-									Grade {{ selectedTaskReleasedResult.official.grade }}
+									{{ __('Grade {0}', [selectedTaskReleasedResult.official.grade]) }}
 								</span>
 								<RouterLink
 									v-if="selectedTaskFeedbackRoute"
 									:to="selectedTaskFeedbackRoute"
 									class="if-button if-button--secondary"
 								>
-									Open released feedback
+									{{ __('Open released feedback') }}
 								</RouterLink>
 							</div>
 
@@ -1108,7 +1170,7 @@
 									v-if="selectedTaskReleasedResult.feedback?.summary.overall"
 									class="rounded-2xl border border-line-soft bg-white p-3"
 								>
-									<p class="type-caption text-ink/60">Overall summary</p>
+									<p class="type-caption text-ink/60">{{ __('Overall summary') }}</p>
 									<p class="mt-2 type-body text-ink/80">
 										{{ selectedTaskReleasedResult.feedback?.summary.overall }}
 									</p>
@@ -1117,7 +1179,7 @@
 									v-if="selectedTaskReleasedResult.feedback?.summary.strengths"
 									class="rounded-2xl border border-line-soft bg-white p-3"
 								>
-									<p class="type-caption text-ink/60">Strengths</p>
+									<p class="type-caption text-ink/60">{{ __('Strengths') }}</p>
 									<p class="mt-2 type-body text-ink/80">
 										{{ selectedTaskReleasedResult.feedback?.summary.strengths }}
 									</p>
@@ -1126,7 +1188,7 @@
 									v-if="selectedTaskReleasedResult.feedback?.summary.improvements"
 									class="rounded-2xl border border-line-soft bg-white p-3"
 								>
-									<p class="type-caption text-ink/60">Improvements</p>
+									<p class="type-caption text-ink/60">{{ __('Improvements') }}</p>
 									<p class="mt-2 type-body text-ink/80">
 										{{ selectedTaskReleasedResult.feedback?.summary.improvements }}
 									</p>
@@ -1135,7 +1197,7 @@
 									v-if="selectedTaskReleasedResult.feedback?.summary.next_steps"
 									class="rounded-2xl border border-line-soft bg-white p-3"
 								>
-									<p class="type-caption text-ink/60">Next steps</p>
+									<p class="type-caption text-ink/60">{{ __('Next steps') }}</p>
 									<p class="mt-2 type-body text-ink/80">
 										{{ selectedTaskReleasedResult.feedback?.summary.next_steps }}
 									</p>
@@ -1149,9 +1211,9 @@
 								<summary class="cursor-pointer list-none">
 									<div class="flex items-center justify-between gap-3">
 										<div>
-											<p class="type-body-strong text-ink">Teacher comments</p>
+											<p class="type-body-strong text-ink">{{ __('Teacher comments') }}</p>
 											<p class="mt-1 type-caption text-ink/70">
-												Open the released comment list for this submission.
+												{{ __('Open the released comment list for this submission.') }}
 											</p>
 										</div>
 										<span class="chip">
@@ -1167,7 +1229,9 @@
 									>
 										<div class="flex flex-wrap gap-2">
 											<span class="chip">{{ humanizeLabel(item.intent) }}</span>
-											<span v-if="item.page" class="chip">Page {{ item.page }}</span>
+											<span v-if="item.page" class="chip">
+												{{ __('Page {0}', [item.page]) }}
+											</span>
 											<span v-if="item.assessment_criteria" class="chip">
 												{{ item.assessment_criteria }}
 											</span>
@@ -1215,7 +1279,7 @@
 							v-if="item.instructions_html"
 							class="mt-4 rounded-2xl border border-line-soft bg-white p-4"
 						>
-							<p class="type-caption text-ink/60">Instructions</p>
+							<p class="type-caption text-ink/60">{{ __('Instructions') }}</p>
 							<div
 								class="mt-3 prose prose-sm max-w-none text-ink/80"
 								v-html="item.instructions_html"
@@ -1248,9 +1312,9 @@
 					<summary class="cursor-pointer list-none">
 						<div class="flex items-center justify-between gap-3">
 							<div>
-								<p class="type-body-strong text-ink">Completed work</p>
+								<p class="type-body-strong text-ink">{{ __('Completed work') }}</p>
 								<p class="mt-1 type-caption text-ink/70">
-									Review work that no longer needs action.
+									{{ __('Review work that no longer needs action.') }}
 								</p>
 							</div>
 							<span class="chip">{{ displayedCompletedAssignedWork.length }}</span>
@@ -1289,7 +1353,7 @@
 									class="if-button if-button--secondary"
 									@click="focusAssignedWork(item)"
 								>
-									Review task workspace
+									{{ __('Review task workspace') }}
 								</button>
 							</div>
 						</article>
@@ -1307,6 +1371,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router';
 
 import AttachmentPreviewCard from '@/components/attachments/AttachmentPreviewCard.vue';
 import StudentLearningResourceCard from '@/components/learning/StudentLearningResourceCard.vue';
+import { __ } from '@/lib/i18n';
 import { createReflectionEntry } from '@/lib/services/portfolio/portfolioService';
 import { getStudentLearningSpace } from '@/lib/services/student/studentLearningHubService';
 import { markStudentTaskComplete } from '@/lib/services/student/studentTaskCompletionService';
@@ -1503,8 +1568,8 @@ const resourceStreamGroups = computed<ResourceStreamGroup[]>(() => {
 	if (neededNow.length) {
 		groups.push({
 			id: 'needed-now',
-			label: 'Needed now',
-			title: 'For your next step',
+			label: __('Needed now'),
+			title: __('For your next step'),
 			resources: neededNow,
 			cardClass: 'student-hub-card--focus',
 		});
@@ -1515,8 +1580,8 @@ const resourceStreamGroups = computed<ResourceStreamGroup[]>(() => {
 	if (thisUnit.length) {
 		groups.push({
 			id: 'this-unit',
-			label: 'This unit',
-			title: selectedUnit.value?.title || 'Unit resources',
+			label: __('This unit'),
+			title: selectedUnit.value?.title || __('Unit resources'),
 			resources: thisUnit,
 			cardClass: 'student-hub-card--success',
 		});
@@ -1531,8 +1596,8 @@ const resourceStreamGroups = computed<ResourceStreamGroup[]>(() => {
 	if (classResources.length) {
 		groups.push({
 			id: 'class-resources',
-			label: 'Your class',
-			title: 'Class resources',
+			label: __('Your class'),
+			title: __('Class resources'),
 			resources: classResources,
 			cardClass: 'student-hub-card--warm',
 		});
@@ -1547,8 +1612,8 @@ const resourceStreamGroups = computed<ResourceStreamGroup[]>(() => {
 	if (courseReferences.length) {
 		groups.push({
 			id: 'course-references',
-			label: 'Course references',
-			title: 'Open when you need more',
+			label: __('Course references'),
+			title: __('Open when you need more'),
 			resources: courseReferences,
 			cardClass: 'student-hub-card--neutral',
 			collapsed: true,
@@ -1564,26 +1629,32 @@ const selectedTaskWorkspaceNote = computed(() => {
 	if (!selectedTaskWorkspace.value) return '';
 	if (selectedTaskSupportsDirectCompletion.value) {
 		if (selectedTaskWorkspace.value.is_complete) {
-			return 'This task is already marked complete in your course workspace.';
+			return __('This task is already marked complete in your course workspace.');
 		}
-		return 'No submission is required. Mark this task complete here once you finish the assigned work.';
+		return __(
+			'No submission is required. Mark this task complete here once you finish the assigned work.'
+		);
 	}
 	if (!selectedTaskWorkspace.value.requires_submission) {
-		return 'Review the task brief here. No submission is required for this task.';
+		return __('Review the task brief here. No submission is required for this task.');
 	}
 	if (selectedTaskWorkspace.value.allow_late_submission) {
-		return 'Submit a written response, link, or file here. Late submission remains available after the due date.';
+		return __(
+			'Submit a written response, link, or file here. Late submission remains available after the due date.'
+		);
 	}
-	return 'Submit a written response, link, or file here.';
+	return __('Submit a written response, link, or file here.');
 });
 
 const selectedTaskSubmissionBlocker = computed(() => {
 	if (!selectedTaskWorkspace.value) return '';
 	if (!selectedTaskWorkspace.value.requires_submission) {
-		return 'This task does not require a submission.';
+		return __('This task does not require a submission.');
 	}
 	if (!selectedTaskWorkspace.value.task_outcome) {
-		return 'Your submission workspace is not ready yet. Refresh this page or contact your teacher if the problem continues.';
+		return __(
+			'Your submission workspace is not ready yet. Refresh this page or contact your teacher if the problem continues.'
+		);
 	}
 	return '';
 });
@@ -1592,10 +1663,10 @@ const selectedTaskWorkspaceStatusNote = computed(() => {
 	if (!selectedTaskWorkspace.value || selectedTaskWorkspace.value.requires_submission) return '';
 	if (selectedTaskSupportsDirectCompletion.value) {
 		return selectedTaskWorkspace.value.is_complete
-			? 'This assign-only task is marked complete in your course workspace.'
-			: 'No submission is required. Mark this task complete here once you finish the work.';
+			? __('This assign-only task is marked complete in your course workspace.')
+			: __('No submission is required. Mark this task complete here once you finish the work.');
 	}
-	return 'This task stays in your course workspace, but it does not require a submission.';
+	return __('This task stays in your course workspace, but it does not require a submission.');
 });
 
 const selectedTaskDirectCompletionBlocker = computed(() => {
@@ -1603,7 +1674,9 @@ const selectedTaskDirectCompletionBlocker = computed(() => {
 		return '';
 	}
 	if (!selectedTaskWorkspace.value?.task_outcome) {
-		return 'Your completion workspace is not ready yet. Refresh this page or contact your teacher if the problem continues.';
+		return __(
+			'Your completion workspace is not ready yet. Refresh this page or contact your teacher if the problem continues.'
+		);
 	}
 	return '';
 });
@@ -1612,42 +1685,46 @@ const selectedTaskReleasedResultMessage = computed(() => {
 	if (!selectedTaskWorkspace.value?.requires_submission) return '';
 	if (selectedTaskSubmissionLoading.value) return 'Loading released result...';
 	if (!selectedTaskSubmission.value) {
-		return 'Released scores and feedback appear here after you submit and your teacher publishes them.';
+		return __(
+			'Released scores and feedback appear here after you submit and your teacher publishes them.'
+		);
 	}
 	const releasedResult = selectedTaskReleasedResult.value;
 	if (!releasedResult || (!releasedResult.grade_visible && !releasedResult.feedback_visible)) {
-		return 'Results and feedback are not released yet.';
+		return __('Results and feedback are not released yet.');
 	}
 	return '';
 });
 
 const submissionButtonLabel = computed(() => {
-	return selectedTaskSubmission.value ? 'Resubmit task' : 'Submit task';
+	return selectedTaskSubmission.value ? __('Resubmit task') : __('Submit task');
 });
 
 const taskCompletionButtonLabel = computed(() => {
 	if (!selectedTaskSupportsDirectCompletion.value) return '';
-	if (taskCompletionSaving.value) return 'Marking complete...';
-	return selectedTaskWorkspace.value?.is_complete ? 'Task complete' : 'Mark task complete';
+	if (taskCompletionSaving.value) return __('Marking complete...');
+	return selectedTaskWorkspace.value?.is_complete ? __('Task complete') : __('Mark task complete');
 });
 
 const submissionProgressLabel = computed(() => {
 	const progress = submissionUploadProgress.value;
 	if (!progress) return '';
 
-	let label = 'Preparing files';
+	let label = __('Preparing files');
 	if (progress.phase === 'uploading') {
-		label = 'Uploading files';
+		label = __('Uploading files');
 	} else if (progress.phase === 'processing') {
-		label = 'Finalizing submission';
+		label = __('Finalizing submission');
 	}
 
-	return progress.percent === null ? `${label}...` : `${label}... ${progress.percent}%`;
+	return progress.percent === null
+		? __('{0}...', [label])
+		: __('{0}... {1}%', [label, progress.percent]);
 });
 
 const resolvedClassLabel = computed(() => {
 	const resolvedGroup = learningSpace.value?.access.resolved_student_group;
-	if (!resolvedGroup) return 'Class not available';
+	if (!resolvedGroup) return __('Class not available');
 	return (
 		learningSpace.value?.access.student_group_options.find(
 			option => option.student_group === resolvedGroup
@@ -1671,7 +1748,7 @@ const classUpdatesHref = computed(() => ({
 
 const classUpdatesBadge = computed(() => {
 	if (courseUpdateSummary.value.unread_count > 0) {
-		return `${courseUpdateSummary.value.unread_count} new`;
+		return __('{0} new', [courseUpdateSummary.value.unread_count]);
 	}
 	if (courseUpdateSummary.value.total_count > 0) {
 		return String(courseUpdateSummary.value.total_count);
@@ -1681,34 +1758,43 @@ const classUpdatesBadge = computed(() => {
 
 const learningSections = computed(() => {
 	const sections: Array<{ id: LearningSectionId; label: string }> = [
-		{ id: SECTION_IDS.focus, label: 'Focus' },
-		{ id: SECTION_IDS.nextActions, label: `Next Actions (${nextActions.value.length})` },
+		{ id: SECTION_IDS.focus, label: __('Focus') },
+		{
+			id: SECTION_IDS.nextActions,
+			label: __('Next Actions ({0})', [nextActions.value.length]),
+		},
 	];
 
 	if (hasVisibleResources.value) {
 		sections.push({
 			id: SECTION_IDS.resources,
-			label: `Resources (${resourceStreamCount.value})`,
+			label: __('Resources ({0})', [resourceStreamCount.value]),
 		});
 	}
 
-	sections.push({ id: SECTION_IDS.unitJourney, label: `Units (${unitNavigation.value.length})` });
+	sections.push({
+		id: SECTION_IDS.unitJourney,
+		label: __('Units ({0})', [unitNavigation.value.length]),
+	});
 
 	if (selectedUnit.value) {
 		sections.push(
 			{
 				id: SECTION_IDS.sessionJourney,
-				label: `Sessions (${selectedUnit.value.sessions.length})`,
+				label: __('Sessions ({0})', [selectedUnit.value.sessions.length]),
 			},
-			{ id: SECTION_IDS.unitOverview, label: 'Unit Summary' },
-			{ id: SECTION_IDS.reflections, label: `Reflections (${reflectionEntries.value.length})` }
+			{ id: SECTION_IDS.unitOverview, label: __('Unit Summary') },
+			{
+				id: SECTION_IDS.reflections,
+				label: __('Reflections ({0})', [reflectionEntries.value.length]),
+			}
 		);
 	}
 
 	if (selectedUnit.value || displayedAssignedWork.value.length) {
 		sections.push({
 			id: SECTION_IDS.assignedWork,
-			label: `Assigned Work (${displayedOpenAssignedWork.value.length})`,
+			label: __('Assigned Work ({0})', [displayedOpenAssignedWork.value.length]),
 		});
 	}
 
@@ -1936,7 +2022,7 @@ async function loadLearningSpace() {
 	} catch (error) {
 		if (ticket !== loadToken.value) return;
 		learningSpace.value = null;
-		errorMessage.value = error instanceof Error ? error.message : 'Unknown error';
+		errorMessage.value = error instanceof Error ? error.message : __('Unknown error');
 	} finally {
 		if (ticket === loadToken.value) {
 			loading.value = false;
@@ -2119,7 +2205,7 @@ function isSelectedAssignedWork(item: StudentAssignedWork) {
 }
 
 function sessionTimingLabel(session: StudentLearningSession) {
-	return session.session_date || 'Details coming soon';
+	return session.session_date || __('Details coming soon');
 }
 
 function nextActionContext(action: StudentLearningNextAction) {
@@ -2138,14 +2224,16 @@ function humanizeLabel(value?: string | null) {
 }
 
 function quizActionLabel(item: StudentAssignedWork) {
-	if (!isQuizAssignedWork(item)) return 'Open task';
-	if (item.quiz_state?.can_continue) return 'Continue quiz';
-	if (item.quiz_state?.can_retry) return 'Retry quiz';
+	if (!isQuizAssignedWork(item)) return __('Open task');
+	if (item.quiz_state?.can_continue) return __('Continue quiz');
+	if (item.quiz_state?.can_retry) return __('Retry quiz');
 	if (item.quiz_state?.can_start) {
-		return Number(item.quiz_state.attempts_used || 0) > 0 ? 'Start next attempt' : 'Start quiz';
+		return Number(item.quiz_state.attempts_used || 0) > 0
+			? __('Start next attempt')
+			: __('Start quiz');
 	}
-	if (item.quiz_state?.latest_attempt) return 'Review quiz';
-	return 'Open quiz';
+	if (item.quiz_state?.latest_attempt) return __('Review quiz');
+	return __('Open quiz');
 }
 
 function quizRouteFor(item: StudentAssignedWork) {
@@ -2179,27 +2267,27 @@ function quizRouteForAction(action: StudentLearningNextAction) {
 }
 
 function nextActionChip(action: StudentLearningNextAction) {
-	if (action.kind === 'quiz') return 'Quiz';
-	if (action.kind === 'session') return 'Session';
-	return 'Assigned work';
+	if (action.kind === 'quiz') return __('Quiz');
+	if (action.kind === 'session') return __('Session');
+	return __('Assigned work');
 }
 
 function nextActionButtonLabel(action: StudentLearningNextAction) {
-	if (action.kind === 'quiz') return 'Open now';
-	if (action.kind === 'session') return 'Open session';
-	return 'Open task workspace';
+	if (action.kind === 'quiz') return __('Open now');
+	if (action.kind === 'session') return __('Open session');
+	return __('Open task workspace');
 }
 
 function assignedWorkStatusLabel(item: StudentAssignedWork) {
 	if (item.quiz_state?.status_label) return item.quiz_state.status_label;
 	if (item.status_label) return item.status_label;
-	if (item.is_complete) return 'Completed';
+	if (item.is_complete) return __('Completed');
 	return '';
 }
 
 function assignedWorkTimingLabel(item: StudentAssignedWork) {
-	if (item.due_date) return `Due ${item.due_date}`;
-	if (item.available_from) return `Available ${item.available_from}`;
+	if (item.due_date) return __('Due {0}', [item.due_date]);
+	if (item.available_from) return __('Available {0}', [item.available_from]);
 	return '';
 }
 
@@ -2209,16 +2297,16 @@ function assignedWorkContextLine(item: StudentAssignedWork) {
 		return session.session_date ? `${session.title} · ${session.session_date}` : session.title;
 	}
 	const unit = findUnitByPlan(item.unit_plan);
-	if (unit) return `In ${unit.title}`;
+	if (unit) return __('In {0}', [unit.title]);
 	return '';
 }
 
 function assignedWorkActionLabel(item: StudentAssignedWork) {
 	if (isQuizAssignedWork(item)) return quizActionLabel(item);
-	if (isSelectedAssignedWork(item)) return 'Workspace open';
-	if (item.class_session) return 'Open task workspace';
-	if (item.unit_plan) return 'Open unit workspace';
-	return 'Open course workspace';
+	if (isSelectedAssignedWork(item)) return __('Workspace open');
+	if (item.class_session) return __('Open task workspace');
+	if (item.unit_plan) return __('Open unit workspace');
+	return __('Open course workspace');
 }
 
 function formatSubmissionTimestamp(value?: string | null) {
@@ -2238,7 +2326,7 @@ function formatSubmissionTimestamp(value?: string | null) {
 
 function formatSelectedSubmissionFileSize(sizeBytes?: number | null) {
 	const size = Number(sizeBytes || 0);
-	if (!Number.isFinite(size) || size <= 0) return 'File';
+	if (!Number.isFinite(size) || size <= 0) return __('File');
 	if (size >= 1024 * 1024) {
 		return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 	}
@@ -2419,7 +2507,7 @@ async function submitSelectedTaskWorkspace() {
 	const linkUrl = submissionLinkDraft.value.trim();
 	const files = submissionFiles.value;
 	if (!textContent && !linkUrl && !files.length) {
-		submissionError.value = 'Add a written response, link, or file before submitting.';
+		submissionError.value = __('Add a written response, link, or file before submitting.');
 		return;
 	}
 
@@ -2454,7 +2542,7 @@ async function submitSelectedTaskWorkspace() {
 		submissionDirty.value = false;
 		clearSubmissionFiles();
 		await loadSelectedTaskSubmission();
-		toast.success(isResubmission ? 'Task resubmitted.' : 'Task submitted.');
+		toast.success(isResubmission ? __('Task resubmitted.') : __('Task submitted.'));
 	} catch (error) {
 		submissionUploadProgress.value = null;
 		submissionError.value = error instanceof Error ? error.message : 'Could not submit this task.';
@@ -2485,10 +2573,10 @@ async function markSelectedTaskComplete() {
 		if (response.is_complete) {
 			removeNextActionForTaskDelivery(task.task_delivery);
 		}
-		toast.success('Task marked complete.');
+		toast.success(__('Task marked complete.'));
 	} catch (error) {
 		taskCompletionError.value =
-			error instanceof Error ? error.message : 'Could not mark this task complete.';
+			error instanceof Error ? error.message : __('Could not mark this task complete.');
 		toast.error(taskCompletionError.value);
 	} finally {
 		taskCompletionSaving.value = false;
@@ -2497,25 +2585,39 @@ async function markSelectedTaskComplete() {
 
 const reflectionPrompt = computed(() => {
 	if (selectedSession.value?.learning_goal) {
-		return `After ${selectedSession.value.title}, note what evidence, question, or idea is shaping your understanding.`;
+		return __('After {0}, note what evidence, question, or idea is shaping your understanding.', [
+			selectedSession.value.title,
+		]);
 	}
 	if (selectedUnit.value?.essential_understanding) {
-		return `Capture how this unit is changing your understanding of ${selectedUnit.value.title}.`;
+		return __('Capture how this unit is changing your understanding of {0}.', [
+			selectedUnit.value.title,
+		]);
 	}
 	if (selectedUnit.value?.title) {
-		return `Capture what you are noticing as you work through ${selectedUnit.value.title}.`;
+		return __('Capture what you are noticing as you work through {0}.', [
+			selectedUnit.value.title,
+		]);
 	}
-	return 'Capture what you understood, what still feels unclear, or what you want to ask next.';
+	return __(
+		'Capture what you understood, what still feels unclear, or what you want to ask next.'
+	);
 });
 
 const reflectionContextNote = computed(() => {
 	if (selectedSession.value?.title) {
-		return `This reflection will stay inside ${resolvedClassLabel.value} and be linked to ${selectedSession.value.title}.`;
+		return __('This reflection will stay inside {0} and be linked to {1}.', [
+			resolvedClassLabel.value,
+			selectedSession.value.title,
+		]);
 	}
 	if (selectedUnit.value?.title) {
-		return `This reflection will stay inside ${resolvedClassLabel.value} for ${selectedUnit.value.title}.`;
+		return __('This reflection will stay inside {0} for {1}.', [
+			resolvedClassLabel.value,
+			selectedUnit.value.title,
+		]);
 	}
-	return `This reflection will stay inside ${resolvedClassLabel.value}.`;
+	return __('This reflection will stay inside {0}.', [resolvedClassLabel.value]);
 });
 
 function reflectionEntryContext(entry: StudentLearningReflectionEntry) {
@@ -2531,13 +2633,13 @@ function reflectionEntryContext(entry: StudentLearningReflectionEntry) {
 	) {
 		return resolvedClassLabel.value;
 	}
-	return 'Course reflection';
+	return __('Course reflection');
 }
 
 async function saveReflection() {
 	const body = reflectionBody.value.trim();
 	if (!body) {
-		reflectionError.value = 'Write a short reflection before saving it.';
+		reflectionError.value = __('Write a short reflection before saving it.');
 		return;
 	}
 	if (!learningSpace.value) return;
@@ -2573,9 +2675,9 @@ async function saveReflection() {
 			},
 		};
 		reflectionBody.value = '';
-		toast.success('Reflection saved.');
+		toast.success(__('Reflection saved.'));
 	} catch (error) {
-		const message = error instanceof Error ? error.message : 'Could not save this reflection.';
+		const message = error instanceof Error ? error.message : __('Could not save this reflection.');
 		reflectionError.value = message;
 		toast.error(message);
 	} finally {

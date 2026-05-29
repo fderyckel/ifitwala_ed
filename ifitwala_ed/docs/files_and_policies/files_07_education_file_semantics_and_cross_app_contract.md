@@ -1,7 +1,7 @@
 # Education File Semantics And Cross-App Upload Contract
 
 Status: LOCKED target contract
-Date: 2026-04-27
+Date: 2026-05-29
 Related docs:
 
 - `ifitwala_ed/docs/files_and_policies/files_01_architecture_notes.md`
@@ -65,6 +65,7 @@ This reset keeps the education semantics narrow and reusable.
 | `identification_document` | identity verification file | admissions or HR identity workflows |
 | `medical_record` | health or medical evidence | health workflows |
 | `policy_acknowledgement` | durable policy acknowledgement evidence | policy flows |
+| `financial_record` | durable accounting or reimbursement evidence | expense claim receipts |
 | `organization_public_media` | public presentation media | school/organization media |
 
 ## 4. Canonical workflow contract: `GovernedUploadSpec`
@@ -78,6 +79,7 @@ Suggested examples:
 - `admissions.applicant_document`
 - `admissions.applicant_profile_image`
 - `org_communication.attachment`
+- `expense_claim.receipt`
 - `student_referral.attachment`
 - `organization_media.school_logo`
 
@@ -201,6 +203,7 @@ This lets the apps converge on one narrow boundary instead of many stringly wrap
 | `admissions.applicant_guardian_image` | `applicant_profile_display` | `Student Applicant` | guardian row-derived image slot |
 | `admissions.applicant_health_vaccination` | `medical_record` | `Student Applicant` | health evidence slot |
 | `org_communication.attachment` | workflow-specific governed purpose | `Org Communication` | row-derived attachment slot |
+| `expense_claim.receipt` | `financial_record` | `Expense Claim` | row-derived receipt slot |
 | `student_log.evidence_attachment` | `safeguarding_evidence` | `Student Log` | row-derived evidence slot |
 | `student_referral.attachment` | `safeguarding_evidence` | `Student Referral` | self-referral attachment slot |
 | `media.employee_profile_image` | `employee_profile_display` | `Employee` | `profile_image` |

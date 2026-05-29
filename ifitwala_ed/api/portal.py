@@ -61,6 +61,17 @@ PROFESSIONAL_DEVELOPMENT_PORTAL_ROLES = frozenset(
         "System Manager",
     }
 )
+EXPENSE_CLAIM_PORTAL_ROLES = frozenset(
+    {
+        "Employee",
+        "Academic Staff",
+        "Instructor",
+        "HR User",
+        "HR Manager",
+        "Academic Admin",
+        "System Manager",
+    }
+)
 
 
 def invalidate_student_portal_identity_cache(*args, **kwargs):
@@ -185,6 +196,8 @@ def _build_staff_home_capabilities(
         "staff_professional_development": bool(roles & set(PROFESSIONAL_DEVELOPMENT_PORTAL_ROLES)),
         "professional_development_decide": bool(roles & {"HR User", "HR Manager", "Academic Admin", "System Manager"}),
         "professional_development_liquidate": bool(roles & {"Accounts Manager", "Accounts User", "System Manager"}),
+        "staff_expense_claims": bool(roles & set(EXPENSE_CLAIM_PORTAL_ROLES)),
+        "expense_claims_finance": bool(roles & {"Accounts Manager", "Accounts User", "System Manager"}),
     }
 
 

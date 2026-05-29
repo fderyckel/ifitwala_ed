@@ -786,6 +786,11 @@ const analyticsCategories: StaffHomeAnalyticsCategory[] = [
 				to: { name: 'staff-professional-development' },
 				capability: 'staff_professional_development',
 			},
+			{
+				label: 'Expenses',
+				to: { name: 'staff-expense-claims' },
+				capability: 'staff_expense_claims',
+			},
 		],
 	},
 	{

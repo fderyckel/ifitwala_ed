@@ -3,9 +3,9 @@
 	<div class="analytics-shell">
 		<header class="page-header">
 			<div class="page-header__intro">
-				<h1 class="type-h1 text-canopy">Zero Lost Lead</h1>
+				<h1 class="type-h1 text-canopy">{{ __('Zero Lost Lead') }}</h1>
 				<p class="type-meta text-slate-token/80">
-					Operational inquiry queues first; pipeline and response analytics below.
+					{{ __('Operational inquiry queues first; pipeline and response analytics below.') }}
 				</p>
 			</div>
 			<div class="page-header__actions">
@@ -14,25 +14,27 @@
 					:items="DATE_RANGES"
 					@change="handleDatePresetChange"
 				/>
-				<button type="button" class="if-button if-button--quiet" @click="refresh">Refresh</button>
+				<button type="button" class="if-button if-button--quiet" @click="refresh">
+					{{ __('Refresh') }}
+				</button>
 			</div>
 		</header>
 
 		<FiltersBar class="analytics-filters">
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Academic Year</label>
+				<label class="type-label">{{ __('Academic Year') }}</label>
 				<select
 					v-model="filters.academic_year"
 					class="h-9 rounded-md border px-2 text-sm"
 					@change="handleAcademicYearChange"
 				>
-					<option value="">All Years</option>
+					<option value="">{{ __('All Years') }}</option>
 					<option v-for="y in academicYears" :key="y" :value="y">{{ y }}</option>
 				</select>
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Date Range</label>
+				<label class="type-label">{{ __('Date Range') }}</label>
 				<div class="flex items-center gap-2">
 					<input
 						type="date"
@@ -51,66 +53,66 @@
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Organization</label>
+				<label class="type-label">{{ __('Organization') }}</label>
 				<select
 					v-model="filters.organization"
 					class="h-9 min-w-[160px] max-w-[220px] rounded-md border px-2 text-sm"
 				>
-					<option value="">All Organizations</option>
+					<option value="">{{ __('All Organizations') }}</option>
 					<option v-for="o in allowedOrganizations" :key="o" :value="o">{{ o }}</option>
 				</select>
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">School</label>
+				<label class="type-label">{{ __('School') }}</label>
 				<select
 					v-model="filters.school"
 					class="h-9 min-w-[140px] max-w-[200px] rounded-md border px-2 text-sm"
 				>
-					<option value="">All Permitted</option>
+					<option value="">{{ __('All Permitted') }}</option>
 					<option v-for="s in allowedSchools" :key="s" :value="s">{{ s }}</option>
 				</select>
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Assignee</label>
+				<label class="type-label">{{ __('Assignee') }}</label>
 				<select
 					v-model="filters.assigned_to"
 					class="h-9 min-w-[140px] rounded-md border px-2 text-sm"
 				>
-					<option value="">All Users</option>
+					<option value="">{{ __('All Users') }}</option>
 					<option v-for="u in users" :key="u.name" :value="u.name">{{ u.full_name }}</option>
 				</select>
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Inquiry Type</label>
+				<label class="type-label">{{ __('Inquiry Type') }}</label>
 				<select
 					v-model="filters.type_of_inquiry"
 					class="h-9 min-w-[140px] rounded-md border px-2 text-sm"
 				>
-					<option value="">All Types</option>
+					<option value="">{{ __('All Types') }}</option>
 					<option v-for="t in inquiryTypes" :key="t" :value="t">{{ t }}</option>
 				</select>
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Source</label>
+				<label class="type-label">{{ __('Source') }}</label>
 				<select v-model="filters.source" class="h-9 min-w-[140px] rounded-md border px-2 text-sm">
-					<option value="">All Sources</option>
+					<option value="">{{ __('All Sources') }}</option>
 					<option v-for="s in inquirySources" :key="s" :value="s">{{ s }}</option>
 				</select>
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Assignment Lane</label>
+				<label class="type-label">{{ __('Assignment Lane') }}</label>
 				<select
 					v-model="filters.assignment_lane"
 					class="h-9 min-w-[140px] rounded-md border px-2 text-sm"
 				>
-					<option value="">All Lanes</option>
-					<option value="Admission">Admission</option>
-					<option value="Staff">Staff</option>
+					<option value="">{{ __('All Lanes') }}</option>
+					<option value="Admission">{{ __('Admission') }}</option>
+					<option value="Staff">{{ __('Staff') }}</option>
 				</select>
 			</div>
 		</FiltersBar>
@@ -124,10 +126,13 @@
 			<section class="analytics-card analytics-card--dense">
 				<div class="mb-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
 					<div>
-						<h2 class="analytics-card__title">Operational Queues</h2>
+						<h2 class="analytics-card__title">{{ __('Operational Queues') }}</h2>
 						<p class="type-caption text-slate-token/70">
-							All-time lead-loss queues. Organization, school, assignee, type, source, and lane
-							filters still apply.
+							{{
+								__(
+									'All-time lead-loss queues. Organization, school, assignee, type, source, and lane filters still apply.'
+								)
+							}}
 						</p>
 					</div>
 					<div
@@ -136,9 +141,7 @@
 						<span class="text-xl font-semibold tabular-nums text-ink">{{
 							totalOperationalCount
 						}}</span>
-						<span class="type-caption text-slate-token/70">
-							queue match{{ totalOperationalCount === 1 ? '' : 'es' }}
-						</span>
+						<span class="type-caption text-slate-token/70">{{ queueMatchLabel }}</span>
 					</div>
 				</div>
 
@@ -173,12 +176,9 @@
 				<div class="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
 					<div>
 						<h2 class="analytics-card__title">
-							{{ activeCommandView?.title || 'Selected Queue' }}
+							{{ activeCommandView?.title || __('Selected Queue') }}
 						</h2>
-						<p class="type-meta text-slate-token/70">
-							{{ commandPagination.total }} matching
-							{{ commandPagination.total === 1 ? 'inquiry' : 'inquiries' }}
-						</p>
+						<p class="type-meta text-slate-token/70">{{ matchingInquiryLabel }}</p>
 					</div>
 					<div class="flex items-center gap-2">
 						<button
@@ -187,7 +187,7 @@
 							:disabled="commandPagination.start <= 0"
 							@click="previousQueuePage"
 						>
-							Previous
+							{{ __('Previous') }}
 						</button>
 						<button
 							type="button"
@@ -195,7 +195,7 @@
 							:disabled="!commandPagination.has_next"
 							@click="nextQueuePage"
 						>
-							Next
+							{{ __('Next') }}
 						</button>
 					</div>
 				</div>
@@ -211,12 +211,12 @@
 					<table class="min-w-full divide-y divide-slate-200 text-sm">
 						<thead>
 							<tr class="text-left type-caption text-slate-token/70">
-								<th class="py-2 pr-4 font-medium">Lead</th>
-								<th class="py-2 pr-4 font-medium">State</th>
-								<th class="py-2 pr-4 font-medium">Owner</th>
-								<th class="py-2 pr-4 font-medium">Due</th>
-								<th class="py-2 pr-4 font-medium">Context</th>
-								<th class="py-2 pr-4 font-medium">Next Action</th>
+								<th class="py-2 pr-4 font-medium">{{ __('Lead') }}</th>
+								<th class="py-2 pr-4 font-medium">{{ __('State') }}</th>
+								<th class="py-2 pr-4 font-medium">{{ __('Owner') }}</th>
+								<th class="py-2 pr-4 font-medium">{{ __('Due') }}</th>
+								<th class="py-2 pr-4 font-medium">{{ __('Context') }}</th>
+								<th class="py-2 pr-4 font-medium">{{ __('Next Action') }}</th>
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-slate-100">
@@ -236,7 +236,7 @@
 								<td class="py-3 pr-4 align-top">
 									<div class="font-medium text-ink">{{ row.workflow_state }}</div>
 									<div class="type-caption text-slate-token/70">
-										{{ row.sla_status || 'No SLA status' }}
+										{{ row.sla_status || __('No SLA status') }}
 									</div>
 									<div
 										v-if="row.age_hours !== null && row.age_hours !== undefined"
@@ -246,9 +246,9 @@
 									</div>
 								</td>
 								<td class="py-3 pr-4 align-top">
-									<div class="font-medium text-ink">{{ row.assigned_to || 'Unassigned' }}</div>
+									<div class="font-medium text-ink">{{ row.assigned_to || __('Unassigned') }}</div>
 									<div class="type-caption text-slate-token/70">
-										{{ row.assignment_lane || 'Admission' }}
+										{{ row.assignment_lane || __('Admission') }}
 									</div>
 								</td>
 								<td class="py-3 pr-4 align-top">
@@ -256,24 +256,24 @@
 										{{ formatDate(row.first_contact_due_on) }}
 									</div>
 									<div class="type-caption text-slate-token/70">
-										Submitted {{ formatDateTime(row.submitted_at) }}
+										{{ __('Submitted {0}', [formatDateTime(row.submitted_at)]) }}
 									</div>
 									<div v-if="row.followup_due_on" class="type-caption text-slate-token/70">
-										Follow-up {{ formatDate(row.followup_due_on) }}
+										{{ __('Follow-up {0}', [formatDate(row.followup_due_on)]) }}
 									</div>
 								</td>
 								<td class="py-3 pr-4 align-top">
 									<div class="font-medium text-ink">
-										{{ row.school || row.organization || 'No scope set' }}
+										{{ row.school || row.organization || __('No scope set') }}
 									</div>
 									<div class="type-caption text-slate-token/70">
 										{{
 											[row.type_of_inquiry, row.source].filter(Boolean).join(' / ') ||
-											'No type or source'
+											__('No type or source')
 										}}
 									</div>
 									<div v-if="row.student_applicant" class="type-caption text-slate-token/70">
-										Applicant {{ row.student_applicant_status || 'Linked' }}
+										{{ __('Applicant {0}', [row.student_applicant_status || __('Linked')]) }}
 									</div>
 								</td>
 								<td class="py-3 pr-4 align-top">
@@ -305,20 +305,24 @@
 				<div v-for="lane in laneCards" :key="lane.id" class="flex flex-col gap-4 analytics-card">
 					<h3 class="analytics-card__title">{{ lane.title }}</h3>
 					<div class="flex flex-wrap gap-3">
-						<StatsTile label="Total" :value="lane.counts.total" />
-						<StatsTile label="Contacted" :value="lane.counts.contacted" />
-						<StatsTile label="Overdue" :value="lane.counts.overdue_first_contact" tone="warning" />
-						<StatsTile label="Due Today" :value="lane.counts.due_today" />
-						<StatsTile label="Upcoming" :value="lane.counts.upcoming" />
-						<StatsTile label="SLA (30d)" :value="lane.sla + '%'" />
+						<StatsTile :label="__('Total')" :value="lane.counts.total" />
+						<StatsTile :label="__('Contacted')" :value="lane.counts.contacted" />
+						<StatsTile
+							:label="__('Overdue')"
+							:value="lane.counts.overdue_first_contact"
+							tone="warning"
+						/>
+						<StatsTile :label="__('Due Today')" :value="lane.counts.due_today" />
+						<StatsTile :label="__('Upcoming')" :value="lane.counts.upcoming" />
+						<StatsTile :label="__('SLA (30d)')" :value="lane.sla + '%'" />
 					</div>
 					<div class="flex gap-6 text-sm">
 						<div class="flex flex-col">
-							<span class="type-caption">Intake Avg</span>
+							<span class="type-caption">{{ __('Intake Avg') }}</span>
 							<span class="font-medium text-ink">{{ lane.avg.intake_response_hours }}h</span>
 						</div>
 						<div class="flex flex-col">
-							<span class="type-caption">Resolver Avg</span>
+							<span class="type-caption">{{ __('Resolver Avg') }}</span>
 							<span class="font-medium text-ink">{{ lane.avg.resolver_response_hours }}h</span>
 						</div>
 					</div>
@@ -328,24 +332,36 @@
 			<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 				<!-- Pipeline -->
 				<HorizontalBarTopN
-					title="Pipeline by State"
+					:title="__('Pipeline by State')"
 					:items="pipelineItems"
 					class="analytics-card"
 				/>
 
 				<!-- Weekly Volume -->
 				<section class="analytics-card">
-					<h3 class="analytics-card__title">Weekly Volume</h3>
+					<h3 class="analytics-card__title">{{ __('Weekly Volume') }}</h3>
 					<AnalyticsChart :option="weeklyChartOption" />
 				</section>
 			</div>
 
 			<div class="grid grid-cols-1 gap-6 lg:grid-cols-4">
-				<HorizontalBarTopN title="Assigned To" :items="assigneeItems" class="analytics-card" />
-				<HorizontalBarTopN title="Inquiry Types" :items="typeItems" class="analytics-card" />
-				<HorizontalBarTopN title="Inquiry Sources" :items="sourceItems" class="analytics-card" />
 				<HorizontalBarTopN
-					title="Lane Distribution"
+					:title="__('Assigned To')"
+					:items="assigneeItems"
+					class="analytics-card"
+				/>
+				<HorizontalBarTopN
+					:title="__('Inquiry Types')"
+					:items="typeItems"
+					class="analytics-card"
+				/>
+				<HorizontalBarTopN
+					:title="__('Inquiry Sources')"
+					:items="sourceItems"
+					class="analytics-card"
+				/>
+				<HorizontalBarTopN
+					:title="__('Lane Distribution')"
 					:items="laneDistributionItems"
 					class="analytics-card"
 				/>
@@ -355,33 +371,33 @@
 			<section class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 				<!-- SLA & Response Stats -->
 				<div class="flex flex-col gap-4 analytics-card">
-					<h3 class="analytics-card__title">Performance Metrics</h3>
+					<h3 class="analytics-card__title">{{ __('Performance Metrics') }}</h3>
 					<div class="flex flex-wrap gap-3">
 						<StatsTile
-							label="SLA Compliance (30d)"
+							:label="__('SLA Compliance (30d)')"
 							:value="data?.sla?.pct_30d + '%'"
 							:tone="slaTone"
 						/>
 						<StatsTile
-							label="First Response (Avg)"
+							:label="__('First Response (Avg)')"
 							:value="data?.averages?.overall?.first_contact_hours + 'h'"
 						/>
 						<StatsTile
-							label="From Assign (Avg)"
+							:label="__('From Assign (Avg)')"
 							:value="data?.averages?.overall?.from_assign_hours + 'h'"
 						/>
 					</div>
 
-					<h4 class="mt-2 type-overline text-slate-400">Last 30 Days</h4>
+					<h4 class="mt-2 type-overline text-slate-400">{{ __('Last 30 Days') }}</h4>
 					<div class="flex gap-4 text-sm">
 						<div class="flex flex-col">
-							<span class="type-caption">First Contact</span>
+							<span class="type-caption">{{ __('First Contact') }}</span>
 							<span class="font-medium text-ink"
 								>{{ data?.averages?.last30d?.first_contact_hours }}h</span
 							>
 						</div>
 						<div class="flex flex-col">
-							<span class="type-caption">From Assign</span>
+							<span class="type-caption">{{ __('From Assign') }}</span>
 							<span class="font-medium text-ink"
 								>{{ data?.averages?.last30d?.from_assign_hours }}h</span
 							>
@@ -391,13 +407,17 @@
 
 				<!-- Monthly Trends -->
 				<div class="col-span-2 flex flex-col analytics-card">
-					<h3 class="analytics-card__title mb-4">Monthly Average Response Time (Hours)</h3>
+					<h3 class="analytics-card__title mb-4">
+						{{ __('Monthly Average Response Time (Hours)') }}
+					</h3>
 					<AnalyticsChart :option="monthlyChartOption" />
 				</div>
 			</section>
 
 			<section class="analytics-card">
-				<h3 class="analytics-card__title mb-4">Monthly Resolver Average by Lane (Hours)</h3>
+				<h3 class="analytics-card__title mb-4">
+					{{ __('Monthly Resolver Average by Lane (Hours)') }}
+				</h3>
 				<AnalyticsChart :option="monthlyLaneChartOption" />
 			</section>
 		</template>
@@ -426,6 +446,7 @@ import StatsTile from '@/components/analytics/StatsTile.vue';
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
 import HorizontalBarTopN from '@/components/analytics/HorizontalBarTopN.vue';
 import DateRangePills from '@/components/filters/DateRangePills.vue';
+import { __ } from '@/lib/i18n';
 
 // -- State --
 const loading = ref(false);
@@ -437,11 +458,11 @@ const queueStart = ref(0);
 const queueLimit = 25;
 
 const DATE_RANGES = [
-	{ label: 'Last 7 Days', value: '7d' },
-	{ label: 'Last 30 Days', value: '30d' },
-	{ label: 'Last 90 Days', value: '90d' },
-	{ label: 'YTD', value: 'year' },
-	{ label: 'All Time', value: 'all' },
+	{ label: __('Last 7 Days'), value: '7d' },
+	{ label: __('Last 30 Days'), value: '30d' },
+	{ label: __('Last 90 Days'), value: '90d' },
+	{ label: __('YTD'), value: 'year' },
+	{ label: __('All Time'), value: 'all' },
 ] as const;
 
 const filters = ref<DashboardFilters>({
@@ -584,6 +605,16 @@ const totalOperationalCount = computed(() =>
 	commandViews.value.reduce((total, view) => total + Number(view.count || 0), 0)
 );
 const hasAnyOperationalLeads = computed(() => totalOperationalCount.value > 0);
+const queueMatchLabel = computed(() =>
+	totalOperationalCount.value === 1
+		? __('{0} queue match', [totalOperationalCount.value])
+		: __('{0} queue matches', [totalOperationalCount.value])
+);
+const matchingInquiryLabel = computed(() =>
+	commandPagination.value.total === 1
+		? __('{0} matching inquiry', [commandPagination.value.total])
+		: __('{0} matching inquiries', [commandPagination.value.total])
+);
 
 function viewCardClass(view: ZeroLostLeadView) {
 	const active = activeCommandView.value?.id === view.id;
@@ -604,38 +635,38 @@ function viewNumberClass(view: ZeroLostLeadView) {
 }
 
 function formatDate(value?: string | null) {
-	if (!value) return 'No date';
+	if (!value) return __('No date');
 	return String(value).slice(0, 10);
 }
 
 function formatDateTime(value?: string | null) {
-	if (!value) return 'unknown';
+	if (!value) return __('unknown');
 	return String(value).replace('T', ' ').slice(0, 16);
 }
 
 function formatAge(hours: number) {
-	if (hours < 24) return `${Math.round(hours)}h old`;
-	return `${Math.round(hours / 24)}d old`;
+	if (hours < 24) return __('{0}h old', [Math.round(hours)]);
+	return __('{0}d old', [Math.round(hours / 24)]);
 }
 
 const kpiItems = computed(() => {
 	if (!data.value) return [];
 	const c = data.value.counts;
 	return [
-		{ id: 'total', label: 'Total Inquiries', value: c.total },
-		{ id: 'contacted', label: 'Contacted', value: c.contacted },
+		{ id: 'total', label: __('Total Inquiries'), value: c.total },
+		{ id: 'contacted', label: __('Contacted'), value: c.contacted },
 		{
 			id: 'overdue',
-			label: 'Overdue First Contact',
+			label: __('Overdue First Contact'),
 			value: c.overdue_first_contact,
-			hint: 'Action Needed',
+			hint: __('Action Needed'),
 		},
-		{ id: 'due_today', label: 'Due Today', value: c.due_today },
+		{ id: 'due_today', label: __('Due Today'), value: c.due_today },
 		{
 			id: 'upcoming',
-			label: 'Upcoming',
+			label: __('Upcoming'),
 			value: c.upcoming,
-			hint: `Next ${data.value.config?.upcoming_horizon_days || 7} Days`,
+			hint: __('Next {0} Days', [data.value.config?.upcoming_horizon_days || 7]),
 		},
 	];
 });
@@ -679,7 +710,7 @@ const laneDistributionItems = computed(() => {
 	if (!data.value?.lane_distribution) return [];
 	const total = data.value?.counts?.total || 0;
 	return data.value.lane_distribution.map((d: any) => ({
-		label: d.label || 'Admission',
+		label: d.label || __('Admission'),
 		count: d.value,
 		pct: total ? Math.round((d.value / total) * 100) : 0,
 	}));
@@ -692,7 +723,7 @@ const laneCards = computed(() => {
 	return [
 		{
 			id: 'lane-admission',
-			title: 'Admission Lane',
+			title: __('Admission Lane'),
 			counts: admission.counts || {
 				total: 0,
 				contacted: 0,
@@ -705,7 +736,7 @@ const laneCards = computed(() => {
 		},
 		{
 			id: 'lane-staff',
-			title: 'Staff Lane',
+			title: __('Staff Lane'),
 			counts: staff.counts || {
 				total: 0,
 				contacted: 0,
@@ -756,16 +787,16 @@ const monthlyChartOption = computed(() => {
 		legend: { bottom: 0 },
 		grid: { left: 40, right: 20, top: 20, bottom: 40, containLabel: true },
 		xAxis: { type: 'category', data: s.labels, axisLabel: { color: '#64748b' } },
-		yAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed' } }, name: 'Hours' },
+		yAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed' } }, name: __('Hours') },
 		series: [
 			{
-				name: 'First Contact',
+				name: __('First Contact'),
 				data: s.first_contact,
 				type: 'bar',
 				itemStyle: { color: '#8b5cf6' },
 			},
 			{
-				name: 'From Assign',
+				name: __('From Assign'),
 				data: s.from_assign,
 				type: 'bar',
 				itemStyle: { color: '#10b981' },
@@ -782,17 +813,17 @@ const monthlyLaneChartOption = computed(() => {
 		legend: { bottom: 0 },
 		grid: { left: 40, right: 20, top: 20, bottom: 40, containLabel: true },
 		xAxis: { type: 'category', data: s.labels, axisLabel: { color: '#64748b' } },
-		yAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed' } }, name: 'Hours' },
+		yAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed' } }, name: __('Hours') },
 		series: [
 			{
-				name: 'Admission Lane',
+				name: __('Admission Lane'),
 				data: s.admission,
 				type: 'line',
 				smooth: true,
 				itemStyle: { color: '#2563eb' },
 			},
 			{
-				name: 'Staff Lane',
+				name: __('Staff Lane'),
 				data: s.staff,
 				type: 'line',
 				smooth: true,

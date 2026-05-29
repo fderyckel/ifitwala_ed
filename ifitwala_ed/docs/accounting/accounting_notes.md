@@ -175,6 +175,7 @@ Phase 1 adds separate program billing objects:
 * `Program Billing Plan Component` stores program-local quantity and default-rate policy
 * `Billing Schedule` derives the per-enrollment billing rows
 * `Billing Run` batches pending schedule rows into draft invoices grouped by `Account Holder`
+* `Initial Enrollment Billing Package` handles first-enrollment one-off fees after a student has a real `Program Enrollment`
 
 Locked boundary:
 
@@ -182,6 +183,7 @@ Locked boundary:
 * keep plan-local pricing on `Program Billing Plan Component`
 * keep installment splitting on `Payment Terms Template`
 * keep all GL posting inside `Sales Invoice`
+* keep new-entrant one-off fees out of `Program Billing Plan` unless every enrolled student in that plan should pay them
 
 ---
 
@@ -204,6 +206,7 @@ Phase 1 implementation status:
 * Annual, Term, and Monthly program billing structures are implemented through `Program Billing Plan`
 * Billing schedules are generated from `Program Enrollment`
 * Accounting can generate draft invoices in bulk for one `Program Offering` through `Billing Run`
+* One-off initial enrollment invoices are implemented through `Initial Enrollment Billing Package`
 
 ---
 

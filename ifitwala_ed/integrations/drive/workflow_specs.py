@@ -199,6 +199,23 @@ def _resolve_org_communication_session_context(payload: dict[str, Any]) -> dict[
     return authoritative
 
 
+def _resolve_expense_claim_receipt_session_context(payload: dict[str, Any]) -> dict[str, Any]:
+    from ifitwala_ed.integrations.drive import expense_claims
+
+    expense_claim = _as_non_empty_string(payload, "expense_claim")
+    row_name = payload.get("row_name")
+    expense_claim_doc = expense_claims.assert_expense_claim_upload_access(
+        expense_claim,
+        permission_type="write",
+    )
+    authoritative = expense_claims.build_expense_claim_receipt_contract(
+        expense_claim_doc,
+        row_name=row_name,
+    )
+    _validate_workflow_slot(payload, authoritative, label=_("Expense Claim receipt upload"))
+    return authoritative
+
+
 def _resolve_student_log_evidence_session_context(payload: dict[str, Any]) -> dict[str, Any]:
     from ifitwala_ed.integrations.drive import student_logs
 
@@ -242,6 +259,18 @@ def _resolve_org_communication_context_override(
     return org_communications.get_org_communication_attachment_context_override(owner_name, slot)
 
 
+def _resolve_expense_claim_receipt_context_override(
+    upload_session_doc, authoritative_context: dict[str, Any]
+) -> dict[str, Any] | None:
+    from ifitwala_ed.integrations.drive import expense_claims
+
+    owner_name = str(
+        getattr(upload_session_doc, "owner_name", None) or authoritative_context.get("owner_name") or ""
+    ).strip()
+    slot = str(getattr(upload_session_doc, "intended_slot", None) or authoritative_context.get("slot") or "").strip()
+    return expense_claims.get_expense_claim_receipt_context_override_for_drive(owner_name, slot)
+
+
 def _resolve_student_log_evidence_context_override(
     upload_session_doc, authoritative_context: dict[str, Any]
 ) -> dict[str, Any] | None:
@@ -272,6 +301,12 @@ def _resolve_org_communication_post_finalize(upload_session_doc, created_file) -
     return org_communications.run_org_communication_attachment_post_finalize(upload_session_doc, created_file)
 
 
+def _resolve_expense_claim_receipt_post_finalize(upload_session_doc, created_file) -> dict[str, Any]:
+    from ifitwala_ed.integrations.drive import expense_claims
+
+    return expense_claims.run_expense_claim_receipt_post_finalize_for_drive(upload_session_doc, created_file)
+
+
 def _resolve_student_log_evidence_post_finalize(upload_session_doc, created_file) -> dict[str, Any]:
     from ifitwala_ed.integrations.drive import student_logs
 
@@ -291,6 +326,15 @@ def _validate_org_communication_finalize_context(upload_session_doc) -> Optional
     from ifitwala_ed.integrations.drive import org_communications
 
     return org_communications.validate_org_communication_finalize_context(upload_session_doc)
+
+
+def _validate_expense_claim_receipt_finalize_context(upload_session_doc) -> Optional[dict[str, Any]]:
+    if getattr(upload_session_doc, "owner_doctype", None) != "Expense Claim":
+        return None
+
+    from ifitwala_ed.integrations.drive import expense_claims
+
+    return expense_claims.validate_expense_claim_finalize_context(upload_session_doc)
 
 
 def _validate_student_log_evidence_finalize_context(upload_session_doc) -> Optional[dict[str, Any]]:
@@ -721,6 +765,17 @@ _WORKFLOW_SPECS: tuple[GovernedUploadSpec, ...] = (
         run_post_finalize=_resolve_org_communication_post_finalize,
     ),
     GovernedUploadSpec(
+        workflow_id="expense_claim.receipt",
+        contract_version=_WORKFLOW_CONTRACT_VERSION,
+        is_private=True,
+        resolve_session_context=_resolve_expense_claim_receipt_session_context,
+        validate_finalize_context=_validate_expense_claim_receipt_finalize_context,
+        resolve_attached_field_override=_no_attached_field_override,
+        resolve_context_override=_resolve_expense_claim_receipt_context_override,
+        resolve_binding_role=_static_binding_role("expense_claim_receipt"),
+        run_post_finalize=_resolve_expense_claim_receipt_post_finalize,
+    ),
+    GovernedUploadSpec(
         workflow_id="student_log.evidence_attachment",
         contract_version=_WORKFLOW_CONTRACT_VERSION,
         is_private=True,
@@ -830,6 +885,7 @@ _WORKFLOW_ID_ALIASES = {
     "applicant_guardian_image": "admissions.applicant_guardian_image",
     "applicant_health": "admissions.applicant_health_vaccination",
     "org_communication_attachment": "org_communication.attachment",
+    "expense_claim_receipt": "expense_claim.receipt",
     "student_log_evidence_attachment": "student_log.evidence_attachment",
     "student_referral_attachment": "student_referral.attachment",
 }

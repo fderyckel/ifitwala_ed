@@ -31,7 +31,7 @@
    "fieldname": "payment_type",
    "fieldtype": "Select",
    "label": "Payment Type",
-   "options": "Receive",
+   "options": "Receive\nPay",
    "default": "Receive",
    "reqd": 1
   },
@@ -39,15 +39,15 @@
    "fieldname": "party_type",
    "fieldtype": "Select",
    "label": "Party Type",
-   "options": "Account Holder",
+   "options": "Account Holder\nEmployee",
    "default": "Account Holder",
    "reqd": 1
   },
   {
    "fieldname": "party",
-   "fieldtype": "Link",
-   "label": "Account Holder",
-   "options": "Account Holder",
+   "fieldtype": "Dynamic Link",
+   "label": "Party",
+   "options": "party_type",
    "reqd": 1
   },
   {
@@ -113,7 +113,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-01 00:00:11",
+ "modified": "2026-05-29 09:30:26.000000",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Payment Entry",

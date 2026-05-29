@@ -215,6 +215,7 @@ class StudentApplicant(Document):
         self._validate_edit_permissions(before)
         self._validate_attachment_guard()
         self._validate_academic_year_intent()
+        self._validate_term_intent()
 
     # ---------------------------------------------------------------------
     # Link immutability
@@ -498,6 +499,33 @@ class StudentApplicant(Document):
         scope = get_school_scope_for_academic_year(self.school)
         if ay_row.get("school") not in scope:
             frappe.throw(_("Selected Academic Year is outside the applicant's school scope."))
+
+    def _validate_term_intent(self):
+        if not self.term:
+            return
+        if not self.academic_year:
+            frappe.throw(_("Academic Year is required before selecting a Term."))
+        if not self.school:
+            frappe.throw(_("School is required before selecting a Term."))
+
+        term_row = frappe.db.get_value(
+            "Term",
+            self.term,
+            ["academic_year", "archived", "visible_to_admission", "school"],
+            as_dict=True,
+        )
+        if not term_row:
+            frappe.throw(_("Selected Term does not exist."))
+        if term_row.get("academic_year") != self.academic_year:
+            frappe.throw(_("Selected Term must belong to the selected Academic Year."))
+        if term_row.get("archived"):
+            frappe.throw(_("Selected Term is archived."))
+        if not term_row.get("visible_to_admission"):
+            frappe.throw(_("Selected Term is not visible to admissions."))
+
+        term_school = (term_row.get("school") or "").strip()
+        if term_school and term_school not in get_school_scope_for_academic_year(self.school):
+            frappe.throw(_("Selected Term is outside the applicant's school scope."))
 
     def _set_title_if_missing(self):
         if (self.title or "").strip():
@@ -2567,6 +2595,51 @@ def academic_year_intent_query(doctype, txt, searchfield, start, page_len, filte
          LIMIT %s, %s
         """,
         [*scope, search_txt, start, page_len],
+    )
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def term_intent_query(doctype, txt, searchfield, start, page_len, filters):
+    filters = filters or {}
+    school = (filters.get("school") or "").strip()
+    academic_year = (filters.get("academic_year") or "").strip()
+    if not school or not academic_year:
+        return []
+
+    scope = get_school_scope_for_academic_year(school)
+    if not scope:
+        return []
+
+    ay_row = frappe.db.get_value(
+        "Academic Year",
+        academic_year,
+        ["archived", "visible_to_admission", "school"],
+        as_dict=True,
+    )
+    if (
+        not ay_row
+        or ay_row.get("archived")
+        or not ay_row.get("visible_to_admission")
+        or ay_row.get("school") not in scope
+    ):
+        return []
+
+    search_txt = f"%{txt or ''}%"
+    placeholders = ", ".join(["%s"] * len(scope))
+    return frappe.db.sql(
+        f"""
+        SELECT t.name
+          FROM `tabTerm` t
+         WHERE COALESCE(t.archived, 0) = 0
+           AND COALESCE(t.visible_to_admission, 0) = 1
+           AND t.academic_year = %s
+           AND (COALESCE(t.school, '') = '' OR t.school IN ({placeholders}))
+           AND (t.name LIKE %s OR t.term_name LIKE %s)
+         ORDER BY t.term_start_date ASC, t.name ASC
+         LIMIT %s, %s
+        """,
+        [academic_year, *scope, search_txt, search_txt, start, page_len],
     )
 
 

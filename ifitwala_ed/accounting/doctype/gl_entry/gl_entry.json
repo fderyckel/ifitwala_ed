@@ -106,7 +106,7 @@
    "fieldname": "party_type",
    "fieldtype": "Select",
    "label": "Party Type",
-   "options": "\nAccount Holder"
+   "options": "\nAccount Holder\nEmployee"
   },
   {
    "fieldname": "party",
@@ -143,7 +143,7 @@
  ],
  "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2025-02-01 00:00:11",
+ "modified": "2026-05-29 09:30:26.000000",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "GL Entry",
