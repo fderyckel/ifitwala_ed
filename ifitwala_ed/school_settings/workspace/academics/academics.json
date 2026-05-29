@@ -1,7 +1,7 @@
 {
  "app": "ifitwala_ed",
  "charts": [],
- "content": "[{\"id\":\"jZNdnyS8D6\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Academics</span>\",\"col\":12}},{\"id\":\"Vc7yxTmAVu\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Schedule\",\"col\":3}},{\"id\":\"qzNSr6v13S\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"School Events\",\"col\":3}},{\"id\":\"uR4H46u5Oe\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Task\",\"col\":3}},{\"id\":\"apaBo2gtj4\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Todo\",\"col\":3}},{\"id\":\"v-EkbrgGdj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Hub\",\"col\":3}},{\"id\":\"CXU4ZAplko\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"BTlitmWZDn\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"wo-bFRMgG7\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum\",\"col\":4}},{\"id\":\"PAMo4OTijX\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports & Dashboards\",\"col\":4}},{\"id\":\"-IjqqRYUVX\",\"type\":\"card\",\"data\":{\"card_name\":\"Org, School & HR\",\"col\":4}},{\"id\":\"aKVIXzj9LG\",\"type\":\"card\",\"data\":{\"card_name\":\"Collaboration\",\"col\":4}}]",
+ "content": "[{\"id\":\"jZNdnyS8D6\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Academics</span>\",\"col\":12}},{\"id\":\"Vc7yxTmAVu\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Schedule\",\"col\":3}},{\"id\":\"qzNSr6v13S\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"School Events\",\"col\":3}},{\"id\":\"uR4H46u5Oe\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Task\",\"col\":3}},{\"id\":\"apaBo2gtj4\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Todo\",\"col\":3}},{\"id\":\"v-EkbrgGdj\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Hub\",\"col\":3}},{\"id\":\"CXU4ZAplko\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"BTlitmWZDn\",\"type\":\"card\",\"data\":{\"card_name\":\"Students\",\"col\":4}},{\"id\":\"wo-bFRMgG7\",\"type\":\"card\",\"data\":{\"card_name\":\"Curriculum\",\"col\":4}},{\"id\":\"PAMo4OTijX\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports & Dashboards\",\"col\":4}},{\"id\":\"-IjqqRYUVX\",\"type\":\"card\",\"data\":{\"card_name\":\"Org, School & HR\",\"col\":4}},{\"id\":\"Vel5qYL2NB\",\"type\":\"card\",\"data\":{\"card_name\":\"HR\",\"col\":4}},{\"id\":\"aKVIXzj9LG\",\"type\":\"card\",\"data\":{\"card_name\":\"Collaboration\",\"col\":4}}]",
  "creation": "2025-05-01 09:35:08.920114",
  "custom_blocks": [],
  "docstatus": 0,
@@ -164,65 +164,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Org, School & HR",
-   "link_count": 5,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "School Calendar",
-   "link_count": 0,
-   "link_to": "School Calendar",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Staff Calendar",
-   "link_count": 0,
-   "link_to": "Staff Calendar",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Employee",
-   "link_count": 0,
-   "link_to": "Employee",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Instructor Schedule Calendar",
-   "link_count": 0,
-   "link_to": "schedule_calendar",
-   "link_type": "Page",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "School Schedule Calendar",
-   "link_count": 0,
-   "link_to": "school_schedule_calendar",
-   "link_type": "Page",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Reports & Dashboards",
    "link_count": 3,
    "link_type": "DocType",
@@ -258,9 +199,87 @@
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Org, School & HR",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "School Calendar",
+   "link_count": 0,
+   "link_to": "School Calendar",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Instructor Schedule Calendar",
+   "link_count": 0,
+   "link_to": "schedule_calendar",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "School Schedule Calendar",
+   "link_count": 0,
+   "link_to": "school_schedule_calendar",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "HR",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Employee",
+   "link_count": 0,
+   "link_to": "Employee",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Staff Calendar",
+   "link_count": 0,
+   "link_to": "Staff Calendar",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Expense Claim",
+   "link_count": 0,
+   "link_to": "Expense Claim",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2026-04-05 01:26:54.000000",
+ "modified": "2026-05-29 10:39:47.041865",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academics",
