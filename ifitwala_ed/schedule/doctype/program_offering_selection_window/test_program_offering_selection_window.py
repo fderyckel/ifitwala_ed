@@ -71,6 +71,25 @@ class TestProgramOfferingSelectionWindow(FrappeTestCase):
         self.assertEqual(summary["counts"]["already_enrolled"], 1)
         self.assertEqual(len(window.students), 0)
 
+    def test_draft_window_can_save_before_program_enrollment_source_filters_are_chosen(self):
+        context = _build_self_enrollment_context()
+
+        window = frappe.get_doc(
+            {
+                "doctype": "Program Offering Selection Window",
+                "program_offering": context["target_offering"].name,
+                "academic_year": context["target_ay"].name,
+                "audience": "Guardian",
+                "status": "Draft",
+                "source_mode": "Program Enrollment",
+            }
+        ).insert()
+
+        self.assertEqual(window.source_mode, "Program Enrollment")
+
+        with self.assertRaises(frappe.ValidationError):
+            window.load_students()
+
 
 def _build_self_enrollment_context(*, carry_forward_optional: bool = True, audience: str = "Guardian") -> dict:
     grade_scale = _make_grade_scale()

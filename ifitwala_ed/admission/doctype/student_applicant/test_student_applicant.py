@@ -274,7 +274,7 @@ class TestStudentApplicant(FrappeTestCase):
 
     def test_has_required_interviews_returns_recent_items(self):
         applicant = self._create_student_applicant()
-        interviewer_user = self._create_user("Interview", "Reviewer")
+        interviewer_user = self._create_user("Interview", "Reviewer", add_role="Instructor")
 
         older_interview = frappe.get_doc(
             {

@@ -20,6 +20,9 @@ function callWindowAction(frm, method) {
 		frappe.msgprint(__('Please save this selection window first.'));
 		return;
 	}
+	if ((method === 'load_students' || method === 'prepare_requests') && !hasSourceContext(frm)) {
+		return;
+	}
 	frappe.call({
 		doc: frm.doc,
 		method,
@@ -87,3 +90,30 @@ frappe.ui.form.on('Program Offering Selection Window', {
 		frm.set_value('source_academic_year', null);
 	},
 });
+
+function hasSourceContext(frm) {
+	const sourceMode = frm.doc.source_mode || 'Manual';
+
+	if (sourceMode === 'Program Enrollment') {
+		if (!frm.doc.source_program_offering || !frm.doc.source_academic_year) {
+			frappe.msgprint(__('Choose Source Program Offering and Source Academic Year before loading students.'));
+			return false;
+		}
+		return true;
+	}
+
+	if (sourceMode === 'Cohort') {
+		if (!frm.doc.source_student_cohort) {
+			frappe.msgprint(__('Choose Source Student Cohort before loading students.'));
+			return false;
+		}
+		return true;
+	}
+
+	if (sourceMode === 'Manual' && !hasStudents(frm)) {
+		frappe.msgprint(__('Add student rows manually, or choose Cohort or Program Enrollment as the source mode.'));
+		return false;
+	}
+
+	return true;
+}

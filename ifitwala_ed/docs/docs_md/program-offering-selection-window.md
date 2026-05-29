@@ -3,7 +3,7 @@ title: "Program Offering Selection Window: Time-Bound Self-Enrollment Campaign"
 slug: program-offering-selection-window
 category: Enrollment
 doc_order: 3
-version: "1.0.4"
+version: "1.0.5"
 last_change_date: "2026-05-29"
 summary: "Launch one time-bound student or guardian self-enrollment campaign for a Program Offering and Academic Year, pre-create draft Program Enrollment Requests, collect choices through the portal, and monitor response status from the window without bypassing the request-first architecture."
 seo_title: "Program Offering Selection Window: Time-Bound Self-Enrollment Campaign"
@@ -43,7 +43,10 @@ Opening a selection window never writes committed enrollment directly. It batch-
 1. Create a window for one `Program Offering` + `Academic Year`.
 2. Choose `Audience` (`Guardian` or `Student`).
 3. Choose `Source Mode` (`Program Enrollment`, `Cohort`, or `Manual`).
+   Draft windows can be saved before the source filters are complete.
 4. Load students into the window.
+   `Program Enrollment` source mode requires Source Program Offering and Source Academic Year before loading students.
+   `Cohort` source mode requires Source Student Cohort before loading students.
 5. Click `Prepare Requests`.
 6. The server creates one draft `Program Enrollment Request` per student:
    - all required offering courses are already present
@@ -119,6 +122,7 @@ Desk visibility is limited to windows whose resolved `school` is inside the user
   - target offering must have `allow_self_enroll = 1`
   - portal audience is explicit (`Guardian` or `Student`)
   - source population can be loaded from current enrollment, cohort, or manual rows
+  - draft save does not require source filters, but load/prepare actions require the source context for `Program Enrollment` and `Cohort` modes
   - request preparation links each student row to one `Program Enrollment Request`
   - existing active requests are reused instead of duplicated
   - the Desk form can launch the linked `Program Enrollment Request Overview` tracker with this window prefilled

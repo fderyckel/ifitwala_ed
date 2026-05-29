@@ -391,10 +391,13 @@ Test refs:
 - the academic year must belong to the offering
 - `allow_self_enroll` must be enabled on the offering
 - audience must be `Student` or `Guardian`
+- Draft windows may be saved before source filters are complete, so staff can preserve the window shell while configuring the population
 - source mode must be one of:
   - `Program Enrollment`
   - `Cohort`
   - `Manual`
+- loading or preparing from `Program Enrollment` requires Source Program Offering and Source Academic Year
+- loading or preparing from `Cohort` requires Source Student Cohort
 
 The Desk workflow is:
 

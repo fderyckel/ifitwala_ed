@@ -92,12 +92,14 @@ class ProgramOfferingSelectionWindow(Document):
             frappe.throw(_("Invalid source mode: {source_mode}.").format(source_mode=source_mode))
         self.source_mode = source_mode
 
+    def _validate_source_context_for_loading(self):
+        source_mode = (self.source_mode or "Manual").strip() or "Manual"
         if source_mode == "Program Enrollment":
             if not self.source_program_offering or not self.source_academic_year:
-                frappe.throw(_("Source Program Offering and Source Academic Year are required for this source mode."))
+                frappe.throw(_("Choose Source Program Offering and Source Academic Year before loading students."))
         elif source_mode == "Cohort":
             if not self.source_student_cohort:
-                frappe.throw(_("Source Student Cohort is required for this source mode."))
+                frappe.throw(_("Choose Source Student Cohort before loading students."))
 
     def _normalize_student_rows(self):
         rows = []
@@ -182,6 +184,7 @@ class ProgramOfferingSelectionWindow(Document):
 
     @frappe.whitelist()
     def load_students(self):
+        self._validate_source_context_for_loading()
         students = self._fetch_source_students()
         if not students:
             frappe.throw(_("No students found with the current source filters."))
@@ -191,6 +194,9 @@ class ProgramOfferingSelectionWindow(Document):
 
     @frappe.whitelist()
     def prepare_requests(self):
+        if self.source_mode != "Manual":
+            self._validate_source_context_for_loading()
+
         if not self.students:
             self.load_students()
 

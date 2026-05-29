@@ -1,6 +1,7 @@
 # ifitwala_ed/admission/doctype/recommendation_template/recommendation_template.py
 
 import hashlib
+import re
 
 import frappe
 from frappe import _
@@ -23,6 +24,10 @@ ALLOWED_FIELD_TYPES = {
 DISPLAY_ONLY_FIELD_TYPES = {"Section Header"}
 MANAGED_RECOMMENDATION_DOC_TYPE_CODE_PREFIX = "recommendation_letter"
 MANAGED_RECOMMENDATION_DOC_TYPE_LABEL = "Recommendation Letter"
+
+
+def _normalize_internal_key(value: str) -> str:
+    return re.sub(r"(^_+|_+$)", "", re.sub(r"[^a-z0-9]+", "_", str(value or "").strip().lower()))[:80]
 
 
 class RecommendationTemplate(Document):
@@ -191,14 +196,14 @@ class RecommendationTemplate(Document):
     def _validate_template_fields(self):
         seen = set()
         for row in self.template_fields or []:
-            row.field_key = frappe.scrub((row.field_key or "").strip())[:80]
+            row.field_key = _normalize_internal_key(row.field_key)
             row.label = (row.label or "").strip()
             row.field_type = (row.field_type or "").strip()
             row.options_json = (row.options_json or "").strip()
             row.help_text = (row.help_text or "").strip()
 
             if not row.field_key and row.label:
-                row.field_key = frappe.scrub(row.label)[:80]
+                row.field_key = _normalize_internal_key(row.label)
             if not row.field_key:
                 frappe.throw(_("Template field key is required."))
             if not row.label:
@@ -263,10 +268,10 @@ class RecommendationTemplate(Document):
         for value in values:
             if isinstance(value, dict):
                 option_label = (value.get("label") or value.get("key") or "").strip()
-                key = frappe.scrub((value.get("key") or option_label).strip())[:80]
+                key = _normalize_internal_key(value.get("key") or option_label)
             else:
                 option_label = str(value or "").strip()
-                key = frappe.scrub(option_label)[:80]
+                key = _normalize_internal_key(option_label)
 
             if not key or not option_label:
                 frappe.throw(_("{label} cannot include blank entries.").format(label=label))
