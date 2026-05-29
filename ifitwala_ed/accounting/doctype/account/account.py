@@ -1,7 +1,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import cstr
+from frappe.utils import add_to_date, cstr, now_datetime, pretty_date
 
 
 class Account(Document):
@@ -65,6 +65,140 @@ class Account(Document):
     def validate_group(self):
         # Posting rules enforced at transaction posting time.
         pass
+
+
+@frappe.whitelist()
+def update_account_name_number(name, account_name, account_number=None, reason=None):
+    name = cstr(name).strip()
+    account_name = cstr(account_name).strip()
+    account_number = cstr(account_number).strip()
+    reason = cstr(reason).strip()
+
+    if not reason:
+        frappe.throw(_("Reason is required to update an account name or number."))
+    if not account_name:
+        frappe.throw(_("Account Name is required"))
+
+    account = frappe.get_doc("Account", name)
+    if not frappe.has_permission("Account", ptype="write", doc=account):
+        frappe.throw(_("You are not permitted to update this account."), frappe.PermissionError)
+
+    _validate_account_rename_role()
+    _validate_account_can_be_renamed(account)
+    _validate_account_number_available(account, account_number)
+
+    old_docname = account.name
+    old_account_name = cstr(account.account_name).strip()
+    old_account_number = cstr(account.account_number).strip()
+    new_docname = get_account_autoname(account_number, account_name, account.organization)
+    _validate_account_docname_available(account, new_docname)
+
+    if old_docname == new_docname and old_account_name == account_name and old_account_number == account_number:
+        return {"name": old_docname, "audit_comment": None}
+
+    _ensure_account_rename_idle_system()
+
+    frappe.db.set_value("Account", old_docname, "account_number", account_number, update_modified=True)
+    frappe.db.set_value("Account", old_docname, "account_name", account_name, update_modified=True)
+
+    if old_docname != new_docname:
+        frappe.rename_doc("Account", old_docname, new_docname, force=1)
+
+    audit_comment = _add_account_rename_audit_comment(
+        new_docname,
+        old_docname=old_docname,
+        new_docname=new_docname,
+        old_account_name=old_account_name,
+        new_account_name=account_name,
+        old_account_number=old_account_number,
+        new_account_number=account_number,
+        reason=reason,
+    )
+    return {"name": new_docname, "audit_comment": getattr(audit_comment, "name", None)}
+
+
+def _validate_account_rename_role():
+    roles = set(frappe.get_roles() or [])
+    if roles & {"Accounts Manager", "System Manager"}:
+        return
+    frappe.throw(_("Only Accounts Manager or System Manager can update account names or numbers."))
+
+
+def _validate_account_can_be_renamed(account):
+    if not cstr(account.parent_account).strip():
+        frappe.throw(_("Root accounts cannot be renamed. Rename a child account instead."))
+
+
+def _validate_account_number_available(account, account_number):
+    if not account_number:
+        return
+
+    duplicate = frappe.db.get_value(
+        "Account",
+        {
+            "organization": account.organization,
+            "account_number": account_number,
+            "name": ["!=", account.name],
+        },
+        "name",
+    )
+    if duplicate:
+        frappe.throw(
+            _("Account Number {account_number} is already used by account {account}.").format(
+                account_number=frappe.bold(account_number),
+                account=frappe.bold(duplicate),
+            )
+        )
+
+
+def _validate_account_docname_available(account, new_docname):
+    if new_docname == account.name:
+        return
+    if frappe.db.exists("Account", new_docname):
+        frappe.throw(
+            _("Account {account} already exists. Choose a different account name or number.").format(
+                account=frappe.bold(new_docname)
+            )
+        )
+
+
+def _add_account_rename_audit_comment(account_name, **details):
+    account = frappe.get_doc("Account", account_name)
+    text = _(
+        "Account name/number updated by {user} on {timestamp}. Document name: {old_docname} -> {new_docname}. Account name: {old_account_name} -> {new_account_name}. Account number: {old_account_number} -> {new_account_number}. Reason: {reason}"
+    ).format(
+        user=frappe.bold(frappe.session.user),
+        timestamp=now_datetime(),
+        old_docname=frappe.bold(details["old_docname"]),
+        new_docname=frappe.bold(details["new_docname"]),
+        old_account_name=frappe.bold(details["old_account_name"] or _("Not set")),
+        new_account_name=frappe.bold(details["new_account_name"] or _("Not set")),
+        old_account_number=frappe.bold(details["old_account_number"] or _("Not set")),
+        new_account_number=frappe.bold(details["new_account_number"] or _("Not set")),
+        reason=frappe.bold(details["reason"]),
+    )
+    return account.add_comment("Info", text=text)
+
+
+def _ensure_account_rename_idle_system():
+    if getattr(frappe, "in_test", False):
+        return
+
+    try:
+        last_gl_update = frappe.db.get_value("GL Entry", {}, "modified", for_update=True, wait=False)
+    except frappe.QueryTimeoutError:
+        last_gl_update = add_to_date(None, seconds=-1)
+
+    if not last_gl_update:
+        return
+
+    if last_gl_update > add_to_date(None, minutes=-5):
+        frappe.throw(
+            _(
+                "Last GL Entry update was done {last_update}. Account names and numbers cannot be updated while accounting activity is in progress. Please wait for 5 minutes before retrying."
+            ).format(last_update=pretty_date(last_gl_update)),
+            title=_("System In Use"),
+        )
 
 
 def get_account_autoname(account_number, account_name, organization):

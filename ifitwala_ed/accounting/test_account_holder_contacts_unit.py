@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import sys
+from pathlib import Path
 from types import ModuleType
 from unittest import TestCase
 
@@ -50,6 +52,24 @@ def _account_holder_utils_stub() -> ModuleType:
 
 
 class TestAccountHolderContactsUnit(TestCase):
+    def test_account_holder_raw_contact_fields_are_not_generic_export_surfaces(self):
+        metadata_path = Path(__file__).parent / "doctype" / "account_holder" / "account_holder.json"
+        metadata = json.loads(metadata_path.read_text())
+        fields = {field["fieldname"]: field for field in metadata["fields"] if field.get("fieldname")}
+
+        for fieldname in ("primary_email", "primary_phone"):
+            field = fields[fieldname]
+            self.assertNotEqual(field.get("in_list_view"), 1)
+            self.assertEqual(field.get("report_hide"), 1)
+            self.assertEqual(field.get("print_hide"), 1)
+            self.assertEqual(field.get("no_copy"), 1)
+            self.assertEqual(field.get("hidden"), 1)
+            self.assertEqual(field.get("permlevel"), 1)
+
+        self.assertEqual(metadata.get("index_web_pages_for_search"), 0)
+        for permission in metadata["permissions"]:
+            self.assertNotEqual(permission.get("export"), 1, permission.get("role"))
+
     def test_student_guardian_proposal_prefers_financial_guardian_and_masks_values(self):
         with stubbed_frappe(
             extra_modules={

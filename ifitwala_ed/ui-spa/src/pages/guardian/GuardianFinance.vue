@@ -83,7 +83,7 @@
 								</p>
 							</div>
 							<p class="type-caption text-ink/60">
-								{{ holder.primary_email || __('No email on file') }}
+								{{ holder.primary_email_masked || __('No billing email on file') }}
 							</p>
 						</div>
 						<p class="mt-2 type-body text-ink/70">

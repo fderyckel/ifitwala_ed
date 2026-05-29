@@ -3,7 +3,7 @@
 Status: Active
 Audience: Humans, coding agents
 Scope: Data visible through `/hub/guardian`
-Last updated: 2026-04-22
+Last updated: 2026-05-29
 
 This document defines the current server-enforced visibility rules for the guardian portal.
 
@@ -99,9 +99,10 @@ Test refs:
 Rules:
 
 1. Finance scope starts from linked students and their `Student.account_holder` values; the portal never guesses unrelated account holders.
-2. A guardian may see a linked student's account holder only when either `Guardian.is_financial_guardian = 1` or `Account Holder.primary_email` matches `Guardian.guardian_email` or the logged-in user.
-3. Finance payloads include only submitted invoices and submitted payment entries for authorized account holders.
-4. If no linked account holder passes the authority rule, the finance payload returns an explicit access-limited empty state instead of cross-family data.
+2. A guardian may see a linked student's account holder only when either `Guardian.is_financial_guardian = 1` or the server-side `Account Holder.primary_email` authority snapshot matches `Guardian.guardian_email` or the logged-in user.
+3. The raw Account Holder authority snapshot is never returned to the guardian portal; finance DTOs may include only masked contact hints.
+4. Finance payloads include only submitted invoices and submitted payment entries for authorized account holders.
+5. If no linked account holder passes the authority rule, the finance payload returns an explicit access-limited empty state instead of cross-family data.
 
 ## 5. Communication And Read-State
 

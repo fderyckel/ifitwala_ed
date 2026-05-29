@@ -43,8 +43,7 @@ export type AccountHolderSummary = {
 	label: string
 	organization: string
 	status: string
-	primary_email: string
-	primary_phone: string
+	primary_email_masked: string
 	students: AccountHolderStudent[]
 }
 

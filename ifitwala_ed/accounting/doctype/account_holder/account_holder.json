@@ -59,15 +59,24 @@
   {
    "fieldname": "primary_email",
    "fieldtype": "Data",
+   "hidden": 1,
    "label": "Primary Email",
-   "options": "Email"
+   "no_copy": 1,
+   "options": "Email",
+   "permlevel": 1,
+   "print_hide": 1,
+   "report_hide": 1
   },
   {
    "fieldname": "primary_phone",
    "fieldtype": "Data",
-   "in_list_view": 1,
+   "hidden": 1,
    "label": "Primary Phone",
-   "options": "Phone"
+   "no_copy": 1,
+   "options": "Phone",
+   "permlevel": 1,
+   "print_hide": 1,
+   "report_hide": 1
   },
   {
    "fieldname": "notes",
@@ -95,9 +104,9 @@
    "report_hide": 1
   }
  ],
- "index_web_pages_for_search": 1,
+ "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2026-05-29 13:08:32.000000",
+ "modified": "2026-05-29 21:51:37.000000",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Account Holder",
@@ -108,7 +117,6 @@
    "create": 1,
    "delete": 1,
    "email": 1,
-   "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
@@ -120,7 +128,6 @@
    "create": 1,
    "delete": 1,
    "email": 1,
-   "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
@@ -132,7 +139,6 @@
    "create": 1,
    "delete": 1,
    "email": 1,
-   "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
@@ -171,7 +177,6 @@
    "create": 1,
    "delete": 1,
    "email": 1,
-   "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,

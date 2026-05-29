@@ -71,12 +71,12 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-29 11:46:22.000000",
+ "modified": "2026-05-29 22:43:00.000000",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Billable Offering",
  "naming_rule": "Expression",
- "autoname": "format:{offering_type}-{organization}-{#####}",
+ "autoname": "BO-.####",
  "owner": "Administrator",
  "permissions": [
   {

@@ -3,7 +3,7 @@
 Status: Active
 Audience: Humans, coding agents
 Scope: `/hub/guardian` family information surfaces
-Last updated: 2026-04-23
+Last updated: 2026-05-29
 
 This document defines the canonical information contract for Guardian Home plus the Phase-2 guardian policy, finance, and monitoring surfaces.
 
@@ -141,7 +141,8 @@ Rules:
 1. `/guardian/finance` consumes one canonical payload: `get_guardian_finance_snapshot`.
 2. The finance snapshot is read-only in Phase 2 and shows authorized account holders, submitted invoices, and submitted payment history.
 3. Invoice rows may aggregate charges for multiple linked children and must expose the linked-child labels returned by the server.
-4. If the guardian does not pass the finance authority rule for any linked account holder, the page renders an explicit access-limited empty state.
+4. Authorized account-holder summaries must not return raw email or phone snapshots; the payload may include masked contact hints only.
+5. If the guardian does not pass the finance authority rule for any linked account holder, the page renders an explicit access-limited empty state.
 
 ## 7. Monitoring Surface
 

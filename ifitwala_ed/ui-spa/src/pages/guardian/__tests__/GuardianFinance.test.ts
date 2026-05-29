@@ -74,8 +74,7 @@ describe('GuardianFinance', () => {
 					label: 'Example Family',
 					organization: 'ORG-1',
 					status: 'Active',
-					primary_email: 'guardian@example.com',
-					primary_phone: '',
+					primary_email_masked: 'g****@example.com',
 					students: [{ student: 'STU-1', full_name: 'Amina Example', school: 'School One' }],
 				},
 			],
@@ -127,6 +126,8 @@ describe('GuardianFinance', () => {
 		expect(getGuardianFinanceSnapshotMock).toHaveBeenCalledTimes(1)
 		expect(text).toContain('Family Finance')
 		expect(text).toContain('Example Family')
+		expect(text).toContain('g****@example.com')
+		expect(text).not.toContain('guardian@example.com')
 		expect(text).toContain('INV-1')
 		expect(text).toContain('Amina Example')
 		expect(text).toContain('PAY-1')

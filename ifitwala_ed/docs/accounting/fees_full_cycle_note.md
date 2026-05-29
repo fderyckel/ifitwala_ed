@@ -62,12 +62,12 @@ Create an `Account Holder` for the person or entity that will be invoiced. The r
 - account holder name
 - holder type
 - status
-- primary email / phone
+- primary email / phone as a server-side delivery snapshot, not a generic list/report/export field
 - billing contact links to real `Guardian` records when the payer is a parent/guardian
 
 Then make sure the relevant `Student` record links to that same `Account Holder`.
 
-For already enrolled/imported students, staff do not need to re-enter guardian payer details. From the Student form, use **Create Account Holder with Guardians** when the student has guardian rows but no Account Holder. The action creates the payer record, links it back to the student, links the selected guardians as billing contacts, and fills the Account Holder primary email/phone from the primary selected guardian.
+For already enrolled/imported students, staff do not need to re-enter guardian payer details. From the Student form, use **Create Account Holder with Guardians** when the student has guardian rows but no Account Holder. The action creates the payer record, links it back to the student, links the selected guardians as billing contacts, and fills the Account Holder primary email/phone delivery snapshot from the primary selected guardian. Raw snapshots are not exposed through generic list, report, export, or guardian portal DTO surfaces; staff should use the masked billing-contact summary and explicit reveal workflow where raw finance follow-up is permitted.
 
 If the Student already has an Account Holder, use **Link Guardians to Account Holder** from the same Student form action group to attach the existing guardian rows as finance billing contacts.
 

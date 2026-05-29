@@ -143,7 +143,7 @@ When an enrolled/imported student already has guardian rows, staff can create or
 * creates the `Account Holder` in the student's Organization when the student has none
 * links the Student to that Account Holder
 * links selected Guardians as Account Holder billing contacts
-* stores the primary payer email and phone snapshot on Account Holder for finance list/form use
+* stores the primary payer email and phone snapshot on Account Holder only for server-side finance delivery workflows; raw snapshots are hidden from generic list, report, print, export, and portal DTO surfaces
 * syncs purpose-bound Guardian contact points with `purpose = billing` for audited finance follow-up
 
 Rules:
@@ -152,7 +152,7 @@ Rules:
 * the source Student must have `anchor_school`
 * the Account Holder Organization must match the Student's school Organization
 * the Guardian must be linked to the source Student when `source_student` is set on the billing-contact row
-* raw billing contact reveal is a named finance workflow and must use the contact privacy service, not broad Guardian/Contact exports
+* raw billing contact reveal is a named finance workflow and must use the contact privacy service, not broad Guardian/Contact or Account Holder exports
 
 ---
 
@@ -305,6 +305,7 @@ The CoA structure must follow ERPNext conventions closely, even if not fully use
 * Existing sites also backfill ERPNext-defined `account_type` values for standard-chart accounts when those values are missing.
 * `Account.account_name` keeps the human-facing chart label, but the `Account` docname is qualified with the Organization abbreviation to preserve multi-organization isolation and avoid name collisions across sibling organizations.
 * The Chart of Accounts tree is organization-scoped and uses an account-specific tree loader so finance can browse the actual nested chart in Desk.
+* Account name/number changes use a controlled Desk action, not generic document rename. The action is limited to `Accounts Manager` and `System Manager`, requires a reason, blocks root accounts, enforces unique account numbers inside the Organization, avoids active GL update windows, renames through Frappe so links are updated consistently, and writes a timeline audit comment with old/new labels, old/new docnames, actor, timestamp, and reason.
 
 ### 10.1 Minimum Active Accounts (Phase 0)
 

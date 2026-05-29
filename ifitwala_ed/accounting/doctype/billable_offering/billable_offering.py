@@ -1,9 +1,17 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.model.naming import make_autoname
 
 
 class BillableOffering(Document):
+    def autoname(self):
+        organization_abbr = frappe.db.get_value("Organization", self.organization, "abbr")
+        if not organization_abbr:
+            frappe.throw(_("Organization Abbreviation is required before creating a Billable Offering."))
+
+        self.name = make_autoname(f"BO-{organization_abbr}-.####")
+
     def validate(self):
         self.validate_income_account()
         self.validate_linked_reference()

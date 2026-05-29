@@ -9,6 +9,7 @@ import frappe
 from frappe.utils import cint, flt, now_datetime
 
 from ifitwala_ed.api.guardian_home import _resolve_guardian_scope
+from ifitwala_ed.contacts.contact_privacy import mask_email
 
 
 @frappe.whitelist()
@@ -93,7 +94,6 @@ def _resolve_finance_scope(*, user: str, guardian_name: str, children: list[dict
             "organization",
             "status",
             "primary_email",
-            "primary_phone",
         ],
         order_by="account_holder_name asc, name asc",
     )
@@ -127,8 +127,7 @@ def _resolve_finance_scope(*, user: str, guardian_name: str, children: list[dict
                 "label": holder.get("account_holder_name") or holder_name,
                 "organization": holder.get("organization") or "",
                 "status": holder.get("status") or "",
-                "primary_email": holder.get("primary_email") or "",
-                "primary_phone": holder.get("primary_phone") or "",
+                "primary_email_masked": mask_email(holder.get("primary_email")),
                 "students": children_by_holder.get(holder_name, []),
             }
         )

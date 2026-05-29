@@ -381,6 +381,8 @@ class TestGuardianFinancePhase2(FrappeTestCase):
                     }
                 ]
             if doctype == "Account Holder":
+                self.assertIn("primary_email", fields or [])
+                self.assertNotIn("primary_phone", fields or [])
                 return [
                     {
                         "name": "AH-1",
@@ -408,6 +410,10 @@ class TestGuardianFinancePhase2(FrappeTestCase):
 
         self.assertEqual(scope["authorized_account_holders"], ["AH-1"])
         self.assertEqual(scope["account_holders"][0]["students"][0]["student"], "STU-1")
+        self.assertEqual(scope["account_holders"][0]["primary_email_masked"], "g****@example.com")
+        self.assertNotIn("primary_email", scope["account_holders"][0])
+        self.assertNotIn("primary_phone", scope["account_holders"][0])
+        self.assertNotIn("guardian@example.com", str(scope["account_holders"]))
         self.assertEqual(scope["access_reason"], "")
 
     def test_finance_snapshot_returns_explicit_access_limited_meta(self):

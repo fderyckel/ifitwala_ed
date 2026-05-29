@@ -1,9 +1,13 @@
 # ifitwala_ed/accounting/doctype/account/test_account.py
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
+from frappe.utils import add_to_date
 
-from ifitwala_ed.accounting.doctype.account.account import get_children
+from ifitwala_ed.accounting.doctype.account import account as account_module
+from ifitwala_ed.accounting.doctype.account.account import get_children, update_account_name_number
 from ifitwala_ed.accounting.doctype.account.chart_of_accounts.chart_of_accounts import sync_account_types_from_chart
 from ifitwala_ed.accounting.doctype.account.chart_of_accounts.verified.standard_chart_of_accounts import (
     get as get_standard_chart,
@@ -30,6 +34,7 @@ class TestAccount(FrappeTestCase):
         is_group=0,
         parent_account=None,
         prefix="Account",
+        account_number=None,
     ):
         doc = {
             "doctype": "Account",
@@ -42,6 +47,8 @@ class TestAccount(FrappeTestCase):
             doc["account_type"] = account_type
         if parent_account:
             doc["parent_account"] = parent_account
+        if account_number:
+            doc["account_number"] = account_number
 
         account = frappe.get_doc(doc)
         account.insert()
@@ -142,3 +149,117 @@ class TestAccount(FrappeTestCase):
 
         self.assertGreaterEqual(updated, 1)
         self.assertEqual(account_type, "Receivable")
+
+    def test_update_account_name_number_renames_and_audits_child_account(self):
+        org = self.make_organization("Rename")
+        parent = self.make_account(
+            organization=org.name,
+            root_type="Asset",
+            is_group=1,
+            prefix="Rename Parent",
+        )
+        account = self.make_account(
+            organization=org.name,
+            root_type="Asset",
+            parent_account=parent.name,
+            prefix="Old Cash",
+            account_number=f"RN-{frappe.generate_hash(length=5)}",
+        )
+
+        result = update_account_name_number(
+            name=account.name,
+            account_name="Renamed Cash",
+            account_number=f"RN-{frappe.generate_hash(length=5)}",
+            reason="Correct chart label for finance users",
+        )
+
+        self.assertNotEqual(result["name"], account.name)
+        self.assertTrue(frappe.db.exists("Account", result["name"]))
+        renamed = frappe.get_doc("Account", result["name"])
+        self.assertEqual(renamed.account_name, "Renamed Cash")
+        self.assertTrue(result["audit_comment"])
+        comment = frappe.db.get_value("Comment", result["audit_comment"], "content")
+        self.assertIn("Correct chart label for finance users", comment)
+        self.assertIn(account.name, comment)
+        self.assertIn(result["name"], comment)
+
+    def test_update_account_name_number_requires_reason(self):
+        org = self.make_organization("Reason")
+        parent = self.make_account(
+            organization=org.name,
+            root_type="Asset",
+            is_group=1,
+            prefix="Reason Parent",
+        )
+        account = self.make_account(
+            organization=org.name,
+            root_type="Asset",
+            parent_account=parent.name,
+            prefix="Reason Child",
+        )
+
+        with self.assertRaises(frappe.ValidationError):
+            update_account_name_number(
+                name=account.name,
+                account_name="Reason Child Renamed",
+                reason="",
+            )
+
+    def test_update_account_name_number_blocks_root_account(self):
+        org = self.make_organization("Root Rename")
+        root = self.make_account(
+            organization=org.name,
+            root_type="Asset",
+            is_group=1,
+            prefix="Root Rename Parent",
+        )
+
+        with self.assertRaises(frappe.ValidationError):
+            update_account_name_number(
+                name=root.name,
+                account_name="Renamed Root",
+                reason="Root rename should be blocked",
+            )
+
+    def test_update_account_name_number_blocks_duplicate_account_number(self):
+        org = self.make_organization("Duplicate Number")
+        parent = self.make_account(
+            organization=org.name,
+            root_type="Asset",
+            is_group=1,
+            prefix="Duplicate Parent",
+        )
+        duplicate_number = f"DN-{frappe.generate_hash(length=5)}"
+        self.make_account(
+            organization=org.name,
+            root_type="Asset",
+            parent_account=parent.name,
+            prefix="Existing Number",
+            account_number=duplicate_number,
+        )
+        account = self.make_account(
+            organization=org.name,
+            root_type="Asset",
+            parent_account=parent.name,
+            prefix="Target Number",
+        )
+
+        with self.assertRaises(frappe.ValidationError):
+            update_account_name_number(
+                name=account.name,
+                account_name="Target Number Renamed",
+                account_number=duplicate_number,
+                reason="Try duplicate account number",
+            )
+
+    def test_account_rename_idle_guard_blocks_recent_gl_activity(self):
+        with (
+            patch.object(account_module.frappe, "in_test", False, create=True),
+            patch.object(
+                account_module.frappe.db,
+                "get_value",
+                return_value=add_to_date(None, minutes=-1),
+            ),
+        ):
+            with self.assertRaises(frappe.ValidationError):
+                account_module._ensure_account_rename_idle_system()
