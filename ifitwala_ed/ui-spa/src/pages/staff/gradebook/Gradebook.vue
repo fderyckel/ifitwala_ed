@@ -3,10 +3,13 @@
 		<header class="flex flex-col gap-5">
 			<div class="page-header">
 				<div class="page-header__intro">
-					<h1 class="type-h1 text-canopy">Gradebook</h1>
+					<h1 class="type-h1 text-canopy">{{ __('Gradebook') }}</h1>
 					<p class="type-meta text-slate-token/80">
-						Pick a student group, then switch between fast single-task grading and the full class
-						overview.
+						{{
+							__(
+								'Pick a student group, then switch between fast single-task grading and the full class overview.'
+							)
+						}}
 					</p>
 				</div>
 
@@ -15,11 +18,11 @@
 						v-if="taskRailCollapsed"
 						type="button"
 						class="if-button if-button--secondary"
-						aria-label="Expand task rail"
+						:aria-label="__('Expand task rail')"
 						@click="toggleTaskRail()"
 					>
 						<FeatherIcon name="chevrons-right" class="h-4 w-4" />
-						Tasks
+						{{ __('Tasks') }}
 					</button>
 					<div class="if-segmented">
 						<button
@@ -28,7 +31,7 @@
 							:class="{ 'if-segmented__item--active': viewMode === 'task' }"
 							@click="setViewMode('task')"
 						>
-							Task View
+							{{ __('Task View') }}
 						</button>
 						<button
 							type="button"
@@ -37,7 +40,7 @@
 							:disabled="!selectedGroup"
 							@click="setViewMode('overview')"
 						>
-							Overview
+							{{ __('Overview') }}
 						</button>
 					</div>
 				</div>
@@ -55,7 +58,7 @@
 						option-value="name"
 						:model-value="filters.school"
 						:disabled="schoolsLoading || !schoolOptions.length"
-						placeholder="School"
+						:placeholder="__('School')"
 						@update:modelValue="onSchoolSelected"
 					/>
 				</div>
@@ -69,7 +72,7 @@
 						option-value="value"
 						:model-value="filters.academic_year"
 						:disabled="!yearOptions.length"
-						placeholder="Year"
+						:placeholder="__('Year')"
 						@update:modelValue="onYearSelected"
 					/>
 				</div>
@@ -83,7 +86,7 @@
 						option-value="value"
 						:model-value="filters.program"
 						:disabled="!programOptions.length"
-						placeholder="Program"
+						:placeholder="__('Program')"
 						@update:modelValue="onProgramSelected"
 					/>
 				</div>
@@ -97,7 +100,7 @@
 						option-value="value"
 						:model-value="filters.course"
 						:disabled="!courseOptions.length"
-						placeholder="Course"
+						:placeholder="__('Course')"
 						@update:modelValue="onCourseSelected"
 					/>
 				</div>
@@ -111,7 +114,7 @@
 						option-value="value"
 						:model-value="selectedGroup?.name || null"
 						:disabled="!groupPickerOptions.length"
-						placeholder="Select group"
+						:placeholder="__('Select group')"
 						@update:modelValue="onGroupSelectedFromToolbar"
 					/>
 				</div>
@@ -124,7 +127,7 @@
 						@click="resetFilters"
 					>
 						<FeatherIcon name="x" class="h-4 w-4" />
-						Reset
+						{{ __('Reset') }}
 					</button>
 				</div>
 			</div>
@@ -147,7 +150,7 @@
 				v-if="selectedTask && viewMode === 'overview'"
 				class="text-xs font-medium uppercase tracking-[0.16em] text-ink/45"
 			>
-				Quick-grade jump stays one click away
+				{{ __('Quick-grade jump stays one click away') }}
 			</p>
 		</div>
 
@@ -160,10 +163,10 @@
 						<div class="flex items-start justify-between gap-3">
 							<div class="min-w-0">
 								<p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink/45">
-									Task Rail
+									{{ __('Task Rail') }}
 								</p>
 								<h2 class="mt-1 text-base font-semibold text-ink">
-									{{ selectedGroup ? 'Assignments' : 'Choose a class' }}
+									{{ selectedGroup ? __('Assignments') : __('Choose a class') }}
 								</h2>
 								<p class="mt-1 text-sm text-ink/60">
 									{{ taskRailSummary }}
@@ -175,7 +178,7 @@
 									class="if-button if-button--quiet if-button--icon"
 									:disabled="groupsLoading"
 									@click="reloadGroups()"
-									aria-label="Reload groups"
+									:aria-label="__('Reload groups')"
 								>
 									<FeatherIcon name="refresh-cw" class="h-4 w-4" />
 								</button>
@@ -198,15 +201,15 @@
 					<div class="flex flex-1 flex-col">
 						<div class="border-b border-border/50 bg-sky/5 px-4 py-4">
 							<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-								Current class
+								{{ __('Current class') }}
 							</p>
 							<p class="mt-2 text-sm font-semibold text-ink">
-								{{ selectedGroup?.label || 'Pick a student group from the filters above.' }}
+								{{ selectedGroup?.label || __('Pick a student group from the filters above.') }}
 							</p>
 							<p class="mt-1 text-xs text-ink/55">
 								{{
 									selectedGroupMeta ||
-									'School, year, program, course, and class stay in the top context bar.'
+									__('School, year, program, course, and class stay in the top context bar.')
 								}}
 							</p>
 						</div>
@@ -222,7 +225,7 @@
 									:options="taskTypeOptions"
 									option-label="label"
 									option-value="value"
-									placeholder="All Types"
+									:placeholder="__('All Types')"
 									v-model="filters.task_type"
 									class="!mb-0"
 								/>
@@ -232,7 +235,7 @@
 									:options="deliveryTypeOptions"
 									option-label="label"
 									option-value="value"
-									placeholder="All Modes"
+									:placeholder="__('All Modes')"
 									v-model="filters.delivery_type"
 									class="!mb-0"
 								/>
@@ -245,7 +248,7 @@
 								class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/80 bg-gray-50/50 p-8 text-center text-sm text-ink/60"
 							>
 								<FeatherIcon name="arrow-up" class="mb-2 h-8 w-8 text-ink/20" />
-								<p>Select a group above.</p>
+								<p>{{ __('Select a group above.') }}</p>
 							</div>
 
 							<div
@@ -264,13 +267,13 @@
 									v-else-if="!taskSummaries.length"
 									class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/80 bg-gray-50/50 p-6 text-center text-sm text-ink/60"
 								>
-									<p>No tasks assigned.</p>
+									<p>{{ __('No tasks assigned.') }}</p>
 								</div>
 								<div
 									v-else-if="!derivedTasks.length"
 									class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/80 bg-gray-50/50 p-6 text-center text-sm text-ink/60"
 								>
-									<p>No tasks match filters.</p>
+									<p>{{ __('No tasks match filters.') }}</p>
 								</div>
 								<ul v-else class="space-y-2">
 									<li v-for="task in derivedTasks" :key="task.name">
@@ -302,13 +305,15 @@
 														>
 															{{ task.status }}
 														</Badge>
-														<span>Due {{ formatDate(task.due_date) || '—' }}</span>
+														<span>{{ __('Due {0}', [formatDate(task.due_date) || '—']) }}</span>
 													</div>
 													<div class="flex flex-wrap gap-1 opacity-80">
 														<Badge v-if="taskModeBadge(task)" variant="subtle">
 															{{ taskModeBadge(task) }}
 														</Badge>
-														<Badge v-if="task.allow_feedback" variant="subtle">Comment</Badge>
+														<Badge v-if="task.allow_feedback" variant="subtle">{{
+															__('Comment')
+														}}</Badge>
 													</div>
 												</div>
 											</div>
@@ -349,6 +354,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 import { Badge, FeatherIcon, FormControl, toast } from 'frappe-ui';
+import { __ } from '@/lib/i18n';
 import { createGradebookService } from '@/lib/services/gradebook/gradebookService';
 import { createStudentAttendanceService } from '@/lib/services/studentAttendance/studentAttendanceService';
 import type { FetchSchoolFilterContextResponse } from '@/types/contracts/studentAttendance';
@@ -430,7 +436,7 @@ async function loadSchoolContext() {
 		onSchoolsLoaded(payload);
 	} catch (error) {
 		console.error('Failed to load school context', error);
-		showDangerToast('Could not load schools');
+		showDangerToast(__('Could not load schools'));
 	} finally {
 		schoolsLoading.value = false;
 	}
@@ -451,7 +457,7 @@ async function loadGroups(options: { skipRouteGroupSync?: boolean } = {}) {
 		}
 	} catch (error) {
 		console.error('Failed to load student groups', error);
-		showDangerToast('Could not load student groups');
+		showDangerToast(__('Could not load student groups'));
 	} finally {
 		groupsLoading.value = false;
 	}
@@ -471,7 +477,7 @@ async function loadTasks(groupName: string) {
 		applyRouteTaskFromQuery(taskSummaries.value);
 	} catch (error) {
 		console.error('Failed to load tasks', error);
-		showDangerToast('Could not load tasks');
+		showDangerToast(__('Could not load tasks'));
 	} finally {
 		tasksLoading.value = false;
 	}
@@ -483,7 +489,7 @@ const schoolOptions = computed(() => {
 		value: school.name,
 	}));
 	if (defaultSchool.value) return base;
-	return [{ label: 'All Schools', value: null }, ...base];
+	return [{ label: __('All Schools'), value: null }, ...base];
 });
 
 const derivedGroups = computed(() => {
@@ -561,7 +567,7 @@ const selectedGroupMeta = computed(() => {
 	const group = selectedGroup.value;
 	if (!group) return '';
 
-	return [group.program, group.course, group.cohort ? `Cohort ${group.cohort}` : null]
+	return [group.program, group.course, group.cohort ? __('Cohort {0}', [group.cohort]) : null]
 		.filter(Boolean)
 		.join(' • ');
 });
@@ -579,25 +585,27 @@ const derivedTasks = computed(() => {
 
 const taskRailSummary = computed(() => {
 	if (!selectedGroup.value) {
-		return 'Keep class context in the top bar, then open one delivery at a time for grading.';
+		return __('Keep class context in the top bar, then open one delivery at a time for grading.');
 	}
 
 	if (tasksLoading.value) {
-		return 'Loading deliveries for this class.';
+		return __('Loading deliveries for this class.');
 	}
 
 	const totalTasks = taskSummaries.value.length;
 	const visibleTasks = derivedTasks.value.length;
 
 	if (!totalTasks) {
-		return 'No deliveries are currently assigned to this class.';
+		return __('No deliveries are currently assigned to this class.');
 	}
 
 	if (!filters.task_type && !filters.delivery_type) {
-		return `${totalTasks} deliveries ready in this class.`;
+		return totalTasks === 1
+			? __('1 delivery ready in this class.')
+			: __('{0} deliveries ready in this class.', [totalTasks]);
 	}
 
-	return `${visibleTasks} of ${totalTasks} deliveries match the current task filters.`;
+	return __('{0} of {1} deliveries match the current task filters.', [visibleTasks, totalTasks]);
 });
 
 const taskRailGridClass = computed(() =>
@@ -605,13 +613,13 @@ const taskRailGridClass = computed(() =>
 );
 
 const taskRailToggleLabel = computed(() =>
-	taskRailCollapsed.value ? 'Expand task rail' : 'Collapse task rail'
+	taskRailCollapsed.value ? __('Expand task rail') : __('Collapse task rail')
 );
 
 const taskTypeOptions = computed(() => {
 	const types = new Set(taskSummaries.value.map(task => task.task_type).filter(Boolean));
 	return [
-		{ label: 'All Types', value: null },
+		{ label: __('All Types'), value: null },
 		...Array.from(types)
 			.sort()
 			.map(type => ({ label: type, value: type })),
@@ -621,7 +629,7 @@ const taskTypeOptions = computed(() => {
 const deliveryTypeOptions = computed(() => {
 	const types = new Set(taskSummaries.value.map(task => task.delivery_type).filter(Boolean));
 	return [
-		{ label: 'All Modes', value: null },
+		{ label: __('All Modes'), value: null },
 		...Array.from(types)
 			.sort()
 			.map(type => ({ label: type, value: type })),
@@ -659,7 +667,7 @@ function onGroupSelectedFromToolbar(groupName: string | null) {
 
 	const match = derivedGroups.value.find(group => group.name === groupName);
 	if (!match) {
-		showDangerToast('Selected group is no longer available.');
+		showDangerToast(__('Selected group is no longer available.'));
 		return;
 	}
 
@@ -759,7 +767,7 @@ async function applyRouteGroupFromQuery() {
 		const resolvedMatch = await findRouteGroup(target);
 		if (!resolvedMatch) {
 			pendingRouteGroup.value = null;
-			showDangerToast('Linked student group is no longer available.');
+			showDangerToast(__('Linked student group is no longer available.'));
 			return;
 		}
 
@@ -769,7 +777,7 @@ async function applyRouteGroupFromQuery() {
 		pendingRouteGroup.value = null;
 	} catch (error) {
 		console.error('Failed to resolve linked student group', error);
-		showDangerToast('Could not load the linked student group');
+		showDangerToast(__('Could not load the linked student group'));
 	} finally {
 		routeGroupResolving.value = false;
 	}
@@ -796,7 +804,7 @@ function applyRouteTaskFromQuery(taskList: TaskSummary[] = taskSummaries.value) 
 	}
 
 	pendingRouteTask.value = null;
-	showDangerToast('Linked assigned work is no longer available for this class.');
+	showDangerToast(__('Linked assigned work is no longer available for this class.'));
 }
 
 function updateRouteQuery(mutator: (nextQuery: LocationQueryRaw) => void) {

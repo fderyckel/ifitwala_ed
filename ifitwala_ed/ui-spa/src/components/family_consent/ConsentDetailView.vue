@@ -6,21 +6,25 @@
 					<p class="type-overline text-ink/60">{{ portalLabel }}</p>
 					<h1 class="type-h1 text-ink">{{ titleLabel }}</h1>
 					<p class="type-body text-ink/70">
-						Review the request details, confirm any prefilled data, and submit your decision.
+						{{
+							__(
+								'Review the request details, confirm any prefilled data, and submit your decision.'
+							)
+						}}
 					</p>
 				</div>
 				<RouterLink :to="{ name: backRouteName }" class="if-button if-button--quiet">
-					Back to forms
+					{{ __('Back to forms') }}
 				</RouterLink>
 			</div>
 		</header>
 
 		<section v-if="loading" class="card-surface p-5">
-			<p class="type-body text-ink/70">Loading form details...</p>
+			<p class="type-body text-ink/70">{{ __('Loading form details...') }}</p>
 		</section>
 
 		<section v-else-if="errorMessage" class="card-surface p-5">
-			<p class="type-body-strong text-flame">Could not load this form request.</p>
+			<p class="type-body-strong text-flame">{{ __('Could not load this form request.') }}</p>
 			<p class="type-body text-ink/70">{{ errorMessage }}</p>
 		</section>
 
@@ -39,16 +43,16 @@
 						<div class="mt-3 flex flex-wrap gap-2">
 							<span class="chip">{{ detail.target.current_status_label }}</span>
 							<span class="chip">{{ detail.request.completion_channel_mode }}</span>
-							<span v-if="detail.request.due_on" class="chip"
-								>Due {{ detail.request.due_on }}</span
-							>
+							<span v-if="detail.request.due_on" class="chip">{{
+								__('Due {0}', [detail.request.due_on])
+							}}</span>
 						</div>
 					</div>
 					<div class="rounded-xl border border-line-soft bg-surface-soft p-4 lg:max-w-sm">
-						<p class="type-caption text-ink/60">Expected signer</p>
+						<p class="type-caption text-ink/60">{{ __('Expected signer') }}</p>
 						<p class="type-body-strong text-ink">{{ detail.signer.expected_signature_name }}</p>
 						<p class="mt-2 type-caption text-ink/60">
-							Status: {{ detail.target.current_status_label }}
+							{{ __('Status:') }} {{ detail.target.current_status_label }}
 						</p>
 					</div>
 				</div>
@@ -58,10 +62,15 @@
 				v-if="detail.request.completion_channel_mode === 'Paper Only'"
 				class="student-hub-section border border-sand/60 bg-sand/30"
 			>
-				<p class="type-body-strong text-clay">Paper return is required for this request.</p>
+				<p class="type-body-strong text-clay">
+					{{ __('Paper return is required for this request.') }}
+				</p>
 				<p class="mt-2 type-body text-ink/70">
-					This form stays visible here for monitoring, but portal submission is disabled because
-					staff must collect the signed paper copy.
+					{{
+						__(
+							'This form stays visible here for monitoring, but portal submission is disabled because staff must collect the signed paper copy.'
+						)
+					}}
 				</p>
 			</section>
 
@@ -74,9 +83,9 @@
 
 			<section class="student-hub-section space-y-4">
 				<div>
-					<h2 class="type-h3 text-ink">Request details</h2>
+					<h2 class="type-h3 text-ink">{{ __('Request details') }}</h2>
 					<p class="mt-1 type-caption text-ink/60">
-						Review the instructions and the prefilled values below before you sign.
+						{{ __('Review the instructions and the prefilled values below before you sign.') }}
 					</p>
 				</div>
 				<div
@@ -90,25 +99,33 @@
 				class="student-hub-section space-y-4"
 			>
 				<div>
-					<h2 class="type-h3 text-ink">Reference document</h2>
+					<h2 class="type-h3 text-ink">{{ __('Reference document') }}</h2>
 					<p class="mt-1 type-caption text-ink/60">
-						This request includes a governed attachment. Open it from here without exposing raw
-						file paths.
+						{{
+							__(
+								'This request includes a governed attachment. Open it from here without exposing raw file paths.'
+							)
+						}}
 					</p>
 				</div>
 				<AttachmentPreviewCard
 					:attachment="detail.request.source_attachment_preview"
 					variant="learning"
-					:title="detail.request.source_attachment_preview.display_name || 'Reference document'"
+					:title="
+						detail.request.source_attachment_preview.display_name || __('Reference document')
+					"
 				/>
 			</section>
 
 			<section class="student-hub-section space-y-4">
 				<div>
-					<h2 class="type-h3 text-ink">Form fields</h2>
+					<h2 class="type-h3 text-ink">{{ __('Form fields') }}</h2>
 					<p class="mt-1 type-caption text-ink/60">
-						Known profile data is already placed into the form. Editable fields can be corrected
-						here without retyping everything else.
+						{{
+							__(
+								'Known profile data is already placed into the form. Editable fields can be corrected here without retyping everything else.'
+							)
+						}}
 					</p>
 				</div>
 
@@ -133,7 +150,7 @@
 
 						<div v-if="field.field_mode === 'Allow Override'" class="mt-4 space-y-3">
 							<label v-if="field.field_type === 'Long Text'" class="block space-y-1">
-								<span class="type-caption text-ink/70">Updated value</span>
+								<span class="type-caption text-ink/70">{{ __('Updated value') }}</span>
 								<textarea
 									:model-value="textDraftValue(field)"
 									class="if-input min-h-[132px] w-full"
@@ -153,7 +170,7 @@
 
 							<div v-else-if="field.field_type === 'Address'" class="grid gap-3 sm:grid-cols-2">
 								<label class="block space-y-1 sm:col-span-2">
-									<span class="type-caption text-ink/70">Address line 1</span>
+									<span class="type-caption text-ink/70">{{ __('Address line 1') }}</span>
 									<input
 										:value="addressDraftValue(field).address_line1 || ''"
 										type="text"
@@ -162,7 +179,7 @@
 									/>
 								</label>
 								<label class="block space-y-1 sm:col-span-2">
-									<span class="type-caption text-ink/70">Address line 2</span>
+									<span class="type-caption text-ink/70">{{ __('Address line 2') }}</span>
 									<input
 										:value="addressDraftValue(field).address_line2 || ''"
 										type="text"
@@ -171,7 +188,7 @@
 									/>
 								</label>
 								<label class="block space-y-1">
-									<span class="type-caption text-ink/70">City</span>
+									<span class="type-caption text-ink/70">{{ __('City') }}</span>
 									<input
 										:value="addressDraftValue(field).city || ''"
 										type="text"
@@ -180,7 +197,7 @@
 									/>
 								</label>
 								<label class="block space-y-1">
-									<span class="type-caption text-ink/70">State</span>
+									<span class="type-caption text-ink/70">{{ __('State') }}</span>
 									<input
 										:value="addressDraftValue(field).state || ''"
 										type="text"
@@ -189,7 +206,7 @@
 									/>
 								</label>
 								<label class="block space-y-1">
-									<span class="type-caption text-ink/70">Postal code</span>
+									<span class="type-caption text-ink/70">{{ __('Postal code') }}</span>
 									<input
 										:value="addressDraftValue(field).pincode || ''"
 										type="text"
@@ -198,7 +215,7 @@
 									/>
 								</label>
 								<label class="block space-y-1">
-									<span class="type-caption text-ink/70">Country</span>
+									<span class="type-caption text-ink/70">{{ __('Country') }}</span>
 									<input
 										:value="addressDraftValue(field).country || ''"
 										type="text"
@@ -209,7 +226,7 @@
 							</div>
 
 							<label v-else class="block space-y-1">
-								<span class="type-caption text-ink/70">Updated value</span>
+								<span class="type-caption text-ink/70">{{ __('Updated value') }}</span>
 								<input
 									:value="textDraftValue(field)"
 									:type="inputType(field)"
@@ -218,10 +235,15 @@
 								/>
 							</label>
 
-							<p class="type-caption text-ink/60">Current value: {{ formatValue(field) }}</p>
+							<p class="type-caption text-ink/60">
+								{{ __('Current value: {0}', [formatValue(field)]) }}
+							</p>
 							<p v-if="field.allow_profile_writeback" class="type-caption text-ink/60">
-								If this value changes, you can choose whether it updates only this form or your
-								saved profile everywhere.
+								{{
+									__(
+										'If this value changes, you can choose whether it updates only this form or your saved profile everywhere.'
+									)
+								}}
 							</p>
 						</div>
 
@@ -234,25 +256,30 @@
 
 			<section class="student-hub-section space-y-4">
 				<div>
-					<h2 class="type-h3 text-ink">Electronic signature</h2>
+					<h2 class="type-h3 text-ink">{{ __('Electronic signature') }}</h2>
 					<p class="mt-1 type-caption text-ink/60">
-						Type your full name exactly as recorded and confirm the legal attestation before you
-						submit.
+						{{
+							__(
+								'Type your full name exactly as recorded and confirm the legal attestation before you submit.'
+							)
+						}}
 					</p>
 				</div>
 
 				<label class="block space-y-1">
-					<span class="type-caption text-ink/70">Expected signer name</span>
+					<span class="type-caption text-ink/70">{{ __('Expected signer name') }}</span>
 					<p class="type-body-strong text-ink">{{ detail.signer.expected_signature_name }}</p>
 				</label>
 
 				<label class="block space-y-1">
-					<span class="type-caption text-ink/70">Type full name as electronic signature</span>
+					<span class="type-caption text-ink/70">{{
+						__('Type full name as electronic signature')
+					}}</span>
 					<input
 						v-model="typedSignatureName"
 						type="text"
 						class="if-input w-full"
-						:placeholder="'Enter your full name'"
+						:placeholder="__('Enter your full name')"
 					/>
 				</label>
 
@@ -264,14 +291,19 @@
 					"
 					class="type-caption text-flame"
 				>
-					Typed signature must match exactly: {{ detail.signer.expected_signature_name }}
+					{{
+						__('Typed signature must match exactly: {0}', [detail.signer.expected_signature_name])
+					}}
 				</p>
 
 				<label class="flex items-start gap-2">
 					<input v-model="attestationConfirmed" type="checkbox" class="mt-1 h-4 w-4" />
 					<span class="type-caption text-ink/80">
-						I confirm that typing my name is my electronic signature and that I am submitting this
-						decision knowingly.
+						{{
+							__(
+								'I confirm that typing my name is my electronic signature and that I am submitting this decision knowingly.'
+							)
+						}}
 					</span>
 				</label>
 
@@ -287,7 +319,7 @@
 					>
 						{{
 							submitting && activeDecisionStatus === negativeDecision.status
-								? 'Saving…'
+								? __('Saving…')
 								: negativeDecision.label
 						}}
 					</button>
@@ -300,7 +332,7 @@
 					>
 						{{
 							submitting && activeDecisionStatus === positiveDecision.status
-								? 'Saving…'
+								? __('Saving…')
 								: positiveDecision.label
 						}}
 					</button>
@@ -309,13 +341,17 @@
 
 			<section class="student-hub-section space-y-4">
 				<div>
-					<h2 class="type-h3 text-ink">History</h2>
+					<h2 class="type-h3 text-ink">{{ __('History') }}</h2>
 					<p class="mt-1 type-caption text-ink/60">
-						Previous decisions for this signer stay attached to the request as audit history.
+						{{
+							__(
+								'Previous decisions for this signer stay attached to the request as audit history.'
+							)
+						}}
 					</p>
 				</div>
 				<div v-if="!detail.history.length" class="rounded-xl border border-line-soft bg-white p-4">
-					<p class="type-body text-ink/70">No decision history yet.</p>
+					<p class="type-body text-ink/70">{{ __('No decision history yet.') }}</p>
 				</div>
 				<ul v-else class="space-y-3">
 					<li
@@ -351,6 +387,7 @@ import {
 	isConsentFieldChanged,
 	normalizeConsentFieldValue,
 } from '@/lib/familyConsent/consentFieldUtils';
+import { __ } from '@/lib/i18n';
 
 import type {
 	ConsentAddressValue,
@@ -418,13 +455,13 @@ const fieldDrafts = ref<Record<string, ConsentFieldValue>>({});
 
 const positiveDecision = computed(() =>
 	detail.value?.request.decision_mode === 'Grant / Deny'
-		? { label: 'Grant', status: 'Granted' }
-		: { label: 'Approve', status: 'Approved' }
+		? { label: __('Grant'), status: 'Granted' }
+		: { label: __('Approve'), status: 'Approved' }
 );
 const negativeDecision = computed(() =>
 	detail.value?.request.decision_mode === 'Grant / Deny'
-		? { label: 'Deny', status: 'Denied' }
-		: { label: 'Decline', status: 'Declined' }
+		? { label: __('Deny'), status: 'Denied' }
+		: { label: __('Decline'), status: 'Declined' }
 );
 const isTypedSignatureMatch = computed(() => {
 	if (!detail.value) return false;
@@ -437,22 +474,22 @@ const isTypedSignatureMatch = computed(() => {
 const submitBlockedReason = computed(() => {
 	if (!detail.value) return '';
 	if (detail.value.request.status && detail.value.request.status !== 'Published') {
-		return 'This request is no longer open for portal submission.';
+		return __('This request is no longer open for portal submission.');
 	}
 	if (detail.value.request.completion_channel_mode === 'Paper Only') {
-		return 'Paper return is required for this request.';
+		return __('Paper return is required for this request.');
 	}
 	if (detail.value.target.current_status === 'completed') {
-		return 'This request is already complete for this signer.';
+		return __('This request is already complete for this signer.');
 	}
 	if (detail.value.target.current_status === 'declined') {
-		return 'This request has already been declined for this signer.';
+		return __('This request has already been declined for this signer.');
 	}
 	if (detail.value.target.current_status === 'withdrawn') {
-		return 'This request was previously withdrawn for this signer.';
+		return __('This request was previously withdrawn for this signer.');
 	}
 	if (detail.value.target.current_status === 'expired') {
-		return 'This request has expired and can no longer be completed in portal.';
+		return __('This request has expired and can no longer be completed in portal.');
 	}
 	return '';
 });
@@ -583,15 +620,17 @@ async function handleSubmit(decisionStatus: string) {
 	submitError.value = '';
 
 	if (detail.value.request.requires_typed_signature && !typedSignatureName.value.trim()) {
-		submitError.value = 'Type your full name as your electronic signature.';
+		submitError.value = __('Type your full name as your electronic signature.');
 		return;
 	}
 	if (detail.value.request.requires_typed_signature && !isTypedSignatureMatch.value) {
-		submitError.value = `Typed signature must match exactly: ${detail.value.signer.expected_signature_name}`;
+		submitError.value = __('Typed signature must match exactly: {0}', [
+			detail.value.signer.expected_signature_name,
+		]);
 		return;
 	}
 	if (detail.value.request.requires_attestation && !attestationConfirmed.value) {
-		submitError.value = 'Confirm the electronic signature attestation before signing.';
+		submitError.value = __('Confirm the electronic signature attestation before signing.');
 		return;
 	}
 
@@ -617,12 +656,12 @@ async function handleSubmit(decisionStatus: string) {
 		});
 		toast.success(
 			response.status === 'already_current'
-				? 'This form was already up to date.'
-				: 'Your decision was recorded successfully.'
+				? __('This form was already up to date.')
+				: __('Your decision was recorded successfully.')
 		);
 		await load();
 	} catch (error) {
-		submitError.value = error instanceof Error ? error.message : 'Unknown error';
+		submitError.value = error instanceof Error ? error.message : __('Unknown error');
 	} finally {
 		submitting.value = false;
 		activeDecisionStatus.value = '';
@@ -642,7 +681,7 @@ async function load() {
 		attestationConfirmed.value = false;
 		syncDrafts();
 	} catch (error) {
-		errorMessage.value = error instanceof Error ? error.message : 'Unknown error';
+		errorMessage.value = error instanceof Error ? error.message : __('Unknown error');
 	} finally {
 		loading.value = false;
 	}

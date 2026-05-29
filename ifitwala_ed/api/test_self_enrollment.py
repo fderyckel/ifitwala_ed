@@ -198,6 +198,59 @@ class TestSelfEnrollmentApi(FrappeTestCase):
         self.assertEqual(payload["request"]["enrollment_intent"], "Does Not Intend to Enroll")
         self.assertTrue(payload["summary"]["ready_for_submit"])
 
+    def test_guardian_can_edit_unsubmitted_prepared_request_with_submitted_status(self):
+        context = _build_self_enrollment_context(carry_forward_optional=False)
+        window = context["window"]
+        window.load_students()
+        window.prepare_requests()
+        window.open_window()
+        guardian_user = self._create_guardian_user_for_student(context["student"].name)
+
+        request_name = frappe.db.get_value(
+            "Program Enrollment Request",
+            {
+                "selection_window": window.name,
+                "student": context["student"].name,
+            },
+        )
+        frappe.db.set_value(
+            "Program Enrollment Request",
+            request_name,
+            {
+                "status": "Submitted",
+                "validation_status": "Invalid",
+                "submitted_on": None,
+                "submitted_by": "",
+            },
+            update_modified=False,
+        )
+
+        frappe.set_user(guardian_user)
+        detail_payload = self_enrollment_api.get_self_enrollment_choice_state(
+            selection_window=window.name,
+            student=context["student"].name,
+        )
+
+        self.assertEqual(detail_payload["permissions"]["can_edit"], 1)
+        self.assertFalse(bool(detail_payload["permissions"]["locked_reason"]))
+
+        save_payload = self_enrollment_api.save_self_enrollment_choices(
+            selection_window=window.name,
+            student=context["student"].name,
+            courses=[
+                {
+                    "course": context["optional_course"].name,
+                    "applied_basket_group": context["basket_group"].name,
+                }
+            ],
+        )
+
+        request = frappe.get_doc("Program Enrollment Request", request_name)
+        request.reload()
+        self.assertEqual(request.status, "Draft")
+        self.assertEqual(request.validation_status, "Not Validated")
+        self.assertEqual(save_payload["request"]["status"], "Draft")
+
     def test_guardian_cannot_submit_intent_when_window_does_not_collect_it(self):
         context = _build_self_enrollment_context(carry_forward_optional=False)
         window = context["window"]

@@ -3,36 +3,39 @@
 		<header class="card-surface monitoring-hero p-5 sm:p-6">
 			<div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
 				<div>
-					<p class="type-overline text-ink/60">Guardian Portal</p>
-					<h1 class="type-h1 text-ink">Family Monitoring</h1>
+					<p class="type-overline text-ink/60">{{ __('Guardian Portal') }}</p>
+					<h1 class="type-h1 text-ink">{{ __('Family Monitoring') }}</h1>
 					<p class="type-body text-ink/70">
-						View your child's or children's logs and published results in one place, then filter by
-						child when needed.
+						{{
+							__(
+								"View your child's or children's logs and published results in one place, then filter by child when needed."
+							)
+						}}
 					</p>
 				</div>
 				<div class="grid gap-3 sm:grid-cols-3">
 					<label class="space-y-1">
-						<span class="type-caption text-ink/60">Child filter</span>
+						<span class="type-caption text-ink/60">{{ __('Child filter') }}</span>
 						<select
 							v-model="selectedStudent"
 							class="w-full rounded-xl border border-line-soft bg-white px-3 py-2 type-body text-ink"
 						>
-							<option value="">All linked children</option>
+							<option value="">{{ __('All linked children') }}</option>
 							<option v-for="child in children" :key="child.student" :value="child.student">
 								{{ child.full_name }}
 							</option>
 						</select>
 					</label>
 					<label class="space-y-1">
-						<span class="type-caption text-ink/60">Window</span>
+						<span class="type-caption text-ink/60">{{ __('Window') }}</span>
 						<select
 							v-model.number="selectedDays"
 							class="w-full rounded-xl border border-line-soft bg-white px-3 py-2 type-body text-ink"
 						>
-							<option :value="14">14 days</option>
-							<option :value="30">30 days</option>
-							<option :value="60">60 days</option>
-							<option :value="90">90 days</option>
+							<option :value="14">{{ __('14 days') }}</option>
+							<option :value="30">{{ __('30 days') }}</option>
+							<option :value="60">{{ __('60 days') }}</option>
+							<option :value="90">{{ __('90 days') }}</option>
 						</select>
 					</label>
 					<div class="flex items-end">
@@ -42,19 +45,21 @@
 							:disabled="loading"
 							@click="loadSnapshot"
 						>
-							Refresh
+							{{ __('Refresh') }}
 						</button>
 					</div>
 				</div>
 			</div>
 		</header>
 
-		<section class="monitoring-summary" aria-label="Family monitoring summary">
+		<section class="monitoring-summary" :aria-label="__('Family monitoring summary')">
 			<article class="card-surface monitoring-metric-card monitoring-metric-card--visible p-4">
 				<div class="monitoring-metric-card__row">
 					<div>
-						<p class="type-caption text-ink/65">Visible student logs</p>
-						<p class="type-caption text-ink/50">Guardian-visible items in this window</p>
+						<p class="type-caption text-ink/65">{{ __('Visible student logs') }}</p>
+						<p class="type-caption text-ink/50">
+							{{ __('Guardian-visible items in this window') }}
+						</p>
 					</div>
 					<p class="type-h2 text-ink">{{ counts.visible_student_logs }}</p>
 				</div>
@@ -62,8 +67,8 @@
 			<article class="card-surface monitoring-metric-card monitoring-metric-card--unread p-4">
 				<div class="monitoring-metric-card__row">
 					<div>
-						<p class="type-caption text-ink/65">Unread student logs</p>
-						<p class="type-caption text-ink/50">Needs guardian review</p>
+						<p class="type-caption text-ink/65">{{ __('Unread student logs') }}</p>
+						<p class="type-caption text-ink/50">{{ __('Needs guardian review') }}</p>
 					</div>
 					<p class="type-h2 text-flame">{{ counts.unread_visible_student_logs }}</p>
 				</div>
@@ -71,8 +76,10 @@
 			<article class="card-surface monitoring-metric-card monitoring-metric-card--results p-4">
 				<div class="monitoring-metric-card__row">
 					<div>
-						<p class="type-caption text-ink/65">Published results</p>
-						<p class="type-caption text-ink/50">Shared outcomes for linked children</p>
+						<p class="type-caption text-ink/65">{{ __('Published results') }}</p>
+						<p class="type-caption text-ink/50">
+							{{ __('Shared outcomes for linked children') }}
+						</p>
 					</div>
 					<p class="type-h2 text-jacaranda">{{ counts.published_results }}</p>
 				</div>
@@ -80,22 +87,22 @@
 		</section>
 
 		<section v-if="loading" class="card-surface p-5">
-			<p class="type-body text-ink/70">Loading family monitoring...</p>
+			<p class="type-body text-ink/70">{{ __('Loading family monitoring...') }}</p>
 		</section>
 
 		<section v-else-if="errorMessage" class="card-surface p-5">
-			<p class="type-body-strong text-flame">Could not load family monitoring.</p>
+			<p class="type-body-strong text-flame">{{ __('Could not load family monitoring.') }}</p>
 			<p class="type-body text-ink/70">{{ errorMessage }}</p>
 		</section>
 
 		<template v-else>
 			<section class="card-surface monitoring-section monitoring-section--results p-5">
 				<div class="mb-4">
-					<p class="type-overline text-jacaranda/80">Published Results</p>
+					<p class="type-overline text-jacaranda/80">{{ __('Published Results') }}</p>
 				</div>
 				<div class="monitoring-section__body">
 					<div v-if="!publishedResults.length" class="type-body text-ink/70">
-						No published results in this window.
+						{{ __('No published results in this window.') }}
 					</div>
 					<div v-else class="space-y-3">
 						<article
@@ -111,7 +118,7 @@
 								<p v-if="row.score" class="type-body-strong text-ink">{{ row.score.value }}</p>
 							</div>
 							<p v-if="row.published_by" class="mt-2 type-caption text-ink/60">
-								Published by {{ row.published_by }}
+								{{ __('Published by {0}', [row.published_by]) }}
 							</p>
 							<p v-if="row.narrative" class="type-body text-ink/80">{{ row.narrative }}</p>
 							<RouterLink
@@ -119,7 +126,7 @@
 								:to="guardianFeedbackRoute(row)"
 								class="mt-3 inline-flex type-caption font-semibold text-jacaranda hover:underline"
 							>
-								Open released feedback
+								{{ __('Open released feedback') }}
 							</RouterLink>
 						</article>
 					</div>
@@ -130,7 +137,7 @@
 							:disabled="publishedResultsLoadingMore"
 							@click="loadMorePublishedResults"
 						>
-							{{ publishedResultsLoadingMore ? 'Loading…' : 'Load More Results' }}
+							{{ publishedResultsLoadingMore ? __('Loading…') : __('Load More Results') }}
 						</button>
 					</div>
 				</div>
@@ -142,11 +149,11 @@
 				class="card-surface monitoring-section monitoring-section--logs p-5"
 			>
 				<div class="mb-4">
-					<p class="type-overline text-canopy/75">Student Logs</p>
+					<p class="type-overline text-canopy/75">{{ __('Student Logs') }}</p>
 				</div>
 				<div class="monitoring-section__body">
 					<div v-if="!studentLogs.length" class="type-body text-ink/70">
-						No guardian-visible student logs in this window.
+						{{ __('No guardian-visible student logs in this window.') }}
 					</div>
 					<div v-else class="space-y-3">
 						<article
@@ -171,7 +178,7 @@
 									:disabled="markingLogName === row.student_log"
 									@click="markAsSeen(row.student_log)"
 								>
-									{{ markingLogName === row.student_log ? 'Saving...' : 'Mark as seen' }}
+									{{ markingLogName === row.student_log ? __('Saving...') : __('Mark as seen') }}
 								</button>
 							</div>
 							<p class="mt-2 break-words type-body text-ink/80">{{ row.summary }}</p>
@@ -195,7 +202,7 @@
 							:disabled="studentLogsLoadingMore"
 							@click="loadMoreStudentLogs"
 						>
-							{{ studentLogsLoadingMore ? 'Loading…' : 'Load More Logs' }}
+							{{ studentLogsLoadingMore ? __('Loading…') : __('Load More Logs') }}
 						</button>
 					</div>
 				</div>
@@ -210,6 +217,7 @@ import { RouterLink, useRoute } from 'vue-router';
 import { toast } from 'frappe-ui';
 
 import AttachmentPreviewCard from '@/components/attachments/AttachmentPreviewCard.vue';
+import { __ } from '@/lib/i18n';
 import {
 	getGuardianMonitoringPublishedResults,
 	getGuardianMonitoringSnapshot,
@@ -303,7 +311,7 @@ async function markAsSeen(studentLog: string) {
 		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		toast.error(message || 'Could not update read status.');
+		toast.error(message || __('Could not update read status.'));
 	} finally {
 		markingLogName.value = '';
 	}
@@ -329,7 +337,7 @@ async function loadSnapshot() {
 		publishedResultsPage.value = response.published_results;
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		errorMessage.value = message || 'Unknown error';
+		errorMessage.value = message || __('Unknown error');
 	} finally {
 		loading.value = false;
 	}
@@ -353,7 +361,7 @@ async function loadMoreStudentLogs() {
 		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		toast.error(message || 'Could not load more student logs.');
+		toast.error(message || __('Could not load more student logs.'));
 	} finally {
 		studentLogsLoadingMore.value = false;
 	}
@@ -376,7 +384,7 @@ async function loadMorePublishedResults() {
 		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		toast.error(message || 'Could not load more published results.');
+		toast.error(message || __('Could not load more published results.'));
 	} finally {
 		publishedResultsLoadingMore.value = false;
 	}

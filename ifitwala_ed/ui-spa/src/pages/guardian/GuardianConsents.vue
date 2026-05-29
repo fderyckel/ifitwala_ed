@@ -3,59 +3,62 @@
 		<header class="card-surface p-5 sm:p-6">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				<div>
-					<p class="type-overline text-ink/60">Guardian Portal</p>
-					<h1 class="type-h1 text-ink">Forms &amp; Signatures</h1>
+					<p class="type-overline text-ink/60">{{ __('Guardian Portal') }}</p>
+					<h1 class="type-h1 text-ink">{{ __('Forms & Signatures') }}</h1>
 					<p class="type-body text-ink/70">
-						Review operational forms that need guardian action for each child.
+						{{ __('Review operational forms that need guardian action for each child.') }}
 					</p>
 				</div>
 				<button type="button" class="if-action self-start" :disabled="loading" @click="loadBoard">
-					Refresh
+					{{ __('Refresh') }}
 				</button>
 			</div>
 		</header>
 
 		<section class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
 			<article class="card-surface p-4">
-				<p class="type-caption text-ink/65">Action needed</p>
+				<p class="type-caption text-ink/65">{{ __('Action needed') }}</p>
 				<p class="type-h3 text-clay">{{ counts.pending + counts.overdue }}</p>
 			</article>
 			<article class="card-surface p-4">
-				<p class="type-caption text-ink/65">Completed</p>
+				<p class="type-caption text-ink/65">{{ __('Completed') }}</p>
 				<p class="type-h3 text-canopy">{{ counts.completed }}</p>
 			</article>
 			<article class="card-surface p-4">
-				<p class="type-caption text-ink/65">Declined</p>
+				<p class="type-caption text-ink/65">{{ __('Declined') }}</p>
 				<p class="type-h3 text-flame">{{ counts.declined }}</p>
 			</article>
 			<article class="card-surface p-4">
-				<p class="type-caption text-ink/65">Withdrawn</p>
+				<p class="type-caption text-ink/65">{{ __('Withdrawn') }}</p>
 				<p class="type-h3 text-ink">{{ counts.withdrawn }}</p>
 			</article>
 			<article class="card-surface p-4">
-				<p class="type-caption text-ink/65">Expired</p>
+				<p class="type-caption text-ink/65">{{ __('Expired') }}</p>
 				<p class="type-h3 text-ink">{{ counts.expired }}</p>
 			</article>
 			<article class="card-surface p-4">
-				<p class="type-caption text-ink/65">Overdue</p>
+				<p class="type-caption text-ink/65">{{ __('Overdue') }}</p>
 				<p class="type-h3 text-flame">{{ counts.overdue }}</p>
 			</article>
 		</section>
 
 		<section v-if="loading" class="card-surface p-5">
-			<p class="type-body text-ink/70">Loading forms and signatures...</p>
+			<p class="type-body text-ink/70">{{ __('Loading forms and signatures...') }}</p>
 		</section>
 
 		<section v-else-if="errorMessage" class="card-surface p-5">
-			<p class="type-body-strong text-flame">Could not load forms and signatures.</p>
+			<p class="type-body-strong text-flame">{{ __('Could not load forms and signatures.') }}</p>
 			<p class="type-body text-ink/70">{{ errorMessage }}</p>
 		</section>
 
 		<section v-else-if="isEmpty" class="card-surface p-5">
-			<p class="type-body-strong text-ink">No guardian form requests are in scope.</p>
+			<p class="type-body-strong text-ink">{{ __('No guardian form requests are in scope.') }}</p>
 			<p class="type-body text-ink/70">
-				New operational forms will appear here when your school publishes them to the family
-				portal.
+				{{
+					__(
+						'New operational forms will appear here when your school publishes them to the family portal.'
+					)
+				}}
 			</p>
 		</section>
 
@@ -66,9 +69,9 @@
 			>
 				<div class="mb-4 flex items-center justify-between gap-3">
 					<div>
-						<p class="type-overline text-ink/60">Action Needed</p>
+						<p class="type-overline text-ink/60">{{ __('Action Needed') }}</p>
 						<h2 class="type-h2 text-ink">
-							Complete the forms that are waiting for your signature
+							{{ __('Complete the forms that are waiting for your signature') }}
 						</h2>
 					</div>
 					<span class="chip chip-warm">{{ groups.action_needed.length }}</span>
@@ -89,7 +92,9 @@
 								<p class="mt-1 type-body text-ink/70">
 									{{ row.request_type }} · {{ row.decision_mode }}
 								</p>
-								<p v-if="row.due_on" class="mt-2 type-caption text-ink/60">Due {{ row.due_on }}</p>
+								<p v-if="row.due_on" class="mt-2 type-caption text-ink/60">
+									{{ __('Due {0}', [row.due_on]) }}
+								</p>
 							</div>
 							<div class="flex flex-col items-start gap-2 sm:items-end">
 								<span
@@ -110,7 +115,7 @@
 				class="student-hub-section student-hub-section--support"
 			>
 				<div class="mb-4 flex items-center justify-between gap-3">
-					<h2 class="type-h3 text-ink">Completed</h2>
+					<h2 class="type-h3 text-ink">{{ __('Completed') }}</h2>
 					<span class="chip chip-success">{{ groups.completed.length }}</span>
 				</div>
 				<div class="space-y-3">
@@ -140,7 +145,7 @@
 				class="student-hub-section border border-flame/20 bg-flame/5"
 			>
 				<div class="mb-4 flex items-center justify-between gap-3">
-					<h2 class="type-h3 text-ink">Declined or withdrawn</h2>
+					<h2 class="type-h3 text-ink">{{ __('Declined or withdrawn') }}</h2>
 					<span class="chip chip-alert">{{ groups.declined_or_withdrawn.length }}</span>
 				</div>
 				<div class="space-y-3">
@@ -167,7 +172,7 @@
 
 			<section v-if="groups.expired.length" class="student-hub-section">
 				<div class="mb-4 flex items-center justify-between gap-3">
-					<h2 class="type-h3 text-ink">Expired</h2>
+					<h2 class="type-h3 text-ink">{{ __('Expired') }}</h2>
 					<span class="chip">{{ groups.expired.length }}</span>
 				</div>
 				<div class="space-y-3">
@@ -182,7 +187,7 @@
 								<p class="type-caption text-ink/60">{{ row.student_name }}</p>
 								<h3 class="type-body-strong text-ink">{{ row.request_title }}</h3>
 								<p class="mt-1 type-caption text-ink/65">
-									Expired<span v-if="row.effective_to"> · {{ row.effective_to }}</span>
+									{{ __('Expired') }}<span v-if="row.effective_to"> · {{ row.effective_to }}</span>
 								</p>
 							</div>
 							<span class="chip">{{ row.current_status_label }}</span>
@@ -198,6 +203,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 
+import { __ } from '@/lib/i18n';
 import { getGuardianConsentBoard } from '@/lib/services/guardianConsent/guardianConsentService';
 
 import type { Response as GuardianConsentBoardResponse } from '@/types/contracts/guardian/get_guardian_consent_board';
@@ -252,7 +258,7 @@ async function loadBoard() {
 	try {
 		board.value = await getGuardianConsentBoard();
 	} catch (error) {
-		errorMessage.value = error instanceof Error ? error.message : 'Unknown error';
+		errorMessage.value = error instanceof Error ? error.message : __('Unknown error');
 	} finally {
 		loading.value = false;
 	}

@@ -17,34 +17,34 @@
 						<span v-else class="type-h3 text-ink/50">{{ studentInitials }}</span>
 					</div>
 					<div>
-						<p class="type-caption text-ink/70">Guardian portal</p>
-						<h1 class="type-h1 text-ink">{{ brief?.student.full_name || 'Student' }}</h1>
+						<p class="type-caption text-ink/70">{{ __('Guardian portal') }}</p>
+						<h1 class="type-h1 text-ink">{{ brief?.student.full_name || __('Student') }}</h1>
 						<p class="type-body text-ink/70">
-							{{ brief?.student.school || 'School unavailable' }} ·
-							{{ studentId || 'Unknown student' }}
+							{{ brief?.student.school || __('School unavailable') }} ·
+							{{ studentId || __('Unknown student') }}
 						</p>
 						<p class="mt-1 type-caption text-ink/60">
-							Current themes, next experiences, and simple ways to support at home.
+							{{ __('Current themes, next experiences, and simple ways to support at home.') }}
 						</p>
 					</div>
 				</div>
 				<div class="flex items-center gap-2">
 					<RouterLink :to="{ name: 'guardian-home' }" class="if-action">
-						Back to Family Snapshot
+						{{ __('Back to Family Snapshot') }}
 					</RouterLink>
 					<button type="button" class="if-action" :disabled="loading" @click="loadBrief">
-						Refresh
+						{{ __('Refresh') }}
 					</button>
 				</div>
 			</div>
 		</header>
 
 		<section v-if="loading" class="card-surface p-5">
-			<p class="type-body text-ink/70">Loading learning brief...</p>
+			<p class="type-body text-ink/70">{{ __('Loading learning brief...') }}</p>
 		</section>
 
 		<section v-else-if="errorMessage" class="card-surface p-5">
-			<p class="type-body-strong text-flame">Could not load the learning brief.</p>
+			<p class="type-body-strong text-flame">{{ __('Could not load the learning brief.') }}</p>
 			<p class="type-body text-ink/70">{{ errorMessage }}</p>
 		</section>
 
@@ -54,7 +54,7 @@
 			class="card-surface p-5"
 		>
 			<p class="type-body-strong text-flame">
-				This student is not available in your guardian scope.
+				{{ __('This student is not available in your guardian scope.') }}
 			</p>
 		</section>
 
@@ -62,18 +62,20 @@
 			<section class="card-surface p-5">
 				<div class="flex items-center justify-between gap-3">
 					<div>
-						<h2 class="type-h3 text-ink">Learning Now</h2>
+						<h2 class="type-h3 text-ink">{{ __('Learning Now') }}</h2>
 						<p class="mt-1 type-caption text-ink/70">
-							Big themes, upcoming experiences, and simple ways to support at home.
+							{{ __('Big themes, upcoming experiences, and simple ways to support at home.') }}
 						</p>
 					</div>
-					<span class="chip">{{ courseBriefs.length }} courses</span>
+					<span class="chip">{{
+						courseBriefs.length === 1 ? __('1 course') : __('{0} courses', [courseBriefs.length])
+					}}</span>
 				</div>
 			</section>
 
 			<section v-if="!courseBriefs.length" class="card-surface p-5">
 				<p class="type-body text-ink/70">
-					No active class learning brief is available yet for this student.
+					{{ __('No active class learning brief is available yet for this student.') }}
 				</p>
 			</section>
 
@@ -85,10 +87,10 @@
 				>
 					<div class="grid gap-5 p-5 sm:p-6 xl:grid-cols-[minmax(0,1.15fr),minmax(0,0.85fr)]">
 						<div>
-							<p class="type-overline text-ink/60">Course</p>
+							<p class="type-overline text-ink/60">{{ __('Course') }}</p>
 							<h2 class="mt-2 type-h2 text-ink">{{ course.course_name }}</h2>
 							<p class="mt-2 type-caption text-ink/70">
-								{{ course.class_label || 'Current class' }}
+								{{ course.class_label || __('Current class') }}
 								<span v-if="course.current_unit?.title">· {{ course.current_unit.title }}</span>
 							</p>
 
@@ -102,7 +104,7 @@
 								"
 								class="mt-5 rounded-2xl border border-line-soft bg-surface-soft p-4"
 							>
-								<p class="type-overline text-ink/60">Current theme</p>
+								<p class="type-overline text-ink/60">{{ __('Current theme') }}</p>
 								<p class="mt-2 type-body text-ink/80">
 									{{
 										course.current_unit?.essential_understanding || course.current_unit?.overview
@@ -115,21 +117,21 @@
 									v-if="course.current_unit?.content"
 									class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 								>
-									<p class="type-overline text-ink/60">What they are exploring</p>
+									<p class="type-overline text-ink/60">{{ __('What they are exploring') }}</p>
 									<p class="mt-2 type-body text-ink/80">{{ course.current_unit.content }}</p>
 								</article>
 								<article
 									v-if="course.current_unit?.skills"
 									class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 								>
-									<p class="type-overline text-ink/60">Skills in practice</p>
+									<p class="type-overline text-ink/60">{{ __('Skills in practice') }}</p>
 									<p class="mt-2 type-body text-ink/80">{{ course.current_unit.skills }}</p>
 								</article>
 								<article
 									v-if="course.current_unit?.concepts"
 									class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 								>
-									<p class="type-overline text-ink/60">Big ideas</p>
+									<p class="type-overline text-ink/60">{{ __('Big ideas') }}</p>
 									<p class="mt-2 type-body text-ink/80">{{ course.current_unit.concepts }}</p>
 								</article>
 							</div>
@@ -137,9 +139,9 @@
 
 						<div class="space-y-4">
 							<article class="rounded-2xl border border-line-soft bg-surface-soft p-4">
-								<p class="type-overline text-ink/60">Coming up next</p>
+								<p class="type-overline text-ink/60">{{ __('Coming up next') }}</p>
 								<p class="mt-2 type-body-strong text-ink">
-									{{ course.next_step || 'No immediate next step published yet.' }}
+									{{ course.next_step || __('No immediate next step published yet.') }}
 								</p>
 								<p v-if="course.next_step_supporting_text" class="mt-2 type-caption text-ink/70">
 									{{ course.next_step_supporting_text }}
@@ -150,7 +152,7 @@
 								v-if="course.current_session"
 								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 							>
-								<p class="type-overline text-ink/60">Next class experience</p>
+								<p class="type-overline text-ink/60">{{ __('Next class experience') }}</p>
 								<p class="mt-2 type-body-strong text-ink">{{ course.current_session.title }}</p>
 								<p
 									v-if="course.current_session.session_date"
@@ -170,7 +172,9 @@
 								v-if="course.upcoming_experiences.length"
 								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 							>
-								<p class="type-overline text-ink/60">Upcoming learning experiences</p>
+								<p class="type-overline text-ink/60">
+									{{ __('Upcoming learning experiences') }}
+								</p>
 								<div class="mt-3 space-y-3">
 									<div
 										v-for="experience in course.upcoming_experiences"
@@ -192,7 +196,7 @@
 								v-if="course.dinner_prompt"
 								class="rounded-2xl border border-line-soft bg-white p-4"
 							>
-								<p class="type-overline text-ink/60">Talk at home</p>
+								<p class="type-overline text-ink/60">{{ __('Talk at home') }}</p>
 								<p class="mt-2 type-body text-ink/80">{{ course.dinner_prompt }}</p>
 							</article>
 
@@ -200,7 +204,7 @@
 								v-if="course.support_resources?.length"
 								class="rounded-2xl border border-line-soft bg-surface-soft p-4"
 							>
-								<p class="type-overline text-ink/60">Helpful at home</p>
+								<p class="type-overline text-ink/60">{{ __('Helpful at home') }}</p>
 								<div class="mt-3 space-y-3">
 									<div
 										v-for="resource in course.support_resources"
@@ -214,7 +218,7 @@
 											rel="noreferrer"
 											class="mt-1 inline-flex text-sm font-medium text-jacaranda transition hover:text-jacaranda/80"
 										>
-											Open resource
+											{{ __('Open resource') }}
 										</a>
 									</div>
 								</div>
@@ -231,6 +235,7 @@
 import { computed, ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 
+import { __ } from '@/lib/i18n';
 import { getGuardianStudentLearningBrief } from '@/lib/services/guardianHome/guardianHomeService';
 
 import type { Response as GuardianStudentLearningBriefResponse } from '@/types/contracts/guardian/get_guardian_student_learning_brief';
@@ -244,7 +249,7 @@ const brief = ref<GuardianStudentLearningBriefResponse | null>(null);
 const studentId = computed(() => String(route.params.student_id || ''));
 const courseBriefs = computed(() => brief.value?.course_briefs ?? []);
 const studentInitials = computed(() => {
-	const parts = String(brief.value?.student.full_name || 'Student')
+	const parts = String(brief.value?.student.full_name || __('Student'))
 		.split(/\s+/)
 		.filter(Boolean)
 		.slice(0, 2);
@@ -256,13 +261,13 @@ async function loadBrief() {
 	errorMessage.value = '';
 	try {
 		if (!studentId.value) {
-			throw new Error('Missing student id in route.');
+			throw new Error(__('Missing student id in route.'));
 		}
 		brief.value = await getGuardianStudentLearningBrief({ student_id: studentId.value });
 	} catch (error) {
 		brief.value = null;
 		const message = error instanceof Error ? error.message : String(error || '');
-		errorMessage.value = message || 'Unknown error';
+		errorMessage.value = message || __('Unknown error');
 	} finally {
 		loading.value = false;
 	}

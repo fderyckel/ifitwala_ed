@@ -4,9 +4,9 @@
 		<!-- Header -->
 		<header class="page-header">
 			<div class="page-header__intro">
-				<h1 class="type-h1 text-canopy">Announcement Archive</h1>
+				<h1 class="type-h1 text-canopy">{{ __('Announcement Archive') }}</h1>
 				<p class="type-meta text-slate-token/80">
-					All communications visible to you across your organisation
+					{{ __('All communications visible to you across your organisation') }}
 				</p>
 			</div>
 
@@ -20,7 +20,7 @@
 		<FiltersBar class="analytics-filters org-archive__filters">
 			<!-- Organization -->
 			<div v-if="organizationOptions.length > 0" class="flex flex-col gap-1">
-				<label class="type-label">Organization</label>
+				<label class="type-label">{{ __('Organization') }}</label>
 				<FormControl
 					type="select"
 					:options="organizationOptions"
@@ -31,7 +31,7 @@
 
 			<!-- School -->
 			<div v-if="schoolOptions.length > 0" class="flex flex-col gap-1">
-				<label class="type-label">School</label>
+				<label class="type-label">{{ __('School') }}</label>
 				<FormControl
 					type="select"
 					:options="schoolOptions"
@@ -42,7 +42,7 @@
 
 			<!-- Communication Type -->
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Communication Type</label>
+				<label class="type-label">{{ __('Communication Type') }}</label>
 				<FormControl
 					type="select"
 					:options="communicationTypeOptions"
@@ -53,7 +53,7 @@
 
 			<!-- Student Group -->
 			<div v-if="studentGroupOptions.length > 1" class="flex flex-col gap-1">
-				<label class="type-label">Student Group</label>
+				<label class="type-label">{{ __('Student Group') }}</label>
 				<FormControl
 					type="select"
 					:options="studentGroupOptions"
@@ -64,13 +64,13 @@
 
 			<!-- Team -->
 			<div v-if="hasTeamFilter" class="flex flex-col gap-1">
-				<label class="type-label">Team</label>
+				<label class="type-label">{{ __('Team') }}</label>
 				<FormControl type="select" :options="teamOptions" v-model="filters.team" class="w-44" />
 			</div>
 
 			<!-- With comments -->
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Interactions</label>
+				<label class="type-label">{{ __('Interactions') }}</label>
 				<label class="flex items-center gap-2 cursor-pointer text-sm text-ink select-none h-9">
 					<input
 						type="checkbox"
@@ -78,12 +78,12 @@
 						class="rounded border-slate-300 text-jacaranda"
 					/>
 					<span class="inline-flex items-center gap-1.5">
-						<span>With comments</span>
+						<span>{{ __('With comments') }}</span>
 						<FeatherIcon
 							name="info"
 							class="h-4 w-4 text-slate-token/60 hover:text-slate-token/80"
 							tabindex="0"
-							title="Shows only announcements that have at least one visible comment."
+							:title="__('Shows only announcements that have at least one visible comment.')"
 						/>
 					</span>
 				</label>
@@ -108,8 +108,8 @@
 					</div>
 
 					<div v-else-if="!feedItems.length" class="py-12 text-center">
-						<p class="type-h3 text-slate-token/40">No announcements found</p>
-						<p class="text-sm text-slate-token/60 mt-1">Try adjusting your filters</p>
+						<p class="type-h3 text-slate-token/40">{{ __('No announcements found') }}</p>
+						<p class="text-sm text-slate-token/60 mt-1">{{ __('Try adjusting your filters') }}</p>
 					</div>
 
 					<div
@@ -178,7 +178,8 @@
 										class="text-xs text-jacaranda font-medium flex items-center gap-1"
 									>
 										<FeatherIcon name="check-circle" class="h-3 w-3" />
-										You: {{ getInteractionFor(item).self?.intent_type || 'Responded' }}
+										{{ __('You:') }}
+										{{ getInteractionFor(item).self?.intent_type || __('Responded') }}
 									</div>
 									<div
 										v-if="hasVisibleInteractionActions(item)"
@@ -189,8 +190,8 @@
 										<span
 											:title="
 												getInteractionStats(item).comments_total > 0
-													? 'Has comments'
-													: 'No comments'
+													? __('Has comments')
+													: __('No comments')
 											"
 										>
 											💬 {{ getInteractionStats(item).comments_total }}
@@ -219,8 +220,8 @@
 					class="flex flex-col items-center justify-center h-full text-center p-8 text-slate-token/40"
 				>
 					<FeatherIcon name="inbox" class="h-10 w-10 mb-3 opacity-50" />
-					<p class="type-h3">Select an announcement</p>
-					<p class="text-sm mt-1">Click on an item from the list to view details</p>
+					<p class="type-h3">{{ __('Select an announcement') }}</p>
+					<p class="text-sm mt-1">{{ __('Click on an item from the list to view details') }}</p>
 				</div>
 
 				<div v-else class="flex flex-col h-full">
@@ -272,14 +273,14 @@
 								v-else-if="detailLoadError"
 								class="not-prose rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
 							>
-								<p class="font-medium">Unable to load the full announcement.</p>
+								<p class="font-medium">{{ __('Unable to load the full announcement.') }}</p>
 								<p class="mt-1 text-amber-800/80">{{ detailLoadError }}</p>
 								<Button
 									variant="subtle"
 									class="mt-3"
 									@click="selectedComm && selectItem(selectedComm)"
 								>
-									Retry
+									{{ __('Retry') }}
 								</Button>
 							</div>
 							<div
@@ -291,7 +292,7 @@
 								{{ detailSnippetFallback }}
 							</p>
 							<div v-else class="text-slate-token/60">
-								No full announcement content is available for this item.
+								{{ __('No full announcement content is available for this item.') }}
 							</div>
 						</div>
 
@@ -301,7 +302,7 @@
 						>
 							<div class="flex items-center gap-2">
 								<FeatherIcon name="paperclip" class="h-4 w-4 text-slate-token/60" />
-								<h3 class="text-sm font-semibold text-ink">Attachments</h3>
+								<h3 class="text-sm font-semibold text-ink">{{ __('Attachments') }}</h3>
 							</div>
 							<div class="mt-4">
 								<CommunicationAttachmentPreviewList :attachments="detailAttachments" />
@@ -333,12 +334,14 @@
 									<FeatherIcon name="message-square" class="h-4 w-4 shrink-0" />
 
 									<span class="inline-flex items-center gap-2 whitespace-nowrap">
-										<span>Comments</span>
+										<span>{{ __('Comments') }}</span>
 
 										<span
 											v-if="selectedStats"
 											class="text-xs font-semibold tabular-nums"
-											:title="selectedStats.comments_total > 0 ? 'Has comments' : 'No comments'"
+											:title="
+												selectedStats.comments_total > 0 ? __('Has comments') : __('No comments')
+											"
 										>
 											{{ selectedStats.comments_total }}
 										</span>
@@ -359,8 +362,8 @@
 			:comment="newComment"
 			:submit-loading="interactionActionLoading"
 			:submit-disabled="interactionActionLoading || !newComment.trim()"
-			submit-label="Send"
-			placeholder="Add a short comment (max 300 characters)"
+			:submit-label="__('Send')"
+			:placeholder="__('Add a short comment (max 300 characters)')"
 			:format-timestamp="value => formatDate(value, 'DD MMM HH:mm')"
 			@close="closeThread"
 			@submit="submitComment"
@@ -374,6 +377,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Badge, Button, FeatherIcon, FormControl, LoadingIndicator, toast } from 'frappe-ui';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { formatLocalizedDate, formatLocalizedDateTime } from '@/lib/datetime';
+import { __ } from '@/lib/i18n';
 import { createOrgCommunicationArchiveService } from '@/lib/services/orgCommunicationArchive/orgCommunicationArchiveService';
 import { createCommunicationInteractionService } from '@/lib/services/communicationInteraction/communicationInteractionService';
 import { SIGNAL_ORG_COMMUNICATION_INVALIDATE, uiSignals } from '@/lib/uiSignals';
@@ -410,11 +414,11 @@ const FEED_THROTTLE_MS = 500;
 const FEED_SCROLL_THRESHOLD_PX = 180;
 
 const DATE_RANGES = [
-	{ label: 'Last 7 Days', value: '7d' },
-	{ label: 'Last 30 Days', value: '30d' },
-	{ label: 'Last 90 Days', value: '90d' },
-	{ label: 'YTD', value: 'year' },
-	{ label: 'All Time', value: 'all' },
+	{ label: __('Last 7 Days'), value: '7d' },
+	{ label: __('Last 30 Days'), value: '30d' },
+	{ label: __('Last 90 Days'), value: '90d' },
+	{ label: __('YTD'), value: 'year' },
+	{ label: __('All Time'), value: 'all' },
 ] as const;
 
 const archiveService = createOrgCommunicationArchiveService();
@@ -461,8 +465,12 @@ const selectedStats = computed(() => {
 
 const threadTitle = computed(() =>
 	selectedComm.value
-		? `${getInteractionCommentUi(getInteractionCapabilities(selectedComm.value).commentMode).titleLabel} · ${selectedComm.value.title}`
-		: 'Comments'
+		? __('{0} · {1}', [
+				getInteractionCommentUi(getInteractionCapabilities(selectedComm.value).commentMode)
+					.titleLabel,
+				selectedComm.value.title,
+			])
+		: __('Comments')
 );
 
 const detailMessageHtml = computed(() => {
@@ -490,7 +498,7 @@ const schoolChoices = ref<Array<{ label: string; value: string; organization?: s
 const hasTeamFilter = computed(() => myTeams.value.length > 0);
 
 const organizationOptions = computed(() => [
-	{ label: 'All organisations', value: null },
+	{ label: __('All organisations'), value: null },
 	...orgChoices.value,
 ]);
 
@@ -499,18 +507,18 @@ const schoolOptions = computed(() => {
 	const scoped = org
 		? schoolChoices.value.filter(s => s.organization === org)
 		: schoolChoices.value;
-	return [{ label: 'All schools', value: null }, ...scoped];
+	return [{ label: __('All schools'), value: null }, ...scoped];
 });
 
 const communicationTypeOptions = computed(() => [
-	{ label: 'All types', value: 'All' },
+	{ label: __('All types'), value: 'All' },
 	...COMMUNICATION_TYPES.map(value => ({
 		label: value,
 		value,
 	})),
 ]);
 
-const teamOptions = computed(() => [{ label: 'All teams', value: null }, ...myTeams.value]);
+const teamOptions = computed(() => [{ label: __('All teams'), value: null }, ...myTeams.value]);
 
 const studentGroupOptions = computed(() => {
 	const selectedSchool =
@@ -536,7 +544,7 @@ const studentGroupOptions = computed(() => {
 		});
 	}
 
-	return [{ label: 'All groups', value: null }, ...scopedGroups];
+	return [{ label: __('All groups'), value: null }, ...scopedGroups];
 });
 
 let reloadTimer: number | null = null;
@@ -619,8 +627,8 @@ async function loadArchiveContext() {
 		}
 	} catch (err) {
 		toast({
-			title: 'Unable to load archive',
-			text: 'Please refresh and try again.',
+			title: __('Unable to load archive'),
+			text: __('Please refresh and try again.'),
 			icon: 'alert-circle',
 			appearance: 'danger',
 		});
@@ -791,8 +799,8 @@ async function loadFeed(reset = false) {
 		}
 	} catch (err) {
 		toast({
-			title: 'Unable to load announcements',
-			text: 'Please try again.',
+			title: __('Unable to load announcements'),
+			text: __('Please try again.'),
 			icon: 'alert-circle',
 			appearance: 'danger',
 		});
@@ -820,8 +828,8 @@ async function selectItem(item: OrgCommunicationListItem, opts?: { silent?: bool
 	if (!item?.name) {
 		if (!opts?.silent) {
 			toast({
-				title: 'Unable to open announcement',
-				text: 'Please try again.',
+				title: __('Unable to open announcement'),
+				text: __('Please try again.'),
 				icon: 'alert-circle',
 				appearance: 'danger',
 			});
@@ -837,11 +845,12 @@ async function selectItem(item: OrgCommunicationListItem, opts?: { silent?: bool
 	try {
 		fullContent.value = await archiveService.getOrgCommunicationItem({ name: item.name });
 	} catch (err) {
-		const message = err instanceof Error ? err.message : 'Please try again.';
-		detailLoadError.value = message || 'Please try again.';
+		const fallback = __('Please try again.');
+		const message = err instanceof Error ? err.message : fallback;
+		detailLoadError.value = message || fallback;
 		if (!opts?.silent) {
 			toast({
-				title: 'Unable to load announcement',
+				title: __('Unable to load announcement'),
 				text: detailLoadError.value,
 				icon: 'alert-circle',
 				appearance: 'danger',
@@ -905,8 +914,8 @@ async function refreshThread(orgCommunication: string, opts?: { silent?: boolean
 		threadRows.value = [];
 		if (!opts?.silent) {
 			toast({
-				title: 'Unable to load comments',
-				text: 'Please try again.',
+				title: __('Unable to load comments'),
+				text: __('Please try again.'),
 				icon: 'alert-circle',
 				appearance: 'danger',
 			});
@@ -954,16 +963,16 @@ function onOrgCommInvalidated(payload?: { names?: string[] }) {
 
 function notifyReactionsDisabled() {
 	toast({
-		title: 'Reactions unavailable',
-		text: 'Reactions are not available for this announcement.',
+		title: __('Reactions unavailable'),
+		text: __('Reactions are not available for this announcement.'),
 		icon: 'info',
 	});
 }
 
 function notifyCommentsDisabled() {
 	toast({
-		title: 'Comments unavailable',
-		text: 'Comments are not available for this announcement in this interaction mode.',
+		title: __('Comments unavailable'),
+		text: __('Comments are not available for this announcement in this interaction mode.'),
 		icon: 'info',
 	});
 }
@@ -988,8 +997,8 @@ function notifyCommentsDisabled() {
 async function reactTo(item: OrgCommunicationListItem, code: ReactionCode) {
 	if (!item?.name) {
 		toast({
-			title: 'Unable to save reaction',
-			text: 'Please try again.',
+			title: __('Unable to save reaction'),
+			text: __('Please try again.'),
 			icon: 'alert-circle',
 			appearance: 'danger',
 		});
@@ -1008,8 +1017,8 @@ async function reactTo(item: OrgCommunicationListItem, code: ReactionCode) {
 		});
 	} catch (err) {
 		toast({
-			title: 'Unable to save reaction',
-			text: 'Please try again.',
+			title: __('Unable to save reaction'),
+			text: __('Please try again.'),
 			icon: 'alert-circle',
 			appearance: 'danger',
 		});
@@ -1019,8 +1028,8 @@ async function reactTo(item: OrgCommunicationListItem, code: ReactionCode) {
 async function openThread(item: OrgCommunicationListItem) {
 	if (!item?.name) {
 		toast({
-			title: 'Unable to open comments',
-			text: 'Please try again.',
+			title: __('Unable to open comments'),
+			text: __('Please try again.'),
 			icon: 'alert-circle',
 			appearance: 'danger',
 		});
@@ -1050,8 +1059,8 @@ function onCommentUpdate(value: string) {
 async function submitComment() {
 	if (!selectedComm.value?.name) {
 		toast({
-			title: 'Select an announcement',
-			text: 'Choose an announcement before posting a comment.',
+			title: __('Select an announcement'),
+			text: __('Choose an announcement before posting a comment.'),
 			icon: 'info',
 		});
 		return;
@@ -1064,8 +1073,8 @@ async function submitComment() {
 	const note = newComment.value.trim();
 	if (!note) {
 		toast({
-			title: 'Comment required',
-			text: 'Write a comment before posting.',
+			title: __('Comment required'),
+			text: __('Write a comment before posting.'),
 			icon: 'info',
 		});
 		return;
@@ -1084,8 +1093,8 @@ async function submitComment() {
 		await refreshSummary([orgCommunication]);
 	} catch (err) {
 		toast({
-			title: 'Unable to post comment',
-			text: 'Please try again.',
+			title: __('Unable to post comment'),
+			text: __('Please try again.'),
 			icon: 'alert-circle',
 			appearance: 'danger',
 		});

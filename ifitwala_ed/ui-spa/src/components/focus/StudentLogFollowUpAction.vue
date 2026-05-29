@@ -18,7 +18,7 @@
 			<div class="flex items-start justify-between gap-3">
 				<div class="min-w-0">
 					<div class="type-body font-medium">
-						Student Log
+						{{ __('Student Log') }}
 						<span v-if="log?.name" class="text-ink/60"> • {{ log.name }}</span>
 					</div>
 
@@ -29,7 +29,7 @@
 					</div>
 
 					<div v-if="log?.follow_up_status" class="type-meta text-ink/60 mt-1">
-						Status: {{ log.follow_up_status }}
+						{{ __('Status:') }} {{ log.follow_up_status }}
 					</div>
 				</div>
 
@@ -40,16 +40,18 @@
 						class="if-action"
 						@click="openInDesk('Student Log', log.name)"
 					>
-						Open in Desk
+						{{ __('Open in Desk') }}
 					</button>
 
 					<!-- Advisory: does NOT block closing or workflows -->
-					<button type="button" class="if-action" @click="requestRefresh">Refresh</button>
+					<button type="button" class="if-action" @click="requestRefresh">
+						{{ __('Refresh') }}
+					</button>
 				</div>
 			</div>
 
 			<div v-if="log?.log_html" class="mt-3">
-				<div class="type-meta text-ink/60 mb-1">Log note</div>
+				<div class="type-meta text-ink/60 mb-1">{{ __('Log note') }}</div>
 				<div class="prose prose-sm max-w-none" v-html="trustedHtml(log.log_html)" />
 			</div>
 		</div>
@@ -58,12 +60,12 @@
          FOLLOW-UPS LIST (both modes)
        ============================================================ -->
 		<div class="card-surface p-4">
-			<div class="type-body font-medium">Follow-ups</div>
+			<div class="type-body font-medium">{{ __('Follow-ups') }}</div>
 
-			<div v-if="loading" class="type-body text-ink/60 mt-3">Loading…</div>
+			<div v-if="loading" class="type-body text-ink/60 mt-3">{{ __('Loading…') }}</div>
 
 			<div v-else-if="followUps.length === 0" class="type-body text-ink/60 mt-3">
-				No follow-ups yet.
+				{{ __('No follow-ups yet.') }}
 			</div>
 
 			<div v-else class="mt-3 space-y-3">
@@ -73,8 +75,8 @@
 							<div class="type-meta text-ink/60">
 								<span v-if="fu.follow_up_author">{{ fu.follow_up_author }}</span>
 								<span v-if="fu.date"> • {{ followUpDateLabel(fu.date) }}</span>
-								<span v-if="fu.docstatus === 0"> • Draft</span>
-								<span v-else> • Submitted</span>
+								<span v-if="fu.docstatus === 0"> • {{ __('Draft') }}</span>
+								<span v-else> • {{ __('Submitted') }}</span>
 							</div>
 						</div>
 
@@ -83,7 +85,7 @@
 							class="if-action"
 							@click="openInDesk('Student Log Follow Up', fu.name)"
 						>
-							Open
+							{{ __('Open') }}
 						</button>
 					</div>
 
@@ -100,9 +102,9 @@
          MODE: ASSIGNEE (submit follow-up)
        ============================================================ -->
 		<div v-if="modeState === 'assignee'" class="card-surface p-4">
-			<div class="type-body font-medium">Your follow-up</div>
+			<div class="type-body font-medium">{{ __('Your follow-up') }}</div>
 			<div class="type-meta text-ink/60 mt-1">
-				Write what you did, what happened, and any next action.
+				{{ __('Write what you did, what happened, and any next action.') }}
 			</div>
 
 			<div class="mt-3">
@@ -110,14 +112,14 @@
 					v-model="draftText"
 					class="if-textarea w-full"
 					rows="8"
-					placeholder="Type your follow-up…"
+					:placeholder="__('Type your follow-up…')"
 					:disabled="busy"
 				/>
 				<div class="type-meta text-ink/60 mt-2">
-					Keep it factual and actionable. No sensitive details beyond what’s necessary.
+					{{ __("Keep it factual and actionable. No sensitive details beyond what's necessary.") }}
 				</div>
 				<div v-if="draftText.trim().length > 0 && !canSubmit" class="type-meta text-ink/60 mt-2">
-					Please write at least 5 characters.
+					{{ __('Please write at least 5 characters.') }}
 				</div>
 			</div>
 
@@ -128,7 +130,9 @@
 
 			<div class="mt-4 flex items-center justify-end gap-2">
 				<!-- A+: close must NEVER be blocked by busy -->
-				<button type="button" class="if-button if-button--quiet" @click="emitClose">Cancel</button>
+				<button type="button" class="if-button if-button--quiet" @click="emitClose">
+					{{ __('Cancel') }}
+				</button>
 
 				<button
 					type="button"
@@ -136,7 +140,7 @@
 					:disabled="busy || submittedOnce || !canSubmit"
 					@click="submitFollowUp"
 				>
-					{{ busy ? 'Submitting…' : 'Submit follow-up' }}
+					{{ busy ? __('Submitting…') : __('Submit follow-up') }}
 				</button>
 			</div>
 		</div>
@@ -145,30 +149,29 @@
          MODE: AUTHOR (review outcome)
        ============================================================ -->
 		<div v-else-if="modeState === 'author'" class="card-surface p-4">
-			<div class="type-body font-medium">Review outcome</div>
+			<div class="type-body font-medium">{{ __('Review outcome') }}</div>
 			<div class="type-meta text-ink/60 mt-1">
-				Decide whether to close the log, or reassign follow-up.
+				{{ __('Decide whether to close the log, or reassign follow-up.') }}
 			</div>
 
 			<!-- Reassign -->
 			<div class="mt-4">
-				<div class="type-meta text-ink/60 mb-1">Reassign to</div>
+				<div class="type-meta text-ink/60 mb-1">{{ __('Reassign to') }}</div>
 				<input
 					v-model="reassignSearchQuery"
 					class="if-input w-full"
 					type="text"
-					placeholder="Type a full name, user ID, or email"
+					:placeholder="__('Type a full name, user ID, or email')"
 					:disabled="busy"
 				/>
 				<div class="type-meta text-ink/60 mt-2">
-					Search by the employee's full name, user ID, or email.
+					{{ __("Search by the employee's full name, user ID, or email.") }}
 				</div>
-				<div v-if="reassignSearchLoading" class="type-meta text-ink/60 mt-2">Searching…</div>
-				<div
-					v-if="reassignSearchQuery.trim().length > 0 && reassignSearchQuery.trim().length < 2"
-					class="type-meta text-ink/60 mt-2"
-				>
-					Type at least 2 letters to search by full name.
+				<div v-if="reassignSearchLoading" class="type-meta text-ink/60 mt-2">
+					{{ __('Searching…') }}
+				</div>
+				<div v-if="showReassignMinLengthHint" class="type-meta text-ink/60 mt-2">
+					{{ __('Type at least 2 letters to search by full name.') }}
 				</div>
 				<div
 					v-else-if="
@@ -178,7 +181,7 @@
 					"
 					class="type-meta text-ink/60 mt-2"
 				>
-					No matching staff found. Keep typing a name, or enter a full user ID / email.
+					{{ __('No matching staff found. Keep typing a name, or enter a full user ID / email.') }}
 				</div>
 				<div
 					v-if="reassignCandidates.length"
@@ -201,12 +204,12 @@
 							v-if="resolvedReassignTarget === candidate.value"
 							class="type-meta text-ink/60 shrink-0"
 						>
-							Selected
+							{{ __('Selected') }}
 						</div>
 					</button>
 				</div>
 				<div v-if="reassignSelectedUserId" class="type-meta text-ink/60 mt-2">
-					Selected:
+					{{ __('Selected:') }}
 					<span class="text-ink">{{ reassignSelectedLabel || reassignSelectedUserId }}</span>
 					<span v-if="reassignSelectedLabel && reassignSelectedLabel !== reassignSelectedUserId">
 						• {{ reassignSelectedUserId }}
@@ -221,7 +224,7 @@
 				<div class="mt-3 flex items-center justify-end gap-2">
 					<!-- A+: close must NEVER be blocked by busy -->
 					<button type="button" class="if-button if-button--quiet" @click="emitClose">
-						Close
+						{{ __('Close') }}
 					</button>
 
 					<button
@@ -230,7 +233,7 @@
 						:disabled="busy || submittedOnce || resolvedReassignTarget.length < 3"
 						@click="reassignFollowUp"
 					>
-						{{ busy ? 'Processing…' : 'Reassign follow-up' }}
+						{{ busy ? __('Processing…') : __('Reassign follow-up') }}
 					</button>
 				</div>
 			</div>
@@ -238,7 +241,7 @@
 			<!-- Complete -->
 			<div class="mt-6 border-t border-ink/10 pt-4">
 				<div class="type-meta text-ink/60">
-					If you’re satisfied with the outcome, complete the log.
+					{{ __("If you're satisfied with the outcome, complete the log.") }}
 				</div>
 
 				<div class="mt-3 flex items-center justify-end gap-2">
@@ -248,12 +251,12 @@
 						:disabled="busy || submittedOnce || !canComplete"
 						@click="completeParentLog"
 					>
-						{{ busy ? 'Completing…' : 'Complete log' }}
+						{{ busy ? __('Completing…') : __('Complete log') }}
 					</button>
 				</div>
 
 				<div v-if="!canComplete" class="type-meta text-ink/60 mt-2">
-					This is disabled if the log is already Completed.
+					{{ __('This is disabled if the log is already Completed.') }}
 				</div>
 			</div>
 		</div>
@@ -262,9 +265,9 @@
          FALLBACK (unknown mode)
        ============================================================ -->
 		<div v-else class="rounded-2xl border border-slate-200 bg-white p-5">
-			<p class="type-body-strong text-ink">Not supported yet</p>
+			<p class="type-body-strong text-ink">{{ __('Not supported yet') }}</p>
 			<p class="mt-2 type-body text-slate-token/75">
-				Unknown Student Log focus mode: <span class="type-meta">{{ modeState }}</span>
+				{{ __('Unknown Student Log focus mode:') }} <span class="type-meta">{{ modeState }}</span>
 			</p>
 		</div>
 	</div>
@@ -357,6 +360,10 @@ const canComplete = computed(() => {
 
 const resolvedReassignTarget = computed(() => {
 	return (reassignSelectedUserId.value || reassignSearchQuery.value || '').trim();
+});
+const showReassignMinLengthHint = computed(() => {
+	const length = reassignSearchQuery.value.trim().length;
+	return length > 0 && length < 2;
 });
 
 let reassignSearchRequestSeq = 0;

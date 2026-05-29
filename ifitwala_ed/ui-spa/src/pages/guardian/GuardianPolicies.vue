@@ -4,11 +4,14 @@
 		<header class="card-surface policy-hero p-5 sm:p-6">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				<div>
-					<p class="type-overline text-ink/60">Guardian Portal</p>
-					<h1 class="type-h1 text-ink">Guardian Policies</h1>
+					<p class="type-overline text-ink/60">{{ __('Guardian Portal') }}</p>
+					<h1 class="type-h1 text-ink">{{ __('Guardian Policies') }}</h1>
 					<p class="type-body text-ink/70">
-						Review active guardian policies for your family scope and acknowledge any pending
-						items.
+						{{
+							__(
+								'Review active guardian policies for your family scope and acknowledge any pending items.'
+							)
+						}}
 					</p>
 				</div>
 				<button
@@ -17,17 +20,19 @@
 					:disabled="loading"
 					@click="loadOverview"
 				>
-					Refresh
+					{{ __('Refresh') }}
 				</button>
 			</div>
 		</header>
 
-		<section class="policy-summary" aria-label="Guardian policy summary">
+		<section class="policy-summary" :aria-label="__('Guardian policy summary')">
 			<article class="card-surface policy-metric-card policy-metric-card--total p-4">
 				<div class="policy-metric-card__row">
 					<div>
-						<p class="type-caption text-ink/65">Total acknowledgements</p>
-						<p class="type-caption text-ink/50">Current guardian acknowledgement scope</p>
+						<p class="type-caption text-ink/65">{{ __('Total acknowledgements') }}</p>
+						<p class="type-caption text-ink/50">
+							{{ __('Current guardian acknowledgement scope') }}
+						</p>
 					</div>
 					<p class="type-h2 text-ink">{{ counts.total_policies }}</p>
 				</div>
@@ -35,8 +40,8 @@
 			<article class="card-surface policy-metric-card policy-metric-card--acknowledged p-4">
 				<div class="policy-metric-card__row">
 					<div>
-						<p class="type-caption text-ink/65">Acknowledged</p>
-						<p class="type-caption text-ink/50">Already signed in Guardian Portal</p>
+						<p class="type-caption text-ink/65">{{ __('Acknowledged') }}</p>
+						<p class="type-caption text-ink/50">{{ __('Already signed in Guardian Portal') }}</p>
 					</div>
 					<p class="type-h2 text-canopy">{{ counts.acknowledged_policies }}</p>
 				</div>
@@ -44,8 +49,8 @@
 			<article class="card-surface policy-metric-card policy-metric-card--pending p-4">
 				<div class="policy-metric-card__row">
 					<div>
-						<p class="type-caption text-ink/65">Pending</p>
-						<p class="type-caption text-ink/50">Still needs guardian action</p>
+						<p class="type-caption text-ink/65">{{ __('Pending') }}</p>
+						<p class="type-caption text-ink/50">{{ __('Still needs guardian action') }}</p>
 					</div>
 					<p class="type-h2 text-clay">{{ counts.pending_policies }}</p>
 				</div>
@@ -53,19 +58,22 @@
 		</section>
 
 		<section v-if="loading" class="card-surface p-5">
-			<p class="type-body text-ink/70">Loading guardian policies...</p>
+			<p class="type-body text-ink/70">{{ __('Loading guardian policies...') }}</p>
 		</section>
 
 		<section v-else-if="errorMessage" class="card-surface p-5">
-			<p class="type-body-strong text-flame">Could not load guardian policies.</p>
+			<p class="type-body-strong text-flame">{{ __('Could not load guardian policies.') }}</p>
 			<p class="type-body text-ink/70">{{ errorMessage }}</p>
 		</section>
 
 		<section v-else-if="!rows.length" class="card-surface p-5">
-			<p class="type-body-strong text-ink">No active guardian policies in scope.</p>
+			<p class="type-body-strong text-ink">{{ __('No active guardian policies in scope.') }}</p>
 			<p class="type-body text-ink/70">
-				This portal account is linked correctly, but there are no active guardian policy versions
-				to review.
+				{{
+					__(
+						'This portal account is linked correctly, but there are no active guardian policy versions to review.'
+					)
+				}}
 			</p>
 		</section>
 
@@ -73,20 +81,25 @@
 			<div class="card-surface policy-list-hero p-5">
 				<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 					<div>
-						<p class="type-overline text-canopy/75">Family Policy Progress</p>
-						<h2 class="type-h3 text-ink">Review and sign pending policy versions</h2>
+						<p class="type-overline text-canopy/75">{{ __('Family Policy Progress') }}</p>
+						<h2 class="type-h3 text-ink">
+							{{ __('Review and sign pending policy versions') }}
+						</h2>
 						<p class="type-caption text-ink/65">
-							Each card keeps the policy text, signature requirements, and current status in one
-							place so guardians do not have to jump between views.
+							{{
+								__(
+									'Each card keeps the policy text, signature requirements, and current status in one place so guardians do not have to jump between views.'
+								)
+							}}
 						</p>
 					</div>
 					<div class="flex flex-wrap gap-2">
-						<span class="chip">Acknowledgements {{ counts.total_policies }}</span>
+						<span class="chip">{{ __('Acknowledgements {0}', [counts.total_policies]) }}</span>
 						<span class="rounded-full bg-leaf/12 px-3 py-1 type-caption text-canopy">
-							Acknowledged {{ counts.acknowledged_policies }}
+							{{ __('Acknowledged {0}', [counts.acknowledged_policies]) }}
 						</span>
 						<span class="rounded-full bg-sand px-3 py-1 type-caption text-clay">
-							Pending {{ counts.pending_policies }}
+							{{ __('Pending {0}', [counts.pending_policies]) }}
 						</span>
 					</div>
 				</div>
@@ -111,7 +124,7 @@
 						</p>
 						<h2 class="type-h3 text-ink">{{ row.policy_title }}</h2>
 						<p class="type-body text-ink/70">
-							{{ row.description || 'No summary provided.' }}
+							{{ row.description || __('No summary provided.') }}
 						</p>
 						<p class="type-caption text-ink/60">
 							{{ row.organization }}<span v-if="row.school"> · {{ row.school }}</span>
@@ -126,10 +139,10 @@
 									: 'policy-status-pill--pending'
 							"
 						>
-							{{ row.is_acknowledged ? 'Acknowledged' : 'Pending acknowledgement' }}
+							{{ row.is_acknowledged ? __('Acknowledged') : __('Pending acknowledgement') }}
 						</p>
 						<p v-if="row.is_acknowledged" class="type-caption text-canopy/75">
-							{{ row.acknowledged_at || 'Acknowledged' }}
+							{{ row.acknowledged_at || __('Acknowledged') }}
 						</p>
 					</div>
 				</div>
@@ -138,13 +151,17 @@
 					class="policy-detail-panel rounded-xl border border-line-soft bg-surface-soft p-4"
 					:open="!row.is_acknowledged || isFocusedPolicy(row.policy_version)"
 				>
-					<summary class="cursor-pointer type-body-strong text-ink">Open policy text</summary>
+					<summary class="cursor-pointer type-body-strong text-ink">
+						{{ __('Open policy text') }}
+					</summary>
 					<div
 						v-if="row.policy_text"
 						class="policy-richtext prose prose-sm mt-3 max-w-none text-ink/80"
 						v-html="trustedHtml(row.policy_text)"
 					/>
-					<p v-else class="mt-3 type-body text-ink/70">No policy text available.</p>
+					<p v-else class="mt-3 type-body text-ink/70">
+						{{ __('No policy text available.') }}
+					</p>
 				</details>
 
 				<div
@@ -153,9 +170,9 @@
 				>
 					<div v-if="row.acknowledgement_clauses.length" class="space-y-3">
 						<div>
-							<p class="type-body-strong text-ink">Acknowledgement clauses</p>
+							<p class="type-body-strong text-ink">{{ __('Acknowledgement clauses') }}</p>
 							<p class="type-caption text-ink/65">
-								Check every required clause before signing this policy.
+								{{ __('Check every required clause before signing this policy.') }}
 							</p>
 						</div>
 						<div class="space-y-2">
@@ -181,30 +198,34 @@
 							v-if="submitAttempts[rowStateKey(row)] && !hasRequiredClausesChecked(row)"
 							class="type-caption text-flame"
 						>
-							Check every required acknowledgement clause before signing.
+							{{ __('Check every required acknowledgement clause before signing.') }}
 						</p>
 					</div>
 
 					<div class="space-y-3">
 						<div>
-							<p class="type-body-strong text-ink">Electronic signature</p>
+							<p class="type-body-strong text-ink">{{ __('Electronic signature') }}</p>
 							<p class="type-caption text-ink/65">
-								Type your full name exactly as recorded and confirm the legal attestation.
+								{{
+									__('Type your full name exactly as recorded and confirm the legal attestation.')
+								}}
 							</p>
 						</div>
 
 						<p class="type-caption text-ink/70">
-							Expected signer name:
+							{{ __('Expected signer name:') }}
 							<span class="type-body-strong text-ink">{{ row.expected_signature_name }}</span>
 						</p>
 
 						<label class="block space-y-1">
-							<span class="type-caption text-ink/70">Type full name as electronic signature</span>
+							<span class="type-caption text-ink/70">{{
+								__('Type full name as electronic signature')
+							}}</span>
 							<input
 								:value="typedSignatureByVersion[rowStateKey(row)] || ''"
 								type="text"
 								class="if-input w-full"
-								placeholder="Enter your full name"
+								:placeholder="__('Enter your full name')"
 								:disabled="isRowBusy(rowStateKey(row))"
 								@input="updateTypedSignature(rowStateKey(row), $event)"
 							/>
@@ -218,7 +239,7 @@
 							"
 							class="type-caption text-flame"
 						>
-							Typed signature must match exactly: {{ row.expected_signature_name }}
+							{{ __('Typed signature must match exactly: {0}', [row.expected_signature_name]) }}
 						</p>
 
 						<label class="flex items-start gap-2">
@@ -230,8 +251,11 @@
 								@change="toggleAttestation(rowStateKey(row), $event)"
 							/>
 							<span class="type-caption text-ink/80">
-								I confirm that typing my name is my electronic signature, and I have read,
-								acknowledged, and agree to this policy.
+								{{
+									__(
+										'I confirm that typing my name is my electronic signature, and I have read, acknowledged, and agree to this policy.'
+									)
+								}}
 							</span>
 						</label>
 
@@ -239,7 +263,7 @@
 							v-if="submitAttempts[rowStateKey(row)] && !attestationByVersion[rowStateKey(row)]"
 							class="type-caption text-flame"
 						>
-							Confirm the legal attestation before signing.
+							{{ __('Confirm the legal attestation before signing.') }}
 						</p>
 					</div>
 
@@ -250,7 +274,9 @@
 							:disabled="isRowBusy(rowStateKey(row))"
 							@click="acknowledgeRow(row)"
 						>
-							{{ isRowBusy(rowStateKey(row)) ? 'Saving...' : 'Sign and acknowledge policy' }}
+							{{
+								isRowBusy(rowStateKey(row)) ? __('Saving...') : __('Sign and acknowledge policy')
+							}}
 						</button>
 					</div>
 				</div>
@@ -268,6 +294,7 @@ import { computed, nextTick, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { toast } from 'frappe-ui';
 
+import { __ } from '@/lib/i18n';
 import {
 	acknowledgeGuardianPolicy,
 	getGuardianPolicyOverview,
@@ -403,7 +430,7 @@ async function loadOverview() {
 		await focusRequestedPolicy();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		errorMessage.value = message || 'Unknown error';
+		errorMessage.value = message || __('Unknown error');
 	} finally {
 		loading.value = false;
 	}
@@ -417,25 +444,25 @@ async function acknowledgeRow(row: GuardianPolicyRow) {
 	rowErrors.value = { ...rowErrors.value, [rowKey]: '' };
 
 	if (!typedSignatureByVersion.value[rowKey]?.trim()) {
-		const message = 'Type your full name to provide your electronic signature.';
+		const message = __('Type your full name to provide your electronic signature.');
 		rowErrors.value = { ...rowErrors.value, [rowKey]: message };
 		toast.error(message);
 		return;
 	}
 	if (!hasRequiredClausesChecked(row)) {
-		const message = 'Check every required acknowledgement clause before signing.';
+		const message = __('Check every required acknowledgement clause before signing.');
 		rowErrors.value = { ...rowErrors.value, [rowKey]: message };
 		toast.error(message);
 		return;
 	}
 	if (!isTypedSignatureMatch(row)) {
-		const message = `Typed signature must match exactly: ${row.expected_signature_name}`;
+		const message = __('Typed signature must match exactly: {0}', [row.expected_signature_name]);
 		rowErrors.value = { ...rowErrors.value, [rowKey]: message };
 		toast.error(message);
 		return;
 	}
 	if (!attestationByVersion.value[rowKey]) {
-		const message = 'Confirm the legal attestation before signing.';
+		const message = __('Confirm the legal attestation before signing.');
 		rowErrors.value = { ...rowErrors.value, [rowKey]: message };
 		toast.error(message);
 		return;
@@ -452,17 +479,18 @@ async function acknowledgeRow(row: GuardianPolicyRow) {
 		});
 		toast.success(
 			result.status === 'already_acknowledged'
-				? 'Policy was already acknowledged.'
-				: 'Policy acknowledged.'
+				? __('Policy was already acknowledged.')
+				: __('Policy acknowledged.')
 		);
 		await loadOverview();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
+		const fallback = __('Could not acknowledge this policy.');
 		rowErrors.value = {
 			...rowErrors.value,
-			[rowKey]: message || 'Could not acknowledge this policy.',
+			[rowKey]: message || fallback,
 		};
-		toast.error(message || 'Could not acknowledge this policy.');
+		toast.error(message || fallback);
 	} finally {
 		busyRows.value = { ...busyRows.value, [rowKey]: false };
 	}

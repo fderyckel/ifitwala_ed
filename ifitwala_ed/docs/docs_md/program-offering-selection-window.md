@@ -3,7 +3,7 @@ title: "Program Offering Selection Window: Time-Bound Self-Enrollment Campaign"
 slug: program-offering-selection-window
 category: Enrollment
 doc_order: 3
-version: "1.1.0"
+version: "1.1.1"
 last_change_date: "2026-05-29"
 summary: "Launch one time-bound student or guardian self-enrollment campaign for a Program Offering and Academic Year, optionally collect re-enrollment intent before course choices, pre-create draft Program Enrollment Requests, and monitor responses without bypassing the request-first architecture."
 seo_title: "Program Offering Selection Window: Time-Bound Self-Enrollment Campaign"
@@ -75,7 +75,7 @@ Opening a selection window never writes committed enrollment directly. It batch-
 - Optional / elective choices stay editable while the window is open and the linked request is still `Draft`.
 - When `Collect Enrollment Intent` is enabled, course choices appear only after the user chooses `Intends to Enroll`.
 - The portal uses live validation before submission, so "ready to submit" matches the real request validation outcome.
-- After submission, the linked request becomes read-only in the portal.
+- After portal submission, the linked request becomes read-only in the portal.
 - Closed windows remain visible in the portal as read-only records so families or students can still see what was submitted or which deadline was missed.
 - Guardian visibility is always child-scoped from server-resolved links; students can only access their own window rows.
 - Students who already have a committed target `Program Enrollment` are skipped during request preparation and removed from the active window population.

@@ -15,7 +15,7 @@
 	>
 		<div class="mx-auto max-w-7xl px-3 py-2">
 			<div class="flex flex-col md:flex-row items-center justify-between gap-2">
-				<nav aria-label="Footer links">
+				<nav :aria-label="__('Footer links')">
 					<ul
 						class="flex flex-wrap items-center justify-center md:justify-start text-xs sm:text-sm text-gray-600"
 					>
@@ -62,91 +62,103 @@
 	</footer>
 
 	<!-- Help Modal -->
-	<Dialog v-model="open" :options="{ title: 'Contact Us / Help', size: 'lg' }">
+	<Dialog v-model="open" :options="{ title: __('Contact Us / Help'), size: 'lg' }">
 		<div class="space-y-4">
 			<!-- Consent -->
 			<label class="flex items-start gap-2 text-sm">
 				<input type="checkbox" v-model="form.consent" class="mt-0.5" />
 				<span>
-					I understand this is not an emergency service and consent to share this information with
-					the counselor team.
+					{{
+						__(
+							'I understand this is not an emergency service and consent to share this information with the counselor team.'
+						)
+					}}
 				</span>
 			</label>
 
 			<!-- Quick crisis microcopy -->
 			<div class="rounded border border-red-200 bg-red-50 p-2 text-xs text-red-700">
-				If you or someone else is in immediate danger, contact local emergency services. This form
-				is not monitored 24/7.
+				{{
+					__(
+						'If you or someone else is in immediate danger, contact local emergency services. This form is not monitored 24/7.'
+					)
+				}}
 			</div>
 
 			<!-- Category & Severity -->
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 				<div class="flex flex-col gap-1">
-					<label class="text-xs text-gray-600">Referral Category</label>
+					<label class="text-xs text-gray-600">{{ __('Referral Category') }}</label>
 					<select
 						v-model="form.referral_category"
 						class="rounded border border-gray-300 px-2 py-1.5"
 					>
-						<option value="">Select…</option>
-						<option v-for="c in CATEGORIES" :key="c" :value="c">{{ c }}</option>
+						<option value="">{{ __('Select…') }}</option>
+						<option v-for="category in CATEGORIES" :key="category.value" :value="category.value">
+							{{ category.label }}
+						</option>
 					</select>
 				</div>
 				<div class="flex flex-col gap-1">
-					<label class="text-xs text-gray-600">Severity</label>
+					<label class="text-xs text-gray-600">{{ __('Severity') }}</label>
 					<select v-model="form.severity" class="rounded border border-gray-300 px-2 py-1.5">
-						<option value="">Select…</option>
-						<option v-for="s in SEVERITY" :key="s" :value="s">{{ s }}</option>
+						<option value="">{{ __('Select…') }}</option>
+						<option v-for="severity in SEVERITY" :key="severity.value" :value="severity.value">
+							{{ severity.label }}
+						</option>
 					</select>
 				</div>
 			</div>
 
 			<!-- Description -->
 			<div class="flex flex-col gap-1">
-				<label class="text-xs text-gray-600">Describe what you’d like us to know</label>
+				<label class="text-xs text-gray-600">{{
+					__("Describe what you'd like us to know")
+				}}</label>
 				<textarea
 					v-model="form.referral_description"
 					rows="5"
 					class="rounded border border-gray-300 px-2 py-1.5"
-					placeholder="Write in your own words…"
+					:placeholder="__('Write in your own words…')"
 				/>
 				<p class="text-[11px] text-gray-500">
-					Avoid sharing passwords or highly sensitive private information.
+					{{ __('Avoid sharing passwords or highly sensitive private information.') }}
 				</p>
 			</div>
 
 			<!-- Contact preferences -->
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 				<div class="flex flex-col gap-1">
-					<label class="text-xs text-gray-600">Preferred contact method</label>
+					<label class="text-xs text-gray-600">{{ __('Preferred contact method') }}</label>
 					<select
 						v-model="form.preferred_contact_method"
 						class="rounded border border-gray-300 px-2 py-1.5"
 					>
 						<option value="">—</option>
-						<option>Email</option>
-						<option>In-app</option>
-						<option>Phone</option>
+						<option v-for="method in CONTACT_METHODS" :key="method.value" :value="method.value">
+							{{ method.label }}
+						</option>
 					</select>
 				</div>
 				<label class="flex items-start gap-2 text-sm mt-6 sm:mt-0">
 					<input type="checkbox" v-model="form.ok_to_contact_guardians" class="mt-0.5" />
-					<span>It’s okay to contact my guardians if necessary</span>
+					<span>{{ __("It's okay to contact my guardians if necessary") }}</span>
 				</label>
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="text-xs text-gray-600">Safe times to contact (optional)</label>
+				<label class="text-xs text-gray-600">{{ __('Safe times to contact (optional)') }}</label>
 				<input
 					type="text"
 					v-model="form.safe_times_to_contact"
 					class="rounded border border-gray-300 px-2 py-1.5"
-					placeholder="e.g., Lunch, after school, not during Math…"
+					:placeholder="__('e.g., Lunch, after school, not during Math…')"
 				/>
 			</div>
 
 			<!-- Attachments (images / PDFs) -->
 			<div class="flex flex-col gap-1">
-				<label class="text-xs text-gray-600">Attachments (optional)</label>
+				<label class="text-xs text-gray-600">{{ __('Attachments (optional)') }}</label>
 				<input
 					ref="fileInput"
 					type="file"
@@ -154,7 +166,9 @@
 					multiple
 					class="text-sm"
 				/>
-				<p class="text-[11px] text-gray-500">Images or PDFs only (max 10 MB each).</p>
+				<p class="text-[11px] text-gray-500">
+					{{ __('Images or PDFs only (max 10 MB each).') }}
+				</p>
 				<InlineUploadStatus
 					v-if="attachmentUploadProgress"
 					class="mt-3"
@@ -165,14 +179,19 @@
 
 			<!-- Actions -->
 			<div class="flex items-center justify-end gap-2 pt-1">
-				<Button theme="secondary" @click="open = false">Cancel</Button>
-				<Button :loading="submitting" :disabled="!canSubmit" @click="submit"> Submit </Button>
+				<Button theme="secondary" @click="open = false">{{ __('Cancel') }}</Button>
+				<Button :loading="submitting" :disabled="!canSubmit" @click="submit">
+					{{ __('Submit') }}
+				</Button>
 			</div>
 
 			<!-- Confidentiality microcopy -->
 			<p class="text-[11px] text-gray-500">
-				Confidentiality: by default, your submission will be visible to the counselor case team
-				only.
+				{{
+					__(
+						'Confidentiality: by default, your submission will be visible to the counselor case team only.'
+					)
+				}}
 			</p>
 		</div>
 	</Dialog>
@@ -185,6 +204,7 @@ import { RouterLink } from 'vue-router';
 
 import InlineUploadStatus from '@/components/feedback/InlineUploadStatus.vue';
 import { apiUpload } from '@/lib/client';
+import { __ } from '@/lib/i18n';
 
 const currentYear = computed(() => new Date().getFullYear());
 const open = ref(false);
@@ -195,15 +215,32 @@ const attachmentUploadProgressLabel = ref('');
 
 // Footer links (Help triggers modal)
 const footerItems = [
-	{ name: 'Privacy Policy', href: '/privacy' },
-	{ name: 'School Website', href: '/' },
-	{ name: 'Contact Us / Help', help: true }, // modal launcher
-	{ name: 'Calendar', to: '/calendar' },
-	{ name: 'Student Handbook', to: '/handbook' },
+	{ name: __('Privacy Policy'), href: '/privacy' },
+	{ name: __('School Website'), href: '/' },
+	{ name: __('Contact Us / Help'), help: true }, // modal launcher
+	{ name: __('Calendar'), to: '/calendar' },
+	{ name: __('Student Handbook'), to: '/handbook' },
 ];
 
-const CATEGORIES = ['Social', 'Emotional', 'Pastoral', 'Academic', 'Behavior', 'Attendance'];
-const SEVERITY = ['Low', 'Moderate', 'High', 'Critical'];
+const CATEGORIES = [
+	{ value: 'Social', label: __('Social') },
+	{ value: 'Emotional', label: __('Emotional') },
+	{ value: 'Pastoral', label: __('Pastoral') },
+	{ value: 'Academic', label: __('Academic') },
+	{ value: 'Behavior', label: __('Behavior') },
+	{ value: 'Attendance', label: __('Attendance') },
+];
+const SEVERITY = [
+	{ value: 'Low', label: __('Low') },
+	{ value: 'Moderate', label: __('Moderate') },
+	{ value: 'High', label: __('High') },
+	{ value: 'Critical', label: __('Critical') },
+];
+const CONTACT_METHODS = [
+	{ value: 'Email', label: __('Email') },
+	{ value: 'In-app', label: __('In-app') },
+	{ value: 'Phone', label: __('Phone') },
+];
 
 const form = reactive({
 	consent: false,
@@ -271,8 +308,8 @@ async function submit() {
 		for (const [index, file] of files.entries()) {
 			attachmentUploadProgressLabel.value =
 				files.length > 1
-					? `Uploading ${file.name} (${index + 1} of ${files.length})`
-					: `Uploading ${file.name}`;
+					? __('Uploading {0} ({1} of {2})', [file.name, index + 1, files.length])
+					: __('Uploading {0}', [file.name]);
 			const fd = new FormData();
 			fd.append('referral_name', name);
 			fd.append('file', file, file.name);
@@ -287,8 +324,8 @@ async function submit() {
 				// Non-blocking: show a warning but keep success for the referral itself
 				console.warn('Upload failed:', file.name, error);
 				toast({
-					title: 'Some files failed to upload',
-					text: 'You can add attachments later with a counselor.',
+					title: __('Some files failed to upload'),
+					text: __('You can add attachments later with a counselor.'),
 					icon: 'alert',
 					theme: 'orange',
 				});
@@ -296,10 +333,10 @@ async function submit() {
 		}
 
 		toast({
-			title: 'Submitted',
+			title: __('Submitted'),
 			text: name
-				? `Thank you. Your message has been sent to the counselor team. Reference: ${name}`
-				: 'Thank you. Your message has been sent to the counselor team.',
+				? __('Thank you. Your message has been sent to the counselor team. Reference: {0}', [name])
+				: __('Thank you. Your message has been sent to the counselor team.'),
 			icon: 'check',
 			theme: 'green',
 		});
@@ -310,8 +347,10 @@ async function submit() {
 	} catch (err) {
 		console.error(err);
 		toast({
-			title: 'Could not submit',
-			text: 'Please review your entries and try again. If the problem persists, contact the school counselor.',
+			title: __('Could not submit'),
+			text: __(
+				'Please review your entries and try again. If the problem persists, contact the school counselor.'
+			),
 			icon: 'x',
 			theme: 'red',
 		});

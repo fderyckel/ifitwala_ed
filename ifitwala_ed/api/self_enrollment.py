@@ -75,13 +75,18 @@ def _locked_reason(*, window: dict[str, Any], request_row: dict | None) -> str |
     open_state = _window_open_state(window)
     request_status = ((request_row or {}).get("status") or "").strip()
     request_validation_status = ((request_row or {}).get("validation_status") or "").strip()
-    if request_status and request_status != "Draft":
+    request_has_submission = _request_has_submission_marker(request_row)
+    if request_status in {"Under Review", "Rejected", "Cancelled"} or (
+        request_status == "Submitted" and request_has_submission
+    ):
         if request_validation_status == "Invalid":
             return _(
                 "Selection has already been submitted and is now read-only. The school needs to review it because some choices still need attention."
             )
-        if request_status == "Approved":
-            return _("Selection has already been confirmed and is now read-only.")
+        return _("Selection has already been submitted and is now read-only.")
+    if request_status == "Approved":
+        return _("Selection has already been confirmed and is now read-only.")
+    if request_status and request_status not in {"Draft", "Submitted"}:
         return _("Selection has already been submitted and is now read-only.")
     if (window.get("status") or "Draft").strip() != "Open":
         return _("Course selection window is not open.")
@@ -96,6 +101,34 @@ def _locked_reason(*, window: dict[str, Any], request_row: dict | None) -> str |
     if open_state.get("is_open_now") != 1:
         return _("Course selection is not available right now.")
     return None
+
+
+def _request_has_submission_marker(request_row: dict | None) -> bool:
+    if not request_row:
+        return False
+    return bool(request_row.get("submitted_on") or (request_row.get("submitted_by") or "").strip())
+
+
+def _request_lock_row_from_doc(request) -> dict:
+    return {
+        "status": request.status,
+        "validation_status": request.validation_status,
+        "submitted_on": request.submitted_on,
+        "submitted_by": request.submitted_by,
+    }
+
+
+def _restore_portal_draft_if_unsubmitted(request) -> None:
+    if (request.status or "").strip() != "Submitted":
+        return
+    if _request_has_submission_marker(_request_lock_row_from_doc(request)):
+        return
+    request.status = "Draft"
+    request.validation_status = "Not Validated"
+    request.validation_payload = None
+    request.validated_on = None
+    request.validated_by = None
+    request.requires_override = 0
 
 
 def _request_rows_by_name(request_names: list[str]) -> dict[str, dict]:
@@ -550,10 +583,11 @@ def save_self_enrollment_choices(
     enrollment_intent=None,
 ):
     actor_type, student_meta, window, request = _resolve_window_student_request(selection_window, student)
-    locked_reason = _locked_reason(window=window, request_row={"status": request.status})
+    locked_reason = _locked_reason(window=window, request_row=_request_lock_row_from_doc(request))
     if locked_reason:
         frappe.throw(locked_reason)
 
+    _restore_portal_draft_if_unsubmitted(request)
     collect_intent = cint(window.get("collect_enrollment_intent") or 0) == 1
     intent_changed = _apply_enrollment_intent(
         request,
@@ -584,7 +618,9 @@ def submit_self_enrollment_choices(
     enrollment_intent=None,
 ):
     actor_type, student_meta, window, request = _resolve_window_student_request(selection_window, student)
-    if (request.status or "").strip() == "Submitted":
+    if (request.status or "").strip() == "Submitted" and _request_has_submission_marker(
+        _request_lock_row_from_doc(request)
+    ):
         return _build_choice_state_response(
             actor_type=actor_type,
             student_meta=student_meta,
@@ -592,10 +628,11 @@ def submit_self_enrollment_choices(
             request=request,
         )
 
-    locked_reason = _locked_reason(window=window, request_row={"status": request.status})
+    locked_reason = _locked_reason(window=window, request_row=_request_lock_row_from_doc(request))
     if locked_reason:
         frappe.throw(locked_reason)
 
+    _restore_portal_draft_if_unsubmitted(request)
     collect_intent = cint(window.get("collect_enrollment_intent") or 0) == 1
     _apply_enrollment_intent(
         request,

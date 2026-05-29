@@ -32,18 +32,23 @@
 					<DialogPanel class="if-overlay__panel">
 						<div class="if-overlay__header px-6 pt-6">
 							<div class="min-w-0">
-								<p class="type-overline text-ink/55">Standards Alignment</p>
-								<DialogTitle class="type-h2 text-ink">Select Learning Standards</DialogTitle>
+								<p class="type-overline text-ink/55">{{ __('Standards Alignment') }}</p>
+								<DialogTitle class="type-h2 text-ink">{{
+									__('Select Learning Standards')
+								}}</DialogTitle>
 								<p class="mt-1 type-caption text-ink/60">
-									Choose standards from the approved catalog so the unit keeps a validated
-									alignment snapshot without manual retyping.
+									{{
+										__(
+											'Choose standards from the approved catalog so the unit keeps a validated alignment snapshot without manual retyping.'
+										)
+									}}
 								</p>
 							</div>
 							<button
 								ref="closeButtonEl"
 								type="button"
 								class="if-overlay__close"
-								aria-label="Close"
+								:aria-label="__('Close')"
 								@click="emitClose('programmatic')"
 							>
 								<FeatherIcon name="x" class="h-5 w-5" />
@@ -54,19 +59,29 @@
 							<section class="rounded-[1.75rem] border border-line-soft bg-surface-soft/60 p-5">
 								<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 									<div class="space-y-1">
-										<p class="type-overline text-ink/55">Current Unit</p>
-										<h3 class="type-h3 text-ink">{{ props.unitTitle || 'Selected Unit' }}</h3>
+										<p class="type-overline text-ink/55">{{ __('Current Unit') }}</p>
+										<h3 class="type-h3 text-ink">
+											{{ props.unitTitle || __('Selected Unit') }}
+										</h3>
 										<p class="type-caption text-ink/70">
 											{{
 												props.unitProgram
-													? `Program preselected: ${props.unitProgram}`
-													: 'No program preselected. Choose the taxonomy path step by step.'
+													? __('Program preselected: {0}', [props.unitProgram])
+													: __('No program preselected. Choose the taxonomy path step by step.')
 											}}
 										</p>
 									</div>
 									<div class="flex flex-wrap gap-2">
-										<span class="chip">{{ existingStandardsSet.size }} already on this unit</span>
-										<span class="chip">{{ selectedRows.length }} selected now</span>
+										<span class="chip">{{
+											existingStandardsSet.size === 1
+												? __('1 already on this unit')
+												: __('{0} already on this unit', [existingStandardsSet.size])
+										}}</span>
+										<span class="chip">{{
+											selectedRows.length === 1
+												? __('1 selected now')
+												: __('{0} selected now', [selectedRows.length])
+										}}</span>
 									</div>
 								</div>
 							</section>
@@ -76,7 +91,7 @@
 								class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 shadow-soft"
 								role="alert"
 							>
-								<p class="type-body-strong text-rose-900">Action blocked</p>
+								<p class="type-body-strong text-rose-900">{{ __('Action blocked') }}</p>
 								<p class="mt-1 whitespace-pre-wrap type-caption text-rose-900/80">
 									{{ errorMessage }}
 								</p>
@@ -85,9 +100,9 @@
 							<section class="rounded-[1.75rem] border border-line-soft bg-white p-5">
 								<div class="grid gap-4 lg:grid-cols-2">
 									<label v-if="showFrameworkSelect" class="block space-y-2">
-										<span class="type-caption text-ink/70">Framework</span>
+										<span class="type-caption text-ink/70">{{ __('Framework') }}</span>
 										<select v-model="filters.framework_name" class="if-input w-full">
-											<option value="">All frameworks</option>
+											<option value="">{{ __('All frameworks') }}</option>
 											<option
 												v-for="option in pickerOptions.frameworks"
 												:key="option"
@@ -99,9 +114,9 @@
 									</label>
 
 									<label v-if="showProgramSelect" class="block space-y-2">
-										<span class="type-caption text-ink/70">Program</span>
+										<span class="type-caption text-ink/70">{{ __('Program') }}</span>
 										<select v-model="filters.program" class="if-input w-full">
-											<option value="">All programs</option>
+											<option value="">{{ __('All programs') }}</option>
 											<option
 												v-for="option in pickerOptions.programs"
 												:key="option"
@@ -113,9 +128,9 @@
 									</label>
 
 									<label v-if="showStrandSelect" class="block space-y-2">
-										<span class="type-caption text-ink/70">Strand</span>
+										<span class="type-caption text-ink/70">{{ __('Strand') }}</span>
 										<select v-model="filters.strand" class="if-input w-full">
-											<option value="">Choose strand</option>
+											<option value="">{{ __('Choose strand') }}</option>
 											<option
 												v-for="option in pickerOptions.strands"
 												:key="option"
@@ -127,9 +142,9 @@
 									</label>
 
 									<label v-if="showSubstrandSelect" class="block space-y-2">
-										<span class="type-caption text-ink/70">Substrand</span>
+										<span class="type-caption text-ink/70">{{ __('Substrand') }}</span>
 										<select v-model="filters.substrand" class="if-input w-full">
-											<option value="">Choose substrand</option>
+											<option value="">{{ __('Choose substrand') }}</option>
 											<option
 												v-for="option in substrandOptions"
 												:key="option.value"
@@ -141,12 +156,12 @@
 									</label>
 
 									<label class="block space-y-2 lg:col-span-2">
-										<span class="type-caption text-ink/70">Search standards</span>
+										<span class="type-caption text-ink/70">{{ __('Search standards') }}</span>
 										<input
 											v-model="filters.search_text"
 											type="text"
 											class="if-input w-full"
-											placeholder="Search by code or description"
+											:placeholder="__('Search by code or description')"
 										/>
 									</label>
 								</div>
@@ -156,7 +171,7 @@
 								v-if="loading && !pickerResponse"
 								class="rounded-2xl border border-line-soft bg-white px-5 py-8"
 							>
-								<p class="type-body text-ink/70">Loading learning standards...</p>
+								<p class="type-body text-ink/70">{{ __('Loading learning standards...') }}</p>
 							</section>
 
 							<section v-else class="space-y-4">
@@ -165,11 +180,15 @@
 									class="rounded-2xl border border-dashed border-line-soft bg-white px-5 py-6"
 								>
 									<p class="type-body-strong text-ink">
-										No learning standards are configured for this unit's program yet.
+										{{ __("No learning standards are configured for this unit's program yet.") }}
 									</p>
 									<p class="mt-1 type-caption text-ink/70">
-										Add `Learning Standards` rows for {{ props.unitProgram || 'this program' }}
-										or pick a unit with a configured standards catalog.
+										{{
+											__(
+												'Add Learning Standards rows for {0} or pick a unit with a configured standards catalog.',
+												[props.unitProgram || __('this program')]
+											)
+										}}
 									</p>
 								</div>
 
@@ -178,11 +197,14 @@
 									class="rounded-2xl border border-dashed border-line-soft bg-white px-5 py-6"
 								>
 									<p class="type-body-strong text-ink">
-										Choose a framework to see matching strands.
+										{{ __('Choose a framework to see matching strands.') }}
 									</p>
 									<p class="mt-1 type-caption text-ink/70">
-										The overlay narrows the standards catalog by framework before showing the
-										available strands for this unit.
+										{{
+											__(
+												'The overlay narrows the standards catalog by framework before showing the available strands for this unit.'
+											)
+										}}
 									</p>
 								</div>
 
@@ -191,11 +213,14 @@
 									class="rounded-2xl border border-dashed border-line-soft bg-white px-5 py-6"
 								>
 									<p class="type-body-strong text-ink">
-										Choose a strand to see matching standards.
+										{{ __('Choose a strand to see matching standards.') }}
 									</p>
 									<p class="mt-1 type-caption text-ink/70">
-										The overlay narrows the catalog from framework to program to strand before
-										showing the standards checklist.
+										{{
+											__(
+												'The overlay narrows the catalog from framework to program to strand before showing the standards checklist.'
+											)
+										}}
 									</p>
 								</div>
 
@@ -203,9 +228,11 @@
 									v-else-if="showSubstrandSelect && !filters.substrand"
 									class="rounded-2xl border border-dashed border-line-soft bg-white px-5 py-6"
 								>
-									<p class="type-body-strong text-ink">Choose a substrand to continue.</p>
+									<p class="type-body-strong text-ink">
+										{{ __('Choose a substrand to continue.') }}
+									</p>
 									<p class="mt-1 type-caption text-ink/70">
-										This strand has one or more substrands in the approved catalog.
+										{{ __('This strand has one or more substrands in the approved catalog.') }}
 									</p>
 								</div>
 
@@ -214,25 +241,36 @@
 									class="rounded-2xl border border-dashed border-line-soft bg-white px-5 py-6"
 								>
 									<p class="type-body-strong text-ink">
-										No learning standards match this selection.
+										{{ __('No learning standards match this selection.') }}
 									</p>
 									<p class="mt-1 type-caption text-ink/70">
-										Clear one filter or search term to broaden the result set.
+										{{ __('Clear one filter or search term to broaden the result set.') }}
 									</p>
 								</div>
 
 								<div v-else class="space-y-3">
 									<div class="flex flex-wrap items-center justify-between gap-3">
 										<div>
-											<p class="type-overline text-ink/55">Checklist</p>
+											<p class="type-overline text-ink/55">{{ __('Checklist') }}</p>
 											<p class="type-caption text-ink/70">
-												Tick the standards that apply to this unit. Existing unit rows stay
-												disabled to prevent duplicates.
+												{{
+													__(
+														'Tick the standards that apply to this unit. Existing unit rows stay disabled to prevent duplicates.'
+													)
+												}}
 											</p>
 										</div>
 										<div class="flex flex-wrap gap-2">
-											<span class="chip">{{ visibleStandards.length }} matches</span>
-											<span class="chip">{{ selectableCount }} selectable</span>
+											<span class="chip">{{
+												visibleStandards.length === 1
+													? __('1 match')
+													: __('{0} matches', [visibleStandards.length])
+											}}</span>
+											<span class="chip">{{
+												selectableCount === 1
+													? __('1 selectable')
+													: __('{0} selectable', [selectableCount])
+											}}</span>
 										</div>
 									</div>
 
@@ -260,7 +298,7 @@
 												<div class="min-w-0 flex-1">
 													<div class="flex flex-wrap items-center gap-2">
 														<p class="type-body-strong text-ink">
-															{{ standard.standard_code || 'Standard' }}
+															{{ standard.standard_code || __('Standard') }}
 														</p>
 														<span v-if="standard.alignment_type" class="type-caption text-ink/55">
 															{{ standard.alignment_type }}
@@ -269,11 +307,11 @@
 															v-if="existingStandardsSet.has(standard.learning_standard)"
 															class="type-caption text-leaf"
 														>
-															Already added
+															{{ __('Already added') }}
 														</span>
 													</div>
 													<p class="mt-1 type-caption text-ink/80">
-														{{ standard.standard_description || 'No description' }}
+														{{ standard.standard_description || __('No description') }}
 													</p>
 													<p class="mt-2 type-caption text-ink/60">
 														{{ formatTaxonomyPath(standard) }}
@@ -292,7 +330,7 @@
 								class="if-button if-button--secondary"
 								@click="emitClose('programmatic')"
 							>
-								Cancel
+								{{ __('Cancel') }}
 							</button>
 							<button
 								type="button"
@@ -300,7 +338,7 @@
 								:disabled="!selectedRows.length"
 								@click="applySelection"
 							>
-								Add Selected
+								{{ __('Add Selected') }}
 							</button>
 						</footer>
 					</DialogPanel>
@@ -322,6 +360,7 @@ import {
 import { FeatherIcon } from 'frappe-ui';
 
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import { __ } from '@/lib/i18n';
 import { getLearningStandardPicker } from '@/lib/services/staff/staffTeachingService';
 import type {
 	Response as LearningStandardPickerResponse,
@@ -382,7 +421,7 @@ const pickerOptions = computed(
 );
 const substrandOptions = computed(() => [
 	...(pickerOptions.value.has_blank_substrand
-		? [{ value: '[No Substrand]', label: 'No Substrand' }]
+		? [{ value: '[No Substrand]', label: __('No Substrand') }]
 		: []),
 	...pickerOptions.value.substrands.map(option => ({ value: option, label: option })),
 ]);
@@ -474,7 +513,7 @@ async function loadPicker() {
 			return;
 		}
 		errorMessage.value =
-			error instanceof Error ? error.message : 'Unable to load learning standards.';
+			error instanceof Error ? error.message : __('Unable to load learning standards.');
 		pickerResponse.value = {
 			filters: {},
 			options: { frameworks: [], programs: [], strands: [], substrands: [] },
@@ -542,8 +581,8 @@ function emitAfterLeave() {
 	emit('after-leave');
 }
 
-function onDialogClose(_payload: unknown) {
-	// no-op by design
+function onDialogClose(payload: unknown) {
+	void payload;
 }
 
 function toggleSelection(standard: StaffLearningStandardPickerRow, event: Event) {
@@ -576,7 +615,7 @@ function formatTaxonomyPath(standard: StaffLearningStandardPickerRow) {
 		standard.framework_name,
 		standard.program,
 		standard.strand,
-		standard.substrand || (pickerOptions.value.has_blank_substrand ? 'No Substrand' : ''),
+		standard.substrand || (pickerOptions.value.has_blank_substrand ? __('No Substrand') : ''),
 	]
 		.filter(Boolean)
 		.join(' • ');

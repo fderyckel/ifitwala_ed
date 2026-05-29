@@ -4,10 +4,14 @@
 		<header class="student-hub-hero">
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 				<div>
-					<p class="type-overline text-ink/60">Student Hub</p>
-					<h1 class="type-h1 text-ink">Welcome, {{ greetingName }}.</h1>
+					<p class="type-overline text-ink/60">{{ __('Student Hub') }}</p>
+					<h1 class="type-h1 text-ink">{{ __('Welcome, {0}.', [greetingName]) }}</h1>
 					<p class="type-body text-ink/70">
-						See what is happening now, what work matters next, and where to continue learning.
+						{{
+							__(
+								'See what is happening now, what work matters next, and where to continue learning.'
+							)
+						}}
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
@@ -16,14 +20,14 @@
 						class="if-button if-button--quiet"
 						@click="scrollToSection('calendar')"
 					>
-						Calendar
+						{{ __('Calendar') }}
 					</button>
 					<button
 						type="button"
 						class="if-button if-button--quiet"
 						@click="scrollToSection('quick-links')"
 					>
-						Quick Links
+						{{ __('Quick Links') }}
 					</button>
 					<button
 						type="button"
@@ -31,7 +35,7 @@
 						:disabled="loadingHome"
 						@click="loadHome"
 					>
-						Refresh
+						{{ __('Refresh') }}
 					</button>
 				</div>
 			</div>
@@ -41,7 +45,7 @@
 			v-if="homeError"
 			class="student-hub-section border border-flame/30 bg-[var(--flame)]/5"
 		>
-			<p class="type-body-strong text-flame">Could not load your Hub.</p>
+			<p class="type-body-strong text-flame">{{ __('Could not load your Hub.') }}</p>
 			<p class="mt-2 type-caption text-ink/70">{{ homeError }}</p>
 		</section>
 
@@ -51,16 +55,18 @@
 		>
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				<div>
-					<p class="type-overline text-ink/60">Action Needed</p>
-					<h2 class="type-h2 text-ink">Forms are waiting for your signature</h2>
+					<p class="type-overline text-ink/60">{{ __('Action Needed') }}</p>
+					<h2 class="type-h2 text-ink">{{ __('Forms are waiting for your signature') }}</h2>
 					<p class="mt-1 type-body text-ink/70">
-						{{ consentSummary.pending_count }}
-						{{ consentSummary.pending_count === 1 ? 'form is' : 'forms are' }}
-						waiting for your decision.
+						{{
+							consentSummary.pending_count === 1
+								? __('1 form is waiting for your decision.')
+								: __('{0} forms are waiting for your decision.', [consentSummary.pending_count])
+						}}
 					</p>
 				</div>
 				<RouterLink :to="{ name: 'student-consents' }" class="if-button if-button--primary">
-					Open Forms &amp; Signatures
+					{{ __('Open Forms & Signatures') }}
 				</RouterLink>
 			</div>
 			<div class="mt-4 grid gap-3 lg:grid-cols-3">
@@ -72,7 +78,9 @@
 					<div class="flex items-start justify-between gap-3">
 						<div>
 							<p class="type-body-strong text-ink">{{ item.request_title }}</p>
-							<p v-if="item.due_on" class="mt-2 type-caption text-ink/70">Due {{ item.due_on }}</p>
+							<p v-if="item.due_on" class="mt-2 type-caption text-ink/70">
+								{{ __('Due {0}', [item.due_on]) }}
+							</p>
 						</div>
 						<span class="chip">{{ item.status_label }}</span>
 					</div>
@@ -86,16 +94,18 @@
 		>
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				<div>
-					<p class="type-overline text-ink/60">Action Needed</p>
-					<h2 class="type-h2 text-ink">Policies need your acknowledgement</h2>
+					<p class="type-overline text-ink/60">{{ __('Action Needed') }}</p>
+					<h2 class="type-h2 text-ink">{{ __('Policies need your acknowledgement') }}</h2>
 					<p class="mt-1 type-body text-ink/70">
-						{{ policySummary.pending_count }}
-						{{ policySummary.pending_count === 1 ? 'policy is' : 'policies are' }}
-						waiting for your signature.
+						{{
+							policySummary.pending_count === 1
+								? __('1 policy is waiting for your signature.')
+								: __('{0} policies are waiting for your signature.', [policySummary.pending_count])
+						}}
 					</p>
 				</div>
 				<RouterLink :to="{ name: 'student-policies' }" class="if-button if-button--primary">
-					Open Policies
+					{{ __('Open Policies') }}
 				</RouterLink>
 			</div>
 			<div class="mt-4 grid gap-3 lg:grid-cols-3">
@@ -125,19 +135,19 @@
 		<section class="student-hub-section student-hub-section--focus">
 			<div class="flex items-center justify-between gap-3">
 				<div>
-					<p class="type-overline text-ink/60">Today</p>
+					<p class="type-overline text-ink/60">{{ __('Today') }}</p>
 					<h2 class="type-h2 text-ink">{{ orientationTitle }}</h2>
 					<p class="mt-1 type-body text-ink/70">{{ orientationSubtitle }}</p>
 				</div>
 				<RouterLink :to="{ name: 'student-courses' }" class="if-button if-button--primary">
-					My Courses
+					{{ __('My Courses') }}
 				</RouterLink>
 			</div>
 
 			<p v-if="daySummary" class="mt-4 type-caption text-ink/60">{{ daySummary }}</p>
 
 			<div v-if="loadingHome" class="mt-5 type-body text-ink/70">
-				Loading today’s learning plan...
+				{{ __("Loading today's learning plan...") }}
 			</div>
 
 			<div
@@ -146,14 +156,14 @@
 			>
 				<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 					<div>
-						<p class="type-overline text-ink/60">Current Class</p>
+						<p class="type-overline text-ink/60">{{ __('Current Class') }}</p>
 						<p class="mt-1 type-h3 text-ink">{{ currentClass.course_name }}</p>
 						<p class="mt-2 type-body text-ink/70">
 							{{ classSubtitle(currentClass) }}
 						</p>
 					</div>
 					<RouterLink :to="linkFor(currentClass.href)" class="if-button if-button--primary">
-						Open Class
+						{{ __('Open Class') }}
 					</RouterLink>
 				</div>
 			</div>
@@ -161,14 +171,14 @@
 			<div v-else-if="nextClass" class="mt-5 student-hub-highlight student-hub-highlight--warm">
 				<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 					<div>
-						<p class="type-overline text-ink/60">Next Up</p>
+						<p class="type-overline text-ink/60">{{ __('Next Up') }}</p>
 						<p class="mt-1 type-h3 text-ink">{{ nextClass.course_name }}</p>
 						<p class="mt-2 type-body text-ink/70">
 							{{ classSubtitle(nextClass) }}
 						</p>
 					</div>
 					<RouterLink :to="linkFor(nextClass.href)" class="if-button if-button--primary">
-						Prepare
+						{{ __('Prepare') }}
 					</RouterLink>
 				</div>
 			</div>
@@ -180,7 +190,7 @@
 			>
 				<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 					<div>
-						<p class="type-overline text-ink/60">Continue Learning</p>
+						<p class="type-overline text-ink/60">{{ __('Continue Learning') }}</p>
 						<div class="mt-1 flex flex-wrap items-center gap-2">
 							<p class="type-h3 text-ink">{{ nextLearningStep.title }}</p>
 							<span v-if="nextLearningStep.status_label" class="chip">
@@ -203,23 +213,25 @@
 			</div>
 
 			<div v-else class="mt-5 student-hub-empty">
-				<p class="type-body text-ink/70">No classes or work items are available yet.</p>
+				<p class="type-body text-ink/70">
+					{{ __('No classes or work items are available yet.') }}
+				</p>
 			</div>
 		</section>
 
 		<section class="space-y-4">
 			<div class="flex items-center justify-between">
 				<div>
-					<p class="type-overline text-ink/60">My Work Board</p>
-					<h2 class="type-h2 text-ink">What to work on next</h2>
+					<p class="type-overline text-ink/60">{{ __('My Work Board') }}</p>
+					<h2 class="type-h2 text-ink">{{ __('What to work on next') }}</h2>
 				</div>
 				<p class="type-caption text-ink/60">
-					System-curated from scheduled work and official outcome state.
+					{{ __('System-curated from scheduled work and official outcome state.') }}
 				</p>
 			</div>
 
 			<div v-if="loadingHome" class="student-hub-section type-body text-ink/70">
-				Loading work board...
+				{{ __('Loading work board...') }}
 			</div>
 
 			<div v-else class="grid gap-4 xl:grid-cols-4">
@@ -255,7 +267,7 @@
 								<span v-if="item.task_type" class="chip">{{ item.task_type }}</span>
 							</div>
 							<p class="mt-2 type-caption text-ink/70">
-								{{ item.course_name || item.course || 'Course' }}
+								{{ item.course_name || item.course || __('Course') }}
 							</p>
 							<p class="mt-2 type-body text-ink/80">{{ workItemSummary(item) }}</p>
 							<p class="mt-3 type-caption text-ink/60">{{ item.lane_reason }}</p>
@@ -268,21 +280,24 @@
 		<section class="student-hub-section student-hub-section--warm">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				<div>
-					<p class="type-overline text-ink/60">Communications</p>
-					<h2 class="type-h3 text-ink">Recent updates across your student Hub</h2>
+					<p class="type-overline text-ink/60">{{ __('Communications') }}</p>
+					<h2 class="type-h3 text-ink">{{ __('Recent updates across your student Hub') }}</h2>
 					<p class="type-caption text-ink/70">
-						Class, activity, and school updates stay connected to where they belong.
+						{{ __('Class, activity, and school updates stay connected to where they belong.') }}
 					</p>
 				</div>
 				<RouterLink :to="linkFor(communicationsCenterHref)" class="if-button if-button--primary">
-					Open communication center
+					{{ __('Open communication center') }}
 				</RouterLink>
 			</div>
 
 			<div v-if="!communicationHighlights.length" class="mt-4 student-hub-empty">
 				<p class="type-body text-ink/70">
-					No student-facing updates are visible right now. New class, activity, and school messages
-					will appear here.
+					{{
+						__(
+							'No student-facing updates are visible right now. New class, activity, and school messages will appear here.'
+						)
+					}}
 				</p>
 			</div>
 
@@ -295,7 +310,7 @@
 				>
 					<div class="flex items-start justify-between gap-3">
 						<div>
-							<p class="type-caption text-ink/60">{{ item.source_label || 'Update' }}</p>
+							<p class="type-caption text-ink/60">{{ item.source_label || __('Update') }}</p>
 							<p class="mt-2 type-body-strong text-ink">{{ item.title }}</p>
 						</div>
 						<FeatherIcon
@@ -308,7 +323,7 @@
 						{{ communicationDateLabel(item.publish_at) }}
 					</p>
 					<p class="mt-3 type-caption text-jacaranda">
-						{{ item.href_label || 'Open' }}
+						{{ item.href_label || __('Open') }}
 					</p>
 				</RouterLink>
 			</div>
@@ -317,21 +332,21 @@
 		<section class="space-y-4">
 			<div class="flex items-center justify-between">
 				<div>
-					<p class="type-overline text-ink/60">Timeline</p>
-					<h2 class="type-h2 text-ink">Coming up</h2>
+					<p class="type-overline text-ink/60">{{ __('Timeline') }}</p>
+					<h2 class="type-h2 text-ink">{{ __('Coming up') }}</h2>
 				</div>
 				<RouterLink :to="{ name: 'student-courses' }" class="if-button if-button--primary">
-					Open Courses
+					{{ __('Open Courses') }}
 				</RouterLink>
 			</div>
 
 			<div v-if="loadingHome" class="student-hub-section type-body text-ink/70">
-				Loading timeline...
+				{{ __('Loading timeline...') }}
 			</div>
 
 			<div v-else-if="!timelineDays.length" class="student-hub-empty">
 				<p class="type-body text-ink/70">
-					No dated learning events are scheduled in the current window.
+					{{ __('No dated learning events are scheduled in the current window.') }}
 				</p>
 			</div>
 
@@ -343,7 +358,9 @@
 				>
 					<div class="mb-4 flex items-center justify-between">
 						<h3 class="type-h3 text-ink">{{ formatDayLabel(day.date) }}</h3>
-						<span class="chip">{{ day.items.length }} items</span>
+						<span class="chip">{{
+							day.items.length === 1 ? __('1 item') : __('{0} items', [day.items.length])
+						}}</span>
 					</div>
 					<div class="space-y-3">
 						<RouterLink
@@ -371,12 +388,12 @@
 		</section>
 
 		<section id="student-home-calendar" class="student-hub-section student-hub-section--support">
-			<h2 class="mb-3 type-h3 text-ink">Calendar</h2>
+			<h2 class="mb-3 type-h3 text-ink">{{ __('Calendar') }}</h2>
 			<StudentCalendar :auto-refresh-interval="30 * 60 * 1000" />
 		</section>
 
 		<section id="student-home-quick-links" class="student-hub-section">
-			<h2 class="mb-3 type-h3 text-ink">Quick Links</h2>
+			<h2 class="mb-3 type-h3 text-ink">{{ __('Quick Links') }}</h2>
 			<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 				<RouterLink
 					v-for="item in quickLinks"
@@ -407,6 +424,7 @@ import { FeatherIcon } from 'frappe-ui';
 
 import StudentCalendar from '@/components/calendar/StudentCalendar.vue';
 import { formatLocalizedDate, formatLocalizedDateTime } from '@/lib/datetime';
+import { __ } from '@/lib/i18n';
 import { getStudentHubHome } from '@/lib/services/student/studentLearningHubService';
 import type {
 	NextLearningStep,
@@ -446,9 +464,9 @@ const greetingName = computed(() => {
 	if (fromHub) return fromHub;
 
 	const fallbackFull = String(sessionUser.value?.fullname || '').trim();
-	if (fallbackFull) return fallbackFull.split(' ')[0] || 'Student';
+	if (fallbackFull) return fallbackFull.split(' ')[0] || __('Student');
 
-	return 'Student';
+	return __('Student');
 });
 
 const nextLearningStep = computed<NextLearningStep | null>(
@@ -505,55 +523,55 @@ const daySummary = computed(() => {
 });
 
 const orientationTitle = computed(() => {
-	if (currentClass.value) return 'You are in class';
-	if (nextClass.value) return 'Next class is coming up';
+	if (currentClass.value) return __('You are in class');
+	if (nextClass.value) return __('Next class is coming up');
 	if (nextLearningStep.value && !nextLearningStep.value.can_open) {
-		return 'A course is still being prepared';
+		return __('A course is still being prepared');
 	}
-	if (nextLearningStep.value) return 'Continue your learning';
-	return 'Your Hub is clear';
+	if (nextLearningStep.value) return __('Continue your learning');
+	return __('Your Hub is clear');
 });
 
 const orientationSubtitle = computed(() => {
 	if (currentClass.value) return classSubtitle(currentClass.value);
 	if (nextClass.value) return classSubtitle(nextClass.value);
 	if (nextLearningStep.value) return nextLearningStep.value.subtitle;
-	return 'We will place upcoming classes and work here as they become available.';
+	return __('We will place upcoming classes and work here as they become available.');
 });
 
 const boardLanes = computed(() => [
 	{
 		key: 'now',
-		title: 'Now',
-		description: 'Small active set',
-		empty: 'No urgent work is in focus right now.',
+		title: __('Now'),
+		description: __('Small active set'),
+		empty: __('No urgent work is in focus right now.'),
 		items: workBoard.value.now,
 	},
 	{
 		key: 'soon',
-		title: 'Soon',
-		description: 'This week',
-		empty: 'Nothing is queued for the next few days.',
+		title: __('Soon'),
+		description: __('This week'),
+		empty: __('Nothing is queued for the next few days.'),
 		items: workBoard.value.soon,
 	},
 	{
 		key: 'later',
-		title: 'Later',
-		description: 'Plan ahead',
-		empty: 'No later work is visible yet.',
+		title: __('Later'),
+		description: __('Plan ahead'),
+		empty: __('No later work is visible yet.'),
 		items: workBoard.value.later,
 	},
 	{
 		key: 'done',
-		title: 'Done',
-		description: 'Recent closure',
-		empty: 'Completed and submitted work will appear here.',
+		title: __('Done'),
+		description: __('Recent closure'),
+		empty: __('Completed and submitted work will appear here.'),
 		items: workBoard.value.done,
 	},
 ]);
 
 const nextLearningStepButtonLabel = computed(() => {
-	return nextLearningStep.value?.cta_label || 'Open course';
+	return nextLearningStep.value?.cta_label || __('Open course');
 });
 
 async function loadHome() {
@@ -568,7 +586,7 @@ async function loadHome() {
 		} else if (typeof error === 'string' && error) {
 			homeError.value = error;
 		} else {
-			homeError.value = 'Unable to load your learning Hub.';
+			homeError.value = __('Unable to load your learning Hub.');
 		}
 	} finally {
 		loadingHome.value = false;
@@ -594,23 +612,25 @@ function classSubtitle(course: TodayClass): string {
 	if (course.instructors?.length) {
 		parts.push(course.instructors.join(', '));
 	}
-	return parts.join(' · ') || 'Scheduled class';
+	return parts.join(' · ') || __('Scheduled class');
 }
 
 function workItemSummary(item: WorkItem): string {
 	if (item.outcome?.completed_on) {
-		return `Completed ${formatLocalizedDateTime(item.outcome.completed_on, { fallback: '' })}`;
+		return __('Completed {0}', [
+			formatLocalizedDateTime(item.outcome.completed_on, { fallback: '' }),
+		]);
 	}
 	if (item.due_date) {
-		return `Due ${formatLocalizedDateTime(item.due_date, { fallback: '' })}`;
+		return __('Due {0}', [formatLocalizedDateTime(item.due_date, { fallback: '' })]);
 	}
 	if (item.available_from) {
-		return `Available ${formatLocalizedDateTime(item.available_from, { fallback: '' })}`;
+		return __('Available {0}', [formatLocalizedDateTime(item.available_from, { fallback: '' })]);
 	}
 	if (item.lock_date) {
-		return `Locks ${formatLocalizedDateTime(item.lock_date, { fallback: '' })}`;
+		return __('Locks {0}', [formatLocalizedDateTime(item.lock_date, { fallback: '' })]);
 	}
-	return 'Open inside the linked course context.';
+	return __('Open inside the linked course context.');
 }
 
 function formatDayLabel(value: string): string {
@@ -623,9 +643,9 @@ function formatDayLabel(value: string): string {
 }
 
 function timelineKindLabel(kind: string): string {
-	if (kind === 'scheduled_class') return 'Class';
-	if (kind === 'task_due') return 'Due';
-	return 'Opens';
+	if (kind === 'scheduled_class') return __('Class');
+	if (kind === 'task_due') return __('Due');
+	return __('Opens');
 }
 
 function communicationDateLabel(value: string): string {
@@ -668,56 +688,56 @@ onMounted(() => {
 
 const quickLinks = [
 	{
-		title: 'Forms & Signatures',
-		description: 'Review operational forms that need your signature.',
+		title: __('Forms & Signatures'),
+		description: __('Review operational forms that need your signature.'),
 		icon: 'edit-3',
 		to: { name: 'student-consents' },
 	},
 	{
-		title: 'Policies',
-		description: 'Review and acknowledge active student policies.',
+		title: __('Policies'),
+		description: __('Review and acknowledge active student policies.'),
 		icon: 'shield',
 		to: { name: 'student-policies' },
 	},
 	{
-		title: 'Course Selection',
-		description: 'Review required rows and confirm your program choices.',
+		title: __('Course Selection'),
+		description: __('Review required rows and confirm your program choices.'),
 		icon: 'check-square',
 		to: { name: 'student-course-selection' },
 	},
 	{
-		title: 'Activity Booking',
-		description: 'Browse and book extra-curricular activities.',
+		title: __('Activity Booking'),
+		description: __('Browse and book extra-curricular activities.'),
 		icon: 'star',
 		to: { name: 'student-activities' },
 	},
 	{
-		title: 'My Courses',
-		description: 'Open your course spaces.',
+		title: __('My Courses'),
+		description: __('Open your course spaces.'),
 		icon: 'book-open',
 		to: { name: 'student-courses' },
 	},
 	{
-		title: 'Communication Center',
-		description: 'See all class, activity, and school updates together.',
+		title: __('Communication Center'),
+		description: __('See all class, activity, and school updates together.'),
 		icon: 'message-square',
 		to: { name: 'student-communications' },
 	},
 	{
-		title: 'Portfolio & Journal',
-		description: 'Curate showcase evidence and reflections.',
+		title: __('Portfolio & Journal'),
+		description: __('Curate showcase evidence and reflections.'),
 		icon: 'layers',
 		to: { name: 'student-portfolio' },
 	},
 	{
-		title: 'Student Log',
-		description: 'View notes shared with you.',
+		title: __('Student Log'),
+		description: __('View notes shared with you.'),
 		icon: 'file-text',
 		to: { name: 'student-logs' },
 	},
 	{
-		title: 'Profile',
-		description: 'Manage your personal details.',
+		title: __('Profile'),
+		description: __('Manage your personal details.'),
 		icon: 'user',
 		to: { name: 'student-profile' },
 	},

@@ -442,7 +442,9 @@ Portal save and submit are allowed only when:
 - the linked request is still editable
 - enrollment intent is collected only by windows configured to collect it
 
-Once a request leaves draft state, portal editing becomes read-only.
+Once a request has portal submission provenance, or has moved into a staff review/terminal state, portal editing becomes read-only.
+
+If a linked request is found in `Submitted` without portal submission provenance, the portal treats it as an unsubmitted prepared request so families are not blocked by staff-side preparation or validation drift before they have answered.
 
 For intent-collection windows:
 

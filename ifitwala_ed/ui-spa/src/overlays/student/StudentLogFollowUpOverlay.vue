@@ -58,9 +58,9 @@ Used by:
 									type="button"
 									class="if-overlay__icon-button"
 									@click="emitClose('programmatic')"
-									aria-label="Close"
+									:aria-label="__('Close')"
 								>
-									<span class="sr-only">Close</span>
+									<span class="sr-only">{{ __('Close') }}</span>
 									<span aria-hidden="true" class="text-ink/70">×</span>
 								</button>
 							</div>
@@ -83,7 +83,7 @@ Used by:
 							</div>
 
 							<div v-if="loading" class="py-10">
-								<div class="type-body text-ink/70">Loading…</div>
+								<div class="type-body text-ink/70">{{ __('Loading…') }}</div>
 							</div>
 
 							<div v-else class="space-y-6">
@@ -91,10 +91,10 @@ Used by:
 								<div class="card-panel p-5">
 									<div class="flex items-start justify-between gap-4">
 										<div class="min-w-0">
-											<div class="type-label">Student log</div>
+											<div class="type-label">{{ __('Student log') }}</div>
 
 											<div class="mt-1 type-body-strong text-ink truncate">
-												<span>Log</span>
+												<span>{{ __('Log') }}</span>
 												<span v-if="log?.name" class="text-ink/60"> • {{ log.name }}</span>
 											</div>
 
@@ -102,14 +102,14 @@ Used by:
 												v-if="log?.log_author_name || log?.log_author"
 												class="type-caption mt-1"
 											>
-												By:
+												{{ __('By:') }}
 												<span class="text-ink/80">
 													{{ log?.log_author_name || log?.log_author }}
 												</span>
 											</div>
 
 											<div v-if="log?.follow_up_status" class="type-caption mt-1">
-												Status: {{ log.follow_up_status }}
+												{{ __('Status:') }} {{ log.follow_up_status }}
 											</div>
 										</div>
 
@@ -119,19 +119,19 @@ Used by:
 											class="if-action"
 											@click="openInDesk('Student Log', log.name)"
 										>
-											Open in Desk
+											{{ __('Open in Desk') }}
 										</button>
 									</div>
 
 									<div v-if="log?.log_html" class="mt-5">
-										<div class="type-label mb-2">Log note</div>
+										<div class="type-label mb-2">{{ __('Log note') }}</div>
 										<div class="rounded-2xl border border-ink/10 bg-surface-soft p-4">
 											<div class="prose prose-sm max-w-none" v-html="htmlOrEmpty(log.log_html)" />
 										</div>
 									</div>
 
 									<div v-if="logAttachments.length" class="mt-5 space-y-3">
-										<div class="type-label">Evidence</div>
+										<div class="type-label">{{ __('Evidence') }}</div>
 										<template v-for="attachment in logAttachments" :key="attachment.row_name">
 											<AttachmentPreviewCard
 												v-if="attachment.attachment_preview"
@@ -148,8 +148,8 @@ Used by:
 								<div class="card-panel p-5">
 									<div class="flex items-center justify-between gap-3">
 										<div class="min-w-0">
-											<div class="type-label">History</div>
-											<div class="mt-1 type-body-strong text-ink">Follow-ups</div>
+											<div class="type-label">{{ __('History') }}</div>
+											<div class="mt-1 type-body-strong text-ink">{{ __('Follow-ups') }}</div>
 										</div>
 
 										<button
@@ -158,12 +158,12 @@ Used by:
 											:disabled="busy"
 											@click="reload"
 										>
-											Refresh
+											{{ __('Refresh') }}
 										</button>
 									</div>
 
 									<div v-if="followUps.length === 0" class="mt-4 type-body text-ink/70">
-										No follow-ups yet.
+										{{ __('No follow-ups yet.') }}
 									</div>
 
 									<div v-else class="mt-4 space-y-3">
@@ -177,8 +177,8 @@ Used by:
 													<div class="type-caption">
 														<span v-if="fu.follow_up_author">{{ fu.follow_up_author }}</span>
 														<span v-if="fu.date"> • {{ followUpDateLabel(fu.date) }}</span>
-														<span v-if="fu.docstatus === 0"> • Draft</span>
-														<span v-else> • Submitted</span>
+														<span v-if="fu.docstatus === 0"> • {{ __('Draft') }}</span>
+														<span v-else> • {{ __('Submitted') }}</span>
 													</div>
 												</div>
 
@@ -187,7 +187,7 @@ Used by:
 													class="if-pill type-button-label"
 													@click="openInDesk('Student Log Follow Up', fu.name)"
 												>
-													Open
+													{{ __('Open') }}
 												</button>
 											</div>
 
@@ -206,10 +206,10 @@ Used by:
 
 								<!-- Clarification action (append-only timeline note) -->
 								<div class="card-panel p-5">
-									<div class="type-label">Clarification</div>
-									<div class="mt-1 type-body-strong text-ink">Add clarification</div>
+									<div class="type-label">{{ __('Clarification') }}</div>
+									<div class="mt-1 type-body-strong text-ink">{{ __('Add clarification') }}</div>
 									<div class="type-caption mt-1">
-										Append context without rewriting the original log.
+										{{ __('Append context without rewriting the original log.') }}
 									</div>
 
 									<div class="mt-4">
@@ -217,11 +217,15 @@ Used by:
 											v-model="clarificationText"
 											class="if-textarea w-full"
 											rows="4"
-											placeholder="Add clarification…"
+											:placeholder="__('Add clarification…')"
 											:disabled="busy || clarificationBusy"
 										/>
 										<div class="type-caption mt-2">
-											Use this for new context only. Original submitted content remains unchanged.
+											{{
+												__(
+													'Use this for new context only. Original submitted content remains unchanged.'
+												)
+											}}
 										</div>
 										<div
 											v-if="clarificationSavedMessage"
@@ -247,10 +251,10 @@ Used by:
 
 								<!-- Assignee action: write follow-up -->
 								<div v-if="modeState === 'assignee'" class="card-panel p-5">
-									<div class="type-label">Your response</div>
-									<div class="mt-1 type-body-strong text-ink">Your follow-up</div>
+									<div class="type-label">{{ __('Your response') }}</div>
+									<div class="mt-1 type-body-strong text-ink">{{ __('Your follow-up') }}</div>
 									<div class="type-caption mt-1">
-										Write what you did, what happened, and any next action.
+										{{ __('Write what you did, what happened, and any next action.') }}
 									</div>
 
 									<div class="mt-4">
@@ -258,11 +262,15 @@ Used by:
 											v-model="draftText"
 											class="if-textarea w-full"
 											rows="8"
-											placeholder="Type your follow-up…"
+											:placeholder="__('Type your follow-up…')"
 											:disabled="busy"
 										/>
 										<div class="type-caption mt-2">
-											Keep it factual and actionable. No sensitive details beyond what’s necessary.
+											{{
+												__(
+													"Keep it factual and actionable. No sensitive details beyond what's necessary."
+												)
+											}}
 										</div>
 									</div>
 
@@ -273,7 +281,7 @@ Used by:
 											:disabled="busy"
 											@click="emitClose('programmatic')"
 										>
-											Cancel
+											{{ __('Cancel') }}
 										</button>
 
 										<button
@@ -282,17 +290,17 @@ Used by:
 											:disabled="busy || !canSubmit"
 											@click="submitFollowUp"
 										>
-											{{ busy ? 'Submitting…' : 'Submit follow-up' }}
+											{{ busy ? __('Submitting…') : __('Submit follow-up') }}
 										</button>
 									</div>
 								</div>
 
 								<!-- Author action: complete log -->
 								<div v-if="modeState === 'author'" class="card-panel p-5">
-									<div class="type-label">Author actions</div>
-									<div class="mt-1 type-body-strong text-ink">Complete this log</div>
+									<div class="type-label">{{ __('Author actions') }}</div>
+									<div class="mt-1 type-body-strong text-ink">{{ __('Complete this log') }}</div>
 									<div class="type-caption mt-1">
-										When you’re satisfied, mark the Student Log as completed.
+										{{ __("When you're satisfied, mark the Student Log as completed.") }}
 									</div>
 
 									<div class="mt-5 flex items-center justify-end gap-2">
@@ -302,7 +310,7 @@ Used by:
 											:disabled="busy"
 											@click="emitClose('programmatic')"
 										>
-											Close
+											{{ __('Close') }}
 										</button>
 
 										<button
@@ -311,12 +319,12 @@ Used by:
 											:disabled="busy || !canComplete"
 											@click="completeParentLog"
 										>
-											{{ busy ? 'Completing…' : 'Complete log' }}
+											{{ busy ? __('Completing…') : __('Complete log') }}
 										</button>
 									</div>
 
 									<div v-if="!canComplete" class="type-caption mt-3 text-ink/70">
-										This is disabled if the log is already Completed.
+										{{ __('This is disabled if the log is already Completed.') }}
 									</div>
 								</div>
 							</div>
@@ -474,8 +482,8 @@ function emitAfterLeave() {
  * Under A+ we DO NOT forward it or close from it.
  * Backdrop + ESC + explicit buttons are the only closing paths.
  */
-function onDialogClose(_payload: unknown) {
-	// no-op by design
+function onDialogClose(payload: unknown) {
+	void payload;
 }
 
 function onKeydown(e: KeyboardEvent) {

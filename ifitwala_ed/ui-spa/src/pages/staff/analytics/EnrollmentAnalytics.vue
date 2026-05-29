@@ -3,10 +3,13 @@
 	<div class="analytics-shell">
 		<header class="page-header">
 			<div class="page-header__intro">
-				<h1 class="type-h1 text-canopy">Enrollment</h1>
+				<h1 class="type-h1 text-canopy">{{ __('Enrollment') }}</h1>
 				<p class="type-meta text-slate-token/80">
-					Enrollment shape and change across your selected organization, school, and academic-year
-					range.
+					{{
+						__(
+							'Enrollment shape and change across your selected organization, school, and academic-year range.'
+						)
+					}}
 				</p>
 				<div class="mt-2 flex flex-wrap items-center gap-2">
 					<span
@@ -21,7 +24,7 @@
 		<FiltersBar class="analytics-filters">
 			<div class="enrollment-analytics__filters-grid" data-testid="enrollment-filter-grid">
 				<div class="enrollment-analytics__field enrollment-analytics__field--organization">
-					<label class="type-label">Organization</label>
+					<label class="type-label">{{ __('Organization') }}</label>
 					<FormControl
 						v-model="filters.organization"
 						type="select"
@@ -33,7 +36,7 @@
 				</div>
 
 				<div class="enrollment-analytics__field enrollment-analytics__field--school">
-					<label class="type-label">School</label>
+					<label class="type-label">{{ __('School') }}</label>
 					<FormControl
 						v-model="filters.school"
 						type="select"
@@ -45,25 +48,25 @@
 				</div>
 
 				<div class="enrollment-analytics__field enrollment-analytics__field--year-range">
-					<label class="type-label">Academic Year Range</label>
+					<label class="type-label">{{ __('Academic Year Range') }}</label>
 					<div class="enrollment-analytics__year-range">
 						<select
 							v-model="yearRange.start"
 							class="h-9 min-w-0 rounded-md border px-2 text-sm"
 							data-testid="enrollment-year-range-start"
 						>
-							<option :value="null">From</option>
+							<option :value="null">{{ __('From') }}</option>
 							<option v-for="year in yearRangeOptions" :key="year.value" :value="year.value">
 								{{ formatAcademicYearLabel(year) }}
 							</option>
 						</select>
-						<span class="enrollment-analytics__year-range-separator">to</span>
+						<span class="enrollment-analytics__year-range-separator">{{ __('to') }}</span>
 						<select
 							v-model="yearRange.end"
 							class="h-9 min-w-0 rounded-md border px-2 text-sm"
 							data-testid="enrollment-year-range-end"
 						>
-							<option :value="null">To</option>
+							<option :value="null">{{ __('To') }}</option>
 							<option v-for="year in yearRangeOptions" :key="year.value" :value="year.value">
 								{{ formatAcademicYearLabel(year) }}
 							</option>
@@ -72,11 +75,13 @@
 					<span v-if="yearRangeMessage" class="text-[0.65rem] text-amber-600">{{
 						yearRangeMessage
 					}}</span>
-					<span v-else class="text-[0.65rem] text-slate-400">Pick 2-5 consecutive years.</span>
+					<span v-else class="text-[0.65rem] text-slate-400">{{
+						__('Pick 2-5 consecutive years.')
+					}}</span>
 				</div>
 
 				<div class="enrollment-analytics__field enrollment-analytics__field--compare">
-					<label class="type-label">Compare Dimension</label>
+					<label class="type-label">{{ __('Compare Dimension') }}</label>
 					<FormControl
 						v-model="filters.compare_dimension"
 						type="select"
@@ -90,7 +95,7 @@
 					v-if="showChartMode"
 					class="enrollment-analytics__field enrollment-analytics__field--chart-mode"
 				>
-					<label class="type-label">Chart Mode</label>
+					<label class="type-label">{{ __('Chart Mode') }}</label>
 					<FormControl
 						v-model="filters.chart_mode"
 						type="select"
@@ -104,7 +109,7 @@
 					v-if="showAsOfDate"
 					class="enrollment-analytics__field enrollment-analytics__field--as-of"
 				>
-					<label class="type-label">As-of Date</label>
+					<label class="type-label">{{ __('As-of Date') }}</label>
 					<input
 						type="date"
 						v-model="filters.as_of_date"
@@ -116,13 +121,15 @@
 		</FiltersBar>
 
 		<div v-if="accessDenied" class="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
-			<h2 class="text-sm font-semibold text-amber-900">Access restricted</h2>
-			<p class="mt-1 text-xs text-amber-800">You do not have access to Enrollment Analytics.</p>
+			<h2 class="text-sm font-semibold text-amber-900">{{ __('Access restricted') }}</h2>
+			<p class="mt-1 text-xs text-amber-800">
+				{{ __('You do not have access to Enrollment Analytics.') }}
+			</p>
 		</div>
 
 		<div v-else>
 			<div v-if="dashboardResource.loading" class="py-10 text-center text-sm text-slate-500">
-				Loading enrollment analytics...
+				{{ __('Loading enrollment analytics...') }}
 			</div>
 
 			<div v-else class="space-y-6">
@@ -137,12 +144,12 @@
 
 				<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 					<HorizontalBarTopN
-						title="Top Cohorts (Active Enrollments)"
+						:title="__('Top Cohorts (Active Enrollments)')"
 						:items="topnCohorts"
 						@select="handleSliceSelect"
 					/>
 					<HorizontalBarTopN
-						title="Top Programs (Active Enrollments)"
+						:title="__('Top Programs (Active Enrollments)')"
 						:items="topnPrograms"
 						@select="handleSliceSelect"
 					/>
@@ -153,7 +160,7 @@
 		<SideDrawerList
 			:open="drawerOpen"
 			:title="drawerTitle"
-			entity-label="Enrollments"
+			:entity-label="__('Enrollments')"
 			:rows="drawerRows"
 			:loading="drilldownResource.loading"
 			:on-load-more="canLoadMore ? loadMore : undefined"
@@ -178,6 +185,7 @@ import KpiRow from '@/components/analytics/KpiRow.vue';
 import StackedBarChart from '@/components/analytics/StackedBarChart.vue';
 import HorizontalBarTopN from '@/components/analytics/HorizontalBarTopN.vue';
 import SideDrawerList from '@/components/analytics/SideDrawerList.vue';
+import { __ } from '@/lib/i18n';
 
 type CompareDimension = 'school' | 'program';
 type ChartMode = 'snapshot' | 'trend';
@@ -316,8 +324,8 @@ const schoolOptions = computed(() => {
 });
 
 const compareDimensionOptions = [
-	{ label: 'School', value: 'school' },
-	{ label: 'Program', value: 'program' },
+	{ label: __('School'), value: 'school' },
+	{ label: __('Program'), value: 'program' },
 ];
 
 const academicYearOptions = computed(() => {
@@ -361,10 +369,10 @@ const showYearSchoolLabel = computed(() => {
 const chartModeOptions = computed(() =>
 	trendEnabled.value
 		? [
-				{ value: 'snapshot', label: 'Snapshot' },
-				{ value: 'trend', label: 'Trend' },
+				{ value: 'snapshot', label: __('Snapshot') },
+				{ value: 'trend', label: __('Trend') },
 			]
-		: [{ value: 'snapshot', label: 'Snapshot' }]
+		: [{ value: 'snapshot', label: __('Snapshot') }]
 );
 const showChartMode = computed(() => chartModeOptions.value.length > 1);
 const showAsOfDate = computed(() => filters.chart_mode === 'snapshot');
@@ -373,9 +381,11 @@ const scopeLabel = computed(() => {
 	const orgLabel =
 		organizationOptions.value.find(o => o.value === filters.organization)?.label ||
 		filters.organization ||
-		'Organization';
+		__('Organization');
 	const schoolLabel =
-		schoolOptions.value.find(s => s.value === filters.school)?.label || filters.school || 'School';
+		schoolOptions.value.find(s => s.value === filters.school)?.label ||
+		filters.school ||
+		__('School');
 	const yearsLabel = yearRangeLabel.value;
 	return `${orgLabel} • ${schoolLabel} • ${yearsLabel}`;
 });
@@ -384,33 +394,41 @@ const yearRangeLabel = computed(() => {
 	const start = findAcademicYear(yearRange.start);
 	const end = findAcademicYear(yearRange.end);
 	if (start && end) {
-		return `${start.label} to ${end.label}`;
+		return __('{0} to {1}', [start.label, end.label]);
 	}
 	if (yearRange.start || yearRange.end) {
-		return 'Academic Years';
+		return __('Academic Years');
 	}
 	if (filters.academic_years.length) {
 		return filters.academic_years.join(', ');
 	}
-	return 'Academic Years';
+	return __('Academic Years');
 });
 
 const kpiItems = computed(() => [
-	{ id: 'active', label: 'Active Enrollments', value: dashboard.value.kpis.active },
-	{ id: 'new', label: 'New Enrollments (period)', value: dashboard.value.kpis.new_in_period },
-	{ id: 'drops', label: 'Course Drops (period)', value: dashboard.value.kpis.drops_in_period },
-	{ id: 'net_change', label: 'Net Change (period)', value: dashboard.value.kpis.net_change },
-	{ id: 'archived', label: 'Archived', value: dashboard.value.kpis.archived },
+	{ id: 'active', label: __('Active Enrollments'), value: dashboard.value.kpis.active },
+	{
+		id: 'new',
+		label: __('New Enrollments (period)'),
+		value: dashboard.value.kpis.new_in_period,
+	},
+	{
+		id: 'drops',
+		label: __('Course Drops (period)'),
+		value: dashboard.value.kpis.drops_in_period,
+	},
+	{ id: 'net_change', label: __('Net Change (period)'), value: dashboard.value.kpis.net_change },
+	{ id: 'archived', label: __('Archived'), value: dashboard.value.kpis.archived },
 ]);
 
 const stackedChart = computed(() => dashboard.value.stacked_chart || { series: [], rows: [] });
 
 const stackedChartTitle = computed(() => {
-	const compare = filters.compare_dimension === 'program' ? 'Program' : 'School';
+	const compare = filters.compare_dimension === 'program' ? __('Program') : __('School');
 	if (filters.chart_mode === 'trend') {
-		return `Enrollment Trend by ${compare}`;
+		return __('Enrollment Trend by {0}', [compare]);
 	}
-	return `Enrollment Snapshot by ${compare}`;
+	return __('Enrollment Snapshot by {0}', [compare]);
 });
 
 const topnCohorts = computed(() => dashboard.value.topn?.cohorts || []);
@@ -424,22 +442,22 @@ const drawerPageLength = 50;
 const activeSlice = ref<SlicePayload | null>(null);
 
 const drawerTitle = computed(() => {
-	if (!activeSlice.value) return 'Drill-down';
+	if (!activeSlice.value) return __('Drill-down');
 	const slice = activeSlice.value;
 	if (slice.type === 'kpi') {
 		const label = kpiItems.value.find(item => item.id === slice.key)?.label;
-		return label || 'Drill-down';
+		return label || __('Drill-down');
 	}
 	if (slice.type === 'topn') {
-		const prefix = slice.dimension === 'program' ? 'Program' : 'Cohort';
-		return `${prefix}: ${slice.key || ''}`.trim();
+		const prefix = slice.dimension === 'program' ? __('Program') : __('Cohort');
+		return __('{0}: {1}', [prefix, slice.key || '']).trim();
 	}
 	if (slice.type === 'stack') {
 		const bucket = slice.bucket ? ` • ${slice.bucket}` : '';
-		const prefix = slice.dimension === 'program' ? 'Program' : 'School';
-		return `${prefix}: ${slice.key || ''}${bucket}`.trim();
+		const prefix = slice.dimension === 'program' ? __('Program') : __('School');
+		return __('{0}: {1}{2}', [prefix, slice.key || '', bucket]).trim();
 	}
-	return 'Drill-down';
+	return __('Drill-down');
 });
 
 const canLoadMore = computed(
@@ -491,14 +509,14 @@ function applyYearRange() {
 	}
 
 	if (!start || !end) {
-		yearRangeMessage.value = 'Select both a start and end year.';
+		yearRangeMessage.value = __('Select both a start and end year.');
 		return;
 	}
 
 	const startOption = findAcademicYear(start);
 	const endOption = findAcademicYear(end);
 	if (startOption?.school && endOption?.school && startOption.school !== endOption.school) {
-		yearRangeMessage.value = 'Pick years from the same school.';
+		yearRangeMessage.value = __('Pick years from the same school.');
 		yearRangeUpdating.value = true;
 		yearRange.end = null;
 		yearRangeUpdating.value = false;
@@ -509,7 +527,7 @@ function applyYearRange() {
 	const startIndex = options.findIndex(y => y.value === start);
 	const endIndex = options.findIndex(y => y.value === end);
 	if (startIndex === -1 || endIndex === -1) {
-		yearRangeMessage.value = 'Selected years are out of scope.';
+		yearRangeMessage.value = __('Selected years are out of scope.');
 		return;
 	}
 
@@ -523,12 +541,12 @@ function applyYearRange() {
 
 	const range = options.slice(startIndex, endIndex + 1);
 	if (range.length < 2) {
-		yearRangeMessage.value = 'Select at least two consecutive years.';
+		yearRangeMessage.value = __('Select at least two consecutive years.');
 		return;
 	}
 
 	if (range.length > 5) {
-		yearRangeMessage.value = 'Select no more than five consecutive years.';
+		yearRangeMessage.value = __('Select no more than five consecutive years.');
 		return;
 	}
 

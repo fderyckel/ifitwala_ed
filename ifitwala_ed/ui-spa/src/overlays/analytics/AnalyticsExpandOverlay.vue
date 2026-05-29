@@ -36,12 +36,12 @@
 							tabindex="0"
 							@click="emitClose('programmatic')"
 						>
-							Close
+							{{ __('Close') }}
 						</button>
 
 						<div class="flex items-start justify-between gap-3 px-5 pt-5">
 							<div class="min-w-0">
-								<p class="type-overline">Analytics</p>
+								<p class="type-overline">{{ __('Analytics') }}</p>
 								<DialogTitle class="type-h2 text-ink mt-1">
 									{{ title }}
 								</DialogTitle>
@@ -53,7 +53,7 @@
 							<button
 								type="button"
 								class="if-overlay__icon-button"
-								aria-label="Close"
+								:aria-label="__('Close')"
 								@click="emitClose('programmatic')"
 							>
 								<FeatherIcon name="x" class="h-4 w-4" />
@@ -67,11 +67,11 @@
 									:option="chartOption"
 									class="analytics-chart--expanded"
 								/>
-								<div v-else class="type-empty">No data to display.</div>
+								<div v-else class="type-empty">{{ __('No data to display.') }}</div>
 							</div>
 
 							<div v-else class="space-y-3">
-								<div v-if="!rows.length" class="type-empty">No rows to display.</div>
+								<div v-if="!rows.length" class="type-empty">{{ __('No rows to display.') }}</div>
 
 								<div v-else class="overflow-auto rounded-xl border border-slate-200">
 									<!-- Expanded/zoom view: body text should NOT be caption-sized -->
@@ -94,23 +94,43 @@
 										</colgroup>
 										<thead class="bg-slate-50">
 											<tr v-if="isRecentRows" class="border-b border-slate-200">
-												<th class="px-3 py-2 text-left type-label text-slate-token/70">Date</th>
-												<th class="px-3 py-2 text-left type-label text-slate-token/70">Student</th>
-												<th class="px-3 py-2 text-left type-label text-slate-token/70">Program</th>
-												<th class="px-3 py-2 text-left type-label text-slate-token/70">Type</th>
-												<th class="px-3 py-2 text-left type-label text-slate-token/70">Log</th>
-												<th class="px-3 py-2 text-left type-label text-slate-token/70">Author</th>
 												<th class="px-3 py-2 text-left type-label text-slate-token/70">
-													Follow-ups
+													{{ __('Date') }}
+												</th>
+												<th class="px-3 py-2 text-left type-label text-slate-token/70">
+													{{ __('Student') }}
+												</th>
+												<th class="px-3 py-2 text-left type-label text-slate-token/70">
+													{{ __('Program') }}
+												</th>
+												<th class="px-3 py-2 text-left type-label text-slate-token/70">
+													{{ __('Type') }}
+												</th>
+												<th class="px-3 py-2 text-left type-label text-slate-token/70">
+													{{ __('Log') }}
+												</th>
+												<th class="px-3 py-2 text-left type-label text-slate-token/70">
+													{{ __('Author') }}
+												</th>
+												<th class="px-3 py-2 text-left type-label text-slate-token/70">
+													{{ __('Follow-ups') }}
 												</th>
 											</tr>
 											<tr v-else class="border-b border-slate-200">
-												<th class="px-3 py-2 text-left type-label text-slate-token/70">Date</th>
-												<th class="px-3 py-2 text-left type-label text-slate-token/70">Type</th>
-												<th class="px-3 py-2 text-left type-label text-slate-token/70">Log</th>
-												<th class="px-3 py-2 text-left type-label text-slate-token/70">Author</th>
 												<th class="px-3 py-2 text-left type-label text-slate-token/70">
-													Follow-ups
+													{{ __('Date') }}
+												</th>
+												<th class="px-3 py-2 text-left type-label text-slate-token/70">
+													{{ __('Type') }}
+												</th>
+												<th class="px-3 py-2 text-left type-label text-slate-token/70">
+													{{ __('Log') }}
+												</th>
+												<th class="px-3 py-2 text-left type-label text-slate-token/70">
+													{{ __('Author') }}
+												</th>
+												<th class="px-3 py-2 text-left type-label text-slate-token/70">
+													{{ __('Follow-ups') }}
 												</th>
 											</tr>
 										</thead>
@@ -170,7 +190,7 @@
 																		{{ followUp.doctype }}
 																	</span>
 																	<span v-if="followUp.next_step">
-																		Next step: {{ followUp.next_step }}
+																		{{ __('Next step: {0}', [followUp.next_step]) }}
 																	</span>
 																	<span v-if="responseMetric(followUp)">
 																		{{ responseMetric(followUp) }}
@@ -228,7 +248,7 @@
 																		{{ followUp.doctype }}
 																	</span>
 																	<span v-if="followUp.next_step">
-																		Next step: {{ followUp.next_step }}
+																		{{ __('Next step: {0}', [followUp.next_step]) }}
 																	</span>
 																	<span v-if="responseMetric(followUp)">
 																		{{ responseMetric(followUp) }}
@@ -283,6 +303,7 @@ import { FeatherIcon } from 'frappe-ui';
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
 import AnalyticsTextPreview from '@/components/analytics/AnalyticsTextPreview.vue';
 import { formatLocalizedDateTime } from '@/lib/datetime';
+import { __ } from '@/lib/i18n';
 import type {
 	StudentLogFollowUpSummary,
 	StudentLogRecentRow,
@@ -325,8 +346,8 @@ const isRecentRows = computed(() => {
 	return !!first && isRecentRow(first);
 });
 
-function onDialogClose(_payload: unknown) {
-	// no-op by design (A+)
+function onDialogClose(payload: unknown) {
+	void payload;
 }
 
 function emitClose(reason: CloseReason = 'programmatic') {
@@ -358,7 +379,7 @@ function stripHtml(html: string) {
 }
 
 function followUpEmptyLabel(row: TableRow) {
-	return row.requires_follow_up ? 'Awaiting submitted follow-up' : 'No follow-up recorded';
+	return row.requires_follow_up ? __('Awaiting submitted follow-up') : __('No follow-up recorded');
 }
 
 function formatRespondedAt(value: string | null | undefined) {
@@ -366,7 +387,7 @@ function formatRespondedAt(value: string | null | undefined) {
 }
 
 function responseMetric(followUp: StudentLogFollowUpSummary) {
-	return followUp.responded_in_label ? `Responded in ${followUp.responded_in_label}` : '';
+	return followUp.responded_in_label ? __('Responded in {0}', [followUp.responded_in_label]) : '';
 }
 </script>
 
