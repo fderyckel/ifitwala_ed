@@ -1,6 +1,8 @@
 # Copyright (c) 2026, François de Ryckel and contributors
 # For license information, please see license.txt
 
+import json
+from pathlib import Path
 from unittest.mock import patch
 
 import frappe
@@ -8,8 +10,17 @@ from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.hr import expense_claim_permissions
 
+EXPENSE_CLAIM_JSON = Path(__file__).parent / "doctype" / "expense_claim" / "expense_claim.json"
+
 
 class TestExpenseClaimPermissions(FrappeTestCase):
+    def test_expense_claim_list_view_uses_employee_name_not_employee_link_title_join(self):
+        metadata = json.loads(EXPENSE_CLAIM_JSON.read_text())
+        fields = {field["fieldname"]: field for field in metadata["fields"]}
+
+        self.assertNotIn("in_list_view", fields["employee"])
+        self.assertEqual(fields["employee_name"].get("in_list_view"), 1)
+
     def test_expense_claim_pqc_is_self_or_approver_scoped_for_employee(self):
         with (
             patch(

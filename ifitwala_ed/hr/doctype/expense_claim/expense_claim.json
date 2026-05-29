@@ -51,7 +51,6 @@
   {
    "fieldname": "employee",
    "fieldtype": "Link",
-   "in_list_view": 1,
    "label": "Employee",
    "options": "Employee",
    "reqd": 1
@@ -270,7 +269,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-29 09:30:26.000000",
+ "modified": "2026-05-29 10:43:10.000000",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Expense Claim",

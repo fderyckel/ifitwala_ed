@@ -11,6 +11,7 @@ Code refs:
 - `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window.js`
 - `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.py`
 - `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.js`
+- `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request_list.js`
 - `ifitwala_ed/schedule/enrollment_request_utils.py`
 - `ifitwala_ed/schedule/program_enrollment_request_choice.py`
 - `ifitwala_ed/schedule/doctype/program_enrollment/program_enrollment.py`
@@ -28,6 +29,7 @@ Test refs:
 - `ifitwala_ed/schedule/doctype/program_offering/test_program_offering.py`
 - `ifitwala_ed/schedule/doctype/program_offering_selection_window/test_program_offering_selection_window.py`
 - `ifitwala_ed/schedule/doctype/program_enrollment_request/test_program_enrollment_request.py`
+- `ifitwala_ed/schedule/test_program_scope_permissions_unit.py`
 - `ifitwala_ed/schedule/doctype/program_enrollment/test_program_enrollment.py`
 - `ifitwala_ed/schedule/test_enrollment_engine.py`
 - `ifitwala_ed/api/test_self_enrollment.py`
@@ -274,6 +276,7 @@ Code refs:
 - `ifitwala_ed/schedule/doctype/program_offering/program_offering.js`
 - `ifitwala_ed/schedule/doctype/program_offering_selection_window/program_offering_selection_window.js`
 - `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.js`
+- `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request_list.js`
 - `ifitwala_ed/ui-spa/src/router/index.ts`
 - `ifitwala_ed/api/self_enrollment.py`
 - `ifitwala_ed/ui-spa/src/lib/services/selfEnrollment/selfEnrollmentService.ts`
@@ -282,6 +285,7 @@ Code refs:
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianCourseSelection.vue`
 - `ifitwala_ed/ui-spa/src/pages/guardian/GuardianCourseSelectionDetail.vue`
 Test refs:
+- `ifitwala_ed/schedule/test_program_scope_permissions_unit.py`
 - `ifitwala_ed/api/test_self_enrollment.py`
 - `ifitwala_ed/ui-spa/src/pages/guardian/__tests__/GuardianCourseSelection.test.ts`
 
@@ -310,9 +314,10 @@ Students and guardians do not use Desk.
 Desk visibility for school-anchored enrollment doctypes is staff-scope driven:
 
 - when the active `Employee.school` resolves, Desk stays within that school descendant branch
-- when the active `Employee` has no `school`, `Program Offering` and `Program Enrollment` Desk visibility may widen to all schools in the employee organization's descendant scope
+- when the active `Employee` has no `school`, `Program Offering`, `Program Enrollment Request`, and `Program Enrollment` Desk visibility may widen to all schools in the employee organization's descendant scope
 - this changes visibility scope only; DocType read/write/create/delete authority still comes from the DocType permission matrix and scripted permission guards
 - the enrollment hooks consume `employee_utils.get_user_visible_schools()`, which delegates the organization-scope-to-school bridge to `employee_utils.get_schools_for_organization_scope()`
+- `Program Enrollment Request` list visibility is scoped through its own resolved `school` field; Desk list views must not depend on generated linked-title joins to `Program Offering` or `Student` for tenant isolation
 
 ### 4.2 Student portal ownership
 

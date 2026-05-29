@@ -115,6 +115,35 @@ def _program_enrollment_module():
         yield import_fresh("ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment")
 
 
+@contextmanager
+def _program_enrollment_request_module():
+    frappe_utils = ModuleType("frappe.utils")
+    frappe_utils.get_link_to_form = lambda doctype, name=None: name or doctype
+
+    basket_group_utils = ModuleType("ifitwala_ed.schedule.basket_group_utils")
+    basket_group_utils.get_offering_course_semantics = lambda *args, **kwargs: {}
+
+    enrollment_request_utils = ModuleType("ifitwala_ed.schedule.enrollment_request_utils")
+    enrollment_request_utils.build_program_enrollment_request_validation = lambda *args, **kwargs: ({}, {})
+    enrollment_request_utils.validate_program_enrollment_request = lambda *args, **kwargs: {}
+
+    employee_utils = ModuleType("ifitwala_ed.utilities.employee_utils")
+    employee_utils.get_user_visible_schools = lambda user=None: []
+
+    with stubbed_frappe(
+        extra_modules={
+            "frappe.utils": frappe_utils,
+            "ifitwala_ed.schedule.basket_group_utils": basket_group_utils,
+            "ifitwala_ed.schedule.enrollment_request_utils": enrollment_request_utils,
+            "ifitwala_ed.utilities.employee_utils": employee_utils,
+        }
+    ) as frappe:
+        frappe.get_roles = lambda user: []
+        frappe.db.escape = lambda value, percent=True: f"'{value}'"
+        frappe.db.get_value = lambda *args, **kwargs: None
+        yield import_fresh("ifitwala_ed.schedule.doctype.program_enrollment_request.program_enrollment_request")
+
+
 class TestProgramOfferingPermissionScopeUnit(TestCase):
     def test_permission_query_conditions_use_visible_school_scope(self):
         with _program_offering_module() as program_offering:
@@ -161,3 +190,41 @@ class TestProgramEnrollmentPermissionScopeUnit(TestCase):
             ):
                 self.assertTrue(program_enrollment.has_permission(allowed_doc, user="manager@example.com"))
                 self.assertFalse(program_enrollment.has_permission(blocked_doc, user="manager@example.com"))
+
+
+class TestProgramEnrollmentRequestPermissionScopeUnit(TestCase):
+    def test_permission_query_conditions_use_request_school_scope(self):
+        with _program_enrollment_request_module() as program_enrollment_request:
+            with (
+                patch.object(program_enrollment_request.frappe, "get_roles", return_value=["Academic Staff"]),
+                patch.object(
+                    program_enrollment_request,
+                    "get_user_visible_schools",
+                    return_value=["SCH-ROOT", "SCH-1"],
+                ),
+            ):
+                condition = program_enrollment_request.get_permission_query_conditions("staff@example.com")
+
+        self.assertEqual(condition, "`tabProgram Enrollment Request`.`school` IN ('SCH-ROOT', 'SCH-1')")
+        self.assertNotIn("`tabProgram Offering`.`school`", condition)
+        self.assertNotIn("program_offering.", condition)
+
+    def test_has_permission_allows_request_in_visible_school_scope(self):
+        with _program_enrollment_request_module() as program_enrollment_request:
+            allowed_doc = SimpleNamespace(school="SCH-1")
+            blocked_doc = SimpleNamespace(school="SCH-OTHER")
+
+            with (
+                patch.object(program_enrollment_request.frappe, "get_roles", return_value=["Academic Staff"]),
+                patch.object(
+                    program_enrollment_request,
+                    "get_user_visible_schools",
+                    return_value=["SCH-ROOT", "SCH-1"],
+                ),
+            ):
+                self.assertTrue(
+                    program_enrollment_request.has_permission(allowed_doc, ptype="read", user="staff@example.com")
+                )
+                self.assertFalse(
+                    program_enrollment_request.has_permission(blocked_doc, ptype="read", user="staff@example.com")
+                )

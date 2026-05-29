@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 # Copyright (c) 2026, Francois de Ryckel and contributors
 # For license information, please see license.txt
-
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -11,6 +12,7 @@ from ifitwala_ed.schedule.enrollment_request_utils import (
     build_program_enrollment_request_validation,
     validate_program_enrollment_request,
 )
+from ifitwala_ed.utilities.employee_utils import get_user_visible_schools
 
 
 class ProgramEnrollmentRequest(Document):
@@ -276,3 +278,43 @@ def get_offering_catalog(program_offering):
 @frappe.whitelist()
 def validate_enrollment_request(request_name):
     return validate_program_enrollment_request(request_name, force=1)
+
+
+def get_permission_query_conditions(user: str | None = None):
+    resolved_user = user or frappe.session.user
+    if resolved_user == "Administrator" or "System Manager" in frappe.get_roles(resolved_user):
+        return None
+
+    visible_schools = get_user_visible_schools(resolved_user)
+    if not visible_schools:
+        return "1=0"
+
+    schools_list = ", ".join(frappe.db.escape(school) for school in visible_schools)
+    return f"`tabProgram Enrollment Request`.`school` IN ({schools_list})"
+
+
+def has_permission(doc, ptype: str | None = None, user: str | None = None) -> bool:
+    resolved_user = user or frappe.session.user
+    if resolved_user == "Administrator" or "System Manager" in frappe.get_roles(resolved_user):
+        return True
+
+    if not doc:
+        return True
+
+    visible_schools = get_user_visible_schools(resolved_user)
+    if not visible_schools:
+        return False
+
+    school = _request_school(doc)
+    if not school:
+        return (ptype or "").lower() == "create"
+
+    return school in visible_schools
+
+
+def _request_school(doc) -> str | None:
+    if isinstance(doc, str):
+        return frappe.db.get_value("Program Enrollment Request", doc, "school")
+    if isinstance(doc, dict):
+        return doc.get("school")
+    return getattr(doc, "school", None)

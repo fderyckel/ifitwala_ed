@@ -138,6 +138,8 @@ def _gradebook_stub_modules(
         thread_service.save_instructor_reply = lambda payload, actor=None: {"thread": None}
     if not hasattr(thread_service, "save_instructor_thread_state"):
         thread_service.save_instructor_thread_state = lambda payload, actor=None: {"thread": None}
+    student_insight_note = types.ModuleType("ifitwala_ed.students.doctype.student_insight_note.student_insight_note")
+    student_insight_note.build_student_insight_summaries = lambda student_names, user=None: {}
     file_access = types.ModuleType("ifitwala_ed.api.file_access")
     file_access.resolve_academic_file_open_url = (
         lambda *, file_name, file_url, context_doctype=None, context_name=None, **kwargs: (
@@ -183,6 +185,7 @@ def _gradebook_stub_modules(
         "ifitwala_ed.assessment.task_submission_service": types.ModuleType(
             "ifitwala_ed.assessment.task_submission_service"
         ),
+        "ifitwala_ed.students.doctype.student_insight_note.student_insight_note": student_insight_note,
         "ifitwala_ed.utilities.image_utils": image_utils,
     }
 
@@ -1206,6 +1209,7 @@ class TestGradebookApi(TestCase):
                     "student_name": "Ada Lovelace",
                     "student_id": "S-001",
                     "student_image": None,
+                    "insight_summary": None,
                 }
             ],
         )

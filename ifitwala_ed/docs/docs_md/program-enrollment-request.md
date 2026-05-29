@@ -3,8 +3,8 @@ title: "Program Enrollment Request: Transactional Staging for Enrollment"
 slug: program-enrollment-request
 category: Enrollment
 doc_order: 4
-version: "1.6.3"
-last_change_date: "2026-04-24"
+version: "1.6.4"
+last_change_date: "2026-05-29"
 summary: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment, including basket-group snapshots, offering-derived term-window carry-forward, admissions hydration, portal self-enrollment provenance, report-driven batch actions, and PER form shortcuts into the request overview."
 seo_title: "Program Enrollment Request: Transactional Staging for Enrollment"
 seo_description: "Capture enrollment intent, run deterministic validation snapshots, enforce override gates, and approve requests before materializing Program Enrollment."
@@ -124,6 +124,8 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
 | `Curriculum Coordinator` | Yes | Yes | Yes | Yes |
 | `Academic Staff` | Yes | No | No | No |
 
+Desk visibility is limited to requests whose resolved `school` is inside the user's staff school scope.
+
 ## Related Docs
 
 <RelatedDocs
@@ -137,6 +139,7 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
 
 - **DocType schema file**: `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.json`
 - **Controller file**: `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.py`
+- **Desk list file**: `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request_list.js`
 - **Required fields (`reqd=1`)**:
   - `student` (`Link`)
   - `program_offering` (`Link`)
@@ -146,6 +149,10 @@ For statuses `Submitted`, `Under Review`, and `Approved`, validation snapshot mu
   - `get_offering_catalog(program_offering)`
   - `validate_enrollment_request(request_name)`
   - `Program Enrollment Request Overview` report supports matrix, summary, and selection-window tracker views for staff review
+- **Permission hooks**:
+  - `get_permission_query_conditions(user)` scopes Desk lists through `Program Enrollment Request.school`
+  - `has_permission(doc, ptype, user)` enforces the same school scope at document level
+  - List view strips generated linked-title joins for `program_offering` and `student` so scoped permissions do not depend on aliased target-table joins
 
 - **DocType**: `Program Enrollment Request` (`ifitwala_ed/schedule/doctype/program_enrollment_request/`)
 - **Autoname**: `format:PER-{YYYY}-{####}`

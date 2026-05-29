@@ -172,6 +172,7 @@ class TestLocation(TestCase):
                 "get_doc_before_save": lambda: previous,
             }
         )
+        doc._clear_location_visibility_caches = lambda: Location._clear_location_visibility_caches(doc)
 
         Location.on_update(doc)
 

@@ -1,11 +1,15 @@
 # Copyright (c) 2026, Francois de Ryckel and contributors
 # For license information, please see license.txt
 
+from unittest.mock import patch
+
 import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import nowdate
 
 from ifitwala_ed.schedule.doctype.program_enrollment_request.program_enrollment_request import (
+    get_permission_query_conditions,
+    has_permission,
     validate_enrollment_request,
 )
 from ifitwala_ed.schedule.enrollment_request_utils import materialize_program_enrollment_request
@@ -222,6 +226,33 @@ class TestProgramEnrollmentRequest(FrappeTestCase):
         self.assertEqual(int(courses[context["target_course"].name].required or 0), 0)
         self.assertEqual(courses[context["target_course"].name].term_start, context["term"].name)
         self.assertEqual(courses[context["target_course"].name].term_end, context["term"].name)
+
+    @patch(
+        "ifitwala_ed.schedule.doctype.program_enrollment_request.program_enrollment_request.get_user_visible_schools"
+    )
+    @patch("frappe.get_roles")
+    def test_permission_query_uses_request_school_scope(self, mock_get_roles, mock_visible_schools):
+        mock_get_roles.return_value = ["Academic Staff"]
+        mock_visible_schools.return_value = ["SCH-1", "SCH-2"]
+
+        condition = get_permission_query_conditions("staff@example.com")
+
+        self.assertIn("`tabProgram Enrollment Request`.`school` IN", condition)
+        self.assertIn("'SCH-1'", condition)
+        self.assertIn("'SCH-2'", condition)
+        self.assertNotIn("`tabProgram Offering`.`school`", condition)
+        self.assertNotIn("program_offering.", condition)
+
+    @patch(
+        "ifitwala_ed.schedule.doctype.program_enrollment_request.program_enrollment_request.get_user_visible_schools"
+    )
+    @patch("frappe.get_roles")
+    def test_has_permission_enforces_request_school_scope(self, mock_get_roles, mock_visible_schools):
+        mock_get_roles.return_value = ["Academic Staff"]
+        mock_visible_schools.return_value = ["SCH-1"]
+
+        self.assertTrue(has_permission({"school": "SCH-1"}, ptype="read", user="staff@example.com"))
+        self.assertFalse(has_permission({"school": "SCH-2"}, ptype="read", user="staff@example.com"))
 
 
 def _has_prereq_result(payload, required_course, result):
