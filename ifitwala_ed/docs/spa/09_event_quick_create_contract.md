@@ -145,7 +145,7 @@ Rules:
 8. Guardian availability is limited to known school-side meetings and school events and must be surfaced with an explicit note.
 9. When `create_meeting_quick(...)` rejects a slot because of student availability, the overlay must stay open, preserve the drafted meeting state, show the server-owned conflict reason inline, and offer `Find common times` as the immediate recovery action.
 10. For in-person and hybrid meeting quick create, exact common-time matches are room-aware: a slot only remains in the exact-match list when the selected host-school scope has at least one free room for that time.
-11. Room availability is authoritative from `Location Booking` via `find_room_conflicts(...)`.
+11. Room availability is authoritative from `Location Booking` via `find_room_conflicts(...)`; suggestion reads must use the same selected-location plus descendant conflict scope that the `Meeting` controller enforces on save.
 12. Room ranking is filtered by host-school descendant scope, ancestor-shared locations, optional `location_type`, and attendee-capacity threshold, then sorted to prefer the smallest adequate room before larger rooms.
 13. Manual location pickers in the overlay must switch with the selected host school and must not present sibling-school rooms outside the canonical shared-location scope.
 14. When room-aware ranking is requested, each slot payload may include `suggested_room` and `available_room_count` so the overlay can prefill the best room without extra per-slot requests.

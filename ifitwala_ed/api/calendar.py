@@ -157,6 +157,7 @@ def suggest_meeting_rooms(
     start_time: str | None = None,
     end_time: str | None = None,
     location_type: str | None = None,
+    selected_location: str | None = None,
     capacity_needed: int | None = None,
     limit: int | None = None,
 ):
@@ -166,6 +167,7 @@ def suggest_meeting_rooms(
         start_time=start_time,
         end_time=end_time,
         location_type=location_type,
+        selected_location=selected_location,
         capacity_needed=capacity_needed,
         limit=limit,
     )

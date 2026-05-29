@@ -8,6 +8,7 @@ export type Request = {
 	start_time: string
 	end_time: string
 	location_type?: string | null
+	selected_location?: string | null
 	capacity_needed?: number | null
 	limit?: number | null
 }
@@ -15,4 +16,6 @@ export type Request = {
 export type Response = {
 	rooms: MeetingRoomSuggestion[]
 	notes: string[]
+	selected_location?: string | null
+	selected_location_available?: boolean | null
 }

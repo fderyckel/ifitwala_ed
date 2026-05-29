@@ -358,8 +358,8 @@ class TestCalendarApi(TestCase):
         rooms = [
             frappe._dict(
                 {
-                    "name": "D202",
-                    "location_name": "D202",
+                    "name": "D201",
+                    "location_name": "D201",
                     "parent_location": None,
                     "maximum_capacity": 20,
                     "location_type": None,
@@ -385,7 +385,7 @@ class TestCalendarApi(TestCase):
                 {
                     "source_doctype": "Student Group",
                     "source_name": "25-26-G6-Eng/IIS 2025-2026",
-                    "location": "D202",
+                    "location": "D201-Teaching Slot",
                     "from": datetime(2026, 5, 29, 10, 15, 0),
                     "to": datetime(2026, 5, 29, 11, 10, 0),
                 }
@@ -401,6 +401,12 @@ class TestCalendarApi(TestCase):
             patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_school", return_value="SCHOOL-1"),
             patch("ifitwala_ed.api.calendar_quick_create._ensure_allowed_location_type", return_value=None),
             patch("ifitwala_ed.api.calendar_quick_create._room_rows_for_school_scope", return_value=rooms),
+            patch(
+                "ifitwala_ed.api.calendar_quick_create.get_location_scope",
+                side_effect=lambda room, include_children=True: (
+                    [room, "D201-Teaching Slot"] if room == "D201" else [room]
+                ),
+            ),
             patch("ifitwala_ed.api.calendar_quick_create.find_room_conflicts", side_effect=conflict_rows),
         ):
             first = calendar_quick_create.suggest_meeting_rooms(
@@ -420,7 +426,7 @@ class TestCalendarApi(TestCase):
                 limit=8,
             )
 
-        self.assertEqual([room["value"] for room in first["rooms"]], ["D202", "D204"])
+        self.assertEqual([room["value"] for room in first["rooms"]], ["D201", "D204"])
         self.assertEqual([room["value"] for room in second["rooms"]], ["D204"])
 
     def test_create_meeting_quick_checks_student_availability_before_insert(self):

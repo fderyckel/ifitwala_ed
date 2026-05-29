@@ -29,7 +29,11 @@ from ifitwala_ed.school_settings.doctype.school_event.school_event import (
     publish_companion_org_communication_for_event,
 )
 from ifitwala_ed.utilities.employee_utils import get_descendant_organizations
-from ifitwala_ed.utilities.location_utils import find_room_conflicts, get_visible_location_rows_for_school
+from ifitwala_ed.utilities.location_utils import (
+    find_room_conflicts,
+    get_location_scope,
+    get_visible_location_rows_for_school,
+)
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
 
 QUICK_CREATE_IDEMPOTENCY_TTL_SECONDS = 900
@@ -1625,13 +1629,25 @@ def _rank_room_suggestions(room_rows: list[dict], *, capacity_needed: int) -> li
     ]
 
 
-def _collect_room_busy_windows(
-    room_suggestions: list[dict],
+def _collect_room_conflicts_by_candidate(
+    room_names: list[str],
     window_start: datetime,
     window_end: datetime,
 ) -> dict[str, list[tuple[datetime, datetime]]]:
-    room_names = [row.get("value") for row in room_suggestions if row.get("value")]
     if not room_names:
+        return {}
+
+    location_to_rooms: dict[str, set[str]] = defaultdict(set)
+    scoped_locations: set[str] = set()
+    for room_name in room_names:
+        scope = get_location_scope(room_name, include_children=True) or [room_name]
+        for location in scope:
+            if not location:
+                continue
+            scoped_locations.add(location)
+            location_to_rooms[location].add(room_name)
+
+    if not scoped_locations:
         return {}
 
     busy_by_room: dict[str, list[tuple[datetime, datetime]]] = defaultdict(list)
@@ -1639,12 +1655,22 @@ def _collect_room_busy_windows(
         None,
         window_start,
         window_end,
-        locations=room_names,
+        locations=scoped_locations,
         include_children=False,
     )
     for row in conflicts:
-        _append_busy_window(busy_by_room, row.get("location"), row.get("from"), row.get("to"))
+        for room_name in location_to_rooms.get(row.get("location"), set()):
+            _append_busy_window(busy_by_room, room_name, row.get("from"), row.get("to"))
     return _dedupe_busy_windows(busy_by_room)
+
+
+def _collect_room_busy_windows(
+    room_suggestions: list[dict],
+    window_start: datetime,
+    window_end: datetime,
+) -> dict[str, list[tuple[datetime, datetime]]]:
+    room_names = [row.get("value") for row in room_suggestions if row.get("value")]
+    return _collect_room_conflicts_by_candidate(room_names, window_start, window_end)
 
 
 def _available_room_suggestions_for_slot(
@@ -2072,6 +2098,7 @@ def suggest_meeting_rooms(
     start_time: str | None = None,
     end_time: str | None = None,
     location_type: str | None = None,
+    selected_location: str | None = None,
     capacity_needed: int | None = None,
     limit: int | None = None,
 ):
@@ -2082,6 +2109,7 @@ def suggest_meeting_rooms(
     if not school_value:
         frappe.throw(_("Host school is required before suggesting rooms."))
     location_type_value = _ensure_allowed_location_type(user, school_value, location_type)
+    selected_location_value = _ensure_allowed_location(user, school_value, selected_location)
 
     target_date = _coerce_date_required(date, _("Meeting date"))
     start_value = _coerce_time_required(start_time, _("Start time"))
@@ -2110,14 +2138,16 @@ def suggest_meeting_rooms(
         }
         return payload
 
-    conflicts = find_room_conflicts(
-        None,
+    candidate_room_names = [row.name for row in rows if row.name]
+    if selected_location_value and selected_location_value not in candidate_room_names:
+        candidate_room_names.append(selected_location_value)
+
+    busy_by_room = _collect_room_conflicts_by_candidate(
+        candidate_room_names,
         start_dt,
         end_dt,
-        locations=[row.name for row in rows if row.name],
-        include_children=False,
     )
-    busy_rooms = {row.get("location") for row in conflicts if row.get("location")}
+    busy_rooms = {room_name for room_name, windows in busy_by_room.items() if windows}
 
     available_rooms = [
         room for room in _rank_room_suggestions(rows, capacity_needed=cap_needed) if room.get("value") not in busy_rooms
@@ -2125,6 +2155,8 @@ def suggest_meeting_rooms(
 
     payload = {
         "rooms": available_rooms[:room_limit],
+        "selected_location": selected_location_value,
+        "selected_location_available": (selected_location_value not in busy_rooms if selected_location_value else None),
         "notes": (
             [
                 _("Room suggestions are limited to location type {location_type}.").format(
