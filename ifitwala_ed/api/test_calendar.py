@@ -422,12 +422,15 @@ class TestCalendarApi(TestCase):
                 date="2026-05-29",
                 start_time="10:15",
                 end_time="10:35",
+                selected_location="D201",
                 capacity_needed=2,
                 limit=8,
             )
 
         self.assertEqual([room["value"] for room in first["rooms"]], ["D201", "D204"])
         self.assertEqual([room["value"] for room in second["rooms"]], ["D204"])
+        self.assertEqual(second["selected_location"], "D201")
+        self.assertEqual(second["selected_location_available"], False)
 
     def test_create_meeting_quick_checks_student_availability_before_insert(self):
         cache = _DummyCache()

@@ -78,7 +78,7 @@ Rules:
 3. `get_event_quick_create_options()` is the canonical source for meeting categories, school-event categories, audience types, selectable schools, selectable teams, selectable student groups, school-keyed selectable locations, school-keyed selectable room types, attendee kinds, and default scheduling times.
 4. `search_meeting_attendees(...)` returns a mixed attendee list with `kind`, `label`, `meta`, and `availability_mode`.
 5. `suggest_meeting_slots(...)` returns ranked exact matches plus fallback slots, server-owned availability notes, and when room-aware ranking is requested, suggested-room metadata on each slot; the request may also constrain ranking by `location_type`.
-6. `suggest_meeting_rooms(...)` returns ranked room suggestions plus room-scope notes and may constrain ranking by `location_type`.
+6. `suggest_meeting_rooms(...)` returns ranked free-room suggestions plus room-scope notes, may constrain ranking by `location_type`, and may check a `selected_location` for final preflight before create.
 7. `create_meeting_quick(...)` accepts explicit attendees, optional team context, optional host school, explicit `include_students` / `include_guardians` invite-scope guard flags, and an idempotency key via `client_request_id`.
 8. `create_meeting_quick(...)` and `create_school_event_quick(...)` must validate manual location choices through the same shared-location resolver used by room suggestions and Room Utilization.
 9. `create_school_event_quick(...)` remains the canonical quick-create path for school events and continues to use the same overlay shell.
@@ -147,7 +147,7 @@ Rules:
 10. For in-person and hybrid meeting quick create, exact common-time matches are room-aware: a slot only remains in the exact-match list when the selected host-school scope has at least one free room for that time.
 11. Room availability is authoritative from `Location Booking` via `find_room_conflicts(...)`; suggestion reads must use the same selected-location plus descendant conflict scope that the `Meeting` controller enforces on save.
 12. Room ranking is filtered by host-school descendant scope, ancestor-shared locations, optional `location_type`, and attendee-capacity threshold, then sorted to prefer the smallest adequate room before larger rooms.
-13. Manual location pickers in the overlay must switch with the selected host school and must not present sibling-school rooms outside the canonical shared-location scope.
+13. Manual meeting room choices must be driven by live room suggestions for the selected date/time; static location options may scope the room universe, but they must not let users choose a room that has not just been checked against `Location Booking`.
 14. When room-aware ranking is requested, each slot payload may include `suggested_room` and `available_room_count` so the overlay can prefill the best room without extra per-slot requests.
 15. Successful meeting writes must invalidate affected student calendar views through mutation-owned cache invalidation plus the user-scoped realtime event, so an already-open student calendar does not wait for TTL expiry.
 16. None of these quick-create workflows enqueue background jobs today because the request path is bounded and aggregated; if the search bounds expand materially, the concurrency docs above must be revisited before widening them.

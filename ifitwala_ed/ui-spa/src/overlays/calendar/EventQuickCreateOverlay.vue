@@ -1375,11 +1375,25 @@ const meetingLocationTypeSelectOptions = computed<SelectOption[]>(() => [
 ]);
 
 const meetingLocationSelectOptions = computed<SelectOption[]>(() => [
-	{ value: '', label: __('No location') },
-	...meetingLocationRows.value.map(row => ({
+	{
+		value: '',
+		label: roomSearchPerformed.value
+			? __('No location')
+			: __('Use room suggestions for this time'),
+	},
+	...roomSuggestions.value.map(row => ({
 		value: row.value,
 		label: row.label,
 	})),
+	...(meetingForm.location &&
+	!roomSuggestions.value.some(row => row.value === meetingForm.location)
+		? meetingLocationRows.value
+				.filter(row => row.value === meetingForm.location)
+				.map(row => ({
+					value: row.value,
+					label: row.label,
+				}))
+		: []),
 ]);
 
 const schoolEventLocationSelectOptions = computed<SelectOption[]>(() => [
@@ -2351,6 +2365,7 @@ async function findRoomSuggestions() {
 			start_time: meetingForm.start_time,
 			end_time: meetingForm.end_time,
 			location_type: meetingForm.location_type || null,
+			selected_location: meetingForm.location || null,
 			capacity_needed: roomCapacityTarget.value,
 			limit: 8,
 		});
@@ -2370,6 +2385,44 @@ async function findRoomSuggestions() {
 			roomLoading.value = false;
 		}
 	}
+}
+
+async function preflightSelectedMeetingRoom() {
+	if (!showRoomAssistant.value || !meetingForm.location) return null;
+
+	const validationError = validateRoomRequest();
+	if (validationError) return validationError;
+
+	const response = await suggestMeetingRooms({
+		school: meetingForm.school,
+		date: meetingForm.date,
+		start_time: meetingForm.start_time,
+		end_time: meetingForm.end_time,
+		location_type: meetingForm.location_type || null,
+		selected_location: meetingForm.location,
+		capacity_needed: roomCapacityTarget.value,
+		limit: 8,
+	});
+
+	roomSearchPerformed.value = true;
+	roomSuggestions.value = response.rooms || [];
+	roomNotes.value = response.notes || [];
+	if (!roomSuggestions.value.length && !roomNotes.value.length) {
+		roomNotes.value = ['No free rooms matched the selected slot.'];
+	}
+
+	if (response.selected_location_available === false) {
+		const blockedLocation = meetingForm.location;
+		meetingForm.location = '';
+		await nextTick();
+		roomSuggestionsSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		return __(
+			'Location {0} is already booked for this meeting time. Choose a free room from the room suggestions.',
+			[blockedLocation]
+		);
+	}
+
+	return null;
 }
 
 function applySuggestedRoom(room: MeetingRoomSuggestion) {
@@ -2433,9 +2486,17 @@ async function submit() {
 	clearErrorState();
 
 	submitting.value = true;
-	const clientRequestId = makeClientRequestId();
 
 	try {
+		if (activeType.value === 'meeting') {
+			const roomPreflightError = await preflightSelectedMeetingRoom();
+			if (roomPreflightError) {
+				setErrorState(roomPreflightError, 'LocationConflictError');
+				return;
+			}
+		}
+
+		const clientRequestId = makeClientRequestId();
 		let result: Record<string, unknown>;
 		if (activeType.value === 'meeting') {
 			result = await createMeetingQuick({

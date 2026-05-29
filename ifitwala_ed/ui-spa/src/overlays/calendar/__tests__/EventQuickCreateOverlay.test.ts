@@ -603,19 +603,52 @@ describe('EventQuickCreateOverlay meeting attendees', () => {
 			]),
 			exc_type: 'ValidationError',
 		});
-		suggestMeetingRoomsMock.mockResolvedValue({
-			rooms: [
-				{
-					value: 'D204',
-					label: 'D204',
-					building: null,
-					location_type: null,
-					location_type_name: null,
-					max_capacity: 20,
-				},
-			],
-			notes: [],
-		});
+		suggestMeetingRoomsMock
+			.mockResolvedValueOnce({
+				rooms: [
+					{
+						value: 'D202',
+						label: 'D202',
+						building: null,
+						location_type: null,
+						location_type_name: null,
+						max_capacity: 20,
+					},
+				],
+				notes: [],
+				selected_location: null,
+				selected_location_available: null,
+			})
+			.mockResolvedValueOnce({
+				rooms: [
+					{
+						value: 'D202',
+						label: 'D202',
+						building: null,
+						location_type: null,
+						location_type_name: null,
+						max_capacity: 20,
+					},
+				],
+				notes: [],
+				selected_location: 'D202',
+				selected_location_available: true,
+			})
+			.mockResolvedValueOnce({
+				rooms: [
+					{
+						value: 'D204',
+						label: 'D204',
+						building: null,
+						location_type: null,
+						location_type_name: null,
+						max_capacity: 20,
+					},
+				],
+				notes: [],
+				selected_location: 'D202',
+				selected_location_available: false,
+			});
 
 		mountOverlay({
 			eventType: 'meeting',
@@ -626,6 +659,8 @@ describe('EventQuickCreateOverlay meeting attendees', () => {
 
 		setInputByPlaceholder('Family support meeting', 'Workflow');
 		updateSelectByLabel('Bulk-add a team', 'TEAM-1');
+		await flushUi();
+		clickButton('Suggest rooms');
 		await flushUi();
 		updateSelectByLabel('Location (optional)', 'D202');
 		await flushUi();
@@ -649,6 +684,82 @@ describe('EventQuickCreateOverlay meeting attendees', () => {
 				capacity_needed: 2,
 				limit: 8,
 			})
+		);
+		expect(document.body.textContent || '').toContain('D204');
+	});
+
+	it('preflights a selected room before create and replaces stale occupied rooms with free suggestions', async () => {
+		getEventQuickCreateOptionsMock.mockResolvedValue({
+			...baseOptions,
+			can_create_meeting: true,
+			can_create_school_event: false,
+			attendee_kinds: [{ value: 'employee', label: 'Employees' }],
+		});
+		getMeetingTeamAttendeesMock.mockResolvedValue({
+			team: 'TEAM-1',
+			results: [
+				{
+					value: 'teacher@example.com',
+					label: 'Teacher Example',
+					meta: 'TEAM-1',
+					kind: 'employee',
+					availability_mode: 'authoritative',
+				},
+			],
+		});
+		suggestMeetingRoomsMock
+			.mockResolvedValueOnce({
+				rooms: [
+					{
+						value: 'D201',
+						label: 'D201',
+						building: null,
+						location_type: null,
+						location_type_name: null,
+						max_capacity: 20,
+					},
+				],
+				notes: [],
+				selected_location: null,
+				selected_location_available: null,
+			})
+			.mockResolvedValueOnce({
+				rooms: [
+					{
+						value: 'D204',
+						label: 'D204',
+						building: null,
+						location_type: null,
+						location_type_name: null,
+						max_capacity: 20,
+					},
+				],
+				notes: [],
+				selected_location: 'D201',
+				selected_location_available: false,
+			});
+
+		mountOverlay({
+			eventType: 'meeting',
+			lockEventType: true,
+			meetingMode: 'ad_hoc',
+		});
+		await flushUi();
+
+		setInputByPlaceholder('Family support meeting', 'Workflow');
+		updateSelectByLabel('Bulk-add a team', 'TEAM-1');
+		await flushUi();
+		clickButton('Suggest rooms');
+		await flushUi();
+		updateSelectByLabel('Location (optional)', 'D201');
+		await flushUi();
+
+		clickButton('Create meeting');
+		await flushUi();
+
+		expect(createMeetingQuickMock).not.toHaveBeenCalled();
+		expect(document.body.textContent || '').toContain(
+			'Location D201 is already booked for this meeting time.'
 		);
 		expect(document.body.textContent || '').toContain('D204');
 	});
