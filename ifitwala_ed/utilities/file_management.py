@@ -40,6 +40,7 @@ def validate_admissions_attachment(doc, method: Optional[str] = None):
         "Task Submission",
         "School",
         "Organization",
+        "Expense Claim",
     }:
         action_map = {
             ("Employee", "employee_image"): _("Upload Employee Image"),
@@ -49,6 +50,8 @@ def validate_admissions_attachment(doc, method: Optional[str] = None):
             ("School", "school_logo"): _("Upload School Logo"),
             ("Organization", None): _("the governed organization media upload action"),
             ("Organization", ""): _("the governed organization media upload action"),
+            ("Expense Claim", None): _("Upload Receipt"),
+            ("Expense Claim", ""): _("Upload Receipt"),
         }
         action = action_map.get((doc.attached_to_doctype, doc.attached_to_field))
         if doc.attached_to_doctype == "Task Submission":

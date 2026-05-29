@@ -1,8 +1,8 @@
 # Expense Reimbursement
 
 Status: Canonical Phase 1A runtime contract
-Code refs: `ifitwala_ed/hr/doctype/expense_claim/`, `ifitwala_ed/hr/expense_claims.py`, `ifitwala_ed/hr/expense_claim_permissions.py`, `ifitwala_ed/api/expense_claims.py`, `ifitwala_ed/api/expense_claim_receipts.py`, `ifitwala_ed/ui-spa/src/pages/staff/ExpenseClaims.vue`
-Test refs: `ifitwala_ed/hr/test_expense_claim_permissions.py`; Frappe site workflow tests pending
+Code refs: `ifitwala_ed/hr/doctype/expense_claim/`, `ifitwala_ed/hr/expense_claims.py`, `ifitwala_ed/hr/expense_claim_permissions.py`, `ifitwala_ed/api/expense_claims.py`, `ifitwala_ed/api/expense_claim_receipts.py`, `ifitwala_ed/utilities/file_management.py`, `ifitwala_ed/ui-spa/src/pages/staff/ExpenseClaims.vue`
+Test refs: `ifitwala_ed/hr/test_expense_claim_permissions.py`, `ifitwala_ed/utilities/test_file_management.py`; Frappe site workflow tests pending
 
 ## Scope
 
@@ -81,3 +81,7 @@ Receipt context:
 - binding role: `expense_claim_receipt`
 
 Read access is resolved through `Expense Claim` read permission before Drive grants are requested.
+
+Desk receipt uploads must use the `Upload Receipt` action. The Desk form saves a dirty draft before opening the governed uploader so Drive receives a persisted `Expense Claim` name rather than a temporary `new-expense-claim-*` name.
+
+Raw Frappe `File` attachments on `Expense Claim` are non-canonical and are rejected with an actionable message. Receipt files must be persisted through the governed `expense_claim.receipt` upload path.
