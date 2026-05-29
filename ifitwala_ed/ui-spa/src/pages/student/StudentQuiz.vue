@@ -6,17 +6,19 @@
 				class="inline-flex items-center type-body text-ink/70 transition hover:text-ink"
 			>
 				<span class="mr-2">←</span>
-				Back to Course
+				{{ __('Back to Course') }}
 			</RouterLink>
 		</div>
 
 		<section v-if="errorMessage" class="if-banner if-banner--danger">
-			<p class="if-banner__title type-body-strong text-flame">Could not open this quiz.</p>
+			<p class="if-banner__title type-body-strong text-flame">
+				{{ __('Could not open this quiz.') }}
+			</p>
 			<p class="if-banner__body mt-2 type-caption">{{ errorMessage }}</p>
 		</section>
 
 		<section v-else-if="loading" class="student-hub-section">
-			<p class="type-body text-ink/70">Loading quiz...</p>
+			<p class="type-body text-ink/70">{{ __('Loading quiz...') }}</p>
 		</section>
 
 		<template v-else-if="sessionPayload">
@@ -24,20 +26,20 @@
 				<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 					<div>
 						<p class="type-overline text-ink/60">
-							{{ isPractice ? 'Practice Quiz' : 'Assessed Quiz' }}
+							{{ isPractice ? __('Practice Quiz') : __('Assessed Quiz') }}
 						</p>
 						<h1 class="mt-2 type-h1 text-ink">{{ sessionPayload.session.title }}</h1>
 						<p class="mt-2 type-body text-ink/70">
-							Attempt {{ sessionPayload.session.attempt_number }}
+							{{ __('Attempt {0}', [sessionPayload.session.attempt_number]) }}
 							<span v-if="sessionPayload.session.max_attempts">
-								of {{ sessionPayload.session.max_attempts }}
+								{{ __('of {0}', [sessionPayload.session.max_attempts]) }}
 							</span>
 						</p>
 					</div>
 					<div class="flex flex-wrap gap-2">
 						<span class="chip chip-focus">{{ sessionPayload.session.status }}</span>
 						<span v-if="sessionPayload.session.pass_percentage != null" class="chip chip-warm">
-							Pass at {{ sessionPayload.session.pass_percentage }}%
+							{{ __('Pass at {0}%', [sessionPayload.session.pass_percentage]) }}
 						</span>
 						<span v-if="timeRemainingLabel" class="chip chip-warm">{{ timeRemainingLabel }}</span>
 					</div>
@@ -55,7 +57,7 @@
 						:disabled="saving || submitting"
 						@click="saveProgress"
 					>
-						{{ saving ? 'Saving...' : 'Save Progress' }}
+						{{ saving ? __('Saving...') : __('Save Progress') }}
 					</button>
 					<button
 						type="button"
@@ -63,7 +65,7 @@
 						:disabled="submitting || saving"
 						@click="submitQuiz"
 					>
-						{{ submitting ? 'Submitting...' : 'Submit Quiz' }}
+						{{ submitting ? __('Submitting...') : __('Submit Quiz') }}
 					</button>
 				</div>
 
@@ -75,7 +77,9 @@
 						:key="item.item_id"
 						class="student-hub-card student-hub-card--neutral p-5"
 					>
-						<p class="type-overline text-ink/60">Question {{ item.position }}</p>
+						<p class="type-overline text-ink/60">
+							{{ __('Question {0}', [item.position]) }}
+						</p>
 						<div class="mt-2 type-body text-ink quiz-richtext" v-html="item.prompt_html || ''" />
 
 						<div v-if="isChoiceType(item.question_type)" class="mt-4 space-y-3">
@@ -104,8 +108,8 @@
 								class="if-textarea"
 								:placeholder="
 									item.question_type === 'Essay'
-										? 'Write your response here'
-										: 'Type your answer here'
+										? __('Write your response here')
+										: __('Type your answer here')
 								"
 								@input="
 									setTextResponse(item.item_id, ($event.target as HTMLTextAreaElement).value)
@@ -118,28 +122,30 @@
 
 			<section v-else-if="sessionPayload.review" class="student-hub-section">
 				<div class="mb-5 flex flex-wrap gap-2">
-					<span class="chip chip-focus">Status {{ sessionPayload.review.attempt.status }}</span>
+					<span class="chip chip-focus">
+						{{ __('Status {0}', [sessionPayload.review.attempt.status]) }}
+					</span>
 					<span v-if="sessionPayload.review.attempt.score != null" class="chip">
-						Score {{ sessionPayload.review.attempt.score }}
+						{{ __('Score {0}', [sessionPayload.review.attempt.score]) }}
 					</span>
 					<span v-if="sessionPayload.review.attempt.percentage != null" class="chip">
 						{{ sessionPayload.review.attempt.percentage }}%
 					</span>
 					<span v-if="sessionPayload.review.attempt.requires_manual_review" class="chip chip-warm">
-						Awaiting manual review
+						{{ __('Awaiting manual review') }}
 					</span>
 				</div>
 
 				<section class="mb-5 rounded-2xl border border-line-soft bg-surface-soft p-4">
 					<div class="flex flex-wrap gap-2">
 						<span v-if="releasedResult?.grade_visible" class="chip chip-focus">
-							Grade released
+							{{ __('Grade released') }}
 						</span>
 						<span v-if="releasedResult?.feedback_visible" class="chip chip-warm">
-							Feedback released
+							{{ __('Feedback released') }}
 						</span>
 						<span v-if="releasedResult?.feedback?.submission_version" class="chip">
-							Feedback on version {{ releasedResult.feedback.submission_version }}
+							{{ __('Feedback on version {0}', [releasedResult.feedback.submission_version]) }}
 						</span>
 					</div>
 
@@ -149,15 +155,17 @@
 					<template v-else-if="releasedResult">
 						<div class="mt-3 flex flex-wrap gap-2">
 							<span v-if="releasedResult.official.grade" class="chip">
-								Grade {{ releasedResult.official.grade }}
+								{{ __('Grade {0}', [releasedResult.official.grade]) }}
 							</span>
-							<span v-if="releasedResult.official.feedback" class="chip"> Teacher feedback </span>
+							<span v-if="releasedResult.official.feedback" class="chip">
+								{{ __('Teacher feedback') }}
+							</span>
 							<RouterLink
 								v-if="releasedFeedbackRoute"
 								:to="releasedFeedbackRoute"
 								class="if-button if-button--secondary"
 							>
-								Open released feedback
+								{{ __('Open released feedback') }}
 							</RouterLink>
 						</div>
 
@@ -174,7 +182,7 @@
 								v-if="releasedResult.feedback?.summary.overall"
 								class="rounded-2xl border border-line-soft bg-white p-3"
 							>
-								<p class="type-caption text-ink/60">Overall summary</p>
+								<p class="type-caption text-ink/60">{{ __('Overall summary') }}</p>
 								<p class="mt-2 type-body text-ink/80">
 									{{ releasedResult.feedback?.summary.overall }}
 								</p>
@@ -183,7 +191,7 @@
 								v-if="releasedResult.feedback?.summary.strengths"
 								class="rounded-2xl border border-line-soft bg-white p-3"
 							>
-								<p class="type-caption text-ink/60">Strengths</p>
+								<p class="type-caption text-ink/60">{{ __('Strengths') }}</p>
 								<p class="mt-2 type-body text-ink/80">
 									{{ releasedResult.feedback?.summary.strengths }}
 								</p>
@@ -192,7 +200,7 @@
 								v-if="releasedResult.feedback?.summary.improvements"
 								class="rounded-2xl border border-line-soft bg-white p-3"
 							>
-								<p class="type-caption text-ink/60">Improvements</p>
+								<p class="type-caption text-ink/60">{{ __('Improvements') }}</p>
 								<p class="mt-2 type-body text-ink/80">
 									{{ releasedResult.feedback?.summary.improvements }}
 								</p>
@@ -201,7 +209,7 @@
 								v-if="releasedResult.feedback?.summary.next_steps"
 								class="rounded-2xl border border-line-soft bg-white p-3"
 							>
-								<p class="type-caption text-ink/60">Next steps</p>
+								<p class="type-caption text-ink/60">{{ __('Next steps') }}</p>
 								<p class="mt-2 type-body text-ink/80">
 									{{ releasedResult.feedback?.summary.next_steps }}
 								</p>
@@ -216,7 +224,9 @@
 						:key="item.item_id"
 						class="student-hub-card student-hub-card--neutral p-5"
 					>
-						<p class="type-overline text-ink/60">Question {{ item.position }}</p>
+						<p class="type-overline text-ink/60">
+							{{ __('Question {0}', [item.position]) }}
+						</p>
 						<div class="mt-2 type-body text-ink quiz-richtext" v-html="item.prompt_html || ''" />
 
 						<div v-if="item.options.length" class="mt-4 space-y-2">
@@ -240,7 +250,7 @@
 							v-else-if="item.response_text"
 							class="mt-4 student-hub-card student-hub-card--neutral p-4"
 						>
-							<p class="type-caption text-ink/60">Your response</p>
+							<p class="type-caption text-ink/60">{{ __('Your response') }}</p>
 							<p class="mt-2 type-body text-ink">{{ item.response_text }}</p>
 						</div>
 
@@ -263,6 +273,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 
+import { __ } from '@/lib/i18n';
 import {
 	openStudentQuizSession,
 	saveStudentQuizAttempt,
@@ -329,13 +340,15 @@ const releasedResult = computed(() => sessionPayload.value?.released_result || n
 const releasedResultMessage = computed(() => {
 	if (isPractice.value) return '';
 	if (sessionPayload.value?.review?.attempt.requires_manual_review) {
-		return 'This quiz is still being reviewed. Released scores and feedback will appear here after grading is complete.';
+		return __(
+			'This quiz is still being reviewed. Released scores and feedback will appear here after grading is complete.'
+		);
 	}
 	if (!releasedResult.value) {
-		return 'Results and feedback will appear here after your teacher releases them.';
+		return __('Results and feedback will appear here after your teacher releases them.');
 	}
 	if (!releasedResult.value.grade_visible && !releasedResult.value.feedback_visible) {
-		return 'Results and feedback will appear here after your teacher releases them.';
+		return __('Results and feedback will appear here after your teacher releases them.');
 	}
 	return '';
 });
@@ -344,12 +357,12 @@ const timeRemainingLabel = computed(() => {
 	const expiresOn = sessionPayload.value?.session.expires_on;
 	if (!expiresOn || sessionPayload.value?.mode !== 'attempt') return '';
 	const remainingMs = new Date(expiresOn).getTime() - nowMs.value;
-	if (Number.isNaN(remainingMs) || remainingMs <= 0) return 'Time expired';
+	if (Number.isNaN(remainingMs) || remainingMs <= 0) return __('Time expired');
 	const totalMinutes = Math.floor(remainingMs / 60000);
 	const hours = Math.floor(totalMinutes / 60);
 	const minutes = totalMinutes % 60;
-	if (hours > 0) return `${hours}h ${minutes}m remaining`;
-	return `${minutes}m remaining`;
+	if (hours > 0) return __('{0}h {1}m remaining', [hours, minutes]);
+	return __('{0}m remaining', [minutes]);
 });
 
 function startTimer() {
@@ -387,7 +400,7 @@ async function loadSession() {
 		} else if (typeof error === 'string' && error) {
 			errorMessage.value = error;
 		} else {
-			errorMessage.value = 'Unable to open this quiz.';
+			errorMessage.value = __('Unable to open this quiz.');
 		}
 	} finally {
 		loading.value = false;
@@ -463,10 +476,10 @@ async function saveProgress() {
 			attempt_id: sessionPayload.value.session.attempt_id,
 			responses: buildResponses(),
 		});
-		actionMessage.value = 'Progress saved.';
+		actionMessage.value = __('Progress saved.');
 	} catch (error: unknown) {
 		actionMessage.value =
-			error instanceof Error && error.message ? error.message : 'Could not save progress.';
+			error instanceof Error && error.message ? error.message : __('Could not save progress.');
 	} finally {
 		saving.value = false;
 	}
@@ -498,17 +511,18 @@ async function submitQuiz() {
 		stopTimer();
 	} catch (error: unknown) {
 		actionMessage.value =
-			error instanceof Error && error.message ? error.message : 'Could not submit this quiz.';
+			error instanceof Error && error.message ? error.message : __('Could not submit this quiz.');
 	} finally {
 		submitting.value = false;
 	}
 }
 
 function reviewLine(item: StudentQuizReviewItem): string {
-	if (item.requires_manual_grading) return 'Awaiting manual review.';
-	if (!isPractice.value && !releasedResult.value?.feedback_visible) return 'Response recorded.';
-	if (item.awarded_score != null) return `Score ${item.awarded_score}.`;
-	return item.is_correct ? 'Correct.' : 'Incorrect.';
+	if (item.requires_manual_grading) return __('Awaiting manual review.');
+	if (!isPractice.value && !releasedResult.value?.feedback_visible)
+		return __('Response recorded.');
+	if (item.awarded_score != null) return __('Score {0}.', [item.awarded_score]);
+	return item.is_correct ? __('Correct.') : __('Incorrect.');
 }
 
 watch(

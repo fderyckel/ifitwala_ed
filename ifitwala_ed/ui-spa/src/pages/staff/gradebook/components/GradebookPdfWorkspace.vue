@@ -4,10 +4,10 @@
 			<div class="flex flex-wrap items-start justify-between gap-3">
 				<div class="min-w-0">
 					<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-						PDF Workspace
+						{{ __('PDF Workspace') }}
 					</p>
 					<h3 class="mt-2 text-sm font-semibold text-ink">
-						{{ attachment.file_name || 'PDF attachment' }}
+						{{ attachment.file_name || __('PDF attachment') }}
 					</h3>
 					<p class="mt-2 text-sm text-ink/70">
 						{{ workspaceMessage }}
@@ -17,7 +17,9 @@
 					<Badge v-if="annotationReadiness" variant="subtle">
 						{{ annotationModeLabel(annotationReadiness) }}
 					</Badge>
-					<Badge v-if="previewStatus" variant="subtle"> Preview {{ previewStatus }} </Badge>
+					<Badge v-if="previewStatus" variant="subtle">
+						{{ __('Preview {0}', [previewStatus]) }}
+					</Badge>
 					<Badge v-if="attachment.file_size" variant="subtle">
 						{{ formatBytes(attachment.file_size) }}
 					</Badge>
@@ -48,7 +50,7 @@
 					target="_blank"
 					rel="noreferrer"
 				>
-					Open source PDF
+					{{ __('Open source PDF') }}
 				</a>
 			</div>
 		</div>
@@ -62,7 +64,7 @@
 						:disabled="!canGoPreviousPage"
 						@click="goToPreviousPage"
 					>
-						Previous
+						{{ __('Previous') }}
 					</button>
 					<button
 						type="button"
@@ -70,9 +72,11 @@
 						:disabled="!canGoNextPage"
 						@click="goToNextPage"
 					>
-						Next
+						{{ __('Next') }}
 					</button>
-					<span class="text-sm font-medium text-ink/70">Page {{ currentPageLabel }}</span>
+					<span class="text-sm font-medium text-ink/70">
+						{{ __('Page {0}', [currentPageLabel]) }}
+					</span>
 				</div>
 
 				<div class="flex flex-wrap items-center gap-2">
@@ -82,7 +86,7 @@
 						:disabled="!canAdjustZoom"
 						@click="zoomOut"
 					>
-						Zoom out
+						{{ __('Zoom out') }}
 					</button>
 					<button
 						type="button"
@@ -98,7 +102,7 @@
 						:disabled="!canAdjustZoom"
 						@click="zoomIn"
 					>
-						Zoom in
+						{{ __('Zoom in') }}
 					</button>
 				</div>
 			</div>
@@ -108,9 +112,11 @@
 			<div class="flex flex-wrap items-start justify-between gap-3">
 				<div class="min-w-0">
 					<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-						Draft Overlay
+						{{ __('Draft Overlay') }}
 					</p>
-					<h4 class="mt-1 text-sm font-semibold text-ink">Selected-submission feedback drafts</h4>
+					<h4 class="mt-1 text-sm font-semibold text-ink">
+						{{ __('Selected-submission feedback drafts') }}
+					</h4>
 					<p class="mt-2 text-sm text-ink/70">
 						{{ overlayGuidance }}
 					</p>
@@ -123,7 +129,7 @@
 						:class="toolButtonClass('browse')"
 						@click="selectedTool = 'browse'"
 					>
-						Browse
+						{{ __('Browse') }}
 					</button>
 					<button
 						type="button"
@@ -132,7 +138,7 @@
 						:disabled="!canAnnotateCurrentPage"
 						@click="selectedTool = 'point'"
 					>
-						Point comment
+						{{ __('Point comment') }}
 					</button>
 					<button
 						type="button"
@@ -141,7 +147,7 @@
 						:disabled="!canAnnotateCurrentPage"
 						@click="selectedTool = 'rect'"
 					>
-						Area comment
+						{{ __('Area comment') }}
 					</button>
 					<button
 						type="button"
@@ -150,7 +156,7 @@
 						:disabled="!canAnnotateCurrentPage"
 						@click="addPageCommentDraft"
 					>
-						Add page comment
+						{{ __('Add page comment') }}
 					</button>
 				</div>
 			</div>
@@ -164,7 +170,7 @@
 					<div
 						class="rounded-full border border-white/70 bg-white/90 px-3 py-1 text-xs font-medium text-ink/55 shadow-sm"
 					>
-						Ifitwala-owned viewer shell
+						{{ __('Ifitwala-owned viewer shell') }}
 					</div>
 					<div
 						class="rounded-full border border-white/70 bg-white/90 px-3 py-1 text-xs font-medium text-ink/55 shadow-sm"
@@ -194,7 +200,7 @@
 						<div ref="pageSurfaceRef" class="relative inline-block">
 							<canvas
 								ref="canvasRef"
-								:aria-label="`${attachment.file_name || 'PDF attachment'} PDF page`"
+								:aria-label="__('{0} PDF page', [attachment.file_name || __('PDF attachment')])"
 								class="block max-w-full rounded-xl bg-white shadow-sm ring-1 ring-black/5"
 							/>
 
@@ -214,7 +220,7 @@
 									class="absolute flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white bg-canopy text-xs font-semibold text-white shadow-sm ring-2 ring-canopy/20 transition hover:scale-105"
 									:class="selectedDraftId === draft.id ? 'ring-4 ring-canopy/30' : ''"
 									:style="pointStyle(draft.point)"
-									:aria-label="`Select ${kindLabel(draft.kind).toLowerCase()} draft`"
+									:aria-label="__('Select {0} draft', [kindLabel(draft.kind).toLowerCase()])"
 									@click.stop="selectDraft(draft.id)"
 									@pointerdown.stop
 								>
@@ -228,7 +234,7 @@
 									class="absolute border-2 border-canopy/80 bg-canopy/10 transition hover:bg-canopy/15"
 									:class="selectedDraftId === draft.id ? 'ring-4 ring-canopy/20' : ''"
 									:style="rectStyle(draft.rect)"
-									:aria-label="`Select ${kindLabel(draft.kind).toLowerCase()} draft`"
+									:aria-label="__('Select {0} draft', [kindLabel(draft.kind).toLowerCase()])"
 									@click.stop="selectDraft(draft.id)"
 									@pointerdown.stop
 								>
@@ -252,7 +258,7 @@
 				<div v-else-if="showInlinePreviewFallback" class="p-3 pt-12">
 					<img
 						:src="previewUrl || undefined"
-						:alt="`${attachment.file_name || 'PDF attachment'} first-page preview`"
+						:alt="__('{0} first-page preview', [attachment.file_name || __('PDF attachment')])"
 						class="h-72 w-full rounded-xl bg-white object-contain"
 						loading="lazy"
 					/>
@@ -272,16 +278,21 @@
 				<div class="flex items-start justify-between gap-3">
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-							Draft Annotations
+							{{ __('Draft Annotations') }}
 						</p>
-						<h4 class="mt-1 text-sm font-semibold text-ink">Drawer feedback draft items</h4>
+						<h4 class="mt-1 text-sm font-semibold text-ink">
+							{{ __('Drawer feedback draft items') }}
+						</h4>
 					</div>
 					<Badge variant="subtle">{{ draftCountLabel }}</Badge>
 				</div>
 
 				<p class="mt-2 text-sm text-ink/70">
-					These anchors belong to the selected-submission feedback draft and save through the
-					drawer workspace mutation.
+					{{
+						__(
+							'These anchors belong to the selected-submission feedback draft and save through the drawer workspace mutation.'
+						)
+					}}
 				</p>
 
 				<div class="mt-4 space-y-2">
@@ -302,7 +313,7 @@
 								<p class="text-sm font-semibold text-ink">
 									{{ kindLabel(draft.kind) }}
 								</p>
-								<p class="mt-1 text-xs text-ink/55">Page {{ draft.page }}</p>
+								<p class="mt-1 text-xs text-ink/55">{{ __('Page {0}', [draft.page]) }}</p>
 							</div>
 							<div
 								class="flex h-6 min-w-6 items-center justify-center rounded-full border border-border/70 bg-white px-1 text-xs font-semibold text-ink/60"
@@ -330,14 +341,14 @@
 					<div class="flex items-start justify-between gap-3">
 						<div>
 							<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-								Selected Draft
+								{{ __('Selected Draft') }}
 							</p>
 							<h4 class="mt-1 text-sm font-semibold text-ink">
-								{{ kindLabel(selectedDraft.kind) }} · Page {{ selectedDraft.page }}
+								{{ kindLabel(selectedDraft.kind) }} · {{ __('Page {0}', [selectedDraft.page]) }}
 							</h4>
 						</div>
 						<button type="button" class="if-button if-button--quiet" @click="removeSelectedDraft">
-							Remove
+							{{ __('Remove') }}
 						</button>
 					</div>
 
@@ -345,21 +356,21 @@
 						class="mt-4 block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45"
 						for="gradebook-pdf-draft-note"
 					>
-						Draft note
+						{{ __('Draft note') }}
 					</label>
 					<textarea
 						id="gradebook-pdf-draft-note"
 						class="mt-2 min-h-28 w-full rounded-2xl border border-border/70 bg-white px-3 py-3 text-sm text-ink shadow-sm outline-none transition focus:border-canopy/50 focus:ring-2 focus:ring-canopy/20"
 						:value="selectedDraft.comment"
 						:disabled="props.disabled"
-						placeholder="Capture the draft teaching note for this feedback anchor."
+						:placeholder="__('Capture the draft teaching note for this feedback anchor.')"
 						@input="onSelectedDraftCommentChanged"
 					/>
 					<div class="mt-4 grid gap-3">
 						<div class="grid gap-3 md:grid-cols-2">
 							<div class="space-y-1.5">
 								<label class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-									Intent
+									{{ __('Intent') }}
 								</label>
 								<FormControl
 									type="select"
@@ -373,7 +384,7 @@
 							</div>
 							<div class="space-y-1.5">
 								<label class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-									Workflow state
+									{{ __('Workflow state') }}
 								</label>
 								<FormControl
 									type="select"
@@ -389,7 +400,7 @@
 
 						<div class="space-y-1.5">
 							<label class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-								Linked criterion
+								{{ __('Linked criterion') }}
 							</label>
 							<FormControl
 								type="select"
@@ -407,12 +418,15 @@
 						<div class="flex items-start justify-between gap-3">
 							<div>
 								<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-									Reusable comments
+									{{ __('Reusable comments') }}
 								</p>
-								<h5 class="mt-1 text-sm font-semibold text-ink">Comment bank</h5>
+								<h5 class="mt-1 text-sm font-semibold text-ink">{{ __('Comment bank') }}</h5>
 								<p class="mt-2 text-sm text-ink/65">
-									Insert a reusable note into this draft, or promote the current draft note into
-									your personal bank.
+									{{
+										__(
+											'Insert a reusable note into this draft, or promote the current draft note into your personal bank.'
+										)
+									}}
 								</p>
 							</div>
 							<Badge variant="subtle">{{ commentBankCountLabel }}</Badge>
@@ -421,7 +435,7 @@
 						<div class="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
 							<div class="space-y-1.5">
 								<label class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-									Save scope
+									{{ __('Save scope') }}
 								</label>
 								<FormControl
 									type="select"
@@ -439,7 +453,7 @@
 								:disabled="commentBankSaveDisabled"
 								@click="emitSaveSelectedDraftToCommentBank"
 							>
-								{{ props.commentBankBusy ? 'Saving…' : 'Add to comment bank' }}
+								{{ props.commentBankBusy ? __('Saving…') : __('Add to comment bank') }}
 							</button>
 						</div>
 
@@ -469,7 +483,7 @@
 											</Badge>
 										</div>
 									</div>
-									<span class="text-xs font-semibold text-canopy">Use</span>
+									<span class="text-xs font-semibold text-canopy">{{ __('Use') }}</span>
 								</div>
 								<p class="mt-2 text-sm text-ink/70">{{ entry.body }}</p>
 							</button>
@@ -478,7 +492,7 @@
 								v-if="!suggestedCommentBankEntries.length"
 								class="rounded-2xl border border-dashed border-border/70 bg-gray-50/40 px-4 py-5 text-sm text-ink/65"
 							>
-								No reusable comments match this drawer context yet.
+								{{ __('No reusable comments match this drawer context yet.') }}
 							</div>
 						</div>
 					</div>
@@ -505,6 +519,7 @@ import {
 import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 
+import { __ } from '@/lib/i18n';
 import type {
 	CommentBankEntry,
 	CommentBankPayload,
@@ -601,33 +616,33 @@ const ignoreNextSurfaceClick = ref(false);
 const selectedCommentBankScope = ref<CommentBankScopeMode>('task');
 
 const feedbackIntentOptions: Array<{ label: string; value: FeedbackWorkspaceItem['intent'] }> = [
-	{ label: 'Strength', value: 'strength' },
-	{ label: 'Issue', value: 'issue' },
-	{ label: 'Question', value: 'question' },
-	{ label: 'Next step', value: 'next_step' },
-	{ label: 'Rubric evidence', value: 'rubric_evidence' },
+	{ label: __('Strength'), value: 'strength' },
+	{ label: __('Issue'), value: 'issue' },
+	{ label: __('Question'), value: 'question' },
+	{ label: __('Next step'), value: 'next_step' },
+	{ label: __('Rubric evidence'), value: 'rubric_evidence' },
 ];
 
 const feedbackWorkflowOptions: Array<{
 	label: string;
 	value: FeedbackWorkspaceItem['workflow_state'];
 }> = [
-	{ label: 'Draft', value: 'draft' },
-	{ label: 'Published', value: 'published' },
-	{ label: 'Acknowledged', value: 'acknowledged' },
-	{ label: 'Resolved', value: 'resolved' },
+	{ label: __('Draft'), value: 'draft' },
+	{ label: __('Published'), value: 'published' },
+	{ label: __('Acknowledged'), value: 'acknowledged' },
+	{ label: __('Resolved'), value: 'resolved' },
 ];
 
 const commentBankScopeOptions = computed<Array<{ label: string; value: CommentBankScopeMode }>>(
 	() => {
 		const options: Array<{ label: string; value: CommentBankScopeMode }> = [
-			{ label: 'Personal', value: 'personal' },
+			{ label: __('Personal'), value: 'personal' },
 		];
 		if (props.commentBank?.context.course) {
-			options.push({ label: 'This course', value: 'course' });
+			options.push({ label: __('This course'), value: 'course' });
 		}
 		if (props.commentBank?.context.task) {
-			options.push({ label: 'This task', value: 'task' });
+			options.push({ label: __('This task'), value: 'task' });
 		}
 		return options;
 	}
@@ -635,7 +650,7 @@ const commentBankScopeOptions = computed<Array<{ label: string; value: CommentBa
 
 const criterionOptionsWithBlank = computed(() => {
 	const rows = props.criteriaOptions || [];
-	return [{ label: 'No linked criterion', value: '' }, ...rows];
+	return [{ label: __('No linked criterion'), value: '' }, ...rows];
 });
 
 const governedAttachment = computed(() => props.attachment.attachment || null);
@@ -658,12 +673,12 @@ const canAnnotateCurrentPage = computed(
 );
 
 const previewActionLabel = computed(() =>
-	previewStatus.value === 'ready' ? 'Open preview' : 'Try preview'
+	previewStatus.value === 'ready' ? __('Open preview') : __('Try preview')
 );
 
 const currentPageLabel = computed(() => {
-	if (!pageCount.value) return '1 of —';
-	return `${currentPage.value} of ${pageCount.value}`;
+	if (!pageCount.value) return __('1 of —');
+	return __('{0} of {1}', [currentPage.value, pageCount.value]);
 });
 
 const zoomLabel = computed(() => `${Math.round(zoomFactor.value * 100)}%`);
@@ -684,11 +699,11 @@ const selectedDraft = computed(
 
 const draftCountLabel = computed(() => {
 	const count = draftAnnotations.value.length;
-	return count === 1 ? '1 draft' : `${count} drafts`;
+	return count === 1 ? __('1 draft') : __('{0} drafts', [count]);
 });
 const commentBankCountLabel = computed(() => {
 	const count = props.commentBank?.entries.length || 0;
-	return count === 1 ? '1 entry' : `${count} entries`;
+	return count === 1 ? __('1 entry') : __('{0} entries', [count]);
 });
 
 const pointDraftsForCurrentPage = computed(() =>
@@ -713,17 +728,17 @@ const pendingRectStyle = computed(() => {
 
 const viewerSurfaceLabel = computed(() => {
 	if (viewerError.value) {
-		return showInlinePreviewFallback.value ? 'Preview fallback' : 'Source PDF fallback';
+		return showInlinePreviewFallback.value ? __('Preview fallback') : __('Source PDF fallback');
 	}
-	if (isDocumentLoading.value) return 'Loading PDF';
-	if (draftAnnotations.value.length) return 'Draft overlay active';
-	if (hasRenderedPage.value) return 'Read-only pdf.js viewer';
-	return 'Governed PDF viewer';
+	if (isDocumentLoading.value) return __('Loading PDF');
+	if (draftAnnotations.value.length) return __('Draft overlay active');
+	if (hasRenderedPage.value) return __('Read-only pdf.js viewer');
+	return __('Governed PDF viewer');
 });
 
 const viewerLoadingLabel = computed(() => {
-	if (isDocumentLoading.value) return 'Loading governed source PDF...';
-	return 'Rendering PDF page...';
+	if (isDocumentLoading.value) return __('Loading governed source PDF...');
+	return __('Rendering PDF page...');
 });
 
 const showViewerLoadingBanner = computed(
@@ -732,37 +747,46 @@ const showViewerLoadingBanner = computed(
 
 const workspaceMessage = computed(() => {
 	if (draftAnnotations.value.length) {
-		return `Point, area, and page feedback drafts are active for this selected submission version. ${draftCountLabel.value} currently in the drawer draft workspace.`;
+		return __(
+			'Point, area, and page feedback drafts are active for this selected submission version. {0} currently in the drawer draft workspace.',
+			[draftCountLabel.value]
+		);
 	}
 	if (props.annotationReadiness?.message) {
 		return props.annotationReadiness.message;
 	}
 	if (hasRenderedPage.value) {
-		return 'Read-only pdf.js rendering is ready for this governed PDF evidence.';
+		return __('Read-only pdf.js rendering is ready for this governed PDF evidence.');
 	}
 	if (showInlinePreviewFallback.value) {
-		return 'The drawer is showing the governed preview derivative while the source PDF viewer is unavailable.';
+		return __(
+			'The drawer is showing the governed preview derivative while the source PDF viewer is unavailable.'
+		);
 	}
-	return 'Open the governed source PDF while inline rendering is unavailable.';
+	return __('Open the governed source PDF while inline rendering is unavailable.');
 });
 
 const overlayGuidance = computed(() => {
 	if (props.disabled) {
-		return 'Feedback editing is currently locked for this drawer context.';
+		return __('Feedback editing is currently locked for this drawer context.');
 	}
 	if (!canAnnotateCurrentPage.value) {
-		return 'The source PDF viewer must finish loading before point, area, or page feedback drafts are available.';
+		return __(
+			'The source PDF viewer must finish loading before point, area, or page feedback drafts are available.'
+		);
 	}
 	if (selectedTool.value === 'point') {
-		return 'Click once on the page to drop a draft point comment anchor.';
+		return __('Click once on the page to drop a draft point comment anchor.');
 	}
 	if (selectedTool.value === 'rect') {
-		return 'Drag on the page to create a draft area comment anchor.';
+		return __('Drag on the page to create a draft area comment anchor.');
 	}
 	if (draftAnnotations.value.length) {
-		return 'Select a draft on the page or from the right panel to keep refining its note.';
+		return __('Select a draft on the page or from the right panel to keep refining its note.');
 	}
-	return 'Use point, area, or page comments to draft anchored feedback for the selected submission version.';
+	return __(
+		'Use point, area, or page comments to draft anchored feedback for the selected submission version.'
+	);
 });
 
 const overlayCursorClass = computed(() => {
@@ -779,28 +803,36 @@ const pageCommentButtonClass = computed(() =>
 );
 
 const viewerEmptyTitle = computed(() =>
-	viewerError.value ? 'Source PDF viewer unavailable' : 'Preparing PDF workspace'
+	viewerError.value ? __('Source PDF viewer unavailable') : __('Preparing PDF workspace')
 );
 
 const emptyDraftMessage = computed(() => {
 	if (props.disabled) {
-		return 'Feedback editing is disabled in this drawer state.';
+		return __('Feedback editing is disabled in this drawer state.');
 	}
 	if (!canAnnotateCurrentPage.value) {
-		return 'Feedback drafts unlock after the governed PDF finishes loading in the drawer.';
+		return __('Feedback drafts unlock after the governed PDF finishes loading in the drawer.');
 	}
-	return 'Choose Point comment, Area comment, or Add page comment to start a feedback draft.';
+	return __('Choose Point comment, Area comment, or Add page comment to start a feedback draft.');
 });
 
 const selectedDraftAnchorSummary = computed(() => {
 	if (!selectedDraft.value) return '';
 	if (selectedDraft.value.kind === 'point' && selectedDraft.value.point) {
-		return `Point anchor at ${formatPercent(selectedDraft.value.point.x)} across and ${formatPercent(selectedDraft.value.point.y)} down the current page.`;
+		return __('Point anchor at {0} across and {1} down the current page.', [
+			formatPercent(selectedDraft.value.point.x),
+			formatPercent(selectedDraft.value.point.y),
+		]);
 	}
 	if (selectedDraft.value.kind === 'rect' && selectedDraft.value.rect) {
-		return `Area anchor starts ${formatPercent(selectedDraft.value.rect.x)} across and ${formatPercent(selectedDraft.value.rect.y)} down the page, spanning ${formatPercent(selectedDraft.value.rect.width)} by ${formatPercent(selectedDraft.value.rect.height)}.`;
+		return __('Area anchor starts {0} across and {1} down the page, spanning {2} by {3}.', [
+			formatPercent(selectedDraft.value.rect.x),
+			formatPercent(selectedDraft.value.rect.y),
+			formatPercent(selectedDraft.value.rect.width),
+			formatPercent(selectedDraft.value.rect.height),
+		]);
 	}
-	return 'Page-level draft with no local coordinate anchor yet.';
+	return __('Page-level draft with no local coordinate anchor yet.');
 });
 const commentBankEntries = computed(() => props.commentBank?.entries || []);
 const selectedDraftCriteria = computed(() => selectedDraft.value?.assessment_criteria || null);
@@ -830,15 +862,19 @@ const fallbackMessage = computed(() => {
 		return viewerError.value;
 	}
 	if (previewStatus.value === 'pending') {
-		return 'Preview generation is still processing. Open the source PDF to review the full document now.';
+		return __(
+			'Preview generation is still processing. Open the source PDF to review the full document now.'
+		);
 	}
 	if (previewStatus.value === 'failed') {
-		return 'Preview generation failed for this PDF. Open the source PDF to continue review.';
+		return __('Preview generation failed for this PDF. Open the source PDF to continue review.');
 	}
 	if (previewStatus.value === 'not_applicable') {
-		return 'This PDF does not currently expose a preview derivative. Open the source PDF to continue review.';
+		return __(
+			'This PDF does not currently expose a preview derivative. Open the source PDF to continue review.'
+		);
 	}
-	return 'Open the source PDF to continue review from this drawer.';
+	return __('Open the source PDF to continue review from this drawer.');
 });
 
 let activeLoadGeneration = 0;
@@ -848,9 +884,9 @@ let activePdfDocument: LoadedPdfDocument | null = null;
 let activeRenderTask: PdfRenderTaskLike | null = null;
 
 function annotationModeLabel(readiness: AnnotationReadinessPayload): string {
-	if (readiness.mode === 'reduced') return 'Reduced mode';
-	if (readiness.mode === 'unavailable') return 'Preview fallback';
-	return 'Not applicable';
+	if (readiness.mode === 'reduced') return __('Reduced mode');
+	if (readiness.mode === 'unavailable') return __('Preview fallback');
+	return __('Not applicable');
 }
 
 function formatBytes(value?: number | null) {
@@ -873,15 +909,15 @@ function toolButtonClass(tool: AnnotationTool) {
 }
 
 function kindLabel(kind: DraftAnnotation['kind']) {
-	if (kind === 'point') return 'Point comment';
-	if (kind === 'rect') return 'Area comment';
-	return 'Page comment';
+	if (kind === 'point') return __('Point comment');
+	if (kind === 'rect') return __('Area comment');
+	return __('Page comment');
 }
 
 function draftPlaceholder(draft: DraftAnnotation) {
-	if (draft.kind === 'point') return 'Add the draft teaching note for this point anchor.';
-	if (draft.kind === 'rect') return 'Describe what this draft area comment should call out.';
-	return 'Add the draft page-level note for this page.';
+	if (draft.kind === 'point') return __('Add the draft teaching note for this point anchor.');
+	if (draft.kind === 'rect') return __('Describe what this draft area comment should call out.');
+	return __('Add the draft page-level note for this page.');
 }
 
 function goToPreviousPage() {
@@ -953,7 +989,9 @@ function isCancellationError(error: unknown): boolean {
 
 function formatErrorMessage(error: unknown): string {
 	if (error instanceof Error && error.message) return error.message;
-	return 'The governed PDF could not be loaded in the drawer. Open the source PDF to continue review.';
+	return __(
+		'The governed PDF could not be loaded in the drawer. Open the source PDF to continue review.'
+	);
 }
 
 function clampUnit(value: number) {
@@ -1283,16 +1321,16 @@ function applyCommentBankEntry(entryId: string) {
 }
 
 function commentBankScopeLabel(scopeMode: CommentBankScopeMode) {
-	if (scopeMode === 'task') return 'Task';
-	if (scopeMode === 'course') return 'Course';
-	return 'Personal';
+	if (scopeMode === 'task') return __('Task');
+	if (scopeMode === 'course') return __('Course');
+	return __('Personal');
 }
 
 function commentBankReasonLabel(reason: string) {
-	if (reason === 'criterion') return 'Criterion match';
-	if (reason === 'task') return 'Task match';
-	if (reason === 'course') return 'Course match';
-	return 'General';
+	if (reason === 'criterion') return __('Criterion match');
+	if (reason === 'task') return __('Task match');
+	if (reason === 'course') return __('Course match');
+	return __('General');
 }
 
 function defaultCommentBankScope(): CommentBankScopeMode {
@@ -1339,8 +1377,9 @@ async function loadPdfDocument() {
 	isDocumentLoading.value = Boolean(sourceUrl);
 
 	if (!sourceUrl) {
-		viewerError.value =
-			'This governed PDF does not currently expose a source-file route. Open the preview if available.';
+		viewerError.value = __(
+			'This governed PDF does not currently expose a source-file route. Open the preview if available.'
+		);
 		isDocumentLoading.value = false;
 		return;
 	}
@@ -1354,7 +1393,7 @@ async function loadPdfDocument() {
 			signal: abortController.signal,
 		});
 		if (!response.ok) {
-			throw new Error(`The governed PDF request failed with status ${response.status}.`);
+			throw new Error(__('The governed PDF request failed with status {0}.', [response.status]));
 		}
 		const pdfBytes = new Uint8Array(await response.arrayBuffer());
 		if (loadGeneration !== activeLoadGeneration) return;
@@ -1410,7 +1449,7 @@ async function renderCurrentPage(loadGeneration = activeLoadGeneration) {
 		const canvas = canvasRef.value;
 		const canvasContext = canvas.getContext('2d');
 		if (!canvasContext) {
-			throw new Error('Canvas rendering is unavailable in this browser context.');
+			throw new Error(__('Canvas rendering is unavailable in this browser context.'));
 		}
 
 		const pixelRatio = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;

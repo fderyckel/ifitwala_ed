@@ -41,16 +41,16 @@
 						<div class="if-overlay__header px-6 pt-6">
 							<div class="flex items-start justify-between gap-4">
 								<div>
-									<p class="type-overline text-slate-token/70">Student Context</p>
+									<p class="type-overline text-slate-token/70">{{ __('Student Context') }}</p>
 									<h2 class="type-h2 text-ink">{{ student_name }}</h2>
 								</div>
 								<button
 									type="button"
 									class="if-overlay__icon-button"
-									aria-label="Close"
+									:aria-label="__('Close')"
 									@click="emitClose('programmatic')"
 								>
-									<span aria-hidden="true">x</span>
+									<span aria-hidden="true">&times;</span>
 								</button>
 							</div>
 						</div>
@@ -69,13 +69,13 @@
 									"
 									@click="activeTab = tab"
 								>
-									{{ tab }}
+									{{ tabLabel(tab) }}
 								</button>
 							</div>
 
 							<section v-if="activeTab === 'Snapshot'" class="space-y-4">
 								<div class="space-y-2">
-									<p class="type-caption text-slate-token/70">Signal</p>
+									<p class="type-caption text-slate-token/70">{{ __('Signal') }}</p>
 									<div class="flex flex-wrap gap-2">
 										<button
 											v-for="option in signalOptions"
@@ -89,21 +89,21 @@
 											"
 											@click="signal = option"
 										>
-											{{ option }}
+											{{ signalOptionLabel(option) }}
 										</button>
 									</div>
 								</div>
 
 								<div class="space-y-2">
-									<label class="type-caption text-slate-token/70" for="snapshot-note"
-										>Quick note</label
-									>
+									<label class="type-caption text-slate-token/70" for="snapshot-note">
+										{{ __('Quick note') }}
+									</label>
 									<textarea
 										id="snapshot-note"
 										v-model="snapshotNote"
 										rows="3"
 										class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 type-body text-ink"
-										placeholder="Add a quick note..."
+										:placeholder="__('Add a quick note...')"
 									></textarea>
 								</div>
 
@@ -116,14 +116,14 @@
 									class="rounded-full bg-jacaranda px-5 py-2 type-button-label text-white shadow-soft"
 									@click="saveSnapshot"
 								>
-									Save snapshot
+									{{ __('Save snapshot') }}
 								</button>
 							</section>
 
 							<section v-else-if="activeTab === 'Evidence'" class="space-y-4">
 								<div class="rounded-xl border border-slate-200 bg-white/90 px-4 py-4">
 									<p class="type-body text-slate-token/70">
-										No evidence recorded yet for this session.
+										{{ __('No evidence recorded yet for this session.') }}
 									</p>
 								</div>
 								<button
@@ -131,27 +131,31 @@
 									class="rounded-full border border-slate-200 bg-white px-5 py-2 type-button-label text-ink shadow-sm hover:border-jacaranda/60"
 									@click="openQuickEvidence"
 								>
-									Add evidence
+									{{ __('Add evidence') }}
 								</button>
 							</section>
 
 							<section v-else class="space-y-4">
 								<div class="space-y-2">
-									<label class="type-caption text-slate-token/70" for="teacher-note"
-										>Student log note</label
-									>
+									<label class="type-caption text-slate-token/70" for="teacher-note">
+										{{ __('Student log note') }}
+									</label>
 									<template v-if="canCreateStudentLog">
 										<textarea
 											id="teacher-note"
 											v-model="teacherNote"
 											rows="4"
 											class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 type-body text-ink"
-											placeholder="Draft the note you want to add to Student Log."
+											:placeholder="__('Draft the note you want to add to Student Log.')"
 										></textarea>
 									</template>
 									<div v-else class="rounded-xl border border-slate-200 bg-white/90 px-4 py-4">
 										<p class="type-body text-slate-token/70">
-											Student Log creation is not available for your current role in this Hub flow.
+											{{
+												__(
+													'Student Log creation is not available for your current role in this Hub flow.'
+												)
+											}}
 										</p>
 									</div>
 								</div>
@@ -164,7 +168,7 @@
 									:disabled="!canCreateStudentLog"
 									@click="saveNote"
 								>
-									Create student log
+									{{ __('Create student log') }}
 								</button>
 							</section>
 						</div>
@@ -180,6 +184,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { Dialog, DialogPanel, TransitionChild, TransitionRoot } from '@headlessui/vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { createClassHubService } from '@/lib/classHubService';
+import { __ } from '@/lib/i18n';
 import type { ClassHubSignal } from '@/types/classHub';
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
@@ -216,6 +221,20 @@ const errorMessage = ref('');
 const noteMessage = ref('');
 const canCreateStudentLog = computed(() => Boolean(props.can_create_student_log));
 
+function tabLabel(tab: (typeof tabs)[number]): string {
+	if (tab === 'Evidence') return __('Evidence');
+	if (tab === 'Notes') return __('Notes');
+	return __('Snapshot');
+}
+
+function signalOptionLabel(option: ClassHubSignal['signal']): string {
+	if (option === 'Not Yet') return __('Not Yet');
+	if (option === 'Almost') return __('Almost');
+	if (option === 'Got It') return __('Got It');
+	if (option === 'Exceeded') return __('Exceeded');
+	return option;
+}
+
 function emitClose(reason: CloseReason = 'programmatic') {
 	emit('close', reason);
 }
@@ -223,11 +242,11 @@ function emitClose(reason: CloseReason = 'programmatic') {
 async function saveSnapshot() {
 	errorMessage.value = '';
 	if (!props.class_session) {
-		errorMessage.value = 'Start a session before saving snapshots.';
+		errorMessage.value = __('Start a session before saving snapshots.');
 		return;
 	}
 	if (!signal.value) {
-		errorMessage.value = 'Choose a signal before saving.';
+		errorMessage.value = __('Choose a signal before saving.');
 		return;
 	}
 
@@ -243,7 +262,7 @@ async function saveSnapshot() {
 		await service.saveSignals(props.class_session, payload);
 		emitClose('programmatic');
 	} catch (err) {
-		errorMessage.value = 'Unable to save right now.';
+		errorMessage.value = __('Unable to save right now.');
 		console.error('[StudentContextOverlay] saveSnapshot failed', err);
 	}
 }
@@ -264,19 +283,20 @@ function openQuickEvidence() {
 async function saveNote() {
 	noteMessage.value = '';
 	if (!canCreateStudentLog.value) {
-		noteMessage.value =
-			'Your current Student Log permission does not allow note creation from the Hub.';
+		noteMessage.value = __(
+			'Your current Student Log permission does not allow note creation from the Hub.'
+		);
 		return;
 	}
 	if (!teacherNote.value.trim()) {
-		noteMessage.value = 'Add a note before saving.';
+		noteMessage.value = __('Add a note before saving.');
 		return;
 	}
 
 	try {
 		overlay.open('student-log-create', {
 			mode: 'attendance',
-			sourceLabel: 'Class Hub',
+			sourceLabel: __('Class Hub'),
 			initial_log_text: teacherNote.value.trim(),
 			student: {
 				id: props.student,
@@ -290,12 +310,13 @@ async function saveNote() {
 			},
 		});
 	} catch (err) {
-		noteMessage.value = 'Unable to save right now.';
+		noteMessage.value = __('Unable to save right now.');
 		console.error('[StudentContextOverlay] saveNote failed', err);
 	}
 }
 
-function onDialogClose(_payload: unknown) {
+function onDialogClose(payload: unknown) {
+	void payload;
 	// OverlayHost owns close enforcement.
 }
 

@@ -3,19 +3,22 @@
 		<header class="card-surface p-5 sm:p-6">
 			<div class="page-header">
 				<div class="page-header__intro">
-					<p class="type-overline text-ink/60">My Growth</p>
-					<h1 class="type-h1 text-canopy">Professional Development</h1>
+					<p class="type-overline text-ink/60">{{ __('My Growth') }}</p>
+					<h1 class="type-h1 text-canopy">{{ __('Professional Development') }}</h1>
 					<p class="type-meta text-slate-token/80">
-						Track requests, budget fit, upcoming commitments, and completion follow-through inside
-						the academic year.
+						{{
+							__(
+								'Track requests, budget fit, upcoming commitments, and completion follow-through inside the academic year.'
+							)
+						}}
 					</p>
 				</div>
 				<div class="page-header__actions">
 					<RouterLink class="if-button if-button--secondary" :to="{ name: 'staff-home' }">
-						Back to Home
+						{{ __('Back to Home') }}
 					</RouterLink>
 					<button type="button" class="if-button if-button--primary" @click="openRequestOverlay()">
-						New request
+						{{ __('New request') }}
 					</button>
 					<button
 						type="button"
@@ -23,7 +26,7 @@
 						:disabled="loading"
 						@click="loadBoard"
 					>
-						Refresh
+						{{ __('Refresh') }}
 					</button>
 				</div>
 			</div>
@@ -31,28 +34,32 @@
 
 		<section class="grid grid-cols-2 gap-3 lg:grid-cols-4">
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Open requests</p>
+				<p class="mini-kpi-label">{{ __('Open requests') }}</p>
 				<p class="mini-kpi-value">{{ board?.summary.open_requests ?? 0 }}</p>
 			</article>
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Upcoming PD</p>
+				<p class="mini-kpi-label">{{ __('Upcoming PD') }}</p>
 				<p class="mini-kpi-value">{{ board?.summary.upcoming_records ?? 0 }}</p>
 			</article>
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Completion backlog</p>
+				<p class="mini-kpi-label">{{ __('Completion backlog') }}</p>
 				<p class="mini-kpi-value">{{ board?.summary.completion_backlog ?? 0 }}</p>
 			</article>
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Available budget</p>
+				<p class="mini-kpi-label">{{ __('Available budget') }}</p>
 				<p class="mini-kpi-value">{{ money(board?.summary.available_budget_total ?? 0) }}</p>
 			</article>
 		</section>
 
 		<section v-if="loading" class="card-surface p-5">
-			<p class="type-body text-ink/70">Loading professional development board...</p>
+			<p class="type-body text-ink/70">
+				{{ __('Loading professional development board...') }}
+			</p>
 		</section>
 		<section v-else-if="errorMessage" class="card-surface p-5">
-			<p class="type-body-strong text-flame">Could not load professional development.</p>
+			<p class="type-body-strong text-flame">
+				{{ __('Could not load professional development.') }}
+			</p>
 			<p class="type-body text-ink/70">{{ errorMessage }}</p>
 		</section>
 
@@ -60,17 +67,17 @@
 			<section class="card-surface p-5">
 				<div class="mb-4 flex items-center justify-between gap-3">
 					<div>
-						<h2 class="type-h3 text-ink">Budget Pools</h2>
+						<h2 class="type-h3 text-ink">{{ __('Budget Pools') }}</h2>
 						<p class="type-caption text-ink/60">
-							Choose a pool first when you want a prefilled request.
+							{{ __('Choose a pool first when you want a prefilled request.') }}
 						</p>
 					</div>
 					<p class="type-caption text-ink/60">
-						{{ board.viewer.school }} · {{ board.viewer.academic_year || 'No academic year' }}
+						{{ board.viewer.school }} · {{ board.viewer.academic_year || __('No academic year') }}
 					</p>
 				</div>
 				<div v-if="!board.budget_rows.length" class="type-body text-ink/70">
-					No active PD budgets are available in your current scope.
+					{{ __('No active PD budgets are available in your current scope.') }}
 				</div>
 				<div v-else class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
 					<article
@@ -80,7 +87,7 @@
 					>
 						<p class="type-body-strong text-ink">{{ budget.label }}</p>
 						<p class="mt-1 type-caption text-ink/70">
-							Available: {{ money(budget.available_amount) }}
+							{{ __('Available: {0}', [money(budget.available_amount)]) }}
 						</p>
 						<div class="mt-4">
 							<button
@@ -88,7 +95,7 @@
 								class="if-button if-button--secondary"
 								@click="openRequestOverlay(budget.value)"
 							>
-								Request against this pool
+								{{ __('Request against this pool') }}
 							</button>
 						</div>
 					</article>
@@ -98,13 +105,19 @@
 			<section class="card-surface p-5">
 				<div class="mb-4 flex items-center justify-between gap-3">
 					<div>
-						<h2 class="type-h3 text-ink">My Requests</h2>
+						<h2 class="type-h3 text-ink">{{ __('My Requests') }}</h2>
 						<p class="type-caption text-ink/60">
-							Snapshots are frozen at submission and approvals materialize committed records.
+							{{
+								__(
+									'Snapshots are frozen at submission and approvals materialize committed records.'
+								)
+							}}
 						</p>
 					</div>
 				</div>
-				<div v-if="!board.requests.length" class="type-body text-ink/70">No requests yet.</div>
+				<div v-if="!board.requests.length" class="type-body text-ink/70">
+					{{ __('No requests yet.') }}
+				</div>
 				<ul v-else class="space-y-3">
 					<li
 						v-for="request in board.requests"
@@ -119,10 +132,15 @@
 									{{ formatDateTime(request.start_datetime) }}
 								</p>
 								<p class="type-caption text-ink/70">
-									Status: {{ request.status }} · Validation: {{ request.validation_status }}
+									{{
+										__('Status: {0} · Validation: {1}', [
+											request.status,
+											request.validation_status,
+										])
+									}}
 								</p>
 								<p class="type-caption text-ink/70">
-									Estimated: {{ money(request.estimated_total) }}
+									{{ __('Estimated: {0}', [money(request.estimated_total)]) }}
 								</p>
 							</div>
 							<div class="flex flex-wrap gap-2">
@@ -132,7 +150,7 @@
 									class="if-button if-button--primary"
 									@click="decide(request.name, 'approve')"
 								>
-									Approve
+									{{ __('Approve') }}
 								</button>
 								<button
 									v-if="canDecide && ['Submitted', 'Under Review'].includes(request.status)"
@@ -140,7 +158,7 @@
 									class="if-button if-button--secondary"
 									@click="decide(request.name, 'reject')"
 								>
-									Reject
+									{{ __('Reject') }}
 								</button>
 								<button
 									v-if="canCancelRequest(request.status)"
@@ -148,7 +166,7 @@
 									class="if-button if-button--secondary"
 									@click="cancel(request.name)"
 								>
-									Cancel
+									{{ __('Cancel') }}
 								</button>
 							</div>
 						</div>
@@ -159,14 +177,14 @@
 			<section class="card-surface p-5">
 				<div class="mb-4 flex items-center justify-between gap-3">
 					<div>
-						<h2 class="type-h3 text-ink">Committed Records</h2>
+						<h2 class="type-h3 text-ink">{{ __('Committed Records') }}</h2>
 						<p class="type-caption text-ink/60">
-							Approved requests project into bookings and completion follow-through.
+							{{ __('Approved requests project into bookings and completion follow-through.') }}
 						</p>
 					</div>
 				</div>
 				<div v-if="!board.records.length" class="type-body text-ink/70">
-					No committed records yet.
+					{{ __('No committed records yet.') }}
 				</div>
 				<ul v-else class="space-y-3">
 					<li
@@ -182,9 +200,14 @@
 									{{ formatDateTime(record.start_datetime) }}
 								</p>
 								<p class="type-caption text-ink/70">
-									Status: {{ record.status }} · Estimated: {{ money(record.estimated_total) }}
+									{{
+										__('Status: {0} · Estimated: {1}', [
+											record.status,
+											money(record.estimated_total),
+										])
+									}}
 									<span v-if="record.actual_total">
-										· Actual: {{ money(record.actual_total) }}</span
+										· {{ __('Actual: {0}', [money(record.actual_total)]) }}</span
 									>
 								</p>
 							</div>
@@ -195,7 +218,7 @@
 									class="if-button if-button--primary"
 									@click="openCompletionOverlay(record)"
 								>
-									Complete
+									{{ __('Complete') }}
 								</button>
 								<button
 									v-if="canLiquidate && record.status === 'Completed'"
@@ -203,7 +226,7 @@
 									class="if-button if-button--primary"
 									@click="liquidate(record.name)"
 								>
-									Liquidate
+									{{ __('Liquidate') }}
 								</button>
 							</div>
 						</div>
@@ -220,6 +243,7 @@ import { RouterLink } from 'vue-router';
 import { toast } from 'frappe-ui';
 
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import { __ } from '@/lib/i18n';
 import {
 	cancelProfessionalDevelopmentRequest,
 	decideProfessionalDevelopmentRequest,
@@ -273,7 +297,7 @@ async function loadBoard() {
 		board.value = boardResponse;
 		header.value = headerResponse;
 	} catch (error: any) {
-		errorMessage.value = error?.message || 'Unknown error';
+		errorMessage.value = error?.message || __('Unknown error');
 	} finally {
 		loading.value = false;
 	}
@@ -303,10 +327,10 @@ async function cancel(requestName: string) {
 	try {
 		const response = await cancelProfessionalDevelopmentRequest({ request_name: requestName });
 		board.value = response.board;
-		toast.create({ title: 'Request cancelled', icon: 'check' });
+		toast.create({ title: __('Request cancelled'), icon: 'check' });
 	} catch (error: any) {
 		toast.create({
-			title: 'Could not cancel request',
+			title: __('Could not cancel request'),
 			text: error?.message || '',
 			icon: 'alert-circle',
 		});
@@ -321,12 +345,12 @@ async function decide(requestName: string, decision: 'approve' | 'reject') {
 		});
 		board.value = response.board;
 		toast.create({
-			title: decision === 'approve' ? 'Request approved' : 'Request rejected',
+			title: decision === 'approve' ? __('Request approved') : __('Request rejected'),
 			icon: 'check',
 		});
 	} catch (error: any) {
 		toast.create({
-			title: 'Could not decide request',
+			title: __('Could not decide request'),
 			text: error?.message || '',
 			icon: 'alert-circle',
 		});
@@ -337,10 +361,10 @@ async function liquidate(recordName: string) {
 	try {
 		const response = await liquidateProfessionalDevelopmentRecord({ record_name: recordName });
 		board.value = response.board;
-		toast.create({ title: 'Record liquidated', icon: 'check' });
+		toast.create({ title: __('Record liquidated'), icon: 'check' });
 	} catch (error: any) {
 		toast.create({
-			title: 'Could not liquidate record',
+			title: __('Could not liquidate record'),
 			text: error?.message || '',
 			icon: 'alert-circle',
 		});

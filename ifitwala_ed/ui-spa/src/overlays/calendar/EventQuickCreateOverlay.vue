@@ -1201,6 +1201,7 @@ let attendeeSearchTimer: number | undefined;
 let attendeeSearchRequestSeq = 0;
 let slotRequestSeq = 0;
 let roomRequestSeq = 0;
+let applyingSlotResponse = false;
 
 const meetingForm = reactive({
 	meeting_name: '',
@@ -1308,11 +1309,13 @@ const typeOptions = computed<TypeOption[]>(() => [
 const attendeeKindOptions = computed<AttendeeKindOption[]>(
 	() => options.value?.attendee_kinds || []
 );
-const employeeAttendeeKindOption = computed(() =>
-	attendeeKindOptions.value.find(option => option.value === 'employee') || null
+const employeeAttendeeKindOption = computed(
+	() => attendeeKindOptions.value.find(option => option.value === 'employee') || null
 );
 const nonEmployeeInviteScopeOptions = computed(() =>
-	attendeeKindOptions.value.filter(option => option.value === 'student' || option.value === 'guardian')
+	attendeeKindOptions.value.filter(
+		option => option.value === 'student' || option.value === 'guardian'
+	)
 );
 
 const teamSelectOptions = computed<SelectOption[]>(() => [
@@ -1467,9 +1470,7 @@ function hasSelectedAttendeesOfKind(kind: MeetingAttendeeKind) {
 
 const attendeeScopeSafetyMessage = computed(() => {
 	if (includeStudentAttendees.value && includeGuardianAttendees.value) {
-		return __(
-			'Students and guardians will appear in search and can receive this meeting invite.'
-		);
+		return __('Students and guardians will appear in search and can receive this meeting invite.');
 	}
 	if (includeStudentAttendees.value) {
 		return __('Students will appear in search and can receive this meeting invite.');
@@ -1482,10 +1483,14 @@ const attendeeScopeSafetyMessage = computed(() => {
 
 const inviteScopeMismatchMessage = computed(() => {
 	if (!includeStudentAttendees.value && hasSelectedAttendeesOfKind('student')) {
-		return __('Remove selected student invitees or re-enable Students before creating the meeting.');
+		return __(
+			'Remove selected student invitees or re-enable Students before creating the meeting.'
+		);
 	}
 	if (!includeGuardianAttendees.value && hasSelectedAttendeesOfKind('guardian')) {
-		return __('Remove selected guardian invitees or re-enable Guardians before creating the meeting.');
+		return __(
+			'Remove selected guardian invitees or re-enable Guardians before creating the meeting.'
+		);
 	}
 	return '';
 });
@@ -1761,6 +1766,7 @@ function setErrorState(message: string | null, code: string | null = null) {
 }
 
 function resetSlotSuggestions() {
+	if (applyingSlotResponse) return;
 	slotSearchPerformed.value = false;
 	slotSuggestions.value = [];
 	fallbackSlotSuggestions.value = [];
@@ -2246,16 +2252,23 @@ async function findCommonTimes() {
 
 		if (requestSeq !== slotRequestSeq) return;
 
-		slotSuggestions.value = response.slots || [];
-		fallbackSlotSuggestions.value = response.fallback_slots || [];
-		slotNotes.value = response.notes || [];
-		meetingForm.duration_minutes = String(response.duration_minutes || duration);
-		if (
-			!slotSuggestions.value.length &&
-			!fallbackSlotSuggestions.value.length &&
-			!slotNotes.value.length
-		) {
-			slotNotes.value = ['No common times were returned for the selected window.'];
+		applyingSlotResponse = true;
+		try {
+			meetingForm.duration_minutes = String(response.duration_minutes || duration);
+			slotSuggestions.value = response.slots || [];
+			fallbackSlotSuggestions.value = response.fallback_slots || [];
+			slotNotes.value = response.notes || [];
+			slotSearchPerformed.value = true;
+			if (
+				!slotSuggestions.value.length &&
+				!fallbackSlotSuggestions.value.length &&
+				!slotNotes.value.length
+			) {
+				slotNotes.value = ['No common times were returned for the selected window.'];
+			}
+			await nextTick();
+		} finally {
+			applyingSlotResponse = false;
 		}
 	} catch (error) {
 		if (requestSeq !== slotRequestSeq) return;

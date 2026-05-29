@@ -5,30 +5,37 @@
 			<div class="flex items-start justify-between gap-3">
 				<div class="min-w-0">
 					<div class="type-body font-medium">
-						Policy
+						{{ __('Policy') }}
 						<span v-if="policy?.policy_version" class="text-ink/60">
 							• {{ policy.policy_version }}</span
 						>
 					</div>
 					<div class="type-meta text-ink/60 mt-1">
 						<span>{{ policyTitle }}</span>
-						<span v-if="policy?.version_label"> • Version {{ policy.version_label }}</span>
+						<span v-if="policy?.version_label">
+							• {{ __('Version {0}', [policy.version_label]) }}</span
+						>
 					</div>
 					<div v-if="scopeLabel" class="type-meta text-ink/60 mt-1">
 						{{ scopeLabel }}
 					</div>
 					<div v-if="policy?.employee_name || policy?.employee" class="type-meta text-ink/60 mt-1">
-						Signer: {{ expectedSignerLabel }}
+						{{ __('Signer: {0}', [expectedSignerLabel]) }}
 					</div>
 					<div v-if="policy?.todo_due_date" class="type-meta text-ink/60 mt-1">
-						Due: {{ formatLocalizedDate(policy.todo_due_date, { includeWeekday: true }) }}
+						{{
+							__('Due: {0}', [formatLocalizedDate(policy.todo_due_date, { includeWeekday: true })])
+						}}
 					</div>
 					<div
 						v-if="policy?.is_acknowledged && policy?.acknowledged_at"
 						class="type-meta text-ink/60 mt-1"
 					>
-						Already acknowledged on
-						{{ formatLocalizedDateTime(policy.acknowledged_at, { includeWeekday: true }) }}
+						{{
+							__('Already acknowledged on {0}', [
+								formatLocalizedDateTime(policy.acknowledged_at, { includeWeekday: true }),
+							])
+						}}
 					</div>
 				</div>
 
@@ -39,9 +46,11 @@
 						class="if-action"
 						@click="openInDesk(policy.policy_version)"
 					>
-						Open in Desk
+						{{ __('Open in Desk') }}
 					</button>
-					<button type="button" class="if-action" @click="requestRefresh">Refresh</button>
+					<button type="button" class="if-action" @click="requestRefresh">
+						{{ __('Refresh') }}
+					</button>
 				</div>
 			</div>
 		</div>
@@ -49,9 +58,9 @@
 		<div class="card-surface p-4">
 			<div class="flex items-start justify-between gap-3">
 				<div>
-					<div class="type-body font-medium">Policy review</div>
+					<div class="type-body font-medium">{{ __('Policy review') }}</div>
 					<div class="type-meta text-ink/60 mt-1">
-						Review changes first, then expand to full policy text if needed.
+						{{ __('Review changes first, then expand to full policy text if needed.') }}
 					</div>
 				</div>
 				<div class="flex items-center gap-2">
@@ -62,7 +71,7 @@
 						:disabled="!hasDiffHtml"
 						@click="activeTab = 'changes'"
 					>
-						Changes
+						{{ __('Changes') }}
 					</button>
 					<button
 						type="button"
@@ -70,7 +79,7 @@
 						:aria-pressed="activeTab === 'full'"
 						@click="activeTab = 'full'"
 					>
-						Full policy
+						{{ __('Full policy') }}
 					</button>
 				</div>
 			</div>
@@ -79,16 +88,16 @@
 				v-if="hasChangeSummary || hasChangeStats"
 				class="mt-3 rounded-xl border border-ink/10 bg-white p-3"
 			>
-				<div class="type-caption text-ink/70">What changed</div>
+				<div class="type-caption text-ink/70">{{ __('What changed') }}</div>
 				<div v-if="hasChangeStats" class="mt-2 flex flex-wrap gap-2">
 					<span class="type-meta rounded-full border border-ink/10 px-2 py-1">
-						Added {{ addedCount }}
+						{{ __('Added {0}', [addedCount]) }}
 					</span>
 					<span class="type-meta rounded-full border border-ink/10 px-2 py-1">
-						Removed {{ removedCount }}
+						{{ __('Removed {0}', [removedCount]) }}
 					</span>
 					<span class="type-meta rounded-full border border-ink/10 px-2 py-1">
-						Modified {{ modifiedCount }}
+						{{ __('Modified {0}', [modifiedCount]) }}
 					</span>
 				</div>
 				<p v-if="hasChangeSummary" class="type-meta text-ink mt-2 whitespace-pre-wrap">
@@ -106,7 +115,7 @@
 					v-html="trustedHtml(policy?.diff_html || '')"
 				/>
 				<p v-else class="type-meta text-ink/60">
-					No amendment diff is available for this version. Review the full policy text.
+					{{ __('No amendment diff is available for this version. Review the full policy text.') }}
 				</p>
 			</div>
 
@@ -116,20 +125,24 @@
 					class="prose prose-sm max-w-none text-ink"
 					v-html="trustedHtml(policy.policy_text_html)"
 				/>
-				<p v-else class="type-meta text-ink/60">No policy text is available for this version.</p>
+				<p v-else class="type-meta text-ink/60">
+					{{ __('No policy text is available for this version.') }}
+				</p>
 			</div>
 
 			<div v-if="activeTab === 'changes' && hasDiffHtml" class="mt-2 flex justify-end">
 				<button type="button" class="if-action" @click="activeTab = 'full'">
-					View full policy text
+					{{ __('View full policy text') }}
 				</button>
 			</div>
 		</div>
 
 		<div class="card-surface p-4">
-			<div class="type-body font-medium">Electronic signature</div>
+			<div class="type-body font-medium">{{ __('Electronic signature') }}</div>
 			<p class="type-meta text-ink/60 mt-1">
-				To sign, type your full name exactly as recorded and confirm the legal attestation.
+				{{
+					__('To sign, type your full name exactly as recorded and confirm the legal attestation.')
+				}}
 			</p>
 
 			<div class="mt-3 rounded-xl border border-ink/10 bg-white p-3 space-y-3">
@@ -137,7 +150,7 @@
 					v-if="policy?.acknowledgement_clauses?.length"
 					class="space-y-3 border-b border-ink/10 pb-3"
 				>
-					<div class="type-caption text-ink/70">Acknowledgement clauses</div>
+					<div class="type-caption text-ink/70">{{ __('Acknowledgement clauses') }}</div>
 					<label
 						v-for="clause in policy?.acknowledgement_clauses || []"
 						:key="clause.name"
@@ -158,17 +171,19 @@
 				</div>
 
 				<div class="type-caption text-ink/70">
-					Expected signer name:
+					{{ __('Expected signer name:') }}
 					<span class="type-body-strong text-ink">{{ expectedSignerLabel }}</span>
 				</div>
 
 				<label class="block space-y-1">
-					<span class="type-caption text-ink/70">Type full name as electronic signature</span>
+					<span class="type-caption text-ink/70">
+						{{ __('Type full name as electronic signature') }}
+					</span>
 					<input
 						v-model="typedSignatureName"
 						type="text"
 						class="if-input w-full"
-						placeholder="Enter your full name"
+						:placeholder="__('Enter your full name')"
 						:disabled="busy || policy?.is_acknowledged"
 						@input="signatureTouched = true"
 					/>
@@ -178,7 +193,7 @@
 					v-if="signatureTouched && typedSignatureName.trim() && !isTypedSignatureMatch"
 					class="type-meta text-ink"
 				>
-					Typed signature must match exactly: {{ expectedSignerLabel }}
+					{{ __('Typed signature must match exactly: {0}', [expectedSignerLabel]) }}
 				</p>
 
 				<label class="flex items-start gap-2">
@@ -189,17 +204,22 @@
 						:disabled="busy || policy?.is_acknowledged"
 					/>
 					<span class="type-meta text-ink/80">
-						I acknowledge that typing my full name is my electronic signature and I agree to this
-						policy.
+						{{
+							__(
+								'I acknowledge that typing my full name is my electronic signature and I agree to this policy.'
+							)
+						}}
 					</span>
 				</label>
 
 				<div class="rounded-lg border border-ink/10 bg-surface-soft px-3 py-2">
-					<div class="type-caption text-ink/60">Signature preview</div>
+					<div class="type-caption text-ink/60">{{ __('Signature preview') }}</div>
 					<div class="type-body-strong text-ink mt-1">
-						{{ typedSignatureName.trim() || 'Not signed' }}
+						{{ typedSignatureName.trim() || __('Not signed') }}
 					</div>
-					<div class="type-meta text-ink/60 mt-1">Timestamp on submit: {{ nowLabel }}</div>
+					<div class="type-meta text-ink/60 mt-1">
+						{{ __('Timestamp on submit: {0}', [nowLabel]) }}
+					</div>
 				</div>
 			</div>
 
@@ -208,14 +228,16 @@
 			</div>
 
 			<div class="mt-4 flex items-center justify-end gap-2">
-				<button type="button" class="if-button if-button--quiet" @click="emitClose">Close</button>
+				<button type="button" class="if-button if-button--quiet" @click="emitClose">
+					{{ __('Close') }}
+				</button>
 				<button
 					type="button"
 					class="if-button if-button--primary"
 					:disabled="busy || submittedOnce"
 					@click="acknowledgePolicy"
 				>
-					{{ busy ? 'Signing…' : 'Sign and acknowledge policy' }}
+					{{ busy ? __('Signing...') : __('Sign and acknowledge policy') }}
 				</button>
 			</div>
 		</div>
@@ -279,8 +301,8 @@ const scopeLabel = computed(() => {
 	const parts = [];
 	const org = (policy.value?.policy_organization || '').trim();
 	const school = (policy.value?.policy_school || '').trim();
-	if (org) parts.push(`Organization: ${org}`);
-	if (school) parts.push(`School: ${school}`);
+	if (org) parts.push(__('Organization: {0}', [org]));
+	if (school) parts.push(__('School: {0}', [school]));
 	return parts.join(' • ');
 });
 
@@ -406,7 +428,7 @@ async function acknowledgePolicy() {
 		return;
 	}
 	if (!isTypedSignatureMatch.value) {
-		actionError.value = `${__('Typed signature must match exactly:')} ${expectedSignerLabel.value}`;
+		actionError.value = __('Typed signature must match exactly: {0}', [expectedSignerLabel.value]);
 		return;
 	}
 	if (!attestationConfirmed.value) {

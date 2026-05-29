@@ -46,13 +46,13 @@
 							tabindex="0"
 							@click="emitClose('programmatic')"
 						>
-							Close
+							{{ __('Close') }}
 						</button>
 						<div class="meeting-modal__header">
 							<div class="meeting-modal__headline">
-								<p class="meeting-modal__eyebrow type-overline">School Event</p>
+								<p class="meeting-modal__eyebrow type-overline">{{ __('School Event') }}</p>
 								<DialogTitle as="h3" class="type-h3">
-									{{ resolvedEvent?.subject || 'School Event' }}
+									{{ resolvedEvent?.subject || __('School Event') }}
 								</DialogTitle>
 								<p class="meeting-modal__time type-meta" v-if="windowLabel">
 									{{ windowLabel }}
@@ -70,7 +70,7 @@
 								</span>
 								<button
 									class="if-overlay__icon-button"
-									aria-label="Close event modal"
+									:aria-label="__('Close event modal')"
 									@click="emitClose('programmatic')"
 								>
 									<FeatherIcon name="x" class="h-5 w-5" />
@@ -89,26 +89,26 @@
 							<div v-else-if="resolvedError" class="meeting-modal__error">
 								<p class="type-body">{{ resolvedError }}</p>
 								<button class="meeting-modal__cta" @click="emitClose('programmatic')">
-									Close
+									{{ __('Close') }}
 								</button>
 							</div>
 
 							<div v-else-if="resolvedEvent">
 								<section class="meeting-modal__meta-grid">
 									<div>
-										<p class="meeting-modal__label type-label">Location</p>
+										<p class="meeting-modal__label type-label">{{ __('Location') }}</p>
 										<p class="meeting-modal__value type-body">
-											{{ resolvedEvent.location || 'To be announced' }}
+											{{ resolvedEvent.location || __('To be announced') }}
 										</p>
 									</div>
 									<div>
-										<p class="meeting-modal__label type-label">School</p>
+										<p class="meeting-modal__label type-label">{{ __('School') }}</p>
 										<p class="meeting-modal__value type-body">
 											{{ resolvedEvent.school || '—' }}
 										</p>
 									</div>
 									<div>
-										<p class="meeting-modal__label type-label">Category</p>
+										<p class="meeting-modal__label type-label">{{ __('Category') }}</p>
 										<p class="meeting-modal__value type-body">
 											{{ resolvedEvent.event_category || '—' }}
 										</p>
@@ -118,8 +118,10 @@
 								<section class="meeting-modal__agenda">
 									<header class="meeting-modal__section-heading">
 										<div>
-											<p class="meeting-modal__label type-label">Description</p>
-											<p class="meeting-modal__value type-body">Shared live from Desk</p>
+											<p class="meeting-modal__label type-label">{{ __('Description') }}</p>
+											<p class="meeting-modal__value type-body">
+												{{ __('Shared live from Desk') }}
+											</p>
 										</div>
 									</header>
 									<div
@@ -128,14 +130,14 @@
 										v-html="resolvedEvent.description"
 									></div>
 									<p v-else class="meeting-modal__empty type-body">
-										This event doesn’t have a description yet. Check back soon.
+										{{ __('This event doesn’t have a description yet. Check back soon.') }}
 									</p>
 								</section>
 
 								<section v-if="showReferenceSection" class="meeting-modal__participants">
 									<div class="meeting-modal__section-heading">
 										<div>
-											<p class="meeting-modal__label type-label">Reference</p>
+											<p class="meeting-modal__label type-label">{{ __('Reference') }}</p>
 											<p class="meeting-modal__value type-body">
 												{{ resolvedEvent.reference_type }} · {{ resolvedEvent.reference_name }}
 											</p>
@@ -149,7 +151,7 @@
 										rel="noreferrer"
 									>
 										<FeatherIcon name="external-link" class="h-4 w-4" />
-										View referenced document
+										{{ __('View referenced document') }}
 									</a>
 								</section>
 							</div>
@@ -173,6 +175,7 @@ import { FeatherIcon } from 'frappe-ui';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import { api } from '@/lib/client';
+import { __ } from '@/lib/i18n';
 import type { SchoolEventDetails } from './schoolEventTypes';
 
 const props = withDefaults(
@@ -237,7 +240,7 @@ async function fetchSchoolEventDetails(eventName: string) {
 	} catch (err) {
 		if (seq === reqSeq) {
 			localError.value =
-				err instanceof Error ? err.message : 'Unable to load school event details right now.';
+				err instanceof Error ? err.message : __('Unable to load school event details right now.');
 		}
 	} finally {
 		if (seq === reqSeq) {
@@ -269,8 +272,9 @@ watch(
 
 		reqSeq += 1;
 		localLoading.value = false;
-		localError.value =
-			'Could not determine which school event was clicked. Please refresh and try again.';
+		localError.value = __(
+			'Could not determine which school event was clicked. Please refresh and try again.'
+		);
 		resolvedEvent.value = null;
 	},
 	{ immediate: true }
@@ -297,16 +301,25 @@ const windowLabel = computed(() => {
 	const dateLabel = dateFormatter.format(start);
 	if (!end || resolvedEvent.value?.all_day) {
 		return resolvedEvent.value?.all_day
-			? `${dateLabel} · All day`
-			: `${dateLabel} · ${timeFormatter.format(start)}`;
+			? __('{0} · All day', [dateLabel])
+			: __('{0} · {1}', [dateLabel, timeFormatter.format(start)]);
 	}
 
 	const sameDay = start.toDateString() === end.toDateString();
 	if (sameDay) {
-		return `${dateLabel} · ${timeFormatter.format(start)} – ${timeFormatter.format(end)}`;
+		return __('{0} · {1} – {2}', [
+			dateLabel,
+			timeFormatter.format(start),
+			timeFormatter.format(end),
+		]);
 	}
 
-	return `${dateLabel} · ${timeFormatter.format(start)} → ${dateFormatter.format(end)} · ${timeFormatter.format(end)}`;
+	return __('{0} · {1} → {2} · {3}', [
+		dateLabel,
+		timeFormatter.format(start),
+		dateFormatter.format(end),
+		timeFormatter.format(end),
+	]);
 });
 
 const hasReference = computed(() =>
@@ -343,7 +356,8 @@ const initialFocus = ref<HTMLElement | null>(null);
  * HeadlessUI Dialog @close payload is ambiguous (boolean/undefined).
  * Under A+, ignore it and close only via explicit backdrop/esc/button paths.
  */
-function onDialogClose(_payload: unknown) {
+function onDialogClose(payload: unknown) {
+	void payload;
 	// no-op by design
 }
 

@@ -41,23 +41,23 @@
 						<div class="if-overlay__header px-6 pt-6">
 							<div class="flex items-start justify-between gap-4">
 								<div>
-									<p class="type-overline text-slate-token/70">Quick CFU</p>
-									<h2 class="type-h2 text-ink">Check for understanding</h2>
+									<p class="type-overline text-slate-token/70">{{ __('Quick CFU') }}</p>
+									<h2 class="type-h2 text-ink">{{ __('Check for understanding') }}</h2>
 								</div>
 								<button
 									type="button"
 									class="if-overlay__icon-button"
-									aria-label="Close"
+									:aria-label="__('Close')"
 									@click="emitClose('programmatic')"
 								>
-									<span aria-hidden="true">x</span>
+									<span aria-hidden="true">&times;</span>
 								</button>
 							</div>
 						</div>
 
 						<div class="if-overlay__body space-y-5">
 							<section class="space-y-2">
-								<p class="type-caption text-slate-token/70">CFU type</p>
+								<p class="type-caption text-slate-token/70">{{ __('CFU type') }}</p>
 								<div class="flex flex-wrap gap-2">
 									<button
 										v-for="option in cfuOptions"
@@ -71,24 +71,26 @@
 										"
 										@click="cfuType = option"
 									>
-										{{ option }}
+										{{ cfuOptionLabel(option) }}
 									</button>
 								</div>
 							</section>
 
 							<section class="space-y-2">
-								<label class="type-caption text-slate-token/70" for="cfu-note">Class note</label>
+								<label class="type-caption text-slate-token/70" for="cfu-note">
+									{{ __('Class note') }}
+								</label>
 								<textarea
 									id="cfu-note"
 									v-model="classNote"
 									rows="3"
 									class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 type-body text-ink"
-									placeholder="Capture a quick class note..."
+									:placeholder="__('Capture a quick class note...')"
 								></textarea>
 							</section>
 
 							<section class="space-y-2">
-								<p class="type-caption text-slate-token/70">Apply signal</p>
+								<p class="type-caption text-slate-token/70">{{ __('Apply signal') }}</p>
 								<div class="flex flex-wrap gap-2">
 									<button
 										v-for="option in signalOptions"
@@ -102,13 +104,13 @@
 										"
 										@click="signal = option"
 									>
-										{{ option }}
+										{{ signalOptionLabel(option) }}
 									</button>
 								</div>
 							</section>
 
 							<section class="space-y-2">
-								<p class="type-caption text-slate-token/70">Students</p>
+								<p class="type-caption text-slate-token/70">{{ __('Students') }}</p>
 								<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 									<label
 										v-for="student in students"
@@ -137,14 +139,14 @@
 								class="rounded-full border border-slate-200 bg-white px-4 py-2 type-button-label text-ink"
 								@click="emitClose('programmatic')"
 							>
-								Cancel
+								{{ __('Cancel') }}
 							</button>
 							<button
 								type="button"
 								class="rounded-full bg-jacaranda px-5 py-2 type-button-label text-white shadow-soft"
 								@click="submit"
 							>
-								Save CFU
+								{{ __('Save CFU') }}
 							</button>
 						</div>
 					</DialogPanel>
@@ -158,6 +160,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { Dialog, DialogPanel, TransitionChild, TransitionRoot } from '@headlessui/vue';
 import { createClassHubService } from '@/lib/classHubService';
+import { __ } from '@/lib/i18n';
 import type { ClassHubSignal } from '@/types/classHub';
 
 type StudentOption = { student: string; student_name: string };
@@ -192,6 +195,20 @@ const errorMessage = ref('');
 const students = computed(() => props.students || []);
 const selectedStudents = ref<string[]>([]);
 
+function cfuOptionLabel(option: (typeof cfuOptions)[number]): string {
+	if (option === 'Mini-whiteboard') return __('Mini-whiteboard');
+	if (option === 'Exit ticket') return __('Exit ticket');
+	return __('Thumbs');
+}
+
+function signalOptionLabel(option: ClassHubSignal['signal']): string {
+	if (option === 'Not Yet') return __('Not Yet');
+	if (option === 'Almost') return __('Almost');
+	if (option === 'Got It') return __('Got It');
+	if (option === 'Exceeded') return __('Exceeded');
+	return option;
+}
+
 function emitClose(reason: CloseReason = 'programmatic') {
 	emit('close', reason);
 }
@@ -200,37 +217,38 @@ async function submit() {
 	errorMessage.value = '';
 
 	if (!props.class_session) {
-		errorMessage.value = 'Start a session before saving CFU signals.';
+		errorMessage.value = __('Start a session before saving CFU signals.');
 		return;
 	}
 
 	if (!signal.value) {
-		errorMessage.value = 'Choose a signal to apply.';
+		errorMessage.value = __('Choose a signal to apply.');
 		return;
 	}
 	const selectedSignal = signal.value;
 
 	if (!selectedStudents.value.length) {
-		errorMessage.value = 'Select at least one student.';
+		errorMessage.value = __('Select at least one student.');
 		return;
 	}
 
 	const payload: ClassHubSignal[] = selectedStudents.value.map(student => ({
 		student,
 		signal: selectedSignal,
-		note: classNote.value.trim() || `CFU: ${cfuType.value}`,
+		note: classNote.value.trim() || __('CFU: {0}', [cfuOptionLabel(cfuType.value)]),
 	}));
 
 	try {
 		await service.saveSignals(props.class_session, payload);
 		emitClose('programmatic');
 	} catch (err) {
-		errorMessage.value = 'Unable to save right now.';
+		errorMessage.value = __('Unable to save right now.');
 		console.error('[QuickCFUOverlay] submit failed', err);
 	}
 }
 
-function onDialogClose(_payload: unknown) {
+function onDialogClose(payload: unknown) {
+	void payload;
 	// OverlayHost owns close enforcement.
 }
 

@@ -216,6 +216,12 @@ function getTextareaByLabel(labelText: string) {
 	) as HTMLTextAreaElement | null;
 }
 
+function getInputByLabel(labelText: string) {
+	return getLabelElement(labelText)?.parentElement?.querySelector(
+		'input'
+	) as HTMLInputElement | null;
+}
+
 function getCheckboxByLabel(labelText: string) {
 	return getLabelElement(labelText)?.querySelector('input[type="checkbox"]') as
 		| HTMLInputElement
@@ -476,6 +482,88 @@ describe('EventQuickCreateOverlay meeting attendees', () => {
 		expect(getMeetingTeamAttendeesMock).toHaveBeenCalledWith({ team: 'TEAM-1' });
 		expect(document.body.textContent || '').toContain('Teacher Example');
 		expect(document.body.textContent || '').toContain('1 invitee + organizer');
+	});
+
+	it('keeps common-time suggestions visible when the server normalizes duration on first click', async () => {
+		getEventQuickCreateOptionsMock.mockResolvedValue({
+			...baseOptions,
+			can_create_meeting: true,
+			can_create_school_event: false,
+			attendee_kinds: [{ value: 'employee', label: 'Employees' }],
+		});
+		getMeetingTeamAttendeesMock.mockResolvedValue({
+			team: 'TEAM-1',
+			results: [
+				{
+					value: 'teacher@example.com',
+					label: 'Teacher Example',
+					meta: 'TEAM-1',
+					kind: 'employee',
+					availability_mode: 'authoritative',
+				},
+			],
+		});
+		suggestMeetingSlotsMock.mockResolvedValue({
+			slots: [
+				{
+					start: '2026-05-29T10:00:00+07:00',
+					end: '2026-05-29T11:00:00+07:00',
+					date: '2026-05-29',
+					start_time: '10:00',
+					end_time: '11:00',
+					label: 'Friday 10:00',
+					blocked_count: 0,
+					available_room_count: 1,
+					suggested_room: {
+						value: 'D204',
+						label: 'D204',
+						location_type: null,
+						location_type_name: null,
+						max_capacity: 20,
+					},
+				},
+			],
+			fallback_slots: [],
+			notes: ['Exact matches already include at least one free room.'],
+			duration_minutes: 60,
+			attendees: [],
+		});
+
+		mountOverlay({
+			eventType: 'meeting',
+			lockEventType: true,
+			meetingMode: 'ad_hoc',
+		});
+		await flushUi();
+
+		updateSelectByLabel('Bulk-add a team', 'TEAM-1');
+		await flushUi();
+		const durationInput = getInputByLabel('Duration (minutes)');
+		if (!durationInput) throw new Error('Missing duration input');
+		durationInput.value = '060';
+		durationInput.dispatchEvent(new Event('input', { bubbles: true }));
+		await flushUi();
+
+		clickButton('Find common times');
+		await flushUi();
+
+		expect(suggestMeetingSlotsMock).toHaveBeenCalledTimes(1);
+		expect(suggestMeetingSlotsMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				duration_minutes: 60,
+				attendees: [
+					{
+						user: 'teacher@example.com',
+						kind: 'employee',
+						label: 'Teacher Example',
+					},
+				],
+			})
+		);
+		expect(document.body.textContent || '').toContain('Friday 10:00');
+		expect(document.body.textContent || '').toContain(
+			'Exact matches already include at least one free room.'
+		);
 	});
 
 	it('offers room suggestions when create is blocked by a booked room', async () => {

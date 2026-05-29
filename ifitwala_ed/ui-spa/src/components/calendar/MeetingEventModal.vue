@@ -46,13 +46,13 @@
 							tabindex="0"
 							@click="emitClose('programmatic')"
 						>
-							Close
+							{{ __('Close') }}
 						</button>
 						<div class="meeting-modal__header">
 							<div class="meeting-modal__headline">
-								<p class="meeting-modal__eyebrow type-overline">Meeting</p>
+								<p class="meeting-modal__eyebrow type-overline">{{ __('Meeting') }}</p>
 								<DialogTitle as="h3" class="type-h3">
-									{{ meeting?.title || 'Meeting details' }}
+									{{ meeting?.title || __('Meeting details') }}
 								</DialogTitle>
 								<p class="meeting-modal__time type-meta" v-if="windowLabel">
 									{{ windowLabel }}
@@ -73,11 +73,11 @@
 									rel="noreferrer"
 								>
 									<FeatherIcon name="external-link" class="h-4 w-4" />
-									View in Desk
+									{{ __('View in Desk') }}
 								</a>
 								<button
 									class="if-overlay__icon-button"
-									aria-label="Close meeting modal"
+									:aria-label="__('Close meeting modal')"
 									@click="emitClose('programmatic')"
 								>
 									<FeatherIcon name="x" class="h-5 w-5" />
@@ -96,16 +96,16 @@
 							<div v-else-if="error" class="meeting-modal__error">
 								<p class="type-body">{{ error }}</p>
 								<button class="meeting-modal__cta" @click="emitClose('programmatic')">
-									Close
+									{{ __('Close') }}
 								</button>
 							</div>
 
 							<div v-else-if="meeting">
 								<section class="meeting-modal__meta-grid">
 									<div>
-										<p class="meeting-modal__label type-label">Location</p>
+										<p class="meeting-modal__label type-label">{{ __('Location') }}</p>
 										<p class="meeting-modal__value type-body">
-											{{ meeting.location || 'To be announced' }}
+											{{ meeting.location || __('To be announced') }}
 										</p>
 										<a
 											v-if="meeting.virtual_link"
@@ -115,17 +115,17 @@
 											class="meeting-modal__link type-caption"
 										>
 											<FeatherIcon name="external-link" class="h-4 w-4" />
-											Join online
+											{{ __('Join online') }}
 										</a>
 									</div>
 									<div>
-										<p class="meeting-modal__label type-label">Team</p>
+										<p class="meeting-modal__label type-label">{{ __('Team') }}</p>
 										<p class="meeting-modal__value type-body">
 											{{ meeting.team_name || meeting.team || '—' }}
 										</p>
 									</div>
 									<div>
-										<p class="meeting-modal__label type-label">Category</p>
+										<p class="meeting-modal__label type-label">{{ __('Category') }}</p>
 										<p class="meeting-modal__value type-body">
 											{{ meeting.meeting_category || '—' }}
 										</p>
@@ -135,8 +135,10 @@
 								<section class="meeting-modal__agenda">
 									<header class="meeting-modal__section-heading">
 										<div>
-											<p class="meeting-modal__label type-label">Agenda</p>
-											<p class="meeting-modal__value type-body">Shared live from Desk</p>
+											<p class="meeting-modal__label type-label">{{ __('Agenda') }}</p>
+											<p class="meeting-modal__value type-body">
+												{{ __('Shared live from Desk') }}
+											</p>
 										</div>
 									</header>
 									<div
@@ -145,16 +147,16 @@
 										v-html="meeting.agenda"
 									></div>
 									<p v-else class="meeting-modal__empty type-body">
-										This meeting doesn’t have an agenda yet. Check back soon.
+										{{ __('This meeting doesn’t have an agenda yet. Check back soon.') }}
 									</p>
 								</section>
 
 								<section class="meeting-modal__participants">
 									<div class="meeting-modal__section-heading">
 										<div>
-											<p class="meeting-modal__label type-label">Participants</p>
+											<p class="meeting-modal__label type-label">{{ __('Participants') }}</p>
 											<p class="meeting-modal__value type-body">
-												{{ meeting.participant_count }} invited
+												{{ __('{0} invited', [meeting.participant_count]) }}
 											</p>
 										</div>
 									</div>
@@ -164,7 +166,7 @@
 											:key="row.participant + row.participant_name"
 										>
 											<span class="meeting-modal__chip">
-												{{ row.participant_name || row.participant || 'Participant' }}
+												{{ row.participant_name || row.participant || __('Participant') }}
 												<span v-if="row.role_in_meeting" class="meeting-modal__chip-role">
 													{{ row.role_in_meeting }}
 												</span>
@@ -172,7 +174,7 @@
 										</li>
 										<li v-if="overflowCount > 0">
 											<span class="meeting-modal__chip meeting-modal__chip--muted">
-												+{{ overflowCount }} more
+												{{ __('+{0} more', [overflowCount]) }}
 											</span>
 										</li>
 									</ul>
@@ -198,6 +200,7 @@ import { FeatherIcon } from 'frappe-ui';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { api } from '@/lib/client';
+import { __ } from '@/lib/i18n';
 import type { MeetingDetails, MeetingParticipantSummary } from './meetingTypes';
 
 const MAX_PARTICIPANTS = 10;
@@ -242,7 +245,7 @@ async function fetchMeetingDetails() {
 	} catch (err) {
 		if (seq === reqSeq) {
 			error.value =
-				err instanceof Error ? err.message : 'Unable to load meeting details right now.';
+				err instanceof Error ? err.message : __('Unable to load meeting details right now.');
 		}
 	} finally {
 		if (seq === reqSeq) {
@@ -283,13 +286,22 @@ const windowLabel = computed(() => {
 	});
 
 	const dateLabel = dateFormatter.format(start);
-	if (!end) return `${dateLabel} · ${timeFormatter.format(start)}`;
+	if (!end) return __('{0} · {1}', [dateLabel, timeFormatter.format(start)]);
 
 	const sameDay = start.toDateString() === end.toDateString();
 	if (sameDay)
-		return `${dateLabel} · ${timeFormatter.format(start)} – ${timeFormatter.format(end)}`;
+		return __('{0} · {1} – {2}', [
+			dateLabel,
+			timeFormatter.format(start),
+			timeFormatter.format(end),
+		]);
 
-	return `${dateLabel} · ${timeFormatter.format(start)} → ${dateFormatter.format(end)} · ${timeFormatter.format(end)}`;
+	return __('{0} · {1} → {2} · {3}', [
+		dateLabel,
+		timeFormatter.format(start),
+		dateFormatter.format(end),
+		timeFormatter.format(end),
+	]);
 });
 
 const visibleParticipants = computed<MeetingParticipantSummary[]>(() => {
@@ -323,7 +335,8 @@ function emitAfterLeave() {
  * HeadlessUI Dialog @close payload is ambiguous (boolean/undefined).
  * Under A+, ignore it and close only via explicit backdrop/esc/button paths.
  */
-function onDialogClose(_payload: unknown) {
+function onDialogClose(payload: unknown) {
+	void payload;
 	// no-op by design
 }
 

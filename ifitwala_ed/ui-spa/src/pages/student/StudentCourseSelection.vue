@@ -4,16 +4,19 @@
 		<header class="card-surface p-5 sm:p-6">
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 				<div>
-					<p class="type-overline text-ink/60">Student Course Selection</p>
-					<h1 class="type-h1 text-ink">Build Your Academic Basket</h1>
+					<p class="type-overline text-ink/60">{{ __('Student Course Selection') }}</p>
+					<h1 class="type-h1 text-ink">{{ __('Build Your Academic Basket') }}</h1>
 					<p class="type-body text-ink/70">
-						Required courses stay locked. Use this space to confirm your language, electives, and
-						other program choices before the deadline.
+						{{
+							__(
+								'Required courses stay locked. Use this space to confirm your language, electives, and other program choices before the deadline.'
+							)
+						}}
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
 					<RouterLink class="if-button if-button--secondary" :to="{ name: 'student-home' }">
-						Back to Home
+						{{ __('Back to Home') }}
 					</RouterLink>
 					<button
 						type="button"
@@ -21,7 +24,7 @@
 						:disabled="loading"
 						@click="loadBoard"
 					>
-						Refresh
+						{{ __('Refresh') }}
 					</button>
 				</div>
 			</div>
@@ -29,37 +32,40 @@
 
 		<section class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Open windows</p>
+				<p class="mini-kpi-label">{{ __('Open windows') }}</p>
 				<p class="mini-kpi-value">{{ openWindowCount }}</p>
 			</article>
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Pending</p>
+				<p class="mini-kpi-label">{{ __('Pending') }}</p>
 				<p class="mini-kpi-value">{{ pendingCount }}</p>
 			</article>
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Submitted</p>
+				<p class="mini-kpi-label">{{ __('Submitted') }}</p>
 				<p class="mini-kpi-value">{{ submittedCount }}</p>
 			</article>
 			<article class="mini-kpi-card">
-				<p class="mini-kpi-label">Due soon</p>
+				<p class="mini-kpi-label">{{ __('Due soon') }}</p>
 				<p class="mini-kpi-value">{{ dueSoonCount }}</p>
 			</article>
 		</section>
 
 		<section v-if="loading" class="card-surface p-5">
-			<p class="type-body text-ink/70">Loading course selection windows...</p>
+			<p class="type-body text-ink/70">{{ __('Loading course selection windows...') }}</p>
 		</section>
 		<section v-else-if="errorMessage" class="card-surface p-5">
-			<p class="type-body-strong text-flame">Could not load course selection.</p>
+			<p class="type-body-strong text-flame">{{ __('Could not load course selection.') }}</p>
 			<p class="type-body text-ink/70">{{ errorMessage }}</p>
 		</section>
 
 		<template v-else>
 			<section v-if="!windows.length" class="card-surface p-5">
-				<h2 class="type-h3 text-ink">No active selection windows</h2>
+				<h2 class="type-h3 text-ink">{{ __('No active selection windows') }}</h2>
 				<p class="mt-2 type-body text-ink/70">
-					When your school opens program choices, the requests will appear here with one-click
-					access to the detail view.
+					{{
+						__(
+							'When your school opens program choices, the requests will appear here with one-click access to the detail view.'
+						)
+					}}
 				</p>
 			</section>
 
@@ -105,11 +111,13 @@
 							<div class="min-w-0 flex-1">
 								<p class="type-body-strong text-ink transition-colors group-hover:text-jacaranda">
 									{{
-										window.students[0]?.request?.can_edit ? 'Continue Selection' : 'View Selection'
+										window.students[0]?.request?.can_edit
+											? __('Continue Selection')
+											: __('View Selection')
 									}}
 								</p>
 								<p class="truncate type-caption text-ink/70">
-									Open the full request and review every course row.
+									{{ __('Open the full request and review every course row.') }}
 								</p>
 							</div>
 							<FeatherIcon name="chevron-right" class="h-4 w-4 text-ink/40" />
@@ -173,7 +181,7 @@ function requestSummary(window: PortalSelectionWindow) {
 	if (request.status === 'Approved') return __('Approved. Your choices are now confirmed.');
 	if (request.status === 'Draft')
 		return __('Your draft is open. Review your choices and submit before the deadline.');
-	return `${request.status}.`;
+	return __('{0}.', [request.status]);
 }
 
 async function loadBoard() {
@@ -183,7 +191,7 @@ async function loadBoard() {
 		board.value = await getSelfEnrollmentPortalBoard({});
 	} catch (error) {
 		errorMessage.value =
-			error instanceof Error ? error.message : 'Could not load course selection.';
+			error instanceof Error ? error.message : __('Could not load course selection.');
 	} finally {
 		loading.value = false;
 	}

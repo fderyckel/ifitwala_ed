@@ -32,7 +32,7 @@
 					<DialogPanel class="if-overlay__panel">
 						<div class="meeting-modal__header">
 							<div class="meeting-modal__headline min-w-0">
-								<div class="type-overline">Policy information</div>
+								<div class="type-overline">{{ __('Policy information') }}</div>
 								<DialogTitle class="type-h2 text-canopy truncate mt-1">
 									{{ policyTitle }}
 								</DialogTitle>
@@ -59,7 +59,7 @@
 									type="button"
 									class="if-overlay__icon-button"
 									@click="emitClose('programmatic')"
-									aria-label="Close"
+									:aria-label="__('Close')"
 								>
 									<FeatherIcon name="x" class="h-4 w-4" />
 								</button>
@@ -74,27 +74,32 @@
 							</div>
 
 							<div v-else-if="errorText" class="card-panel p-5">
-								<p class="type-body-strong text-ink">Couldn't open this policy</p>
+								<p class="type-body-strong text-ink">{{ __("Couldn't open this policy") }}</p>
 								<p class="mt-2 type-body text-ink/70">{{ errorText }}</p>
 							</div>
 
 							<div v-else-if="policy" class="space-y-4">
 								<div class="card-surface p-4">
 									<div class="type-meta text-ink/60">
-										<span v-if="policy.policy_version"
-											>Policy Version: {{ policy.policy_version }}</span
+										<span v-if="policy.policy_version">{{
+											__('Policy Version: {0}', [policy.policy_version])
+										}}</span>
+										<span v-if="policy.version_label">
+											- {{ __('Version {0}', [policy.version_label]) }}</span
 										>
-										<span v-if="policy.version_label"> - Version {{ policy.version_label }}</span>
 									</div>
 									<div
 										v-if="policy.signature_required && policy.acknowledgement_status === 'signed'"
 										class="type-meta text-ink/60 mt-1"
 									>
-										Acknowledged
+										{{ __('Acknowledged') }}
 										<span v-if="policy.acknowledged_at">
-											on
 											{{
-												formatLocalizedDateTime(policy.acknowledged_at, { includeWeekday: true })
+												__('on {0}', [
+													formatLocalizedDateTime(policy.acknowledged_at, {
+														includeWeekday: true,
+													}),
+												])
 											}}
 										</span>
 									</div>
@@ -102,16 +107,16 @@
 										v-if="hasChangeSummary || hasChangeStats"
 										class="mt-3 rounded-xl border border-ink/10 bg-white p-3"
 									>
-										<div class="type-caption text-ink/70">What changed</div>
+										<div class="type-caption text-ink/70">{{ __('What changed') }}</div>
 										<div v-if="hasChangeStats" class="mt-2 flex flex-wrap gap-2">
 											<span class="type-meta rounded-full border border-ink/10 px-2 py-1">
-												Added {{ addedCount }}
+												{{ __('Added {0}', [addedCount]) }}
 											</span>
 											<span class="type-meta rounded-full border border-ink/10 px-2 py-1">
-												Removed {{ removedCount }}
+												{{ __('Removed {0}', [removedCount]) }}
 											</span>
 											<span class="type-meta rounded-full border border-ink/10 px-2 py-1">
-												Modified {{ modifiedCount }}
+												{{ __('Modified {0}', [modifiedCount]) }}
 											</span>
 										</div>
 										<p v-if="hasChangeSummary" class="type-meta text-ink mt-2 whitespace-pre-wrap">
@@ -129,7 +134,7 @@
 											:disabled="!hasDiffHtml"
 											@click="activeTab = 'changes'"
 										>
-											Changes
+											{{ __('Changes') }}
 										</button>
 										<button
 											type="button"
@@ -137,7 +142,7 @@
 											:aria-pressed="activeTab === 'full'"
 											@click="activeTab = 'full'"
 										>
-											Full policy
+											{{ __('Full policy') }}
 										</button>
 									</div>
 
@@ -151,7 +156,11 @@
 											v-html="trustedHtml(policy.diff_html || '')"
 										/>
 										<p v-else class="type-meta text-ink/60">
-											No amendment diff is available for this version. Review the full policy text.
+											{{
+												__(
+													'No amendment diff is available for this version. Review the full policy text.'
+												)
+											}}
 										</p>
 									</div>
 
@@ -165,24 +174,24 @@
 											v-html="trustedHtml(policy.policy_text_html)"
 										/>
 										<p v-else class="type-meta text-ink/60">
-											No policy text is available for this version.
+											{{ __('No policy text is available for this version.') }}
 										</p>
 									</div>
 								</div>
 
 								<div class="card-surface p-4">
-									<div class="type-body font-medium">Version history</div>
+									<div class="type-body font-medium">{{ __('Version history') }}</div>
 									<p class="type-meta text-ink/60 mt-1">
-										Latest and previous versions for this policy.
+										{{ __('Latest and previous versions for this policy.') }}
 									</p>
 									<div class="mt-3 overflow-auto">
 										<table class="w-full text-sm">
 											<thead>
 												<tr class="text-left text-slate-500">
-													<th class="pb-2 pr-2">Version</th>
-													<th class="pb-2 pr-2">Effective</th>
-													<th class="pb-2 pr-2">Approved</th>
-													<th class="pb-2">State</th>
+													<th class="pb-2 pr-2">{{ __('Version') }}</th>
+													<th class="pb-2 pr-2">{{ __('Effective') }}</th>
+													<th class="pb-2 pr-2">{{ __('Approved') }}</th>
+													<th class="pb-2">{{ __('State') }}</th>
 												</tr>
 											</thead>
 											<tbody>
@@ -215,13 +224,13 @@
 																	: 'bg-slate-100 text-slate-600'
 															"
 														>
-															{{ row.is_active ? 'Active' : 'Historical' }}
+															{{ row.is_active ? __('Active') : __('Historical') }}
 														</span>
 													</td>
 												</tr>
 												<tr v-if="!(policy.history || []).length">
 													<td class="py-3 text-slate-500" colspan="4">
-														No version history available.
+														{{ __('No version history available.') }}
 													</td>
 												</tr>
 											</tbody>
@@ -237,7 +246,7 @@
 								class="if-button if-button--quiet"
 								@click="emitClose('programmatic')"
 							>
-								Close
+								{{ __('Close') }}
 							</button>
 						</footer>
 					</DialogPanel>
@@ -258,6 +267,7 @@ import {
 } from '@headlessui/vue';
 import { FeatherIcon } from 'frappe-ui';
 
+import { __ } from '@/lib/i18n';
 import { createPolicyInformService } from '@/lib/services/policyInform/policyInformService';
 import { formatLocalizedDate, formatLocalizedDateTime } from '@/lib/datetime';
 import type { Response as PolicyInformPayload } from '@/types/contracts/policy_communication/get_policy_inform_payload';
@@ -291,15 +301,15 @@ const policyTitle = computed(() => {
 		(policy.value?.policy_title || '').trim() ||
 		(policy.value?.policy_key || '').trim() ||
 		(policy.value?.policy_version || '').trim() ||
-		'Policy'
+		__('Policy')
 	);
 });
 const scopeLabel = computed(() => {
 	const parts = [];
 	const org = (policy.value?.policy_organization || '').trim();
 	const school = (policy.value?.policy_school || '').trim();
-	if (org) parts.push(`Organization: ${org}`);
-	if (school) parts.push(`School: ${school}`);
+	if (org) parts.push(__('Organization: {0}', [org]));
+	if (school) parts.push(__('School: {0}', [school]));
 	return parts.join(' - ');
 });
 const changeSummary = computed(() => (policy.value?.change_summary || '').trim());
@@ -318,33 +328,33 @@ const audienceChips = computed(() => audienceTokens.value.map(audienceLabel));
 const hasStaffAudience = computed(() => audienceTokens.value.includes('Staff'));
 const workflowLabel = computed(() => {
 	if (!audienceTokens.value.length) return null;
-	if (audienceTokens.value.length > 1) return 'Cross-audience policy';
+	if (audienceTokens.value.length > 1) return __('Cross-audience policy');
 	switch (audienceTokens.value[0]) {
 		case 'Guardian':
-			return 'Guardian portal acknowledgement';
+			return __('Guardian portal acknowledgement');
 		case 'Student':
-			return 'Student hub acknowledgement';
+			return __('Student hub acknowledgement');
 		case 'Staff':
-			return 'Staff workspace policy';
+			return __('Staff workspace policy');
 		default:
-			return 'Policy in scope';
+			return __('Policy in scope');
 	}
 });
 const statusLabel = computed(() => {
 	if (hasStaffAudience.value && policy.value?.signature_required) {
 		switch (policy.value?.acknowledgement_status) {
 			case 'signed':
-				return 'Signed';
+				return __('Signed');
 			case 'new_version':
-				return 'New version to review';
+				return __('New version to review');
 			case 'pending':
-				return 'Signature pending';
+				return __('Signature pending');
 			default:
-				return 'Signature pending';
+				return __('Signature pending');
 		}
 	}
 	if (hasStaffAudience.value && audienceTokens.value.length === 1) {
-		return 'Informational policy (no signature required)';
+		return __('Informational policy (no signature required)');
 	}
 	return workflowLabel.value;
 });
@@ -368,9 +378,9 @@ const statusClass = computed(() => {
 });
 
 function audienceLabel(audience: string): string {
-	if (audience === 'Guardian') return 'Guardians';
-	if (audience === 'Student') return 'Students';
-	if (audience === 'Staff') return 'Staff';
+	if (audience === 'Guardian') return __('Guardians');
+	if (audience === 'Student') return __('Students');
+	if (audience === 'Staff') return __('Staff');
 	return audience;
 }
 
@@ -380,7 +390,7 @@ function trustedHtml(html: string): string {
 
 function normalizeError(err: unknown): string {
 	if (err instanceof Error && err.message) return err.message;
-	return 'Please try again.';
+	return __('Please try again.');
 }
 
 function resetState() {
@@ -393,7 +403,7 @@ function resetState() {
 async function loadPolicy() {
 	const policyVersion = String(props.policyVersion || '').trim();
 	if (!policyVersion) {
-		errorText.value = 'Missing policy version.';
+		errorText.value = __('Missing policy version.');
 		policy.value = null;
 		return;
 	}
@@ -425,7 +435,8 @@ function emitAfterLeave() {
 	emit('after-leave');
 }
 
-function onDialogClose(_payload: unknown) {
+function onDialogClose(payload: unknown) {
+	void payload;
 	// no-op by OverlayHost contract
 }
 
