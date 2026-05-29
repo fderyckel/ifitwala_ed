@@ -3,6 +3,7 @@
 import { createResource } from 'frappe-ui';
 
 import { api } from '@/lib/client';
+import { apiMethod } from '@/resources/frappe';
 import {
 	SIGNAL_CALENDAR_INVALIDATE,
 	SIGNAL_ORG_COMMUNICATION_INVALIDATE,
@@ -44,18 +45,6 @@ const getOptionsResource = createResource<GetEventQuickCreateOptionsResponse>({
 	auto: false,
 });
 
-const createMeetingQuickResource = createResource<CreateMeetingQuickResponse>({
-	url: 'ifitwala_ed.api.calendar.create_meeting_quick',
-	method: 'POST',
-	auto: false,
-});
-
-const createSchoolEventQuickResource = createResource<CreateSchoolEventQuickResponse>({
-	url: 'ifitwala_ed.api.calendar.create_school_event_quick',
-	method: 'POST',
-	auto: false,
-});
-
 function isSemanticSuccess(
 	status: string | null | undefined,
 	ok: boolean | null | undefined
@@ -73,7 +62,10 @@ export async function getEventQuickCreateOptions(
 export async function createMeetingQuick(
 	payload: CreateMeetingQuickRequest
 ): Promise<CreateMeetingQuickResponse> {
-	const response = await createMeetingQuickResource.submit(payload);
+	const response = await apiMethod<CreateMeetingQuickResponse>(
+		'ifitwala_ed.api.calendar.create_meeting_quick',
+		payload
+	);
 	if (isSemanticSuccess(response?.status, response?.ok)) {
 		uiSignals.emit(SIGNAL_CALENDAR_INVALIDATE);
 	}
@@ -83,7 +75,10 @@ export async function createMeetingQuick(
 export async function createSchoolEventQuick(
 	payload: CreateSchoolEventQuickRequest
 ): Promise<CreateSchoolEventQuickResponse> {
-	const response = await createSchoolEventQuickResource.submit(payload);
+	const response = await apiMethod<CreateSchoolEventQuickResponse>(
+		'ifitwala_ed.api.calendar.create_school_event_quick',
+		payload
+	);
 	if (isSemanticSuccess(response?.status, response?.ok)) {
 		uiSignals.emit(SIGNAL_CALENDAR_INVALIDATE);
 		const communicationName = response?.published_communication?.name?.trim();

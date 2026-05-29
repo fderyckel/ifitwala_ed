@@ -32,14 +32,14 @@
 					<DialogPanel class="if-overlay__panel">
 						<div class="if-overlay__header px-6 pt-6">
 							<div class="space-y-1">
-								<DialogTitle class="type-h2 text-ink"
-									>Professional Development Request</DialogTitle
-								>
+								<DialogTitle class="type-h2 text-ink">
+									{{ __('Professional Development Request') }}
+								</DialogTitle>
 								<p class="type-caption text-ink/60">
 									{{
 										budgetLocked
-											? 'Budget is prefilled for this request.'
-											: 'Choose a budget and submit one bounded request.'
+											? __('Budget is prefilled for this request.')
+											: __('Choose a budget and submit one bounded request.')
 									}}
 								</p>
 							</div>
@@ -48,19 +48,23 @@
 								type="button"
 								class="if-overlay__icon-button"
 								@click="emitClose('programmatic')"
-								aria-label="Close"
+								:aria-label="__('Close')"
 							>
 								<FeatherIcon name="x" class="h-4 w-4" />
 							</button>
 						</div>
 
 						<div class="if-overlay__body px-6 pb-6 space-y-5">
-							<div v-if="loading" class="type-body text-ink/70">Loading request context...</div>
+							<div v-if="loading" class="type-body text-ink/70">
+								{{ __('Loading request context...') }}
+							</div>
 							<div
 								v-else-if="errorMessage"
 								class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
 							>
-								<p class="type-body-strong text-rose-900">Could not load request context.</p>
+								<p class="type-body-strong text-rose-900">
+									{{ __('Could not load request context.') }}
+								</p>
 								<p class="mt-1 type-caption text-rose-900/80">{{ errorMessage }}</p>
 							</div>
 
@@ -69,7 +73,9 @@
 									v-if="submitError"
 									class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
 								>
-									<p class="type-body-strong text-rose-900">Request could not be submitted.</p>
+									<p class="type-body-strong text-rose-900">
+										{{ __('Request could not be submitted.') }}
+									</p>
 									<p class="mt-1 type-caption text-rose-900/80 whitespace-pre-wrap">
 										{{ submitError }}
 									</p>
@@ -77,48 +83,48 @@
 
 								<section class="grid gap-4 md:grid-cols-2">
 									<label class="space-y-1">
-										<span class="type-caption text-ink/70">Budget</span>
+										<span class="type-caption text-ink/70">{{ __('Budget') }}</span>
 										<select
 											v-model="form.professional_development_budget"
 											class="if-overlay__input"
 											:disabled="budgetLocked || submitting"
 										>
-											<option value="">Select budget</option>
+											<option value="">{{ __('Select budget') }}</option>
 											<option v-for="budget in budgets" :key="budget.value" :value="budget.value">
 												{{ budget.label }}
 											</option>
 										</select>
 									</label>
 									<label class="space-y-1">
-										<span class="type-caption text-ink/70">Theme</span>
+										<span class="type-caption text-ink/70">{{ __('Theme') }}</span>
 										<select
 											v-model="form.professional_development_theme"
 											class="if-overlay__input"
 											:disabled="submitting"
 										>
-											<option value="">Optional</option>
+											<option value="">{{ __('Optional') }}</option>
 											<option v-for="theme in themes" :key="theme.value" :value="theme.value">
 												{{ theme.label }}
 											</option>
 										</select>
 									</label>
 									<label class="space-y-1 md:col-span-2">
-										<span class="type-caption text-ink/70">Title</span>
+										<span class="type-caption text-ink/70">{{ __('Title') }}</span>
 										<input v-model="form.title" class="if-overlay__input" :disabled="submitting" />
 									</label>
 									<label class="space-y-1">
-										<span class="type-caption text-ink/70">Type</span>
+										<span class="type-caption text-ink/70">{{ __('Type') }}</span>
 										<select
 											v-model="form.professional_development_type"
 											class="if-overlay__input"
 											:disabled="submitting"
 										>
-											<option value="">Select type</option>
+											<option value="">{{ __('Select type') }}</option>
 											<option v-for="type in types" :key="type" :value="type">{{ type }}</option>
 										</select>
 									</label>
 									<label class="space-y-1">
-										<span class="type-caption text-ink/70">Provider</span>
+										<span class="type-caption text-ink/70">{{ __('Provider') }}</span>
 										<input
 											v-model="form.provider_name"
 											class="if-overlay__input"
@@ -126,7 +132,7 @@
 										/>
 									</label>
 									<label class="space-y-1">
-										<span class="type-caption text-ink/70">Start</span>
+										<span class="type-caption text-ink/70">{{ __('Start') }}</span>
 										<input
 											v-model="form.start_datetime"
 											type="datetime-local"
@@ -135,7 +141,7 @@
 										/>
 									</label>
 									<label class="space-y-1">
-										<span class="type-caption text-ink/70">End</span>
+										<span class="type-caption text-ink/70">{{ __('End') }}</span>
 										<input
 											v-model="form.end_datetime"
 											type="datetime-local"
@@ -144,7 +150,7 @@
 										/>
 									</label>
 									<label class="space-y-1 md:col-span-2">
-										<span class="type-caption text-ink/70">Location</span>
+										<span class="type-caption text-ink/70">{{ __('Location') }}</span>
 										<input
 											v-model="form.location"
 											class="if-overlay__input"
@@ -155,26 +161,26 @@
 
 								<section class="grid gap-4 md:grid-cols-2">
 									<label class="space-y-1">
-										<span class="type-caption text-ink/70">PGP Plan</span>
+										<span class="type-caption text-ink/70">{{ __('PGP Plan') }}</span>
 										<select
 											v-model="form.pgp_plan"
 											class="if-overlay__input"
 											:disabled="submitting"
 										>
-											<option value="">Optional</option>
+											<option value="">{{ __('Optional') }}</option>
 											<option v-for="plan in plans" :key="plan.value" :value="plan.value">
 												{{ plan.label }}
 											</option>
 										</select>
 									</label>
 									<label class="space-y-1">
-										<span class="type-caption text-ink/70">PGP Goal</span>
+										<span class="type-caption text-ink/70">{{ __('PGP Goal') }}</span>
 										<select
 											v-model="form.pgp_goal"
 											class="if-overlay__input"
 											:disabled="submitting"
 										>
-											<option value="">Optional</option>
+											<option value="">{{ __('Optional') }}</option>
 											<option v-for="goal in activeGoals" :key="goal.value" :value="goal.value">
 												{{ goal.label }}
 											</option>
@@ -184,14 +190,14 @@
 
 								<section class="space-y-2">
 									<div class="flex items-center justify-between">
-										<span class="type-caption text-ink/70">Cost Breakdown</span>
+										<span class="type-caption text-ink/70">{{ __('Cost Breakdown') }}</span>
 										<button
 											type="button"
 											class="if-action"
 											:disabled="submitting"
 											@click="addCost"
 										>
-											Add cost
+											{{ __('Add cost') }}
 										</button>
 									</div>
 									<div
@@ -204,12 +210,12 @@
 											class="if-overlay__input"
 											:disabled="submitting"
 										>
-											<option value="Registration">Registration</option>
-											<option value="Travel">Travel</option>
-											<option value="Accommodation">Accommodation</option>
-											<option value="Substitute">Substitute</option>
-											<option value="Materials">Materials</option>
-											<option value="Other">Other</option>
+											<option value="Registration">{{ __('Registration') }}</option>
+											<option value="Travel">{{ __('Travel') }}</option>
+											<option value="Accommodation">{{ __('Accommodation') }}</option>
+											<option value="Substitute">{{ __('Substitute') }}</option>
+											<option value="Materials">{{ __('Materials') }}</option>
+											<option value="Other">{{ __('Other') }}</option>
 										</select>
 										<input
 											v-model.number="row.amount"
@@ -225,13 +231,13 @@
 											:disabled="submitting || form.costs.length === 1"
 											@click="removeCost(idx)"
 										>
-											Remove
+											{{ __('Remove') }}
 										</button>
 										<input
 											v-model="row.notes"
 											class="if-overlay__input md:col-span-3"
 											:disabled="submitting"
-											placeholder="Optional notes"
+											:placeholder="__('Optional notes')"
 										/>
 									</div>
 								</section>
@@ -243,7 +249,7 @@
 											type="checkbox"
 											:disabled="submitting"
 										/>
-										<span>Substitute needed</span>
+										<span>{{ __('Substitute needed') }}</span>
 									</label>
 									<label class="flex items-center gap-2 type-caption text-ink/70">
 										<input
@@ -251,14 +257,14 @@
 											type="checkbox"
 											:disabled="submitting"
 										/>
-										<span>I will share the learning back internally</span>
+										<span>{{ __('I will share the learning back internally') }}</span>
 									</label>
 									<textarea
 										v-model="form.learning_outcomes"
 										rows="4"
 										class="if-overlay__input"
 										:disabled="submitting"
-										placeholder="Expected learning outcomes"
+										:placeholder="__('Expected learning outcomes')"
 									/>
 								</section>
 							</template>
@@ -270,7 +276,7 @@
 								class="if-button if-button--secondary"
 								@click="emitClose('programmatic')"
 							>
-								Cancel
+								{{ __('Cancel') }}
 							</button>
 							<button
 								type="button"
@@ -278,7 +284,7 @@
 								:disabled="submitting"
 								@click="submitForm"
 							>
-								Submit request
+								{{ __('Submit request') }}
 							</button>
 						</footer>
 					</DialogPanel>
@@ -300,6 +306,7 @@ import {
 import { FeatherIcon } from 'frappe-ui';
 
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import { __ } from '@/lib/i18n';
 import {
 	getProfessionalDevelopmentRequestContext,
 	submitProfessionalDevelopmentRequest,
@@ -387,7 +394,7 @@ async function loadContext() {
 			costs: [{ cost_type: 'Registration', amount: 0, notes: '' }],
 		};
 	} catch (error: any) {
-		errorMessage.value = error?.message || 'Unknown error';
+		errorMessage.value = error?.message || __('Unknown error');
 	} finally {
 		loading.value = false;
 	}
@@ -438,8 +445,8 @@ function emitAfterLeave() {
 	emit('after-leave');
 }
 
-function onDialogClose(_payload: unknown) {
-	// no-op: close is explicit
+function onDialogClose(payload: unknown) {
+	void payload;
 }
 
 function addCost() {
@@ -478,7 +485,7 @@ async function submitForm() {
 		uiSignals.emit(SIGNAL_PROFESSIONAL_DEVELOPMENT_INVALIDATE);
 		emitClose('programmatic');
 	} catch (error: any) {
-		submitError.value = error?.message || 'Could not submit request.';
+		submitError.value = error?.message || __('Could not submit request.');
 	} finally {
 		submitting.value = false;
 	}

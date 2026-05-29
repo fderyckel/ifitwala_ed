@@ -3,7 +3,6 @@
 import { createApp } from 'vue'
 import { FrappeUI, setConfig, toast } from 'frappe-ui'
 import StudentAttendanceTool from '@/pages/staff/schedule/StudentAttendanceTool.vue'
-import 'frappe-ui/style.css'
 import '@/style.css'
 import { setupFrappeUI } from '@/lib/frappe'
 import { __, installI18nBridge } from '@/lib/i18n'

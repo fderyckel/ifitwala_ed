@@ -6,11 +6,14 @@
 			>
 				<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
 					<div class="space-y-1">
-						<p class="type-overline text-ink/55">Scope</p>
-						<h3 class="type-h3 text-ink">Audience and routing</h3>
+						<p class="type-overline text-ink/55">{{ __('Scope') }}</p>
+						<h3 class="type-h3 text-ink">{{ __('Audience and routing') }}</h3>
 						<p class="type-caption text-ink/65">
-							Set the issuing scope first, then choose the audience workflow. Governed files will
-							lock to this resolved context after the first upload.
+							{{
+								__(
+									'Set the issuing scope first, then choose the audience workflow. Governed files will lock to this resolved context after the first upload.'
+								)
+							}}
 						</p>
 					</div>
 				</div>
@@ -19,7 +22,7 @@
 					class="if-org-communication-scope-grid if-org-communication-core-scope-grid mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2"
 				>
 					<div class="space-y-1">
-						<label class="type-label">Organization</label>
+						<label class="type-label">{{ __('Organization') }}</label>
 						<select
 							v-model="form.organization"
 							class="if-org-communication-native-select"
@@ -39,13 +42,13 @@
 					</div>
 
 					<div class="space-y-1">
-						<label class="type-label">Issuing school</label>
+						<label class="type-label">{{ __('Issuing school') }}</label>
 						<select
 							v-model="form.school"
 							class="if-org-communication-native-select"
 							:disabled="submitting || issuingSchoolSelectionLocked || attachmentContextLocked"
 						>
-							<option value="">No issuing school</option>
+							<option value="">{{ __('No issuing school') }}</option>
 							<option
 								v-for="option in schoolSelectOptions"
 								:key="getSelectOptionValue(option)"
@@ -111,7 +114,9 @@
 					>
 						<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
 							<div class="space-y-1">
-								<p class="type-caption text-ink/55">Audience row {{ index + 1 }}</p>
+								<p class="type-caption text-ink/55">
+									{{ __('Audience row {0}', [index + 1]) }}
+								</p>
 								<p class="type-body-strong text-ink">{{ getAudienceRowTitle(row) }}</p>
 								<p class="type-caption text-ink/65">
 									{{ getAudienceRowDescription(row) }}
@@ -124,7 +129,7 @@
 								:disabled="submitting || attachmentContextLocked"
 								@click="removeAudienceRow(row.id)"
 							>
-								Remove
+								{{ __('Remove') }}
 							</button>
 						</div>
 
@@ -133,7 +138,7 @@
 							class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2"
 						>
 							<div class="space-y-1">
-								<label class="type-label">Audience school</label>
+								<label class="type-label">{{ __('Audience school') }}</label>
 								<select
 									v-model="row.school"
 									class="if-org-communication-native-select"
@@ -141,7 +146,7 @@
 										submitting || audienceSchoolSelectionLocked || attachmentContextLocked
 									"
 								>
-									<option value="">Select school</option>
+									<option value="">{{ __('Select school') }}</option>
 									<option
 										v-for="option in schoolSelectOptions"
 										:key="getSelectOptionValue(option)"
@@ -159,12 +164,12 @@
 										class="rounded border-slate-300 text-jacaranda"
 										:disabled="submitting || attachmentContextLocked"
 									/>
-									Include descendant schools
+									{{ __('Include descendant schools') }}
 								</label>
 							</div>
 
 							<div class="space-y-2">
-								<label class="type-label">Recipients</label>
+								<label class="type-label">{{ __('Recipients') }}</label>
 								<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 									<label
 										v-for="recipient in recipientToggleDefinitions"
@@ -186,8 +191,11 @@
 									v-if="row.target_mode === 'School Scope' && !canTargetWideSchoolScope"
 									class="type-caption text-amber-700"
 								>
-									School-scope Staff rows require Academic Admin, Academic Assistant, HR Manager,
-									Accounts Manager, Nurse, or System Manager.
+									{{
+										__(
+											'School-scope Staff rows require Academic Admin, Academic Assistant, HR Manager, Accounts Manager, Nurse, or System Manager.'
+										)
+									}}
 								</p>
 							</div>
 						</div>
@@ -200,7 +208,9 @@
 								<div class="min-w-0 flex-1 space-y-1">
 									<label class="type-label">
 										{{
-											row.target_mode === 'Team' ? 'Search team' : 'Search class or student group'
+											row.target_mode === 'Team'
+												? __('Search team')
+												: __('Search class or student group')
 										}}
 									</label>
 									<input
@@ -209,8 +219,8 @@
 										class="w-full rounded-2xl border border-border/80 bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-jacaranda/50 focus:ring-1 focus:ring-jacaranda/30"
 										:placeholder="
 											row.target_mode === 'Team'
-												? 'Type a team name or code'
-												: 'Type a class, course, or student group'
+												? __('Type a team name or code')
+												: __('Type a class, course, or student group')
 										"
 										:disabled="submitting || row.search_loading || attachmentContextLocked"
 										@keydown.enter.prevent="searchAudienceTargets(row)"
@@ -224,7 +234,7 @@
 										:disabled="submitting || row.search_loading || attachmentContextLocked"
 										@click="searchAudienceTargets(row)"
 									>
-										{{ row.search_loading ? 'Searching...' : 'Search' }}
+										{{ row.search_loading ? __('Searching...') : __('Search') }}
 									</button>
 									<button
 										v-if="row.team || row.student_group"
@@ -233,7 +243,7 @@
 										:disabled="submitting || attachmentContextLocked"
 										@click="clearAudienceSearchSelection(row)"
 									>
-										Clear
+										{{ __('Clear') }}
 									</button>
 								</div>
 							</div>
@@ -242,7 +252,7 @@
 								v-if="row.team || row.student_group"
 								class="rounded-2xl border border-border/70 bg-white px-4 py-3"
 							>
-								<p class="type-caption text-ink/55">Selected</p>
+								<p class="type-caption text-ink/55">{{ __('Selected') }}</p>
 								<p class="mt-1 type-body-strong text-ink">
 									{{ row.target_mode === 'Team' ? row.team_label : row.student_group_label }}
 								</p>
@@ -275,7 +285,7 @@
 							</div>
 
 							<div v-if="row.target_mode === 'Student Group'" class="space-y-2">
-								<label class="type-label">Recipients</label>
+								<label class="type-label">{{ __('Recipients') }}</label>
 								<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 									<label
 										v-for="recipient in recipientToggleDefinitions"
@@ -296,23 +306,26 @@
 							</div>
 
 							<p v-else class="type-caption text-ink/60">
-								Recipients stay fixed to staff for team communications.
+								{{ __('Recipients stay fixed to staff for team communications.') }}
 							</p>
 						</div>
 
 						<div v-else class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
 							<div class="space-y-1">
-								<label class="type-label">Organization audience</label>
+								<label class="type-label">{{ __('Organization audience') }}</label>
 								<p
 									class="rounded-2xl border border-border/70 bg-white px-3 py-3 type-caption text-ink/70"
 								>
-									Uses the selected organization. Staff without a School and guardians linked to
-									students in that organization tree remain included.
+									{{
+										__(
+											'Uses the selected organization. Staff without a School and guardians linked to students in that organization tree remain included.'
+										)
+									}}
 								</p>
 							</div>
 
 							<div class="space-y-2">
-								<label class="type-label">Recipients</label>
+								<label class="type-label">{{ __('Recipients') }}</label>
 								<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 									<label
 										v-for="recipient in recipientToggleDefinitions"
@@ -331,24 +344,27 @@
 									</label>
 								</div>
 								<p v-if="!canTargetWideSchoolScope" class="type-caption text-amber-700">
-									Organization audience rows require Academic Admin, Academic Assistant, HR
-									Manager, Accounts Manager, Nurse, or System Manager.
+									{{
+										__(
+											'Organization audience rows require Academic Admin, Academic Assistant, HR Manager, Accounts Manager, Nurse, or System Manager.'
+										)
+									}}
 								</p>
 							</div>
 						</div>
 
 						<details class="mt-4 rounded-2xl border border-border/70 bg-white px-4 py-3">
 							<summary class="cursor-pointer list-none">
-								<p class="type-caption text-ink/70">Advanced notes</p>
+								<p class="type-caption text-ink/70">{{ __('Advanced notes') }}</p>
 							</summary>
 
 							<div class="mt-3 space-y-1">
-								<label class="type-label">Row note</label>
+								<label class="type-label">{{ __('Row note') }}</label>
 								<FormControl
 									v-model="row.note"
 									type="textarea"
 									:rows="2"
-									placeholder="Optional note for this audience row."
+									:placeholder="__('Optional note for this audience row.')"
 									:disabled="submitting"
 								/>
 							</div>
@@ -362,27 +378,27 @@
 			>
 				<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 					<div class="space-y-1">
-						<p class="type-overline text-ink/55">Message</p>
-						<h3 class="type-h3 text-ink">Core details</h3>
+						<p class="type-overline text-ink/55">{{ __('Message') }}</p>
+						<h3 class="type-h3 text-ink">{{ __('Core details') }}</h3>
 						<p class="type-caption text-ink/65">
-							Capture the title, message, and note once the communication scope is set.
+							{{ __('Capture the title, message, and note once the communication scope is set.') }}
 						</p>
 					</div>
 				</div>
 
 				<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
 					<div class="space-y-1">
-						<label class="type-label">Title</label>
+						<label class="type-label">{{ __('Title') }}</label>
 						<FormControl
 							v-model="form.title"
 							type="text"
-							placeholder="Weekly staff update"
+							:placeholder="__('Weekly staff update')"
 							:disabled="submitting"
 						/>
 					</div>
 
 					<div class="space-y-1">
-						<label class="type-label">Communication type</label>
+						<label class="type-label">{{ __('Communication type') }}</label>
 						<select
 							v-model="form.communication_type"
 							class="if-org-communication-native-select"
@@ -400,13 +416,13 @@
 				</div>
 
 				<div class="mt-4 space-y-1">
-					<label class="type-label">Message</label>
+					<label class="type-label">{{ __('Message') }}</label>
 					<div
 						class="if-org-communication-message-editor overflow-hidden rounded-2xl border border-border/80 bg-white shadow-sm"
 					>
 						<TextEditor
 							:content="form.message"
-							placeholder="Share the update, call to action, or announcement."
+							:placeholder="__('Share the update, call to action, or announcement.')"
 							:editable="!submitting"
 							:fixed-menu="messageEditorButtons"
 							editor-class="prose prose-sm max-w-none min-h-[14rem] bg-white px-4 py-3 text-sm text-ink focus:outline-none"
@@ -435,12 +451,12 @@
 				</div>
 
 				<div class="mt-4 space-y-1">
-					<label class="type-label">Internal note</label>
+					<label class="type-label">{{ __('Internal note') }}</label>
 					<FormControl
 						v-model="form.internal_note"
 						type="textarea"
 						:rows="3"
-						placeholder="Optional staff note for managing this communication."
+						:placeholder="__('Optional staff note for managing this communication.')"
 						:disabled="submitting"
 					/>
 				</div>
@@ -458,17 +474,20 @@
 
 			<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
 				<div class="space-y-1">
-					<p class="type-overline text-ink/55">Delivery</p>
-					<h3 class="type-h3 text-ink">Publishing and surfaces</h3>
+					<p class="type-overline text-ink/55">{{ __('Delivery') }}</p>
+					<h3 class="type-h3 text-ink">{{ __('Publishing and surfaces') }}</h3>
 					<p class="type-caption text-ink/65">
-						Publish will send now or schedule from Publish from. Save as draft keeps the
-						communication editable.
+						{{
+							__(
+								'Publish will send now or schedule from Publish from. Save as draft keeps the communication editable.'
+							)
+						}}
 					</p>
 				</div>
 
 				<div class="mt-4 rounded-2xl border border-sky/30 bg-sky/10 px-4 py-3">
 					<p class="type-caption text-canopy">
-						Publish action status:
+						{{ __('Publish action status:') }}
 						<span class="type-body-strong text-canopy">
 							{{ publishActionStatus }}
 						</span>
@@ -479,7 +498,7 @@
 					class="if-org-communication-delivery-select-grid mt-4 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2"
 				>
 					<div class="space-y-1">
-						<label class="type-label">Priority</label>
+						<label class="type-label">{{ __('Priority') }}</label>
 						<select
 							v-model="form.priority"
 							class="if-org-communication-native-select"
@@ -495,7 +514,7 @@
 						</select>
 					</div>
 					<div class="space-y-1">
-						<label class="type-label">Portal surface</label>
+						<label class="type-label">{{ __('Portal surface') }}</label>
 						<select
 							v-model="form.portal_surface"
 							class="if-org-communication-native-select"
@@ -517,11 +536,11 @@
 
 				<div v-if="showBriefFields" class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
 					<div class="space-y-1">
-						<label class="type-label">Brief order</label>
+						<label class="type-label">{{ __('Brief order') }}</label>
 						<FormControl
 							v-model="form.brief_order"
 							type="number"
-							placeholder="Optional"
+							:placeholder="__('Optional')"
 							:disabled="submitting"
 						/>
 					</div>
@@ -531,7 +550,7 @@
 					class="if-org-communication-publish-window-grid mt-4 grid grid-cols-1 gap-4 min-[480px]:grid-cols-2"
 				>
 					<div class="space-y-1">
-						<label class="type-label">Publish from</label>
+						<label class="type-label">{{ __('Publish from') }}</label>
 						<input
 							v-model="form.publish_from"
 							type="datetime-local"
@@ -542,7 +561,7 @@
 						/>
 					</div>
 					<div class="space-y-1">
-						<label class="type-label">Publish until</label>
+						<label class="type-label">{{ __('Publish until') }}</label>
 						<input
 							v-model="form.publish_to"
 							type="datetime-local"
@@ -560,7 +579,7 @@
 				>
 					<div class="space-y-1">
 						<label class="type-label">
-							Brief start date
+							{{ __('Brief start date') }}
 							<span v-if="briefDatesRequired" class="text-rose-600">*</span>
 						</label>
 						<input
@@ -573,7 +592,7 @@
 						/>
 					</div>
 					<div class="space-y-1">
-						<label class="type-label">Brief end date</label>
+						<label class="type-label">{{ __('Brief end date') }}</label>
 						<input
 							v-model="form.brief_end_date"
 							type="date"
@@ -598,11 +617,11 @@
 
 		<aside class="space-y-5">
 			<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
-				<p class="type-overline text-ink/55">Interaction</p>
-				<h3 class="mt-1 type-h3 text-ink">Interaction settings</h3>
+				<p class="type-overline text-ink/55">{{ __('Interaction') }}</p>
+				<h3 class="mt-1 type-h3 text-ink">{{ __('Interaction settings') }}</h3>
 				<div class="mt-4 space-y-4">
 					<div class="space-y-1">
-						<label class="type-label">Interaction mode</label>
+						<label class="type-label">{{ __('Interaction mode') }}</label>
 						<select
 							v-model="form.interaction_mode"
 							class="if-org-communication-native-select"
@@ -627,7 +646,7 @@
 							:disabled="submitting || privateNotesDisabled"
 						/>
 						<span>
-							<span class="block"> Let teachers and staff reply privately. </span>
+							<span class="block">{{ __('Let teachers and staff reply privately.') }}</span>
 							<span class="mt-1 block text-[11px] text-ink/60">
 								{{ privateNotesHelpText }}
 							</span>
@@ -643,7 +662,9 @@
 							:disabled="submitting || publicThreadDisabled"
 						/>
 						<span>
-							<span class="block"> Let students or families reply in the shared thread. </span>
+							<span class="block">
+								{{ __('Let students or families reply in the shared thread.') }}
+							</span>
 							<span class="mt-1 block text-[11px] text-ink/60">
 								{{ publicThreadHelpText }}
 							</span>
@@ -653,7 +674,7 @@
 			</section>
 
 			<section class="rounded-[28px] border border-border/70 bg-white p-5 shadow-soft">
-				<p class="type-overline text-ink/55">Audience summary</p>
+				<p class="type-overline text-ink/55">{{ __('Audience summary') }}</p>
 				<div class="mt-4 space-y-3">
 					<div
 						v-for="item in audienceSummaryRows"
@@ -664,7 +685,7 @@
 						<p class="mt-1 type-caption text-ink/65">{{ item.recipients }}</p>
 					</div>
 					<p v-if="!audienceSummaryRows.length" class="type-caption text-ink/60">
-						Add at least one audience row.
+						{{ __('Add at least one audience row.') }}
 					</p>
 				</div>
 			</section>
@@ -672,7 +693,7 @@
 			<section
 				class="if-org-communication-ready-check overflow-hidden rounded-[32px] border border-canopy/10 bg-canopy bg-[linear-gradient(160deg,rgb(var(--canopy-rgb)/0.96),rgb(var(--ink-rgb)/0.92))] p-5 text-white shadow-soft"
 			>
-				<p class="type-overline text-white/65">Ready check</p>
+				<p class="type-overline text-white/65">{{ __('Ready check') }}</p>
 				<h3 class="mt-1 type-h3 text-white">{{ summaryTitle }}</h3>
 				<p class="mt-2 type-caption text-white/70">
 					{{ summarySubtitle }}
@@ -680,13 +701,13 @@
 
 				<div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
 					<div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
-						<p class="type-caption text-white/60">Publish action</p>
+						<p class="type-caption text-white/60">{{ __('Publish action') }}</p>
 						<p class="mt-1 type-body-strong text-white">
 							{{ publishActionStatus }} · {{ form.portal_surface }}
 						</p>
 					</div>
 					<div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
-						<p class="type-caption text-white/60">Issuing scope</p>
+						<p class="type-caption text-white/60">{{ __('Issuing scope') }}</p>
 						<p class="mt-1 type-body-strong text-white">
 							{{ issuingScopeLabel }}
 						</p>
@@ -700,6 +721,7 @@
 <script setup lang="ts">
 import { FormControl, TextEditor } from 'frappe-ui';
 
+import { __ } from '@/lib/i18n';
 import OrgCommunicationQuickCreateAttachmentActions from './OrgCommunicationQuickCreateAttachmentActions.vue';
 import OrgCommunicationQuickCreateAttachmentSection from './OrgCommunicationQuickCreateAttachmentSection.vue';
 import type { OrgCommunicationAttachmentRow } from '@/types/contracts/org_communication_attachments/shared';

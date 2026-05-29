@@ -3,15 +3,19 @@
 	<div class="analytics-shell space-y-5">
 		<header class="page-header">
 			<div class="page-header__intro">
-				<h1 class="type-h1 text-canopy">Policy Signatures</h1>
+				<h1 class="type-h1 text-canopy">{{ __('Policy Signatures') }}</h1>
 				<p class="type-meta text-slate-token/80">
-					Track policy acknowledgement status across staff, guardians, and students from one place.
+					{{
+						__(
+							'Track policy acknowledgement status across staff, guardians, and students from one place.'
+						)
+					}}
 				</p>
 			</div>
 			<div v-if="canManageCampaigns" class="page-header__actions">
 				<button type="button" class="if-button if-button--secondary" @click="openCampaignOverlay">
 					<FeatherIcon name="plus" class="h-4 w-4" />
-					<span>Set up staff campaign</span>
+					<span>{{ __('Set up staff campaign') }}</span>
 				</button>
 				<button
 					type="button"
@@ -19,21 +23,21 @@
 					@click="openFamilyCampaignOverlay"
 				>
 					<FeatherIcon name="send" class="h-4 w-4" />
-					<span>Publish family campaign</span>
+					<span>{{ __('Publish family campaign') }}</span>
 				</button>
 			</div>
 		</header>
 
 		<FiltersBar class="analytics-filters !items-start">
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Organization</label>
+				<label class="type-label">{{ __('Organization') }}</label>
 				<select
 					v-model="filters.organization"
 					class="h-9 min-w-[180px] rounded-md border px-2 text-sm"
 					:disabled="loadingOptions"
 					@change="handleOrganizationChange"
 				>
-					<option value="">Select organization</option>
+					<option value="">{{ __('Select organization') }}</option>
 					<option v-for="org in options.organizations" :key="org" :value="org">
 						{{ org }}
 					</option>
@@ -41,14 +45,14 @@
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">School</label>
+				<label class="type-label">{{ __('School') }}</label>
 				<select
 					v-model="filters.school"
 					class="h-9 min-w-[180px] rounded-md border px-2 text-sm"
 					:disabled="loadingOptions || !filters.organization"
 					@change="handleSchoolChange"
 				>
-					<option value="">All schools</option>
+					<option value="">{{ __('All schools') }}</option>
 					<option v-for="school in options.schools" :key="school" :value="school">
 						{{ school }}
 					</option>
@@ -56,28 +60,28 @@
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Employee Group</label>
+				<label class="type-label">{{ __('Employee Group') }}</label>
 				<select
 					v-model="filters.employee_group"
 					class="h-9 min-w-[170px] rounded-md border px-2 text-sm"
 					:disabled="loadingOptions || !filters.organization"
 				>
-					<option value="">All groups</option>
+					<option value="">{{ __('All groups') }}</option>
 					<option v-for="group in options.employee_groups" :key="group" :value="group">
 						{{ group }}
 					</option>
 				</select>
-				<p class="type-caption text-slate-500">Applies to staff only.</p>
+				<p class="type-caption text-slate-500">{{ __('Applies to staff only.') }}</p>
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Policy Version</label>
+				<label class="type-label">{{ __('Policy Version') }}</label>
 				<select
 					v-model="filters.policy_version"
 					class="h-9 min-w-[280px] rounded-md border px-2 text-sm"
 					:disabled="loadingOptions || !filters.organization"
 				>
-					<option value="">Select policy version</option>
+					<option value="">{{ __('Select policy version') }}</option>
 					<option
 						v-for="policy in options.policies"
 						:key="policy.policy_version"
@@ -90,9 +94,9 @@
 		</FiltersBar>
 
 		<div v-if="accessDenied" class="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
-			<h2 class="text-sm font-semibold text-amber-900">Access restricted</h2>
+			<h2 class="text-sm font-semibold text-amber-900">{{ __('Access restricted') }}</h2>
 			<p class="mt-1 text-xs text-amber-800">
-				You do not have permission to view policy signature analytics.
+				{{ __('You do not have permission to view policy signature analytics.') }}
 			</p>
 		</div>
 
@@ -107,11 +111,13 @@
 			v-else-if="!filters.policy_version"
 			class="rounded-md border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600"
 		>
-			Select a policy version to load acknowledgement status for every applicable audience.
+			{{
+				__('Select a policy version to load acknowledgement status for every applicable audience.')
+			}}
 		</div>
 
 		<div v-else-if="loadingDashboard" class="py-10 text-center text-sm text-slate-500">
-			Loading policy signature analytics...
+			{{ __('Loading policy signature analytics...') }}
 		</div>
 
 		<div v-else-if="dashboard" class="space-y-5">
@@ -140,10 +146,12 @@
 			<section class="analytics-card space-y-4">
 				<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
 					<div class="space-y-1">
-						<p class="type-caption uppercase tracking-[0.16em] text-slate-500">Selected policy</p>
+						<p class="type-caption uppercase tracking-[0.16em] text-slate-500">
+							{{ __('Selected policy') }}
+						</p>
 						<h2 class="type-h3 text-ink">{{ selectedPolicyTitle }}</h2>
 						<p class="type-caption text-slate-500">
-							Version {{ dashboard.summary.version_label || 'Current' }}
+							{{ __('Version {0}', [dashboard.summary.version_label || __('Current')]) }}
 							<span v-if="dashboard.summary.policy_key">
 								· {{ dashboard.summary.policy_key }}
 							</span>
@@ -164,8 +172,11 @@
 					v-if="showEmployeeGroupScopeNote"
 					class="rounded-xl border border-sand/70 bg-sand/40 px-3 py-2 type-caption text-clay"
 				>
-					Employee Group filtering narrows staff results only. Guardian and student counts stay
-					scoped by organization and school.
+					{{
+						__(
+							'Employee Group filtering narrows staff results only. Guardian and student counts stay scoped by organization and school.'
+						)
+					}}
 				</p>
 			</section>
 
@@ -190,15 +201,15 @@
 						>
 							{{
 								section.supports_campaign_launch
-									? 'Staff tasks available'
-									: 'Portal acknowledgement flow'
+									? __('Staff tasks available')
+									: __('Portal acknowledgement flow')
 							}}
 						</div>
 						<div
 							v-if="section.supports_campaign_launch"
 							class="inline-flex items-center rounded-full bg-sky/20 px-3 py-1 type-caption text-canopy"
 						>
-							To create {{ section.summary.to_create }}
+							{{ __('To create {0}', [section.summary.to_create]) }}
 						</div>
 					</div>
 				</div>
@@ -224,14 +235,14 @@
 
 				<section class="grid grid-cols-1 gap-4 xl:grid-cols-3">
 					<article class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-soft">
-						<h4 class="type-body-strong text-ink">By Organization</h4>
+						<h4 class="type-body-strong text-ink">{{ __('By Organization') }}</h4>
 						<table class="mt-3 w-full text-sm">
 							<thead>
 								<tr class="text-left text-slate-500">
-									<th class="pb-2 pr-2">Organization</th>
-									<th class="pb-2 pr-2">Signed</th>
-									<th class="pb-2 pr-2">Pending</th>
-									<th class="pb-2 text-right">Completion</th>
+									<th class="pb-2 pr-2">{{ __('Organization') }}</th>
+									<th class="pb-2 pr-2">{{ __('Signed') }}</th>
+									<th class="pb-2 pr-2">{{ __('Pending') }}</th>
+									<th class="pb-2 text-right">{{ __('Completion') }}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -246,21 +257,23 @@
 									<td class="py-2 text-right">{{ row.completion_pct }}%</td>
 								</tr>
 								<tr v-if="section.breakdowns.by_organization.length === 0">
-									<td class="py-3 text-slate-500" colspan="4">No matching records.</td>
+									<td class="py-3 text-slate-500" colspan="4">
+										{{ __('No matching records.') }}
+									</td>
 								</tr>
 							</tbody>
 						</table>
 					</article>
 
 					<article class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-soft">
-						<h4 class="type-body-strong text-ink">By School</h4>
+						<h4 class="type-body-strong text-ink">{{ __('By School') }}</h4>
 						<table class="mt-3 w-full text-sm">
 							<thead>
 								<tr class="text-left text-slate-500">
-									<th class="pb-2 pr-2">School</th>
-									<th class="pb-2 pr-2">Signed</th>
-									<th class="pb-2 pr-2">Pending</th>
-									<th class="pb-2 text-right">Completion</th>
+									<th class="pb-2 pr-2">{{ __('School') }}</th>
+									<th class="pb-2 pr-2">{{ __('Signed') }}</th>
+									<th class="pb-2 pr-2">{{ __('Pending') }}</th>
+									<th class="pb-2 text-right">{{ __('Completion') }}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -275,7 +288,9 @@
 									<td class="py-2 text-right">{{ row.completion_pct }}%</td>
 								</tr>
 								<tr v-if="section.breakdowns.by_school.length === 0">
-									<td class="py-3 text-slate-500" colspan="4">No matching records.</td>
+									<td class="py-3 text-slate-500" colspan="4">
+										{{ __('No matching records.') }}
+									</td>
 								</tr>
 							</tbody>
 						</table>
@@ -286,15 +301,17 @@
 						class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-soft"
 					>
 						<h4 class="type-body-strong text-ink">
-							By {{ section.breakdowns.context_label || 'Context' }}
+							{{ __('By {0}', [section.breakdowns.context_label || __('Context')]) }}
 						</h4>
 						<table class="mt-3 w-full text-sm">
 							<thead>
 								<tr class="text-left text-slate-500">
-									<th class="pb-2 pr-2">{{ section.breakdowns.context_label || 'Context' }}</th>
-									<th class="pb-2 pr-2">Signed</th>
-									<th class="pb-2 pr-2">Pending</th>
-									<th class="pb-2 text-right">Completion</th>
+									<th class="pb-2 pr-2">
+										{{ section.breakdowns.context_label || __('Context') }}
+									</th>
+									<th class="pb-2 pr-2">{{ __('Signed') }}</th>
+									<th class="pb-2 pr-2">{{ __('Pending') }}</th>
+									<th class="pb-2 text-right">{{ __('Completion') }}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -318,18 +335,18 @@
 					class="grid grid-cols-1 gap-4 xl:grid-cols-2"
 				>
 					<article class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-soft">
-						<h4 class="type-body-strong text-ink">Pending</h4>
+						<h4 class="type-body-strong text-ink">{{ __('Pending') }}</h4>
 						<p class="analytics-card__meta mt-1">
-							People who still need to acknowledge this policy.
+							{{ __('People who still need to acknowledge this policy.') }}
 						</p>
 						<div class="mt-3 max-h-[24rem] overflow-auto custom-scrollbar">
 							<table class="w-full text-sm">
 								<thead>
 									<tr class="text-left text-slate-500">
-										<th class="pb-2 pr-2">Person</th>
-										<th class="pb-2 pr-2">Context</th>
-										<th class="pb-2 pr-2">Organization</th>
-										<th class="pb-2">School</th>
+										<th class="pb-2 pr-2">{{ __('Person') }}</th>
+										<th class="pb-2 pr-2">{{ __('Context') }}</th>
+										<th class="pb-2 pr-2">{{ __('Organization') }}</th>
+										<th class="pb-2">{{ __('School') }}</th>
 									</tr>
 								</thead>
 								<tbody>
@@ -349,7 +366,9 @@
 										<td class="py-2">{{ row.school || '-' }}</td>
 									</tr>
 									<tr v-if="section.rows.pending.length === 0">
-										<td class="py-3 text-slate-500" colspan="4">No pending acknowledgements.</td>
+										<td class="py-3 text-slate-500" colspan="4">
+											{{ __('No pending acknowledgements.') }}
+										</td>
 									</tr>
 								</tbody>
 							</table>
@@ -357,18 +376,18 @@
 					</article>
 
 					<article class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-soft">
-						<h4 class="type-body-strong text-ink">Signed</h4>
+						<h4 class="type-body-strong text-ink">{{ __('Signed') }}</h4>
 						<p class="analytics-card__meta mt-1">
-							Most recent acknowledgements for this audience.
+							{{ __('Most recent acknowledgements for this audience.') }}
 						</p>
 						<div class="mt-3 max-h-[24rem] overflow-auto custom-scrollbar">
 							<table class="w-full text-sm">
 								<thead>
 									<tr class="text-left text-slate-500">
-										<th class="pb-2 pr-2">Person</th>
-										<th class="pb-2 pr-2">Context</th>
-										<th class="pb-2 pr-2">Acknowledged At</th>
-										<th class="pb-2">Acknowledged By</th>
+										<th class="pb-2 pr-2">{{ __('Person') }}</th>
+										<th class="pb-2 pr-2">{{ __('Context') }}</th>
+										<th class="pb-2 pr-2">{{ __('Acknowledged At') }}</th>
+										<th class="pb-2">{{ __('Acknowledged By') }}</th>
 									</tr>
 								</thead>
 								<tbody>
@@ -396,7 +415,9 @@
 										<td class="py-2">{{ row.acknowledged_by || '-' }}</td>
 									</tr>
 									<tr v-if="section.rows.signed.length === 0">
-										<td class="py-3 text-slate-500" colspan="4">No signatures captured yet.</td>
+										<td class="py-3 text-slate-500" colspan="4">
+											{{ __('No signatures captured yet.') }}
+										</td>
 									</tr>
 								</tbody>
 							</table>
@@ -407,9 +428,13 @@
 				<article class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-soft">
 					<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
 						<div class="space-y-1">
-							<h4 class="type-body-strong text-ink">Audience register</h4>
+							<h4 class="type-body-strong text-ink">{{ __('Audience register') }}</h4>
 							<p class="analytics-card__meta">
-								Search this audience and page through results instead of scanning long lists.
+								{{
+									__(
+										'Search this audience and page through results instead of scanning long lists.'
+									)
+								}}
 							</p>
 						</div>
 						<button
@@ -419,8 +444,8 @@
 						>
 							{{
 								getAudienceRegister(section.audience).isOpen
-									? 'Hide register'
-									: 'Open searchable register'
+									? __('Hide register')
+									: __('Open searchable register')
 							}}
 						</button>
 					</div>
@@ -429,15 +454,19 @@
 						v-if="!shouldShowCompactAudienceLists(section)"
 						class="mt-4 rounded-xl border border-sand/70 bg-sand/25 px-3 py-2 type-caption text-clay"
 					>
-						This audience has {{ section.summary.eligible_targets }} people in scope. Use the
-						register to search quickly and move through paginated results.
+						{{
+							__(
+								'This audience has {0} people in scope. Use the register to search quickly and move through paginated results.',
+								[section.summary.eligible_targets]
+							)
+						}}
 					</p>
 
 					<div v-if="getAudienceRegister(section.audience).isOpen" class="mt-4 space-y-4">
 						<div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
 							<div class="flex flex-1 flex-col gap-3 sm:flex-row">
 								<div class="flex-1">
-									<label class="sr-only">Search {{ section.audience_label }}</label>
+									<label class="sr-only">{{ __('Search {0}', [section.audience_label]) }}</label>
 									<input
 										v-model="getAudienceRegister(section.audience).queryInput"
 										type="search"
@@ -452,7 +481,7 @@
 										class="inline-flex items-center justify-center rounded-full bg-jacaranda px-4 py-2 type-button-label text-white shadow-soft transition hover:bg-jacaranda/90"
 										@click="submitAudienceSearch(section.audience)"
 									>
-										Find
+										{{ __('Find') }}
 									</button>
 									<button
 										v-if="
@@ -463,7 +492,7 @@
 										class="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 type-button-label text-slate-600 transition hover:border-jacaranda/30 hover:text-jacaranda"
 										@click="clearAudienceSearch(section.audience)"
 									>
-										Clear
+										{{ __('Clear') }}
 									</button>
 								</div>
 							</div>
@@ -487,7 +516,7 @@
 						>
 							<p>{{ registerRangeLabel(section.audience) }}</p>
 							<p v-if="getAudienceRegister(section.audience).appliedQuery" class="type-caption">
-								Search: “{{ getAudienceRegister(section.audience).appliedQuery }}”
+								{{ __('Search: {0}', [getAudienceRegister(section.audience).appliedQuery]) }}
 							</p>
 						</div>
 
@@ -502,7 +531,7 @@
 							v-else-if="getAudienceRegister(section.audience).loading"
 							class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500"
 						>
-							Loading {{ section.audience_label.toLowerCase() }} register...
+							{{ __('Loading {0} register...', [section.audience_label.toLowerCase()]) }}
 						</div>
 
 						<div
@@ -519,12 +548,12 @@
 								<table class="w-full min-w-[860px] text-sm">
 									<thead class="bg-slate-50 text-left text-slate-500">
 										<tr>
-											<th class="px-3 py-3 pr-2">Person</th>
-											<th class="px-3 py-3 pr-2">Status</th>
-											<th class="px-3 py-3 pr-2">Context</th>
-											<th class="px-3 py-3 pr-2">Organization</th>
-											<th class="px-3 py-3 pr-2">School</th>
-											<th class="px-3 py-3">Acknowledged</th>
+											<th class="px-3 py-3 pr-2">{{ __('Person') }}</th>
+											<th class="px-3 py-3 pr-2">{{ __('Status') }}</th>
+											<th class="px-3 py-3 pr-2">{{ __('Context') }}</th>
+											<th class="px-3 py-3 pr-2">{{ __('Organization') }}</th>
+											<th class="px-3 py-3 pr-2">{{ __('School') }}</th>
+											<th class="px-3 py-3">{{ __('Acknowledged') }}</th>
 										</tr>
 									</thead>
 									<tbody>
@@ -544,7 +573,7 @@
 													class="inline-flex items-center rounded-full px-2.5 py-1 type-caption"
 													:class="rowStatusClasses(row.is_signed)"
 												>
-													{{ row.is_signed ? 'Signed' : 'Pending' }}
+													{{ row.is_signed ? __('Signed') : __('Pending') }}
 												</span>
 											</td>
 											<td class="px-3 py-3 pr-2">{{ row.context_label || '—' }}</td>
@@ -565,7 +594,7 @@
 													{{ row.acknowledged_by }}
 												</div>
 												<span v-if="!row.is_signed" class="type-caption text-flame">
-													Awaiting signature
+													{{ __('Awaiting signature') }}
 												</span>
 											</td>
 										</tr>
@@ -575,8 +604,12 @@
 
 							<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 								<p class="type-caption text-slate-500">
-									Page {{ getAudienceRegister(section.audience).page }} of
-									{{ getAudienceRegister(section.audience).totalPages }}
+									{{
+										__('Page {0} of {1}', [
+											getAudienceRegister(section.audience).page,
+											getAudienceRegister(section.audience).totalPages,
+										])
+									}}
 								</p>
 								<div class="flex items-center gap-2">
 									<button
@@ -590,7 +623,7 @@
 											)
 										"
 									>
-										Previous
+										{{ __('Previous') }}
 									</button>
 									<button
 										type="button"
@@ -606,7 +639,7 @@
 											)
 										"
 									>
-										Next
+										{{ __('Next') }}
 									</button>
 								</div>
 							</div>
@@ -626,6 +659,7 @@ import { FeatherIcon } from 'frappe-ui';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { formatLocalizedDateTime } from '@/lib/datetime';
+import { __ } from '@/lib/i18n';
 import { createPolicySignatureService } from '@/lib/services/policySignature/policySignatureService';
 import { getStaffHomeHeader } from '@/lib/services/staff/staffHomeService';
 
@@ -733,13 +767,13 @@ const selectedPolicyTitle = computed(() => {
 	const policy = options.policies.find(row => row.policy_version === filters.policy_version);
 	if (!policy)
 		return (
-			dashboard.value?.summary.policy_title || dashboard.value?.summary.policy_key || 'Policy'
+			dashboard.value?.summary.policy_title || dashboard.value?.summary.policy_key || __('Policy')
 		);
 	return (
 		(policy.policy_title || '').trim() ||
 		(policy.policy_key || '').trim() ||
 		dashboard.value?.summary.policy_title ||
-		'Policy'
+		__('Policy')
 	);
 });
 
@@ -755,21 +789,21 @@ const dashboardMetricCards = computed<MetricCard[]>(() => {
 	return [
 		{
 			id: 'eligible_targets',
-			label: 'Eligible',
+			label: __('Eligible'),
 			value: summary.eligible_targets,
 			tone: 'neutral',
 		},
-		{ id: 'signed', label: 'Signed', value: summary.signed, tone: 'signed' },
-		{ id: 'pending', label: 'Pending', value: summary.pending, tone: 'pending' },
+		{ id: 'signed', label: __('Signed'), value: summary.signed, tone: 'signed' },
+		{ id: 'pending', label: __('Pending'), value: summary.pending, tone: 'pending' },
 		{
 			id: 'completion_pct',
-			label: 'Completion',
+			label: __('Completion'),
 			value: `${summary.completion_pct}%`,
 			tone: 'completion',
 		},
 		{
 			id: 'skipped_scope',
-			label: 'Out of scope',
+			label: __('Out of scope'),
 			value: summary.skipped_scope,
 			tone: 'muted',
 		},
@@ -777,9 +811,9 @@ const dashboardMetricCards = computed<MetricCard[]>(() => {
 });
 
 function audienceLabel(audience: PolicySignatureAudience) {
-	if (audience === 'Guardian') return 'Guardians';
-	if (audience === 'Student') return 'Students';
-	return 'Staff';
+	if (audience === 'Guardian') return __('Guardians');
+	if (audience === 'Student') return __('Students');
+	return __('Staff');
 }
 
 function policyLabel(policy: PolicyOption) {
@@ -804,31 +838,31 @@ function audienceMetricCards(section: PolicySignatureAudienceSection): MetricCar
 	return [
 		{
 			id: `${section.audience}_eligible`,
-			label: 'Eligible',
+			label: __('Eligible'),
 			value: section.summary.eligible_targets,
 			tone: 'neutral',
 		},
 		{
 			id: `${section.audience}_signed`,
-			label: 'Signed',
+			label: __('Signed'),
 			value: section.summary.signed,
 			tone: 'signed',
 		},
 		{
 			id: `${section.audience}_pending`,
-			label: 'Pending',
+			label: __('Pending'),
 			value: section.summary.pending,
 			tone: 'pending',
 		},
 		{
 			id: `${section.audience}_completion`,
-			label: 'Completion',
+			label: __('Completion'),
 			value: `${section.summary.completion_pct}%`,
 			tone: 'completion',
 		},
 		{
 			id: `${section.audience}_skipped`,
-			label: 'Out of scope',
+			label: __('Out of scope'),
 			value: section.summary.skipped_scope,
 			tone: 'muted',
 		},
@@ -889,9 +923,9 @@ function resetAudienceRegisters() {
 }
 
 function registerStatusLabel(status: PolicySignatureRegisterStatus) {
-	if (status === 'pending') return 'Pending';
-	if (status === 'signed') return 'Signed';
-	return 'All';
+	if (status === 'pending') return __('Pending');
+	if (status === 'signed') return __('Signed');
+	return __('All');
 }
 
 function registerStatusButtonClasses(
@@ -909,25 +943,26 @@ function rowStatusClasses(isSigned: boolean) {
 
 function registerRangeLabel(audience: PolicySignatureAudience) {
 	const state = getAudienceRegister(audience);
-	if (!state.totalRows) return 'No matching people';
+	if (!state.totalRows) return __('No matching people');
 	const start = (state.page - 1) * AUDIENCE_REGISTER_PAGE_LIMIT + 1;
 	const end = Math.min(start + state.rows.length - 1, state.totalRows);
-	return `Showing ${start}-${end} of ${state.totalRows}`;
+	return __('Showing {0}-{1} of {2}', [start, end, state.totalRows]);
 }
 
 function registerEmptyMessage(audience: PolicySignatureAudience) {
 	const state = getAudienceRegister(audience);
-	if (state.appliedQuery) return 'No people matched this search in the current scope.';
-	if (state.status === 'signed') return 'No signed acknowledgements matched this scope.';
-	if (state.status === 'pending') return 'No pending acknowledgements matched this scope.';
-	return 'No audience rows matched this scope.';
+	if (state.appliedQuery) return __('No people matched this search in the current scope.');
+	if (state.status === 'signed') return __('No signed acknowledgements matched this scope.');
+	if (state.status === 'pending') return __('No pending acknowledgements matched this scope.');
+	return __('No audience rows matched this scope.');
 }
 
 function audienceSearchPlaceholder(section: PolicySignatureAudienceSection) {
-	if (section.audience === 'Staff') return 'Search staff by name, group, organization, or school';
+	if (section.audience === 'Staff')
+		return __('Search staff by name, group, organization, or school');
 	if (section.audience === 'Guardian')
-		return 'Search guardians by name, email, linked students, organization, or school';
-	return 'Search students by name, email, organization, or school';
+		return __('Search guardians by name, email, linked students, organization, or school');
+	return __('Search students by name, email, organization, or school');
 }
 
 async function loadAudienceRegister(audience: PolicySignatureAudience) {
@@ -966,7 +1001,9 @@ async function loadAudienceRegister(audience: PolicySignatureAudience) {
 		state.totalPages = 1;
 		state.loaded = false;
 		state.error =
-			err instanceof Error && err.message ? err.message : 'Unable to load this audience register.';
+			err instanceof Error && err.message
+				? err.message
+				: __('Unable to load this audience register.');
 	} finally {
 		if (requestToken === state.requestToken) {
 			state.loading = false;
@@ -1069,7 +1106,8 @@ async function refreshOptions() {
 		normalizeSelection();
 		accessDenied.value = false;
 	} catch (err: unknown) {
-		const message = err instanceof Error && err.message ? err.message : 'Unable to load filters.';
+		const message =
+			err instanceof Error && err.message ? err.message : __('Unable to load filters.');
 		errorMessage.value = message;
 		accessDenied.value = /permission|not permitted|not have permission/i.test(message);
 	} finally {
@@ -1100,7 +1138,7 @@ async function loadDashboard() {
 	} catch (err: unknown) {
 		dashboard.value = null;
 		const message =
-			err instanceof Error && err.message ? err.message : 'Unable to load dashboard.';
+			err instanceof Error && err.message ? err.message : __('Unable to load dashboard.');
 		errorMessage.value = message;
 	} finally {
 		loadingDashboard.value = false;

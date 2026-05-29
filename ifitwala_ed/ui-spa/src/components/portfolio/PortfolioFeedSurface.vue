@@ -17,7 +17,7 @@
 						:disabled="loading"
 						@click="refreshFeed"
 					>
-						Refresh
+						{{ __('Refresh') }}
 					</button>
 					<button
 						v-if="canExport"
@@ -26,7 +26,7 @@
 						:disabled="exportingPortfolio"
 						@click="onExportPortfolio"
 					>
-						{{ exportingPortfolio ? 'Exporting…' : 'Export Portfolio PDF' }}
+						{{ exportingPortfolio ? __('Exporting…') : __('Export Portfolio PDF') }}
 					</button>
 					<button
 						v-if="canExport"
@@ -35,17 +35,17 @@
 						:disabled="exportingReflection"
 						@click="onExportReflection"
 					>
-						{{ exportingReflection ? 'Exporting…' : 'Export Reflection PDF' }}
+						{{ exportingReflection ? __('Exporting…') : __('Export Reflection PDF') }}
 					</button>
 				</div>
 			</div>
 		</header>
 
 		<section class="card-surface p-5">
-			<h2 class="mb-3 type-h3 text-ink">Feed Filters</h2>
+			<h2 class="mb-3 type-h3 text-ink">{{ __('Feed Filters') }}</h2>
 			<div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
 				<label class="flex flex-col gap-1">
-					<span class="type-label">From</span>
+					<span class="type-label">{{ __('From') }}</span>
 					<input
 						v-model="filters.dateFrom"
 						type="date"
@@ -53,7 +53,7 @@
 					/>
 				</label>
 				<label class="flex flex-col gap-1">
-					<span class="type-label">To</span>
+					<span class="type-label">{{ __('To') }}</span>
 					<input
 						v-model="filters.dateTo"
 						type="date"
@@ -61,50 +61,50 @@
 					/>
 				</label>
 				<label class="flex flex-col gap-1">
-					<span class="type-label">Academic Year</span>
+					<span class="type-label">{{ __('Academic Year') }}</span>
 					<input
 						v-model="filters.academicYear"
 						type="text"
-						placeholder="e.g. AY-2026-2027"
+						:placeholder="__('e.g. AY-2026-2027')"
 						class="rounded-lg border border-line-soft bg-white px-3 py-2 type-caption text-ink"
 					/>
 				</label>
 				<label class="flex flex-col gap-1">
-					<span class="type-label">Program Enrollment</span>
+					<span class="type-label">{{ __('Program Enrollment') }}</span>
 					<input
 						v-model="filters.programEnrollment"
 						type="text"
-						placeholder="Program Enrollment ID"
+						:placeholder="__('Program Enrollment ID')"
 						class="rounded-lg border border-line-soft bg-white px-3 py-2 type-caption text-ink"
 					/>
 				</label>
 				<label class="flex flex-col gap-1">
-					<span class="type-label">Tags</span>
+					<span class="type-label">{{ __('Tags') }}</span>
 					<input
 						v-model="filters.tagIdsCsv"
 						type="text"
-						placeholder="Comma-separated Tag Taxonomy IDs"
+						:placeholder="__('Comma-separated Tag Taxonomy IDs')"
 						class="rounded-lg border border-line-soft bg-white px-3 py-2 type-caption text-ink"
 					/>
 				</label>
 				<label v-if="actor === 'guardian'" class="flex flex-col gap-1">
-					<span class="type-label">Child</span>
+					<span class="type-label">{{ __('Child') }}</span>
 					<select
 						v-model="filters.guardianStudent"
 						class="rounded-lg border border-line-soft bg-white px-3 py-2 type-caption text-ink"
 					>
-						<option value="">All linked children</option>
+						<option value="">{{ __('All linked children') }}</option>
 						<option v-for="child in guardianChildren" :key="child.student" :value="child.student">
 							{{ child.full_name || child.student }}
 						</option>
 					</select>
 				</label>
 				<label v-else-if="actor === 'staff'" class="flex flex-col gap-1">
-					<span class="type-label">Students</span>
+					<span class="type-label">{{ __('Students') }}</span>
 					<input
 						v-model="filters.staffStudentCsv"
 						type="text"
-						placeholder="Comma-separated Student IDs"
+						:placeholder="__('Comma-separated Student IDs')"
 						class="rounded-lg border border-line-soft bg-white px-3 py-2 type-caption text-ink"
 					/>
 				</label>
@@ -114,7 +114,9 @@
 						type="checkbox"
 						class="rounded border-line-soft"
 					/>
-					<span class="type-caption text-ink/80">Show showcase-approved items only</span>
+					<span class="type-caption text-ink/80">
+						{{ __('Show showcase-approved items only') }}
+					</span>
 				</label>
 			</div>
 			<div class="mt-4 flex flex-wrap gap-2">
@@ -124,7 +126,7 @@
 					:disabled="loading"
 					@click="applyFilters"
 				>
-					Apply filters
+					{{ __('Apply filters') }}
 				</button>
 				<button
 					type="button"
@@ -132,31 +134,31 @@
 					:disabled="loading"
 					@click="resetFilters"
 				>
-					Reset
+					{{ __('Reset') }}
 				</button>
 			</div>
 		</section>
 
 		<section v-if="shareControlsEnabled" class="card-surface p-5">
-			<h2 class="mb-3 type-h3 text-ink">External Share Link</h2>
+			<h2 class="mb-3 type-h3 text-ink">{{ __('External Share Link') }}</h2>
 			<p class="mb-3 type-caption text-ink/70">
-				Showcase-only, tokenized link with expiry and optional email gate.
+				{{ __('Showcase-only, tokenized link with expiry and optional email gate.') }}
 			</p>
 			<div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
 				<label class="flex flex-col gap-1">
-					<span class="type-label">Portfolio</span>
+					<span class="type-label">{{ __('Portfolio') }}</span>
 					<select
 						v-model="shareForm.portfolio"
 						class="rounded-lg border border-line-soft bg-white px-3 py-2 type-caption text-ink"
 					>
-						<option value="">Select portfolio</option>
+						<option value="">{{ __('Select portfolio') }}</option>
 						<option v-for="portfolio in availablePortfolioIds" :key="portfolio" :value="portfolio">
 							{{ portfolio }}
 						</option>
 					</select>
 				</label>
 				<label class="flex flex-col gap-1">
-					<span class="type-label">Expires On</span>
+					<span class="type-label">{{ __('Expires On') }}</span>
 					<input
 						v-model="shareForm.expiresOn"
 						type="date"
@@ -164,11 +166,11 @@
 					/>
 				</label>
 				<label class="flex flex-col gap-1">
-					<span class="type-label">Viewer Email (Optional)</span>
+					<span class="type-label">{{ __('Viewer Email (Optional)') }}</span>
 					<input
 						v-model="shareForm.viewerEmail"
 						type="email"
-						placeholder="family@example.com"
+						:placeholder="__('family@example.com')"
 						class="rounded-lg border border-line-soft bg-white px-3 py-2 type-caption text-ink"
 					/>
 				</label>
@@ -178,7 +180,7 @@
 						type="checkbox"
 						class="rounded border-line-soft"
 					/>
-					<span class="type-caption text-ink/80">Allow download</span>
+					<span class="type-caption text-ink/80">{{ __('Allow download') }}</span>
 				</label>
 			</div>
 			<div class="mt-4 flex flex-wrap items-center gap-2">
@@ -188,10 +190,10 @@
 					:disabled="creatingShareLink"
 					@click="onCreateShareLink"
 				>
-					{{ creatingShareLink ? 'Creating…' : 'Create Share Link' }}
+					{{ creatingShareLink ? __('Creating…') : __('Create Share Link') }}
 				</button>
 				<p v-if="shareLink" class="type-caption text-ink/80">
-					Share URL:
+					{{ __('Share URL:') }}
 					<a
 						class="text-jacaranda underline"
 						:href="shareLink.share_url"
@@ -204,23 +206,25 @@
 		</section>
 
 		<section v-if="canMutate" class="card-surface p-5">
-			<h2 class="mb-3 type-h3 text-ink">New Reflection Entry</h2>
+			<h2 class="mb-3 type-h3 text-ink">{{ __('New Reflection Entry') }}</h2>
 			<p class="mb-3 type-caption text-ink/70">
-				Reflections stay in the student stream and can be promoted into portfolio evidence.
+				{{
+					__('Reflections stay in the student stream and can be promoted into portfolio evidence.')
+				}}
 			</p>
 			<div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
 				<label class="flex flex-col gap-1">
-					<span class="type-label">Student</span>
+					<span class="type-label">{{ __('Student') }}</span>
 					<input
 						v-model="reflectionForm.student"
 						type="text"
 						:readonly="actor === 'student' && !!reflectionForm.student"
-						placeholder="Student ID"
+						:placeholder="__('Student ID')"
 						class="rounded-lg border border-line-soft bg-white px-3 py-2 type-caption text-ink"
 					/>
 				</label>
 				<label class="flex flex-col gap-1">
-					<span class="type-label">Date</span>
+					<span class="type-label">{{ __('Date') }}</span>
 					<input
 						v-model="reflectionForm.entryDate"
 						type="date"
@@ -228,38 +232,38 @@
 					/>
 				</label>
 				<label class="flex flex-col gap-1">
-					<span class="type-label">Type</span>
+					<span class="type-label">{{ __('Type') }}</span>
 					<select
 						v-model="reflectionForm.entryType"
 						class="rounded-lg border border-line-soft bg-white px-3 py-2 type-caption text-ink"
 					>
-						<option>Journal</option>
-						<option>Reflection</option>
-						<option>Goal Check-in</option>
-						<option>Advisory</option>
-						<option>Activity</option>
-						<option>Program</option>
-						<option>Course</option>
+						<option value="Journal">{{ __('Journal') }}</option>
+						<option value="Reflection">{{ __('Reflection') }}</option>
+						<option value="Goal Check-in">{{ __('Goal Check-in') }}</option>
+						<option value="Advisory">{{ __('Advisory') }}</option>
+						<option value="Activity">{{ __('Activity') }}</option>
+						<option value="Program">{{ __('Program') }}</option>
+						<option value="Course">{{ __('Course') }}</option>
 					</select>
 				</label>
 				<label class="flex flex-col gap-1">
-					<span class="type-label">Visibility</span>
+					<span class="type-label">{{ __('Visibility') }}</span>
 					<select
 						v-model="reflectionForm.visibility"
 						class="rounded-lg border border-line-soft bg-white px-3 py-2 type-caption text-ink"
 					>
-						<option>Private</option>
-						<option>Teacher</option>
-						<option>Portfolio</option>
+						<option value="Private">{{ __('Private') }}</option>
+						<option value="Teacher">{{ __('Teacher') }}</option>
+						<option value="Portfolio">{{ __('Portfolio') }}</option>
 					</select>
 				</label>
 			</div>
 			<label class="mt-3 flex flex-col gap-1">
-				<span class="type-label">Reflection</span>
+				<span class="type-label">{{ __('Reflection') }}</span>
 				<textarea
 					v-model="reflectionForm.body"
 					rows="4"
-					placeholder="Write your reflection..."
+					:placeholder="__('Write your reflection...')"
 					class="rounded-lg border border-line-soft bg-white px-3 py-2 type-caption text-ink"
 				/>
 			</label>
@@ -273,17 +277,21 @@
 					:disabled="creatingReflection"
 					@click="onCreateReflection"
 				>
-					{{ creatingReflection ? 'Saving…' : 'Create Reflection' }}
+					{{ creatingReflection ? __('Saving…') : __('Create Reflection') }}
 				</button>
 			</div>
 		</section>
 
 		<section class="card-surface p-5">
 			<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-				<h2 class="type-h3 text-ink">Portfolio + Reflection Feed</h2>
+				<h2 class="type-h3 text-ink">{{ __('Portfolio + Reflection Feed') }}</h2>
 				<p class="type-caption text-ink/60">
-					Portfolio: {{ portfolioFeed.items.length }} · Reflections:
-					{{ reflectionFeed.items.length }}
+					{{
+						__('Portfolio: {0} · Reflections: {1}', [
+							portfolioFeed.items.length,
+							reflectionFeed.items.length,
+						])
+					}}
 				</p>
 			</div>
 			<div
@@ -292,9 +300,11 @@
 			>
 				<div class="flex flex-wrap items-center justify-between gap-2">
 					<p class="type-body-strong text-ink">
-						Moderation Queue: {{ moderationQueueItems.length }} pending on this page
+						{{ __('Moderation Queue: {0} pending on this page', [moderationQueueItems.length]) }}
 					</p>
-					<p class="type-caption text-ink/70">{{ selectedModerationCount }} selected</p>
+					<p class="type-caption text-ink/70">
+						{{ __('{0} selected', [selectedModerationCount]) }}
+					</p>
 				</div>
 				<div class="mt-2 flex flex-wrap gap-2">
 					<button
@@ -303,7 +313,7 @@
 						:disabled="moderationBusy"
 						@click="selectPendingForModeration"
 					>
-						Select all pending
+						{{ __('Select all pending') }}
 					</button>
 					<button
 						type="button"
@@ -311,7 +321,7 @@
 						:disabled="moderationBusy"
 						@click="clearModerationSelection"
 					>
-						Clear selection
+						{{ __('Clear selection') }}
 					</button>
 					<button
 						type="button"
@@ -319,7 +329,7 @@
 						:disabled="moderationBusy"
 						@click="onBatchModerate('approve')"
 					>
-						Approve selected
+						{{ __('Approve selected') }}
 					</button>
 					<button
 						type="button"
@@ -327,7 +337,7 @@
 						:disabled="moderationBusy"
 						@click="onBatchModerate('return_for_edit')"
 					>
-						Return selected
+						{{ __('Return selected') }}
 					</button>
 					<button
 						type="button"
@@ -335,7 +345,7 @@
 						:disabled="moderationBusy"
 						@click="onBatchModerate('hide')"
 					>
-						Hide selected
+						{{ __('Hide selected') }}
 					</button>
 				</div>
 				<p v-if="moderationError" class="mt-2 type-caption text-flame" role="alert">
@@ -343,16 +353,16 @@
 				</p>
 			</div>
 
-			<p v-if="loading" class="type-body text-ink/70">Loading feed...</p>
+			<p v-if="loading" class="type-body text-ink/70">{{ __('Loading feed...') }}</p>
 			<div v-else-if="loadError" class="rounded-lg border border-line-soft bg-white p-3">
-				<p class="type-body-strong text-flame">Could not load portfolio feed.</p>
+				<p class="type-body-strong text-flame">{{ __('Could not load portfolio feed.') }}</p>
 				<p class="type-caption text-ink/70">{{ loadError }}</p>
 			</div>
 			<div
 				v-else-if="!combinedRows.length"
 				class="rounded-lg border border-line-soft bg-white p-3"
 			>
-				<p class="type-body text-ink/70">No feed items match these filters.</p>
+				<p class="type-body text-ink/70">{{ __('No feed items match these filters.') }}</p>
 			</div>
 			<div v-else class="space-y-3">
 				<article
@@ -364,7 +374,7 @@
 						<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 							<div>
 								<p class="type-caption text-ink/60">
-									Portfolio · {{ row.item.item_type }} · {{ row.item.student_name }}
+									{{ __('Portfolio') }} · {{ row.item.item_type }} · {{ row.item.student_name }}
 									<span v-if="row.item.evidence_date">· {{ row.item.evidence_date }}</span>
 								</p>
 								<p class="type-body-strong text-ink">
@@ -374,7 +384,7 @@
 									{{ row.item.reflection_summary }}
 								</p>
 								<p class="mt-1 type-caption text-ink/60">
-									Moderation: {{ row.item.moderation_state }}
+									{{ __('Moderation: {0}', [row.item.moderation_state]) }}
 								</p>
 							</div>
 							<div class="flex flex-wrap items-center gap-2">
@@ -388,7 +398,7 @@
 										:checked="Boolean(moderationSelection[row.item.item_name])"
 										@change="onToggleModerationSelection(row.item.item_name, $event)"
 									/>
-									<span class="type-caption text-ink/70">Queue</span>
+									<span class="type-caption text-ink/70">{{ __('Queue') }}</span>
 								</label>
 								<span
 									class="rounded-full px-2 py-1 type-badge-label"
@@ -396,7 +406,7 @@
 										row.item.is_showcase ? 'bg-leaf/20 text-leaf' : 'bg-surface-soft text-ink/70'
 									"
 								>
-									{{ row.item.is_showcase ? 'Showcase' : 'Internal' }}
+									{{ row.item.is_showcase ? __('Showcase') : __('Internal') }}
 								</span>
 								<button
 									v-if="canMutate"
@@ -405,7 +415,7 @@
 									:disabled="Boolean(showcaseBusy[row.item.item_name])"
 									@click="onToggleShowcase(row.item.item_name, row.item.is_showcase)"
 								>
-									{{ row.item.is_showcase ? 'Remove Showcase' : 'Mark Showcase' }}
+									{{ row.item.is_showcase ? __('Remove Showcase') : __('Mark Showcase') }}
 								</button>
 							</div>
 						</div>
@@ -418,7 +428,7 @@
 								:href="row.item.evidence.link_url"
 								target="_blank"
 								rel="noopener"
-								>Open evidence link</a
+								>{{ __('Open evidence link') }}</a
 							>
 						</p>
 						<p v-if="row.item.evidence?.file_url" class="mt-2 type-caption">
@@ -427,7 +437,7 @@
 								:href="row.item.evidence.file_url"
 								target="_blank"
 								rel="noopener"
-								>Download {{ row.item.evidence.file_name || 'artefact' }}</a
+								>{{ __('Download {0}', [row.item.evidence.file_name || __('artefact')]) }}</a
 							>
 						</p>
 
@@ -443,7 +453,7 @@
 									v-if="canMutate && tag.name"
 									type="button"
 									class="ml-1 text-flame"
-									:title="`Remove ${tag.title}`"
+									:title="__('Remove {0}', [tag.title])"
 									@click="onRemoveTag(tag.name)"
 								>
 									×
@@ -455,7 +465,7 @@
 							<input
 								v-model="tagDraft[row.item.item_name]"
 								type="text"
-								placeholder="Tag Taxonomy ID"
+								:placeholder="__('Tag Taxonomy ID')"
 								class="rounded-lg border border-line-soft bg-white px-3 py-2 type-caption text-ink"
 							/>
 							<button
@@ -464,7 +474,7 @@
 								:disabled="Boolean(tagBusy[row.item.item_name])"
 								@click="onAddTag(row.item.item_name)"
 							>
-								Add Tag
+								{{ __('Add Tag') }}
 							</button>
 						</div>
 					</template>
@@ -473,15 +483,17 @@
 						<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 							<div>
 								<p class="type-caption text-ink/60">
-									Reflection · {{ row.item.student }}
+									{{ __('Reflection') }} · {{ row.item.student }}
 									<span v-if="row.item.entry_date">· {{ row.item.entry_date }}</span>
 								</p>
-								<p class="type-body-strong text-ink">{{ row.item.entry_type || 'Reflection' }}</p>
+								<p class="type-body-strong text-ink">
+									{{ row.item.entry_type || __('Reflection') }}
+								</p>
 								<p class="mt-1 type-caption text-ink/70">
-									Visibility: {{ row.item.visibility || 'Teacher' }}
+									{{ __('Visibility: {0}', [row.item.visibility || __('Teacher')]) }}
 								</p>
 								<p class="mt-1 type-caption text-ink/60">
-									Moderation: {{ row.item.moderation_state || 'Draft' }}
+									{{ __('Moderation: {0}', [row.item.moderation_state || __('Draft')]) }}
 								</p>
 							</div>
 							<div>
@@ -492,7 +504,7 @@
 									:disabled="Boolean(addToPortfolioBusy[row.item.name])"
 									@click="onAddReflectionToPortfolio(row.item)"
 								>
-									Add to Portfolio
+									{{ __('Add to Portfolio') }}
 								</button>
 							</div>
 						</div>
@@ -508,16 +520,16 @@
 					:disabled="loading || page <= 1"
 					@click="goPrev"
 				>
-					Previous
+					{{ __('Previous') }}
 				</button>
-				<p class="type-caption text-ink/70">Page {{ page }} of {{ totalPages }}</p>
+				<p class="type-caption text-ink/70">{{ __('Page {0} of {1}', [page, totalPages]) }}</p>
 				<button
 					type="button"
 					class="if-button if-button--secondary"
 					:disabled="loading || page >= totalPages"
 					@click="goNext"
 				>
-					Next
+					{{ __('Next') }}
 				</button>
 			</div>
 		</section>
@@ -528,6 +540,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { toast } from 'frappe-ui';
 
+import { __ } from '@/lib/i18n';
 import { getGuardianHomeSnapshot } from '@/lib/services/guardianHome/guardianHomeService';
 import {
 	addPortfolioItem,
@@ -568,18 +581,22 @@ const props = withDefaults(
 		subtitle?: string;
 	}>(),
 	{
-		title: 'Portfolio Feed',
-		subtitle: 'Annual evidence lens with universal reflections and low-friction sharing.',
+		title: '',
+		subtitle: '',
 	}
 );
 
 const actor = computed<Actor>(() => props.actor);
-const title = computed(() => props.title);
-const subtitle = computed(() => props.subtitle);
+const title = computed(() => props.title || __('Portfolio Feed'));
+const subtitle = computed(
+	() =>
+		props.subtitle ||
+		__('Annual evidence lens with universal reflections and low-friction sharing.')
+);
 const portalLabel = computed(() => {
-	if (actor.value === 'student') return 'Student Portfolio';
-	if (actor.value === 'guardian') return 'Guardian Showcase';
-	return 'Staff Portfolio Review';
+	if (actor.value === 'student') return __('Student Portfolio');
+	if (actor.value === 'guardian') return __('Guardian Showcase');
+	return __('Staff Portfolio Review');
 });
 
 const canMutate = computed(() => actor.value !== 'guardian');
@@ -818,7 +835,7 @@ async function loadGuardianChildren() {
 		guardianChildren.value = snapshot.family.children || [];
 	} catch (error) {
 		guardianChildren.value = [];
-		toast.error(messageForError(error, 'Could not load linked children for filters.'));
+		toast.error(messageForError(error, __('Could not load linked children for filters.')));
 	}
 }
 
@@ -846,7 +863,7 @@ async function loadFeed() {
 		syncDerivedDefaults();
 		pruneModerationSelection();
 	} catch (error) {
-		loadError.value = messageForError(error, 'Unknown error');
+		loadError.value = messageForError(error, __('Unknown error'));
 	} finally {
 		loading.value = false;
 	}
@@ -890,10 +907,12 @@ async function onToggleShowcase(itemName: string, current: boolean) {
 	showcaseBusy.value[itemName] = true;
 	try {
 		await setShowcaseState({ item_name: itemName, is_showcase: current ? 0 : 1 });
-		toast.success(current ? 'Removed from showcase.' : 'Submitted to showcase moderation queue.');
+		toast.success(
+			current ? __('Removed from showcase.') : __('Submitted to showcase moderation queue.')
+		);
 		await loadFeed();
 	} catch (error) {
-		toast.error(messageForError(error, 'Could not update showcase state.'));
+		toast.error(messageForError(error, __('Could not update showcase state.')));
 	} finally {
 		showcaseBusy.value[itemName] = false;
 	}
@@ -924,7 +943,7 @@ function clearModerationSelection() {
 async function onBatchModerate(action: ModerationAction) {
 	const itemNames = selectedModerationNames.value;
 	if (!itemNames.length) {
-		moderationError.value = 'Select at least one pending showcase item for moderation.';
+		moderationError.value = __('Select at least one pending showcase item for moderation.');
 		toast.error(moderationError.value);
 		return;
 	}
@@ -938,16 +957,20 @@ async function onBatchModerate(action: ModerationAction) {
 		});
 		const failed = (response.results || []).filter(row => !row.ok);
 		if (failed.length) {
-			const firstError = failed[0]?.error || 'Some items could not be moderated.';
-			moderationError.value = `Updated ${response.updated} item(s). ${failed.length} item(s) failed. ${firstError}`;
+			const firstError = failed[0]?.error || __('Some items could not be moderated.');
+			moderationError.value = __('Updated {0} item(s). {1} item(s) failed. {2}', [
+				response.updated,
+				failed.length,
+				firstError,
+			]);
 			toast.error(moderationError.value);
 		} else {
-			toast.success(`Updated ${response.updated} showcase item(s).`);
+			toast.success(__('Updated {0} showcase item(s).', [response.updated]));
 		}
 		clearModerationSelection();
 		await loadFeed();
 	} catch (error) {
-		const message = messageForError(error, 'Could not run batch moderation.');
+		const message = messageForError(error, __('Could not run batch moderation.'));
 		moderationError.value = message;
 		toast.error(message);
 	} finally {
@@ -958,7 +981,7 @@ async function onBatchModerate(action: ModerationAction) {
 async function onAddTag(itemName: string) {
 	const tagTaxonomy = (tagDraft.value[itemName] || '').trim();
 	if (!tagTaxonomy) {
-		toast.error('Enter a Tag Taxonomy ID before adding a tag.');
+		toast.error(__('Enter a Tag Taxonomy ID before adding a tag.'));
 		return;
 	}
 
@@ -971,10 +994,10 @@ async function onAddTag(itemName: string) {
 			scope: 'portfolio',
 		});
 		tagDraft.value[itemName] = '';
-		toast.success('Tag added.');
+		toast.success(__('Tag added.'));
 		await loadFeed();
 	} catch (error) {
-		toast.error(messageForError(error, 'Could not add tag.'));
+		toast.error(messageForError(error, __('Could not add tag.')));
 	} finally {
 		tagBusy.value[itemName] = false;
 	}
@@ -983,10 +1006,10 @@ async function onAddTag(itemName: string) {
 async function onRemoveTag(name: string) {
 	try {
 		await removeEvidenceTag({ name });
-		toast.success('Tag removed.');
+		toast.success(__('Tag removed.'));
 		await loadFeed();
 	} catch (error) {
-		toast.error(messageForError(error, 'Could not remove tag.'));
+		toast.error(messageForError(error, __('Could not remove tag.')));
 	}
 }
 
@@ -1001,10 +1024,10 @@ async function onAddReflectionToPortfolio(reflection: ReflectionEntryRow) {
 			student_reflection_entry: reflection.name,
 			is_showcase: 0,
 		});
-		toast.success('Reflection added to annual portfolio.');
+		toast.success(__('Reflection added to annual portfolio.'));
 		await loadFeed();
 	} catch (error) {
-		toast.error(messageForError(error, 'Could not add reflection to portfolio.'));
+		toast.error(messageForError(error, __('Could not add reflection to portfolio.')));
 	} finally {
 		addToPortfolioBusy.value[reflection.name] = false;
 	}
@@ -1015,13 +1038,13 @@ async function onCreateReflection() {
 	const student = reflectionForm.student.trim();
 	const body = reflectionForm.body.trim();
 	if (!student) {
-		reflectionError.value = 'Student is required.';
-		toast.error('Student is required before creating a reflection.');
+		reflectionError.value = __('Student is required.');
+		toast.error(__('Student is required before creating a reflection.'));
 		return;
 	}
 	if (!body) {
-		reflectionError.value = 'Reflection body is required.';
-		toast.error('Write a reflection body before submitting.');
+		reflectionError.value = __('Reflection body is required.');
+		toast.error(__('Write a reflection body before submitting.'));
 		return;
 	}
 
@@ -1038,10 +1061,10 @@ async function onCreateReflection() {
 		});
 		reflectionForm.body = '';
 		reflectionError.value = '';
-		toast.success('Reflection created.');
+		toast.success(__('Reflection created.'));
 		await loadFeed();
 	} catch (error) {
-		const message = messageForError(error, 'Could not create reflection entry.');
+		const message = messageForError(error, __('Could not create reflection entry.'));
 		reflectionError.value = message;
 		toast.error(message);
 	} finally {
@@ -1052,11 +1075,11 @@ async function onCreateReflection() {
 async function onCreateShareLink() {
 	const portfolio = shareForm.portfolio.trim();
 	if (!portfolio) {
-		toast.error('Select a portfolio before creating a share link.');
+		toast.error(__('Select a portfolio before creating a share link.'));
 		return;
 	}
 	if (!shareForm.expiresOn) {
-		toast.error('Expiry date is required.');
+		toast.error(__('Expiry date is required.'));
 		return;
 	}
 
@@ -1069,9 +1092,9 @@ async function onCreateShareLink() {
 			allow_download: shareForm.allowDownload ? 1 : 0,
 		});
 		shareLink.value = { share_url: response.share_url };
-		toast.success('Share link created.');
+		toast.success(__('Share link created.'));
 	} catch (error) {
-		toast.error(messageForError(error, 'Could not create share link.'));
+		toast.error(messageForError(error, __('Could not create share link.')));
 	} finally {
 		creatingShareLink.value = false;
 	}
@@ -1084,9 +1107,9 @@ async function onExportPortfolio() {
 		if (response.file_url) {
 			window.open(response.file_url, '_blank', 'noopener');
 		}
-		toast.success(`Portfolio PDF ready: ${response.file_name}`);
+		toast.success(__('Portfolio PDF ready: {0}', [response.file_name]));
 	} catch (error) {
-		toast.error(messageForError(error, 'Could not export portfolio PDF.'));
+		toast.error(messageForError(error, __('Could not export portfolio PDF.')));
 	} finally {
 		exportingPortfolio.value = false;
 	}
@@ -1099,9 +1122,9 @@ async function onExportReflection() {
 		if (response.file_url) {
 			window.open(response.file_url, '_blank', 'noopener');
 		}
-		toast.success(`Reflection PDF ready: ${response.file_name}`);
+		toast.success(__('Reflection PDF ready: {0}', [response.file_name]));
 	} catch (error) {
-		toast.error(messageForError(error, 'Could not export reflection PDF.'));
+		toast.error(messageForError(error, __('Could not export reflection PDF.')));
 	} finally {
 		exportingReflection.value = false;
 	}

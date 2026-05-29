@@ -24,6 +24,7 @@ frappe.ui.form.on('Student', {
 
 		frm.trigger("render_contact_address_readonly");
 		frm.trigger("refresh_family_address_proposal");
+		frm.trigger("refresh_account_holder_guardian_action");
 		frm.trigger("refresh_insight_actions");
 
 		frm.trigger("setup_governed_image_upload");
@@ -131,6 +132,117 @@ frappe.ui.form.on('Student', {
 			},
 			__("View")
 		);
+	},
+
+	refresh_account_holder_guardian_action: function(frm) {
+		frm.remove_custom_button(__("Create Account Holder with Guardians"), __("Actions"));
+		frm.remove_custom_button(__("Link Guardians to Account Holder"), __("Actions"));
+		if (frm.is_new()) {
+			return;
+		}
+
+		const label = frm.doc.account_holder
+			? __("Link Guardians to Account Holder")
+			: __("Create Account Holder with Guardians");
+		frm.add_custom_button(
+			label,
+			() => frm.events.show_account_holder_guardian_dialog(frm),
+			__("Actions")
+		);
+	},
+
+	show_account_holder_guardian_dialog: function(frm) {
+		if (frm.is_dirty()) {
+			frappe.msgprint(__("Please save your changes before updating Account Holder billing contacts."));
+			return;
+		}
+
+		frappe.call({
+			method: "ifitwala_ed.accounting.account_holder_contacts.get_student_account_holder_guardian_proposal",
+			args: { student_name: frm.doc.name },
+			freeze: true,
+			freeze_message: __("Loading guardian contacts..."),
+		}).then((res) => {
+			const proposal = res?.message || {};
+			const candidates = Array.isArray(proposal.guardian_candidates) ? proposal.guardian_candidates : [];
+			if (!proposal.can_create || !candidates.length) {
+				frappe.msgprint(proposal.blocker || __("Add a Guardian before creating the Account Holder."));
+				return;
+			}
+
+			const hasFinancialGuardian = candidates.some((row) => cint(row.is_financial_guardian));
+			const fields = [
+				{
+					fieldtype: "HTML",
+					fieldname: "context_html",
+					options: buildAccountHolderGuardianContextHtml(proposal),
+				},
+				{
+					fieldtype: "MultiCheck",
+					fieldname: "guardians",
+					label: __("Guardians"),
+					options: candidates.map((row) => ({
+						label: buildAccountHolderGuardianOptionLabel(row),
+						value: row.guardian,
+						checked: hasFinancialGuardian
+							? cint(row.is_financial_guardian)
+							: cint(row.recommended),
+					})),
+				},
+			];
+
+			const dialog = new frappe.ui.Dialog({
+				title: proposal.account_holder
+					? __("Link Guardians to Account Holder")
+					: __("Create Account Holder with Guardians"),
+				fields,
+				primary_action_label: proposal.account_holder
+					? __("Link Guardians")
+					: __("Create Account Holder"),
+				primary_action(values) {
+					const guardians = normalizeMultiCheckValues(values.guardians);
+					if (!guardians.length) {
+						frappe.show_alert({
+							message: __("Select at least one Guardian."),
+							indicator: "orange",
+						});
+						return;
+					}
+
+					frappe.call({
+						method: "ifitwala_ed.accounting.account_holder_contacts.create_account_holder_from_student_guardians",
+						args: {
+							student_name: frm.doc.name,
+							guardians,
+						},
+						freeze: true,
+						freeze_message: __("Updating Account Holder..."),
+					}).then((createRes) => {
+						const payload = createRes?.message || {};
+						const accountHolder = payload.account_holder?.name;
+						if (!accountHolder) {
+							frappe.msgprint(__("Account Holder update did not return a linked record."));
+							return;
+						}
+						frm.set_value("account_holder", accountHolder);
+						frm.refresh_field("account_holder");
+						dialog.hide();
+						frappe.show_alert({
+							message: payload.created
+								? __("Account Holder created with billing contacts.")
+								: __("Account Holder billing contacts updated."),
+							indicator: "green",
+						});
+						frm.reload_doc();
+					}).catch((err) => {
+						frappe.msgprint(err?.message || __("Unable to update Account Holder billing contacts."));
+					});
+				},
+			});
+			dialog.show();
+		}).catch((err) => {
+			frappe.msgprint(err?.message || __("Unable to load guardian contacts."));
+		});
 	},
 
 	setup_sibling_guardian_sync: function(frm) {
@@ -698,6 +810,52 @@ function rememberFamilyAddressPrompt(promptKey) {
 		return;
 	}
 	window.localStorage.setItem(promptKey, "1");
+}
+
+function buildAccountHolderGuardianContextHtml(proposal) {
+	const accountHolder = proposal.account_holder
+		? frappe.utils.escape_html(proposal.account_holder)
+		: "";
+	if (accountHolder) {
+		return `
+			<p>
+				${__("Selected Guardians will be linked as billing contacts for Account Holder {0}.", [accountHolder])}
+			</p>
+		`;
+	}
+
+	return `
+		<p>
+			${__("Selected Guardians will create the Account Holder for {0}.", [
+				frappe.utils.escape_html(proposal.student_name || proposal.student),
+			])}
+		</p>
+	`;
+}
+
+function buildAccountHolderGuardianOptionLabel(row) {
+	const parts = [row.guardian_name || row.guardian];
+	if (row.relation) {
+		parts.push(row.relation);
+	}
+	if (cint(row.is_financial_guardian)) {
+		parts.push(__("Financial Guardian"));
+	} else if (cint(row.is_primary_guardian)) {
+		parts.push(__("Primary Guardian"));
+	}
+
+	const contactParts = [];
+	if (row.email_masked) {
+		contactParts.push(row.email_masked);
+	}
+	if (row.phone_masked) {
+		contactParts.push(row.phone_masked);
+	}
+	if (contactParts.length) {
+		parts.push(contactParts.join(" / "));
+	}
+
+	return parts.filter(Boolean).join(" · ");
 }
 
 function buildFamilyAddressContextHtml(proposal) {

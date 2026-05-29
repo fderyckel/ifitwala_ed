@@ -9,6 +9,7 @@ import types
 from unittest import TestCase
 
 from ifitwala_ed.tests.frappe_stubs import StubValidationError, import_fresh, stubbed_frappe
+from ifitwala_ed.utilities.governed_file_contract import is_allowed_file_purpose
 
 
 class _Doc:
@@ -93,6 +94,15 @@ def _expense_claim_receipt_stub_modules(captured_payloads: list[dict]):
 
 
 class TestExpenseClaimReceiptsUnit(TestCase):
+    def test_expense_claim_receipt_contract_uses_allowed_drive_purpose(self):
+        with stubbed_frappe(extra_modules=_expense_claim_receipt_stub_modules([])):
+            module = import_fresh("ifitwala_ed.hr.doctype.expense_claim.receipts")
+
+            contract = module.build_expense_claim_receipt_upload_contract(_Doc("EXC-2026-00001"), row_name="ROW-1")
+
+        self.assertEqual(contract["purpose"], "administrative")
+        self.assertTrue(is_allowed_file_purpose(contract["purpose"]))
+
     def test_upload_recovers_expense_claim_from_frappe_upload_args(self):
         captured_payloads = []
         with stubbed_frappe(extra_modules=_expense_claim_receipt_stub_modules(captured_payloads)) as frappe:

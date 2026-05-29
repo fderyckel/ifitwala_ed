@@ -32,11 +32,15 @@
 					<DialogPanel class="if-overlay__panel">
 						<div class="flex items-start justify-between gap-4 px-6 pt-6">
 							<div class="min-w-0">
-								<DialogTitle class="type-h2 text-ink">Family Policy Campaign</DialogTitle>
+								<DialogTitle class="type-h2 text-ink">
+									{{ __('Family Policy Campaign') }}
+								</DialogTitle>
 								<p class="mt-1 type-caption text-ink/60">
-									Publish student and guardian portal notices that deep-link to the exact policy
-									version they still need to acknowledge. This never creates staff tasks or a
-									second compliance record.
+									{{
+										__(
+											'Publish student and guardian portal notices that deep-link to the exact policy version they still need to acknowledge. This never creates staff tasks or a second compliance record.'
+										)
+									}}
 								</p>
 							</div>
 							<button
@@ -44,7 +48,7 @@
 								type="button"
 								class="if-overlay__icon-button shrink-0"
 								@click="emitClose('programmatic')"
-								aria-label="Close"
+								:aria-label="__('Close')"
 							>
 								<FeatherIcon name="x" class="h-4 w-4" />
 							</button>
@@ -56,7 +60,9 @@
 								class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 shadow-soft"
 								role="alert"
 							>
-								<p class="type-body-strong text-rose-900">Unable to publish this campaign</p>
+								<p class="type-body-strong text-rose-900">
+									{{ __('Unable to publish this campaign') }}
+								</p>
 								<p class="mt-1 whitespace-pre-wrap type-caption text-rose-900/80">
 									{{ errorMessage }}
 								</p>
@@ -80,8 +86,10 @@
 
 							<section class="grid gap-4 md:grid-cols-2">
 								<div class="flex min-w-0 flex-col gap-1">
-									<label for="family-policy-campaign-organization" class="type-label leading-tight"
-										>Organization</label
+									<label
+										for="family-policy-campaign-organization"
+										class="type-label leading-tight"
+										>{{ __('Organization') }}</label
 									>
 									<select
 										id="family-policy-campaign-organization"
@@ -89,7 +97,7 @@
 										class="if-overlay__input"
 										:disabled="busyOptions || busyPublish"
 									>
-										<option value="">Select organization</option>
+										<option value="">{{ __('Select organization') }}</option>
 										<option v-for="org in options.organizations" :key="org" :value="org">
 											{{ org }}
 										</option>
@@ -97,16 +105,16 @@
 								</div>
 
 								<div class="flex min-w-0 flex-col gap-1">
-									<label for="family-policy-campaign-school" class="type-label leading-tight"
-										>School (optional)</label
-									>
+									<label for="family-policy-campaign-school" class="type-label leading-tight">{{
+										__('School (optional)')
+									}}</label>
 									<select
 										id="family-policy-campaign-school"
 										v-model="form.school"
 										class="if-overlay__input"
 										:disabled="busyOptions || busyPublish || !form.organization"
 									>
-										<option value="">All schools in scope</option>
+										<option value="">{{ __('All schools in scope') }}</option>
 										<option v-for="school in options.schools" :key="school" :value="school">
 											{{ school }}
 										</option>
@@ -117,7 +125,7 @@
 									<label
 										for="family-policy-campaign-policy-version"
 										class="type-label leading-tight"
-										>Policy Version</label
+										>{{ __('Policy Version') }}</label
 									>
 									<select
 										id="family-policy-campaign-policy-version"
@@ -125,7 +133,7 @@
 										class="if-overlay__input"
 										:disabled="busyOptions || busyPublish || !form.organization"
 									>
-										<option value="">Select family policy version</option>
+										<option value="">{{ __('Select family policy version') }}</option>
 										<option
 											v-for="policy in options.policies"
 											:key="policy.policy_version"
@@ -135,27 +143,33 @@
 										</option>
 									</select>
 									<p class="type-caption text-slate-500">
-										Only policy versions that apply to students or guardians are shown here.
+										{{
+											__(
+												'Only policy versions that apply to students or guardians are shown here.'
+											)
+										}}
 									</p>
 								</div>
 
 								<div class="flex min-w-0 flex-col gap-1">
-									<label for="family-policy-campaign-title" class="type-label leading-tight"
-										>Headline (optional)</label
-									>
+									<label for="family-policy-campaign-title" class="type-label leading-tight">{{
+										__('Headline (optional)')
+									}}</label>
 									<input
 										id="family-policy-campaign-title"
 										v-model="form.title"
 										type="text"
 										class="if-overlay__input"
 										:disabled="busyPublish"
-										placeholder="Default titles will be generated per audience."
+										:placeholder="__('Default titles will be generated per audience.')"
 									/>
 								</div>
 
 								<div class="flex min-w-0 flex-col gap-1">
-									<label for="family-policy-campaign-publish-to" class="type-label leading-tight"
-										>Visible Until (optional)</label
+									<label
+										for="family-policy-campaign-publish-to"
+										class="type-label leading-tight"
+										>{{ __('Visible Until (optional)') }}</label
 									>
 									<input
 										id="family-policy-campaign-publish-to"
@@ -167,16 +181,16 @@
 								</div>
 
 								<div class="flex min-w-0 flex-col gap-1 md:col-span-2">
-									<label for="family-policy-campaign-message" class="type-label leading-tight"
-										>Portal note (optional)</label
-									>
+									<label for="family-policy-campaign-message" class="type-label leading-tight">{{
+										__('Portal note (optional)')
+									}}</label>
 									<textarea
 										id="family-policy-campaign-message"
 										v-model="form.message"
 										rows="3"
 										class="if-textarea"
 										:disabled="busyPublish"
-										placeholder="Add a short note above the policy action link."
+										:placeholder="__('Add a short note above the policy action link.')"
 									/>
 								</div>
 
@@ -187,7 +201,7 @@
 									<label
 										for="family-policy-campaign-guardian-mode"
 										class="type-label leading-tight"
-										>Guardian acknowledgement scope</label
+										>{{ __('Guardian acknowledgement scope') }}</label
 									>
 									<select
 										id="family-policy-campaign-guardian-mode"
@@ -195,16 +209,26 @@
 										class="if-overlay__input"
 										:disabled="busyOptions || busyPublish || guardianModeLocked"
 									>
-										<option value="Family Acknowledgement">Family Acknowledgement</option>
-										<option value="Child Acknowledgement">Child Acknowledgement</option>
+										<option value="Family Acknowledgement">
+											{{ __('Family Acknowledgement') }}
+										</option>
+										<option value="Child Acknowledgement">
+											{{ __('Child Acknowledgement') }}
+										</option>
 									</select>
 									<p class="type-caption text-slate-500">
-										Family mode keeps one guardian acknowledgement per policy version. Child mode
-										requires a separate guardian acknowledgement row for each child in scope.
+										{{
+											__(
+												'Family mode keeps one guardian acknowledgement per policy version. Child mode requires a separate guardian acknowledgement row for each child in scope.'
+											)
+										}}
 									</p>
 									<p v-if="guardianModeLocked" class="type-caption text-clay">
-										Guardian acknowledgements already exist for this policy version, so this scope
-										is locked.
+										{{
+											__(
+												'Guardian acknowledgements already exist for this policy version, so this scope is locked.'
+											)
+										}}
 									</p>
 								</div>
 							</section>
@@ -212,10 +236,12 @@
 							<section class="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-soft">
 								<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 									<div>
-										<p class="type-body-strong text-ink">Campaign scope</p>
+										<p class="type-body-strong text-ink">{{ __('Campaign scope') }}</p>
 										<p class="mt-1 type-caption text-slate-500">{{ scopeSummary }}</p>
 									</div>
-									<p v-if="busyOptions" class="type-caption text-slate-500">Refreshing preview…</p>
+									<p v-if="busyOptions" class="type-caption text-slate-500">
+										{{ __('Refreshing preview…') }}
+									</p>
 								</div>
 
 								<div v-if="availableAudiences.length" class="mt-4 flex flex-wrap gap-3">
@@ -238,7 +264,7 @@
 									v-else
 									class="mt-4 rounded-xl border border-dashed border-slate-300 px-3 py-4 type-caption text-slate-500"
 								>
-									Select organization and policy version to preview family audiences.
+									{{ __('Select organization and policy version to preview family audiences.') }}
 								</p>
 
 								<div v-if="audiencePreviews.length" class="mt-4 grid gap-3 lg:grid-cols-2">
@@ -268,25 +294,27 @@
 												"
 											>
 												{{
-													selectedAudiences.includes(audience.audience) ? 'Selected' : 'Optional'
+													selectedAudiences.includes(audience.audience)
+														? __('Selected')
+														: __('Optional')
 												}}
 											</span>
 										</div>
 										<div class="mt-3 grid grid-cols-2 gap-2">
 											<div>
-												<p class="type-caption text-slate-500">Eligible</p>
+												<p class="type-caption text-slate-500">{{ __('Eligible') }}</p>
 												<p class="type-body-strong text-ink">{{ audience.eligible_targets }}</p>
 											</div>
 											<div>
-												<p class="type-caption text-slate-500">Signed</p>
+												<p class="type-caption text-slate-500">{{ __('Signed') }}</p>
 												<p class="type-body-strong text-ink">{{ audience.signed }}</p>
 											</div>
 											<div>
-												<p class="type-caption text-slate-500">Pending</p>
+												<p class="type-caption text-slate-500">{{ __('Pending') }}</p>
 												<p class="type-body-strong text-ink">{{ audience.pending }}</p>
 											</div>
 											<div>
-												<p class="type-caption text-slate-500">Completion</p>
+												<p class="type-caption text-slate-500">{{ __('Completion') }}</p>
 												<p class="type-body-strong text-ink">{{ audience.completion_pct }}%</p>
 											</div>
 										</div>
@@ -297,7 +325,11 @@
 									v-if="availableAudiences.length && selectedPendingTotal <= 0"
 									class="mt-4 rounded-xl border border-sand/70 bg-sand/30 px-3 py-2 type-caption text-clay"
 								>
-									Everyone in the selected family scope has already acknowledged this policy.
+									{{
+										__(
+											'Everyone in the selected family scope has already acknowledged this policy.'
+										)
+									}}
 								</p>
 							</section>
 						</div>
@@ -306,7 +338,11 @@
 							class="if-overlay__footer flex flex-col gap-3 px-6 pb-6 sm:flex-row sm:items-center sm:justify-between"
 						>
 							<p class="type-caption text-ink/55">
-								Selected audiences cover {{ selectedPendingTotal }} pending acknowledgements.
+								{{
+									__('Selected audiences cover {0} pending acknowledgements.', [
+										selectedPendingTotal,
+									])
+								}}
 							</p>
 							<div
 								class="flex w-full flex-col-reverse gap-2 sm:w-auto sm:flex-row sm:items-center"
@@ -316,7 +352,7 @@
 									class="w-full rounded-full border border-border/70 bg-white px-4 py-2 type-caption text-ink/70 sm:w-auto"
 									@click="emitClose('programmatic')"
 								>
-									Cancel
+									{{ __('Cancel') }}
 								</button>
 								<button
 									type="button"
@@ -324,7 +360,7 @@
 									:disabled="!canPublish || busyPublish"
 									@click="publishCampaign"
 								>
-									{{ busyPublish ? 'Publishing…' : 'Publish family campaign' }}
+									{{ busyPublish ? __('Publishing…') : __('Publish family campaign') }}
 								</button>
 							</div>
 						</div>
@@ -346,6 +382,7 @@ import {
 } from '@headlessui/vue';
 import { FeatherIcon } from 'frappe-ui';
 
+import { __ } from '@/lib/i18n';
 import { createPolicySignatureService } from '@/lib/services/policySignature/policySignatureService';
 
 import type { PolicyOption } from '@/types/contracts/policy_signature/get_staff_policy_campaign_options';
@@ -448,17 +485,19 @@ const canPublish = computed(() => {
 	return true;
 });
 const scopeSummary = computed(() => {
-	if (!form.organization) return 'Choose an organization before publishing family notices.';
+	if (!form.organization) return __('Choose an organization before publishing family notices.');
 	if (form.school) {
-		return `Campaign stays inside ${form.school} and any child schools in that branch.`;
+		return __('Campaign stays inside {0} and any child schools in that branch.', [form.school]);
 	}
 	if (!preview.school_target_count) {
-		return 'No schools are available in the selected organization scope yet.';
+		return __('No schools are available in the selected organization scope yet.');
 	}
 	if (preview.school_target_count === 1) {
-		return 'Campaign reaches 1 school in the selected organization tree.';
+		return __('Campaign reaches 1 school in the selected organization tree.');
 	}
-	return `Campaign reaches ${preview.school_target_count} schools in the selected organization tree.`;
+	return __('Campaign reaches {0} schools in the selected organization tree.', [
+		preview.school_target_count,
+	]);
 });
 
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -478,8 +517,8 @@ function emitAfterLeave() {
 	emit('after-leave');
 }
 
-function onDialogClose(_payload: unknown) {
-	// no-op by design
+function onDialogClose(payload: unknown) {
+	void payload;
 }
 
 function policyLabel(policy: PolicyOption) {
@@ -492,7 +531,7 @@ function policyLabel(policy: PolicyOption) {
 }
 
 function audienceLabel(audience: FamilyPolicyCampaignAudience) {
-	return audience === 'Guardian' ? 'Guardians' : 'Students';
+	return audience === 'Guardian' ? __('Guardians') : __('Students');
 }
 
 function applyInitialContext() {
@@ -560,7 +599,7 @@ async function refreshOptions() {
 		errorMessage.value =
 			err instanceof Error && err.message
 				? err.message
-				: 'Unable to load family campaign options.';
+				: __('Unable to load family campaign options.');
 	} finally {
 		busyOptions.value = false;
 	}
@@ -591,20 +630,21 @@ async function publishCampaign() {
 	resetFeedback();
 
 	if (!form.organization) {
-		errorMessage.value = 'Organization is required.';
+		errorMessage.value = __('Organization is required.');
 		return;
 	}
 	if (!form.policy_version) {
-		errorMessage.value = 'Policy Version is required.';
+		errorMessage.value = __('Policy Version is required.');
 		return;
 	}
 	if (!form.audiences.length) {
-		errorMessage.value = 'Select at least one family audience.';
+		errorMessage.value = __('Select at least one family audience.');
 		return;
 	}
 	if (selectedPendingTotal.value <= 0) {
-		errorMessage.value =
-			'There are no pending acknowledgements left in the selected family scope.';
+		errorMessage.value = __(
+			'There are no pending acknowledgements left in the selected family scope.'
+		);
 		return;
 	}
 
@@ -626,12 +666,21 @@ async function publishCampaign() {
 		publishedCommunications.value = [...(response.communications || [])];
 		successMessage.value =
 			response.counts?.published === 1
-				? `Published 1 family campaign communication for ${response.counts.pending} pending acknowledgement${response.counts.pending === 1 ? '' : 's'}.`
-				: `Published ${response.counts?.published || 0} family campaign communications for ${response.counts?.pending || 0} pending acknowledgements.`;
+				? response.counts.pending === 1
+					? __('Published 1 family campaign communication for 1 pending acknowledgement.')
+					: __('Published 1 family campaign communication for {0} pending acknowledgements.', [
+							response.counts.pending,
+						])
+				: __('Published {0} family campaign communications for {1} pending acknowledgements.', [
+						response.counts?.published || 0,
+						response.counts?.pending || 0,
+					]);
 		await refreshOptions();
 	} catch (err: unknown) {
 		errorMessage.value =
-			err instanceof Error && err.message ? err.message : 'Unable to publish the family campaign.';
+			err instanceof Error && err.message
+				? err.message
+				: __('Unable to publish the family campaign.');
 	} finally {
 		busyPublish.value = false;
 	}

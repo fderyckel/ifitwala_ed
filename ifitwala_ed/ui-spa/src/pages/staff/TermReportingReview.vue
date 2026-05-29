@@ -2,11 +2,14 @@
 	<div data-testid="term-reporting-review-page" class="staff-shell min-w-0 space-y-5">
 		<header class="page-header">
 			<div class="page-header__intro">
-				<p class="type-overline text-slate-token/70">Assessment</p>
-				<h1 class="type-h1 text-canopy">Term Reporting Review</h1>
+				<p class="type-overline text-slate-token/70">{{ __('Assessment') }}</p>
+				<h1 class="type-h1 text-canopy">{{ __('Term Reporting Review') }}</h1>
 				<p class="type-meta text-slate-token/80">
-					Review frozen course results, calculation method, and component evidence before term
-					reports are consumed downstream.
+					{{
+						__(
+							'Review frozen course results, calculation method, and component evidence before term reports are consumed downstream.'
+						)
+					}}
 				</p>
 			</div>
 
@@ -18,21 +21,21 @@
 					@click="loadSurface()"
 				>
 					<FeatherIcon name="refresh-cw" class="h-4 w-4" />
-					<span>Refresh</span>
+					<span>{{ __('Refresh') }}</span>
 				</button>
 			</div>
 		</header>
 
 		<FiltersBar>
 			<label class="grid min-w-[15rem] gap-1">
-				<span class="type-caption text-slate-token/70">Reporting Cycle</span>
+				<span class="type-caption text-slate-token/70">{{ __('Reporting Cycle') }}</span>
 				<select
 					v-model="filters.reporting_cycle"
 					data-testid="term-reporting-cycle-filter"
 					class="h-10 rounded-lg border border-slate-200 bg-white px-3 type-body text-ink shadow-sm outline-none transition focus:border-jacaranda focus:ring-2 focus:ring-jacaranda/20"
 					:disabled="loading || !cycleOptions.length"
 				>
-					<option value="">Latest cycle</option>
+					<option value="">{{ __('Latest cycle') }}</option>
 					<option v-for="cycle in cycleOptions" :key="cycle.name" :value="cycle.name">
 						{{ cycleOptionLabel(cycle) }}
 					</option>
@@ -40,35 +43,35 @@
 			</label>
 
 			<label class="grid min-w-[10rem] gap-1">
-				<span class="type-caption text-slate-token/70">Course</span>
+				<span class="type-caption text-slate-token/70">{{ __('Course') }}</span>
 				<input
 					v-model.trim="filters.course"
 					data-testid="term-reporting-course-filter"
 					type="text"
 					class="h-10 rounded-lg border border-slate-200 bg-white px-3 type-body text-ink shadow-sm outline-none transition focus:border-jacaranda focus:ring-2 focus:ring-jacaranda/20"
-					placeholder="Course ID"
+					:placeholder="__('Course ID')"
 					:disabled="loading"
 				/>
 			</label>
 
 			<label class="grid min-w-[10rem] gap-1">
-				<span class="type-caption text-slate-token/70">Student</span>
+				<span class="type-caption text-slate-token/70">{{ __('Student') }}</span>
 				<input
 					v-model.trim="filters.student"
 					type="text"
 					class="h-10 rounded-lg border border-slate-200 bg-white px-3 type-body text-ink shadow-sm outline-none transition focus:border-jacaranda focus:ring-2 focus:ring-jacaranda/20"
-					placeholder="Student ID"
+					:placeholder="__('Student ID')"
 					:disabled="loading"
 				/>
 			</label>
 
 			<label class="grid min-w-[10rem] gap-1">
-				<span class="type-caption text-slate-token/70">Program</span>
+				<span class="type-caption text-slate-token/70">{{ __('Program') }}</span>
 				<input
 					v-model.trim="filters.program"
 					type="text"
 					class="h-10 rounded-lg border border-slate-200 bg-white px-3 type-body text-ink shadow-sm outline-none transition focus:border-jacaranda focus:ring-2 focus:ring-jacaranda/20"
-					placeholder="Program ID"
+					:placeholder="__('Program ID')"
 					:disabled="loading"
 				/>
 			</label>
@@ -81,7 +84,7 @@
 					@click="applyFilters"
 				>
 					<FeatherIcon name="search" class="h-4 w-4" />
-					<span>Apply</span>
+					<span>{{ __('Apply') }}</span>
 				</button>
 				<button
 					type="button"
@@ -90,7 +93,7 @@
 					@click="clearDetailFilters"
 				>
 					<FeatherIcon name="x" class="h-4 w-4" />
-					<span>Clear</span>
+					<span>{{ __('Clear') }}</span>
 				</button>
 			</div>
 		</FiltersBar>
@@ -98,7 +101,9 @@
 		<section v-if="pageError" class="card-surface border border-flame/30 bg-flame/5 p-5">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<p class="type-body-strong text-flame">Term reporting review could not load.</p>
+					<p class="type-body-strong text-flame">
+						{{ __('Term reporting review could not load.') }}
+					</p>
 					<p class="type-body text-ink/75">{{ pageError }}</p>
 				</div>
 				<button
@@ -108,33 +113,33 @@
 					@click="loadSurface()"
 				>
 					<FeatherIcon name="rotate-cw" class="h-4 w-4" />
-					<span>Retry</span>
+					<span>{{ __('Retry') }}</span>
 				</button>
 			</div>
 		</section>
 
 		<section v-if="loading && !surface" class="card-surface p-5">
-			<p class="type-body text-slate-token/75">Loading term reporting review...</p>
+			<p class="type-body text-slate-token/75">{{ __('Loading term reporting review...') }}</p>
 		</section>
 
 		<template v-else-if="surface">
 			<section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
 				<article class="mini-kpi-card">
-					<p class="mini-kpi-label">Cycle Status</p>
+					<p class="mini-kpi-label">{{ __('Cycle Status') }}</p>
 					<p class="mini-kpi-value">{{ display(cycle?.status) }}</p>
 				</article>
 				<article class="mini-kpi-card">
-					<p class="mini-kpi-label">Results</p>
+					<p class="mini-kpi-label">{{ __('Results') }}</p>
 					<p class="mini-kpi-value">{{ formatInteger(surface.results.total_count) }}</p>
 				</article>
 				<article class="mini-kpi-card">
-					<p class="mini-kpi-label">Calculation</p>
+					<p class="mini-kpi-label">{{ __('Calculation') }}</p>
 					<p class="mini-kpi-value truncate text-lg">
 						{{ display(cycle?.assessment_calculation_method) }}
 					</p>
 				</article>
 				<article class="mini-kpi-card">
-					<p class="mini-kpi-label">Cutoff</p>
+					<p class="mini-kpi-label">{{ __('Cutoff') }}</p>
 					<p class="mini-kpi-value">{{ display(cycle?.task_cutoff_date) }}</p>
 				</article>
 			</section>
@@ -143,13 +148,17 @@
 				<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 					<div class="min-w-0 space-y-2">
 						<div class="flex flex-wrap items-center gap-2">
-							<h2 class="type-h3 text-ink">Readiness</h2>
+							<h2 class="type-h3 text-ink">{{ __('Readiness') }}</h2>
 							<span class="rounded-full px-2.5 py-1 type-caption" :class="readinessBadgeClass">
 								{{ readinessLabel }}
 							</span>
 						</div>
 						<p class="type-body text-slate-token/75">
-							Readiness checks the frozen Course Term Result snapshot for this cycle and filter.
+							{{
+								__(
+									'Readiness checks the frozen Course Term Result snapshot for this cycle and filter.'
+								)
+							}}
 						</p>
 						<p v-if="actionMessage" class="type-caption text-canopy">{{ actionMessage }}</p>
 						<p v-if="actionError" class="type-caption text-flame">{{ actionError }}</p>
@@ -163,7 +172,7 @@
 							@click="queueAction('recalculate_course_results')"
 						>
 							<FeatherIcon name="refresh-ccw" class="h-4 w-4" />
-							<span>Recalculate</span>
+							<span>{{ __('Recalculate') }}</span>
 						</button>
 						<button
 							type="button"
@@ -174,7 +183,7 @@
 							@click="queueAction('generate_student_reports')"
 						>
 							<FeatherIcon name="file-check" class="h-4 w-4" />
-							<span>Generate Reports</span>
+							<span>{{ __('Generate Reports') }}</span>
 						</button>
 					</div>
 				</div>
@@ -199,7 +208,7 @@
 					class="mt-4 grid gap-3 lg:grid-cols-3"
 				>
 					<div v-if="readiness.blocked_reasons.length" class="space-y-2">
-						<p class="type-caption text-flame">Blocked</p>
+						<p class="type-caption text-flame">{{ __('Blocked') }}</p>
 						<ul class="space-y-1">
 							<li
 								v-for="reason in readiness.blocked_reasons"
@@ -212,7 +221,7 @@
 					</div>
 
 					<div v-if="readiness.warnings.length" class="space-y-2">
-						<p class="type-caption text-amber-700">Review</p>
+						<p class="type-caption text-amber-700">{{ __('Review') }}</p>
 						<ul class="space-y-1">
 							<li
 								v-for="warning in readiness.warnings"
@@ -225,7 +234,7 @@
 					</div>
 
 					<div v-if="disabledActionReasons.length" class="space-y-2">
-						<p class="type-caption text-slate-token/70">Actions</p>
+						<p class="type-caption text-slate-token/70">{{ __('Actions') }}</p>
 						<ul class="space-y-1">
 							<li
 								v-for="reason in disabledActionReasons"
@@ -241,10 +250,10 @@
 
 			<section v-if="!cycleOptions.length" class="card-surface p-5">
 				<p class="type-body-strong text-ink">
-					No reporting cycles are available in your current scope.
+					{{ __('No reporting cycles are available in your current scope.') }}
 				</p>
 				<p class="type-body text-slate-token/75">
-					Create or scope a Reporting Cycle before reviewing term results.
+					{{ __('Create or scope a Reporting Cycle before reviewing term results.') }}
 				</p>
 			</section>
 
@@ -266,7 +275,7 @@
 									@click="goPrevious"
 								>
 									<FeatherIcon name="chevron-left" class="h-4 w-4" />
-									<span>Prev</span>
+									<span>{{ __('Prev') }}</span>
 								</button>
 								<button
 									type="button"
@@ -274,7 +283,7 @@
 									:disabled="loading || !canGoNext"
 									@click="goNext"
 								>
-									<span>Next</span>
+									<span>{{ __('Next') }}</span>
 									<FeatherIcon name="chevron-right" class="h-4 w-4" />
 								</button>
 							</div>
@@ -282,9 +291,11 @@
 					</div>
 
 					<div v-if="!surface.results.rows.length" class="p-5">
-						<p class="type-body-strong text-ink">No course term results match these filters.</p>
+						<p class="type-body-strong text-ink">
+							{{ __('No course term results match these filters.') }}
+						</p>
 						<p class="type-body text-slate-token/75">
-							Adjust the cycle, course, student, or program filter.
+							{{ __('Adjust the cycle, course, student, or program filter.') }}
 						</p>
 					</div>
 
@@ -292,14 +303,16 @@
 						<table class="min-w-full divide-y divide-slate-200 text-left">
 							<thead class="bg-slate-50/80">
 								<tr>
-									<th class="px-4 py-3 type-caption text-slate-token/70">Student</th>
-									<th class="px-4 py-3 type-caption text-slate-token/70">Course</th>
-									<th class="px-4 py-3 type-caption text-slate-token/70">Program</th>
-									<th class="px-4 py-3 type-caption text-slate-token/70">Score</th>
-									<th class="px-4 py-3 type-caption text-slate-token/70">Grade</th>
-									<th class="px-4 py-3 type-caption text-slate-token/70">Tasks</th>
-									<th class="px-4 py-3 type-caption text-slate-token/70">Weight</th>
-									<th class="px-4 py-3 type-caption text-slate-token/70">Components</th>
+									<th class="px-4 py-3 type-caption text-slate-token/70">{{ __('Student') }}</th>
+									<th class="px-4 py-3 type-caption text-slate-token/70">{{ __('Course') }}</th>
+									<th class="px-4 py-3 type-caption text-slate-token/70">{{ __('Program') }}</th>
+									<th class="px-4 py-3 type-caption text-slate-token/70">{{ __('Score') }}</th>
+									<th class="px-4 py-3 type-caption text-slate-token/70">{{ __('Grade') }}</th>
+									<th class="px-4 py-3 type-caption text-slate-token/70">{{ __('Tasks') }}</th>
+									<th class="px-4 py-3 type-caption text-slate-token/70">{{ __('Weight') }}</th>
+									<th class="px-4 py-3 type-caption text-slate-token/70">
+										{{ __('Components') }}
+									</th>
 								</tr>
 							</thead>
 							<tbody class="divide-y divide-slate-100 bg-white">
@@ -343,7 +356,7 @@
 
 				<aside class="card-surface min-w-0 overflow-hidden">
 					<div class="border-b border-slate-200 px-5 py-4">
-						<p class="type-overline text-slate-token/70">Selected Result</p>
+						<p class="type-overline text-slate-token/70">{{ __('Selected Result') }}</p>
 						<h2 class="type-h3 text-ink">{{ display(selectedResult?.name) }}</h2>
 						<p class="type-caption text-slate-token/70">
 							{{ display(selectedResult?.student) }} / {{ display(selectedResult?.course) }}
@@ -351,19 +364,21 @@
 					</div>
 
 					<div v-if="!selectedResult" class="p-5">
-						<p class="type-body text-slate-token/75">Select a row to review its components.</p>
+						<p class="type-body text-slate-token/75">
+							{{ __('Select a row to review its components.') }}
+						</p>
 					</div>
 
 					<div v-else class="space-y-4 p-5">
 						<div class="grid grid-cols-2 gap-3">
 							<div>
-								<p class="type-caption text-slate-token/70">Scheme</p>
+								<p class="type-caption text-slate-token/70">{{ __('Scheme') }}</p>
 								<p class="type-body-strong text-ink">
 									{{ display(selectedResult.assessment_scheme) }}
 								</p>
 							</div>
 							<div>
-								<p class="type-caption text-slate-token/70">Grade Scale</p>
+								<p class="type-caption text-slate-token/70">{{ __('Grade Scale') }}</p>
 								<p class="type-body-strong text-ink">{{ display(selectedResult.grade_scale) }}</p>
 							</div>
 						</div>
@@ -372,13 +387,13 @@
 							v-if="selectedResult.internal_note"
 							class="rounded-lg border border-slate-200 bg-slate-50 p-3"
 						>
-							<p class="type-caption text-slate-token/70">Internal Note</p>
+							<p class="type-caption text-slate-token/70">{{ __('Internal Note') }}</p>
 							<p class="type-body text-ink">{{ selectedResult.internal_note }}</p>
 						</div>
 
 						<div v-if="!selectedResult.components.length">
 							<p class="type-body text-slate-token/75">
-								No calculation components are stored for this result.
+								{{ __('No calculation components are stored for this result.') }}
 							</p>
 						</div>
 
@@ -402,23 +417,23 @@
 								</div>
 								<dl class="mt-3 grid grid-cols-2 gap-3 type-caption text-slate-token/80">
 									<div>
-										<dt>Weight</dt>
+										<dt>{{ __('Weight') }}</dt>
 										<dd class="type-body-strong text-ink">{{ formatNumber(component.weight) }}</dd>
 									</div>
 									<div>
-										<dt>Raw</dt>
+										<dt>{{ __('Raw') }}</dt>
 										<dd class="type-body-strong text-ink">
 											{{ formatNumber(component.raw_score) }}
 										</dd>
 									</div>
 									<div>
-										<dt>Evidence</dt>
+										<dt>{{ __('Evidence') }}</dt>
 										<dd class="type-body-strong text-ink">
 											{{ formatInteger(component.evidence_count) }}
 										</dd>
 									</div>
 									<div>
-										<dt>Included / Excluded</dt>
+										<dt>{{ __('Included / Excluded') }}</dt>
 										<dd class="type-body-strong text-ink">
 											{{ formatInteger(component.included_outcome_count) }} /
 											{{ formatInteger(component.excluded_outcome_count) }}
@@ -442,6 +457,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { FeatherIcon } from 'frappe-ui';
 
 import FiltersBar from '@/components/filters/FiltersBar.vue';
+import { __ } from '@/lib/i18n';
 import {
 	getTermReportingReviewSurface,
 	queueTermReportingReviewAction,
@@ -491,16 +507,16 @@ const hasDetailFilters = computed(() =>
 
 const cycleTitle = computed(() => {
 	const current = cycle.value;
-	if (!current) return 'No Reporting Cycle';
-	return current.name_label || current.reporting_cycle || 'Reporting Cycle';
+	if (!current) return __('No Reporting Cycle');
+	return current.name_label || current.reporting_cycle || __('Reporting Cycle');
 });
 
 const resultWindowLabel = computed(() => {
 	const results = surface.value?.results;
-	if (!results || results.total_count === 0) return 'No results';
+	if (!results || results.total_count === 0) return __('No results');
 	const from = results.start + 1;
 	const to = Math.min(results.start + results.page_count, results.total_count);
-	return `Showing ${from}-${to} of ${results.total_count}`;
+	return __('Showing {0}-{1} of {2}', [from, to, results.total_count]);
 });
 
 const canGoPrevious = computed(() => start.value > 0);
@@ -512,9 +528,9 @@ const canGoNext = computed(() => {
 
 const readinessLabel = computed(() => {
 	const value = readiness.value?.status;
-	if (value === 'ready') return 'Ready';
-	if (value === 'attention') return 'Review Needed';
-	return 'Blocked';
+	if (value === 'ready') return __('Ready');
+	if (value === 'attention') return __('Review Needed');
+	return __('Blocked');
 });
 
 const readinessBadgeClass = computed(() => {
@@ -528,12 +544,15 @@ const readinessCountItems = computed(() => {
 	const counts = readiness.value?.counts;
 	if (!counts) return [];
 	return [
-		{ label: 'Total Results', value: formatInteger(counts.total_results) },
-		{ label: 'No Counted Tasks', value: formatInteger(counts.zero_task_results) },
-		{ label: 'Missing Grades', value: formatInteger(counts.missing_grade_results) },
-		{ label: 'Overrides', value: formatInteger(counts.override_results) },
-		{ label: 'Missing Components', value: formatInteger(counts.missing_component_results) },
-		{ label: 'Missing Comments', value: formatInteger(counts.missing_teacher_comment_results) },
+		{ label: __('Total Results'), value: formatInteger(counts.total_results) },
+		{ label: __('No Counted Tasks'), value: formatInteger(counts.zero_task_results) },
+		{ label: __('Missing Grades'), value: formatInteger(counts.missing_grade_results) },
+		{ label: __('Overrides'), value: formatInteger(counts.override_results) },
+		{ label: __('Missing Components'), value: formatInteger(counts.missing_component_results) },
+		{
+			label: __('Missing Comments'),
+			value: formatInteger(counts.missing_teacher_comment_results),
+		},
 	];
 });
 
@@ -573,7 +592,7 @@ function cycleOptionLabel(cycleOption: ReportingCycleOption): string {
 }
 
 function effectiveGrade(row: CourseTermResultRow): string {
-	if (row.override_grade_value) return `${row.override_grade_value} override`;
+	if (row.override_grade_value) return __('{0} override', [row.override_grade_value]);
 	return display(row.grade_value);
 }
 
@@ -599,20 +618,20 @@ function buildPayload(): GetTermReportingReviewSurfaceRequest {
 }
 
 function extractErrorMessage(error: unknown): string {
-	if (!error) return 'Request failed.';
+	if (!error) return __('Request failed.');
 	if (typeof error === 'string') return error;
 	if (typeof error === 'object' && 'message' in error) {
 		const message = String((error as { message?: unknown }).message || '').trim();
 		if (message) return message;
 	}
-	return 'Request failed.';
+	return __('Request failed.');
 }
 
 function actionSuccessMessage(action: QueueReviewActionRequest['action']): string {
 	if (action === 'recalculate_course_results') {
-		return 'Course result recalculation was queued. Refresh after the job completes.';
+		return __('Course result recalculation was queued. Refresh after the job completes.');
 	}
-	return 'Student term report generation was queued. Refresh after the job completes.';
+	return __('Student term report generation was queued. Refresh after the job completes.');
 }
 
 function selectResult(name: string) {
@@ -654,7 +673,7 @@ async function loadSurface() {
 async function queueAction(action: QueueReviewActionRequest['action']) {
 	const reportingCycle = selectedReportingCycle.value;
 	if (!reportingCycle) {
-		actionError.value = 'Select a Reporting Cycle first.';
+		actionError.value = __('Select a Reporting Cycle first.');
 		return;
 	}
 

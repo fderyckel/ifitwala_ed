@@ -5,8 +5,8 @@ This note describes the fee workflow that is present in the current workspace. I
 ## 1. Operating Model
 
 Status: Implemented
-Code refs: `ifitwala_ed/docs/accounting/accounting_notes.md`, `ifitwala_ed/accounting/doctype/account_holder/account_holder.json`, `ifitwala_ed/students/doctype/student/student.json`
-Test refs: `ifitwala_ed/accounting/doctype/sales_invoice/test_sales_invoice.py`, `ifitwala_ed/accounting/doctype/payment_entry/test_payment_entry.py`, `ifitwala_ed/accounting/doctype/payment_reconciliation/test_payment_reconciliation.py`
+Code refs: `ifitwala_ed/docs/accounting/accounting_notes.md`, `ifitwala_ed/accounting/doctype/account_holder/account_holder.json`, `ifitwala_ed/accounting/doctype/account_holder_billing_contact/account_holder_billing_contact.json`, `ifitwala_ed/accounting/account_holder_contacts.py`, `ifitwala_ed/students/doctype/student/student.json`
+Test refs: `ifitwala_ed/accounting/test_account_holder_contacts_unit.py`, `ifitwala_ed/accounting/doctype/sales_invoice/test_sales_invoice.py`, `ifitwala_ed/accounting/doctype/payment_entry/test_payment_entry.py`, `ifitwala_ed/accounting/doctype/payment_reconciliation/test_payment_reconciliation.py`, `ifitwala_ed/accounting/doctype/account_holder/test_account_holder.py`
 
 The payer in Ifitwala Ed is the `Account Holder`, not the student. This is the central accounting rule.
 
@@ -63,8 +63,13 @@ Create an `Account Holder` for the person or entity that will be invoiced. The r
 - holder type
 - status
 - primary email / phone
+- billing contact links to real `Guardian` records when the payer is a parent/guardian
 
 Then make sure the relevant `Student` record links to that same `Account Holder`.
+
+For already enrolled/imported students, staff do not need to re-enter guardian payer details. From the Student form, use **Create Account Holder with Guardians** when the student has guardian rows but no Account Holder. The action creates the payer record, links it back to the student, links the selected guardians as billing contacts, and fills the Account Holder primary email/phone from the primary selected guardian.
+
+If the Student already has an Account Holder, use **Link Guardians to Account Holder** from the same Student form action group to attach the existing guardian rows as finance billing contacts.
 
 ### 2.3 Create the charge definitions
 
@@ -329,6 +334,7 @@ The follow-up layer now combines reports with dedicated Desk workflow objects.
 - `Payment Request`: tracks invoice-level payment outreach
 - `Dunning Notice`: groups overdue invoices into a collection notice
 - `Statement Of Accounts Run`: creates a finance work queue for statement processing
+- `Account Holder` billing-contact panel: shows linked guardian billing contacts with masked email/phone by default and purpose-bound reveal actions for finance follow-up
 
 Current school-filter semantics for these reports are intentionally split:
 

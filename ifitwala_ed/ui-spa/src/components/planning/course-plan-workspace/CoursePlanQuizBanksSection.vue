@@ -10,20 +10,24 @@
 			@click="emit('toggle')"
 		>
 			<div>
-				<p class="type-overline text-ink/60">Course Quiz Banks</p>
-				<h2 class="mt-2 type-h2 text-ink">Shared quiz authoring</h2>
+				<p class="type-overline text-ink/60">{{ __('Course Quiz Banks') }}</p>
+				<h2 class="mt-2 type-h2 text-ink">{{ __('Shared quiz authoring') }}</h2>
 				<p class="mt-2 type-body text-ink/80">
 					{{
 						collapsed
-							? 'Open the course-level question banks when you need to author, revise, or assign a reusable quiz.'
-							: 'Build question banks once, then assign them through the class task flow without rewriting the quiz each time.'
+							? __(
+									'Open the course-level question banks when you need to author, revise, or assign a reusable quiz.'
+								)
+							: __(
+									'Build question banks once, then assign them through the class task flow without rewriting the quiz each time.'
+								)
 					}}
 				</p>
 			</div>
 			<div class="flex flex-wrap items-center gap-2 lg:justify-end">
-				<span class="chip">{{ quizQuestionBanks.length }} banks</span>
+				<span class="chip">{{ __('{0} banks', [quizQuestionBanks.length]) }}</span>
 				<span v-if="selectedQuizBankLabel" class="chip">{{ selectedQuizBankLabel }}</span>
-				<span class="chip">{{ collapsed ? 'Show' : 'Hide' }}</span>
+				<span class="chip">{{ collapsed ? __('Show') : __('Hide') }}</span>
 			</div>
 		</button>
 
@@ -32,15 +36,18 @@
 				<section class="rounded-[1.75rem] border border-line-soft bg-surface-soft/55 p-5">
 					<div class="mb-4 flex items-center justify-between gap-3">
 						<div>
-							<p class="type-overline text-ink/60">Course Quiz Banks</p>
-							<h2 class="mt-1 type-h3 text-ink">Shared quiz authoring</h2>
+							<p class="type-overline text-ink/60">{{ __('Course Quiz Banks') }}</p>
+							<h2 class="mt-1 type-h3 text-ink">{{ __('Shared quiz authoring') }}</h2>
 						</div>
 						<span class="chip">{{ quizQuestionBanks.length }}</span>
 					</div>
 
 					<p class="mb-4 type-caption text-ink/70">
-						Quiz banks are shared at the course level so teachers can assign them later from the
-						class task flow.
+						{{
+							__(
+								'Quiz banks are shared at the course level so teachers can assign them later from the class task flow.'
+							)
+						}}
 					</p>
 
 					<div class="space-y-3">
@@ -61,12 +68,16 @@
 								<div class="min-w-0">
 									<p class="type-body-strong text-ink">{{ bank.bank_title }}</p>
 									<p class="mt-1 type-caption text-ink/70">
-										{{ bank.published_question_count || 0 }} published of
-										{{ bank.question_count || 0 }} total
+										{{
+											__('{0} published of {1} total', [
+												bank.published_question_count || 0,
+												bank.question_count || 0,
+											])
+										}}
 									</p>
 								</div>
 								<span class="chip">
-									{{ bank.is_published ? 'Ready' : 'Draft' }}
+									{{ bank.is_published ? __('Ready') : __('Draft') }}
 								</span>
 							</div>
 						</button>
@@ -75,13 +86,13 @@
 							v-if="!quizQuestionBanks.length"
 							class="rounded-2xl border border-dashed border-line-soft p-4"
 						>
-							<p class="type-caption text-ink/70">No course quiz banks yet.</p>
+							<p class="type-caption text-ink/70">{{ __('No course quiz banks yet.') }}</p>
 						</div>
 					</div>
 
 					<div v-if="canManagePlan" class="mt-4">
 						<button type="button" class="if-action w-full" @click="emit('start-new-bank')">
-							{{ creatingQuizQuestionBank ? 'Editing New Quiz Bank' : 'New Quiz Bank' }}
+							{{ creatingQuizQuestionBank ? __('Editing New Quiz Bank') : __('New Quiz Bank') }}
 						</button>
 					</div>
 				</section>
@@ -91,24 +102,27 @@
 				<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 					<div>
 						<p class="type-overline text-ink/60">
-							{{ creatingQuizQuestionBank ? 'New Quiz Bank' : 'Selected Quiz Bank' }}
+							{{ creatingQuizQuestionBank ? __('New Quiz Bank') : __('Selected Quiz Bank') }}
 						</p>
 						<h2 class="mt-2 type-h2 text-ink">
 							{{
 								creatingQuizQuestionBank
-									? 'Draft a reusable quiz bank'
-									: quizBankForm.bank_title || 'Quiz Bank'
+									? __('Draft a reusable quiz bank')
+									: quizBankForm.bank_title || __('Quiz Bank')
 							}}
 						</h2>
 						<p class="mt-2 type-body text-ink/80">
-							Build question banks once, then assign them through the class task flow without
-							rewriting the quiz each time.
+							{{
+								__(
+									'Build question banks once, then assign them through the class task flow without rewriting the quiz each time.'
+								)
+							}}
 						</p>
 					</div>
 					<div class="flex flex-wrap gap-2">
-						<span class="chip"> {{ quizBankForm.questions.length }} questions </span>
+						<span class="chip"> {{ __('{0} questions', [quizBankForm.questions.length]) }} </span>
 						<span class="chip">
-							{{ quizBankForm.is_published ? 'Published' : 'Draft only' }}
+							{{ quizBankForm.is_published ? __('Published') : __('Draft only') }}
 						</span>
 						<button
 							v-if="canManagePlan && !creatingQuizQuestionBank && selectedQuizQuestionBank"
@@ -117,7 +131,7 @@
 							:disabled="!selectedQuizQuestionBank.is_published"
 							@click="emit('assign-quiz', selectedQuizQuestionBank)"
 						>
-							Assign This Quiz
+							{{ __('Assign This Quiz') }}
 						</button>
 					</div>
 				</div>
@@ -130,7 +144,7 @@
 					"
 					class="mt-3 type-caption text-ink/70"
 				>
-					Publish the quiz bank before assigning it to a class.
+					{{ __('Publish the quiz bank before assigning it to a class.') }}
 				</p>
 
 				<div
@@ -138,20 +152,20 @@
 					class="mt-6 rounded-2xl border border-dashed border-line-soft p-5"
 				>
 					<p class="type-caption text-ink/70">
-						Select a quiz bank, or create a new one for this course.
+						{{ __('Select a quiz bank, or create a new one for this course.') }}
 					</p>
 				</div>
 
 				<template v-else>
 					<div v-if="canManagePlan" class="mt-6 grid gap-4 lg:grid-cols-2">
 						<label class="block space-y-2">
-							<span class="type-caption text-ink/70">Bank Title</span>
+							<span class="type-caption text-ink/70">{{ __('Bank Title') }}</span>
 							<input
 								v-model="quizBankForm.bank_title"
 								data-quick-focus="quiz-bank-title"
 								type="text"
 								class="if-input w-full"
-								placeholder="e.g. Cell Structure Check-in"
+								:placeholder="__('e.g. Cell Structure Check-in')"
 							/>
 						</label>
 						<label
@@ -159,19 +173,25 @@
 						>
 							<input v-model="quizBankForm.is_published" type="checkbox" class="h-4 w-4" />
 							<div>
-								<p class="type-body-strong text-ink">Ready for assignment</p>
+								<p class="type-body-strong text-ink">{{ __('Ready for assignment') }}</p>
 								<p class="type-caption text-ink/70">
-									Published banks appear in the quiz selection step when teachers assign work.
+									{{
+										__(
+											'Published banks appear in the quiz selection step when teachers assign work.'
+										)
+									}}
 								</p>
 							</div>
 						</label>
 						<label class="block space-y-2 lg:col-span-2">
-							<span class="type-caption text-ink/70">Description</span>
+							<span class="type-caption text-ink/70">{{ __('Description') }}</span>
 							<textarea
 								v-model="quizBankForm.description"
 								rows="4"
 								class="if-input min-h-[8rem] w-full resize-y"
-								placeholder="Explain what this quiz bank checks and when teachers should use it."
+								:placeholder="
+									__('Explain what this quiz bank checks and when teachers should use it.')
+								"
 							/>
 						</label>
 					</div>
@@ -179,8 +199,8 @@
 					<section class="mt-6 space-y-4">
 						<div class="flex items-center justify-between gap-3">
 							<div>
-								<p class="type-overline text-ink/60">Questions</p>
-								<h3 class="mt-1 type-h3 text-ink">Reusable quiz items</h3>
+								<p class="type-overline text-ink/60">{{ __('Questions') }}</p>
+								<h3 class="mt-1 type-h3 text-ink">{{ __('Reusable quiz items') }}</h3>
 							</div>
 							<button
 								v-if="canManagePlan"
@@ -188,7 +208,7 @@
 								class="if-action"
 								@click="emit('add-question')"
 							>
-								Add Question
+								{{ __('Add Question') }}
 							</button>
 						</div>
 
@@ -197,7 +217,11 @@
 							class="rounded-2xl border border-dashed border-line-soft p-4"
 						>
 							<p class="type-caption text-ink/70">
-								No questions yet. Add reusable questions teachers can pull into quiz-backed tasks.
+								{{
+									__(
+										'No questions yet. Add reusable questions teachers can pull into quiz-backed tasks.'
+									)
+								}}
 							</p>
 						</div>
 
@@ -209,17 +233,17 @@
 							>
 								<div class="grid gap-4 lg:grid-cols-2">
 									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Question Title</span>
+										<span class="type-caption text-ink/70">{{ __('Question Title') }}</span>
 										<input
 											v-model="question.title"
 											type="text"
 											class="if-input w-full"
-											placeholder="e.g. Identify the nucleus"
+											:placeholder="__('e.g. Identify the nucleus')"
 											:disabled="!canManagePlan"
 										/>
 									</label>
 									<label class="block space-y-2">
-										<span class="type-caption text-ink/70">Question Type</span>
+										<span class="type-caption text-ink/70">{{ __('Question Type') }}</span>
 										<select
 											v-model="question.question_type"
 											class="if-input w-full"
@@ -245,14 +269,14 @@
 											:disabled="!canManagePlan"
 										/>
 										<div>
-											<p class="type-body-strong text-ink">Published in the bank</p>
+											<p class="type-body-strong text-ink">{{ __('Published in the bank') }}</p>
 											<p class="type-caption text-ink/70">
-												Only published questions are available for quiz attempts.
+												{{ __('Only published questions are available for quiz attempts.') }}
 											</p>
 										</div>
 									</label>
 									<label class="block space-y-2 lg:col-span-2">
-										<span class="type-caption text-ink/70">Prompt</span>
+										<span class="type-caption text-ink/70">{{ __('Prompt') }}</span>
 										<PlanningRichTextField
 											v-model="question.prompt"
 											:editable="canManagePlan"
@@ -263,12 +287,12 @@
 										v-if="question.question_type === 'Short Answer'"
 										class="block space-y-2 lg:col-span-2"
 									>
-										<span class="type-caption text-ink/70">Accepted Answers</span>
+										<span class="type-caption text-ink/70">{{ __('Accepted Answers') }}</span>
 										<textarea
 											v-model="question.accepted_answers"
 											rows="4"
 											class="if-input min-h-[8rem] w-full resize-y"
-											placeholder="One accepted answer per line"
+											:placeholder="__('One accepted answer per line')"
 											:disabled="!canManagePlan"
 										/>
 									</label>
@@ -280,8 +304,8 @@
 								>
 									<div class="flex items-center justify-between gap-3">
 										<div>
-											<p class="type-overline text-ink/60">Answer Options</p>
-											<h4 class="mt-1 type-body-strong text-ink">Choice payload</h4>
+											<p class="type-overline text-ink/60">{{ __('Answer Options') }}</p>
+											<h4 class="mt-1 type-body-strong text-ink">{{ __('Choice payload') }}</h4>
 										</div>
 										<button
 											v-if="canManagePlan && question.question_type !== 'True / False'"
@@ -289,7 +313,7 @@
 											class="if-action"
 											@click="emit('add-option', question)"
 										>
-											Add Option
+											{{ __('Add Option') }}
 										</button>
 									</div>
 
@@ -303,7 +327,7 @@
 												v-model="option.option_text"
 												type="text"
 												class="if-input w-full"
-												placeholder="Option text"
+												:placeholder="__('Option text')"
 												:disabled="!canManagePlan"
 											/>
 											<label
@@ -315,7 +339,7 @@
 													class="h-4 w-4"
 													:disabled="!canManagePlan"
 												/>
-												<span>Correct</span>
+												<span>{{ __('Correct') }}</span>
 											</label>
 											<button
 												v-if="canManagePlan && question.question_type !== 'True / False'"
@@ -323,17 +347,17 @@
 												class="if-action"
 												@click="emit('remove-option', question, option.local_id)"
 											>
-												Remove
+												{{ __('Remove') }}
 											</button>
 										</div>
 									</div>
 								</section>
 
 								<label class="mt-4 block space-y-2">
-									<span class="type-caption text-ink/70">Explanation</span>
+									<span class="type-caption text-ink/70">{{ __('Explanation') }}</span>
 									<PlanningRichTextField
 										v-model="question.explanation"
-										placeholder="Optional feedback or explanation shown when allowed."
+										:placeholder="__('Optional feedback or explanation shown when allowed.')"
 										:editable="canManagePlan"
 										min-height-class="min-h-[6rem]"
 									/>
@@ -345,7 +369,7 @@
 										class="if-action"
 										@click="emit('remove-question', question.local_id)"
 									>
-										Remove Question
+										{{ __('Remove Question') }}
 									</button>
 								</div>
 							</article>
@@ -359,7 +383,7 @@
 							class="if-action"
 							@click="emit('cancel-new-bank')"
 						>
-							Cancel New Quiz Bank
+							{{ __('Cancel New Quiz Bank') }}
 						</button>
 						<button
 							type="button"
@@ -369,10 +393,10 @@
 						>
 							{{
 								quizBankPending
-									? 'Saving...'
+									? __('Saving...')
 									: creatingQuizQuestionBank
-										? 'Create Quiz Bank'
-										: 'Save Quiz Bank'
+										? __('Create Quiz Bank')
+										: __('Save Quiz Bank')
 							}}
 						</button>
 					</div>
@@ -384,6 +408,7 @@
 
 <script setup lang="ts">
 import PlanningRichTextField from '@/components/planning/PlanningRichTextField.vue';
+import { __ } from '@/lib/i18n';
 import {
 	SECTION_IDS,
 	isChoiceQuestion,

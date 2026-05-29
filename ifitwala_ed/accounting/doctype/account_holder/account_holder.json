@@ -12,7 +12,10 @@
   "column_break_1",
   "primary_email",
   "primary_phone",
-  "notes"
+  "notes",
+  "billing_contacts_section",
+  "billing_contacts",
+  "billing_contact_summary"
  ],
  "fields": [
   {
@@ -70,11 +73,31 @@
    "fieldname": "notes",
    "fieldtype": "Small Text",
    "label": "Notes"
+  },
+  {
+   "fieldname": "billing_contacts_section",
+   "fieldtype": "Section Break",
+   "label": "Billing Contacts"
+  },
+  {
+   "fieldname": "billing_contacts",
+   "fieldtype": "Table",
+   "label": "Billing Contacts",
+   "options": "Account Holder Billing Contact"
+  },
+  {
+   "depends_on": "eval: !doc.__islocal",
+   "fieldname": "billing_contact_summary",
+   "fieldtype": "HTML",
+   "label": "Billing Contact Summary",
+   "no_copy": 1,
+   "print_hide": 1,
+   "report_hide": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-28 14:01:45.111605",
+ "modified": "2026-05-29 13:08:32.000000",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Account Holder",

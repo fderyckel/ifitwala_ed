@@ -50,6 +50,8 @@ class Guardian(Document):
             self._ensure_guardian_portal_routing(self.user)
         if self._has_contact_point_data_changed():
             self.sync_contact_points_for_linked_students()
+        if self._has_billing_contact_data_changed():
+            self.sync_account_holder_billing_contacts()
 
     def onload(self):
         # 5) Read-only helpers for form quick view
@@ -83,6 +85,27 @@ class Guardian(Document):
             return False
 
         for fieldname in ("guardian_email", "guardian_mobile_phone", "organization"):
+            old_value = (getattr(previous, fieldname, None) or "").strip()
+            new_value = (getattr(self, fieldname, None) or "").strip()
+            if old_value != new_value:
+                return True
+        return False
+
+    def _has_billing_contact_data_changed(self) -> bool:
+        if self.is_new():
+            return False
+
+        previous = self.get_doc_before_save()
+        if not previous:
+            return False
+
+        for fieldname in (
+            "guardian_first_name",
+            "guardian_last_name",
+            "guardian_email",
+            "guardian_mobile_phone",
+            "organization",
+        ):
             old_value = (getattr(previous, fieldname, None) or "").strip()
             new_value = (getattr(self, fieldname, None) or "").strip()
             if old_value != new_value:
@@ -249,6 +272,13 @@ class Guardian(Document):
                 )
             )
         return synced
+
+    def sync_account_holder_billing_contacts(self) -> list[str]:
+        from ifitwala_ed.accounting.account_holder_contacts import (
+            sync_account_holder_billing_contacts_for_guardian,
+        )
+
+        return sync_account_holder_billing_contacts_for_guardian(self.name)
 
     def create_guardian_user(self):
         if not self.guardian_email:

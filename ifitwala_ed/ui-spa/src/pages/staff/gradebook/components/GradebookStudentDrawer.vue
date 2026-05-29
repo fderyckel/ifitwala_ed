@@ -7,14 +7,14 @@
 			class="flex min-h-[520px] flex-1 flex-col items-center justify-center gap-3 p-8"
 		>
 			<Spinner class="h-8 w-8 text-canopy" />
-			<p class="text-sm text-ink/55">Loading grading drawer...</p>
+			<p class="text-sm text-ink/55">{{ __('Loading grading drawer...') }}</p>
 		</div>
 
 		<div
 			v-else-if="errorMessage"
 			class="m-6 rounded-2xl border border-flame/20 bg-flame/5 p-5 text-sm text-ink/70"
 		>
-			<p class="font-semibold text-ink">Drawer unavailable</p>
+			<p class="font-semibold text-ink">{{ __('Drawer unavailable') }}</p>
 			<p class="mt-1">{{ errorMessage }}</p>
 		</div>
 
@@ -25,10 +25,13 @@
 			<div class="rounded-full bg-gray-100 p-4">
 				<FeatherIcon name="sidebar" class="h-8 w-8 text-ink/30" />
 			</div>
-			<p class="text-lg font-semibold text-ink">Open a student drawer</p>
+			<p class="text-lg font-semibold text-ink">{{ __('Open a student drawer') }}</p>
 			<p class="max-w-sm text-sm text-ink/55">
-				Select one student from the roster to review evidence, adjust marking, inspect the official
-				result, and manage release.
+				{{
+					__(
+						'Select one student from the roster to review evidence, adjust marking, inspect the official result, and manage release.'
+					)
+				}}
 			</p>
 		</div>
 
@@ -45,11 +48,11 @@
 						/>
 						<div class="min-w-0">
 							<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-								Grading Drawer
+								{{ __('Grading Drawer') }}
 							</p>
 							<div class="flex min-w-0 flex-wrap items-center gap-2">
 								<h2 class="min-w-0 truncate text-lg font-semibold text-ink">
-									{{ drawer.student.student_name || 'Student' }}
+									{{ drawer.student.student_name || __('Student') }}
 								</h2>
 								<StudentInsightNoteButton :summary="drawer.student.insight_summary" />
 							</div>
@@ -72,7 +75,7 @@
 							type="button"
 							class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-white text-ink/65 transition hover:border-border hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
 							:disabled="!canGoPrevious"
-							aria-label="Open previous student"
+							:aria-label="__('Open previous student')"
 							@click="emit('go-previous')"
 						>
 							<FeatherIcon name="chevron-left" class="h-4 w-4" />
@@ -82,7 +85,7 @@
 							type="button"
 							class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-white text-ink/65 transition hover:border-border hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
 							:disabled="!canGoNext"
-							aria-label="Open next student"
+							:aria-label="__('Open next student')"
 							@click="emit('go-next')"
 						>
 							<FeatherIcon name="chevron-right" class="h-4 w-4" />
@@ -90,7 +93,7 @@
 						<button
 							type="button"
 							class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-white text-ink/65 transition hover:border-border hover:text-ink"
-							aria-label="Close grading drawer"
+							:aria-label="__('Close grading drawer')"
 							@click="emit('close')"
 						>
 							<FeatherIcon name="x" class="h-4 w-4" />
@@ -100,7 +103,7 @@
 
 				<div class="mt-4 flex flex-wrap gap-2">
 					<Badge v-if="drawer.delivery.due_date" variant="subtle">
-						Due {{ formatDate(drawer.delivery.due_date) }}
+						{{ __('Due {0}', [formatDate(drawer.delivery.due_date)]) }}
 					</Badge>
 					<Badge v-if="taskModeBadge(drawer.delivery)" variant="subtle">
 						{{ taskModeBadge(drawer.delivery) }}
@@ -111,13 +114,13 @@
 						theme="orange"
 						class="!bg-sand/25 !text-clay"
 					>
-						New evidence
+						{{ __('New evidence') }}
 					</Badge>
 					<Badge v-if="drawer.outcome.is_published" variant="subtle" theme="green">
-						Released
+						{{ __('Released') }}
 					</Badge>
 					<Badge v-if="drawer.my_contribution?.is_stale" variant="subtle" theme="orange">
-						My marking is stale
+						{{ __('My marking is stale') }}
 					</Badge>
 				</div>
 			</header>
@@ -144,36 +147,36 @@
 					<div class="grid gap-4 sm:grid-cols-2">
 						<div class="rounded-2xl border border-border/70 bg-gray-50/40 p-4">
 							<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-								Delivery Policy
+								{{ __('Delivery Policy') }}
 							</p>
 							<div class="mt-3 space-y-2 text-sm text-ink/70">
-								<p>Mode: {{ drawer.delivery.delivery_mode || '—' }}</p>
-								<p>Grading: {{ drawer.delivery.grading_mode || '—' }}</p>
+								<p>{{ __('Mode:') }} {{ drawer.delivery.delivery_mode || '—' }}</p>
+								<p>{{ __('Grading:') }} {{ drawer.delivery.grading_mode || '—' }}</p>
 								<p>
-									Comments:
-									{{ drawer.delivery.allow_feedback ? 'Enabled' : 'Disabled' }}
+									{{ __('Comments:') }}
+									{{ drawer.delivery.allow_feedback ? __('Enabled') : __('Disabled') }}
 								</p>
 								<p v-if="showMaxPointsPill(drawer.delivery)">
-									Max points: {{ formatPoints(drawer.delivery.max_points) }}
+									{{ __('Max points:') }} {{ formatPoints(drawer.delivery.max_points) }}
 								</p>
 							</div>
 						</div>
 
 						<div class="rounded-2xl border border-border/70 bg-gray-50/40 p-4">
 							<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-								My Current Context
+								{{ __('My Current Context') }}
 							</p>
 							<div class="mt-3 space-y-2 text-sm text-ink/70">
 								<p>
-									Contribution:
-									{{ drawer.my_contribution?.status || 'No saved contribution yet' }}
+									{{ __('Contribution:') }}
+									{{ drawer.my_contribution?.status || __('No saved contribution yet') }}
 								</p>
 								<p>
-									Outcome status:
+									{{ __('Outcome status:') }}
 									{{ drawer.outcome.grading_status || '—' }}
 								</p>
 								<p>
-									Selected evidence:
+									{{ __('Selected evidence:') }}
 									{{ selectedSubmissionLabel }}
 								</p>
 							</div>
@@ -184,10 +187,14 @@
 						v-if="isViewingHistoricalSubmission"
 						class="rounded-2xl border border-sand/70 bg-sand/20 p-4 text-sm text-clay"
 					>
-						<p class="font-semibold text-ink">Viewing an earlier evidence version</p>
+						<p class="font-semibold text-ink">{{ __('Viewing an earlier evidence version') }}</p>
 						<p class="mt-1 text-clay/90">
-							Save Marking still records against {{ latestSubmissionLabel }}. Use the Evidence tab
-							to inspect history without changing the latest-version grading target.
+							{{
+								__(
+									'Save Marking still records against {0}. Use the Evidence tab to inspect history without changing the latest-version grading target.',
+									[latestSubmissionLabel]
+								)
+							}}
 						</p>
 					</div>
 
@@ -196,7 +203,7 @@
 						class="space-y-1.5"
 					>
 						<label class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-							Outcome Status
+							{{ __('Outcome Status') }}
 						</label>
 						<FormControl
 							type="select"
@@ -210,11 +217,11 @@
 
 					<div v-if="isPointsTask(drawer.delivery)" class="space-y-1.5">
 						<label class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-							Points Awarded
+							{{ __('Points Awarded') }}
 						</label>
 						<FormControl
 							type="number"
-							placeholder="Points"
+							:placeholder="__('Points')"
 							:step="0.5"
 							:min="0"
 							:max="drawer.delivery.max_points || undefined"
@@ -261,9 +268,9 @@
 					>
 						<div class="flex items-center justify-between gap-3">
 							<div>
-								<h3 class="text-sm font-semibold text-ink">Criteria Breakdown</h3>
+								<h3 class="text-sm font-semibold text-ink">{{ __('Criteria Breakdown') }}</h3>
 								<p class="text-xs text-ink/55">
-									Criterion rows stay aligned to the delivery rubric.
+									{{ __('Criterion rows stay aligned to the delivery rubric.') }}
 								</p>
 							</div>
 							<Badge v-if="drawer.delivery.rubric_scoring_strategy" variant="subtle">
@@ -300,7 +307,7 @@
 										option-label="label"
 										option-value="value"
 										:model-value="criterion.level"
-										placeholder="Select level"
+										:placeholder="__('Select level')"
 										@update:modelValue="
 											value => onCriterionLevelChanged(criterion.assessment_criteria, value)
 										"
@@ -310,7 +317,7 @@
 										:model-value="criterion.level_points"
 										:step="0.1"
 										:min="0"
-										placeholder="Points"
+										:placeholder="__('Points')"
 										@update:modelValue="
 											value => onCriterionPointsChanged(criterion.assessment_criteria, value)
 										"
@@ -321,7 +328,7 @@
 									<FormControl
 										type="textarea"
 										rows="2"
-										placeholder="Criterion feedback"
+										:placeholder="__('Criterion feedback')"
 										:model-value="criterion.feedback"
 										@update:modelValue="
 											value =>
@@ -338,12 +345,12 @@
 
 					<div v-if="supportsFeedback(drawer.delivery)" class="space-y-1.5">
 						<label class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-							Comment
+							{{ __('Comment') }}
 						</label>
 						<FormControl
 							type="textarea"
 							rows="5"
-							placeholder="Add a comment for this student..."
+							:placeholder="__('Add a comment for this student...')"
 							:model-value="form.feedback"
 							@update:modelValue="form.feedback = String($event || '')"
 						/>
@@ -351,8 +358,11 @@
 
 					<div class="flex items-center justify-between gap-3 border-t border-border/60 pt-4">
 						<p class="text-xs text-ink/45">
-							Changes save through the current gradebook mutation pipeline and refresh this drawer
-							from server truth.
+							{{
+								__(
+									'Changes save through the current gradebook mutation pipeline and refresh this drawer from server truth.'
+								)
+							}}
 						</p>
 						<button
 							type="button"
@@ -360,7 +370,7 @@
 							:disabled="markingBusy || !isDirty || !drawer.allowed_actions.can_edit_marking"
 							@click="emitSaveMarking"
 						>
-							{{ markingBusy ? 'Saving…' : 'Save Marking' }}
+							{{ markingBusy ? __('Saving…') : __('Save Marking') }}
 						</button>
 					</div>
 				</div>
@@ -372,9 +382,11 @@
 					>
 						<div class="flex flex-wrap items-center justify-between gap-3">
 							<div>
-								<p class="font-semibold text-ink">New student evidence is waiting</p>
+								<p class="font-semibold text-ink">
+									{{ __('New student evidence is waiting') }}
+								</p>
 								<p class="mt-1 text-clay/90">
-									Review the latest submission version before finalizing or releasing.
+									{{ __('Review the latest submission version before finalizing or releasing.') }}
 								</p>
 							</div>
 							<button
@@ -384,15 +396,15 @@
 								:disabled="submissionSeenBusy"
 								@click="emit('mark-submission-seen')"
 							>
-								{{ submissionSeenBusy ? 'Marking…' : 'Mark as seen' }}
+								{{ submissionSeenBusy ? __('Marking…') : __('Mark as seen') }}
 							</button>
 						</div>
 					</div>
 
 					<div class="space-y-2">
 						<div class="flex items-center justify-between gap-3">
-							<h3 class="text-sm font-semibold text-ink">Submission Versions</h3>
-							<p class="text-xs text-ink/45">Latest version opens by default.</p>
+							<h3 class="text-sm font-semibold text-ink">{{ __('Submission Versions') }}</h3>
+							<p class="text-xs text-ink/45">{{ __('Latest version opens by default.') }}</p>
 						</div>
 						<div class="flex flex-wrap gap-2">
 							<button
@@ -407,8 +419,8 @@
 								"
 								@click="emitVersion(version)"
 							>
-								Version {{ version.version }}
-								<span v-if="version.is_stub"> · Stub</span>
+								{{ __('Version {0}', [version.version]) }}
+								<span v-if="version.is_stub"> · {{ __('Stub') }}</span>
 							</button>
 						</div>
 					</div>
@@ -417,36 +429,40 @@
 						v-if="!drawer.selected_submission"
 						class="rounded-2xl border border-dashed border-border/70 bg-gray-50/40 p-6 text-sm text-ink/60"
 					>
-						<p class="font-semibold text-ink">No digital submission</p>
+						<p class="font-semibold text-ink">{{ __('No digital submission') }}</p>
 						<p class="mt-2">
-							This outcome has no learner-uploaded evidence yet. If the delivery requires
-							submission, the grading pipeline can still create an evidence stub for offline or
-							observed work.
+							{{
+								__(
+									'This outcome has no learner-uploaded evidence yet. If the delivery requires submission, the grading pipeline can still create an evidence stub for offline or observed work.'
+								)
+							}}
 						</p>
 					</div>
 
 					<div v-else class="space-y-4">
 						<div class="rounded-2xl border border-border/70 bg-gray-50/40 p-4">
 							<div class="flex flex-wrap gap-2">
-								<Badge variant="subtle"> Version {{ drawer.selected_submission.version }} </Badge>
 								<Badge variant="subtle">
-									{{ drawer.selected_submission.origin || 'Submission' }}
+									{{ __('Version {0}', [drawer.selected_submission.version]) }}
+								</Badge>
+								<Badge variant="subtle">
+									{{ drawer.selected_submission.origin || __('Submission') }}
 								</Badge>
 								<Badge v-if="drawer.selected_submission.is_stub" variant="subtle">
-									Evidence stub
+									{{ __('Evidence stub') }}
 								</Badge>
 							</div>
 							<div class="mt-3 grid gap-2 text-sm text-ink/70">
 								<p>
-									Submitted:
+									{{ __('Submitted:') }}
 									{{ formatDateTime(drawer.selected_submission.submitted_on) || '—' }}
 								</p>
 								<p>
-									Submitted by:
+									{{ __('Submitted by:') }}
 									{{ drawer.selected_submission.submitted_by || '—' }}
 								</p>
 								<p v-if="drawer.selected_submission.evidence_note">
-									Note: {{ drawer.selected_submission.evidence_note }}
+									{{ __('Note:') }} {{ drawer.selected_submission.evidence_note }}
 								</p>
 							</div>
 						</div>
@@ -458,7 +474,7 @@
 							<div class="flex flex-wrap items-start justify-between gap-3">
 								<div class="min-w-0">
 									<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-										Annotation Surface
+										{{ __('Annotation Surface') }}
 									</p>
 									<h3 class="mt-2 text-sm font-semibold text-ink">
 										{{ drawer.selected_submission.annotation_readiness.title }}
@@ -475,7 +491,7 @@
 										v-if="drawer.selected_submission.annotation_readiness.preview_status"
 										variant="subtle"
 									>
-										Preview
+										{{ __('Preview') }}
 										{{ drawer.selected_submission.annotation_readiness.preview_status }}
 									</Badge>
 								</div>
@@ -484,7 +500,7 @@
 								v-if="drawer.selected_submission.annotation_readiness.attachment_file_name"
 								class="mt-3 text-sm text-ink/60"
 							>
-								Source PDF:
+								{{ __('Source PDF:') }}
 								{{ drawer.selected_submission.annotation_readiness.attachment_file_name }}
 							</p>
 							<div class="mt-4 flex flex-wrap gap-2">
@@ -506,7 +522,7 @@
 									target="_blank"
 									rel="noreferrer"
 								>
-									Open source PDF
+									{{ __('Open source PDF') }}
 								</a>
 							</div>
 						</div>
@@ -515,7 +531,7 @@
 							v-if="drawer.selected_submission.text_content"
 							class="rounded-2xl border border-border/70 bg-white p-4"
 						>
-							<h3 class="text-sm font-semibold text-ink">Text Submission</h3>
+							<h3 class="text-sm font-semibold text-ink">{{ __('Text Submission') }}</h3>
 							<pre class="mt-3 whitespace-pre-wrap text-sm text-ink/75">{{
 								drawer.selected_submission.text_content
 							}}</pre>
@@ -525,7 +541,7 @@
 							v-if="drawer.selected_submission.link_url"
 							class="rounded-2xl border border-border/70 bg-white p-4"
 						>
-							<h3 class="text-sm font-semibold text-ink">Linked Evidence</h3>
+							<h3 class="text-sm font-semibold text-ink">{{ __('Linked Evidence') }}</h3>
 							<a
 								class="mt-3 inline-flex items-center gap-2 text-sm font-medium text-canopy underline-offset-2 hover:underline"
 								:href="drawer.selected_submission.link_url || undefined"
@@ -533,7 +549,7 @@
 								rel="noreferrer"
 							>
 								<FeatherIcon name="external-link" class="h-4 w-4" />
-								Open linked evidence
+								{{ __('Open linked evidence') }}
 							</a>
 						</div>
 
@@ -542,8 +558,10 @@
 							class="space-y-3 rounded-2xl border border-border/70 bg-white p-4"
 						>
 							<div class="flex items-center justify-between gap-3">
-								<h3 class="text-sm font-semibold text-ink">Attachments</h3>
-								<p class="text-xs text-ink/45">Server-owned preview and open actions only.</p>
+								<h3 class="text-sm font-semibold text-ink">{{ __('Attachments') }}</h3>
+								<p class="text-xs text-ink/45">
+									{{ __('Server-owned preview and open actions only.') }}
+								</p>
 							</div>
 
 							<div class="grid gap-3">
@@ -569,14 +587,16 @@
 										:attachment="attachment.attachment"
 										variant="evidence"
 										:title="
-											attachment.attachment.display_name || attachment.file_name || 'Attachment'
+											attachment.attachment.display_name ||
+											attachment.file_name ||
+											__('Attachment')
 										"
 										:description="attachment.description || null"
 									>
 										<template #badges>
 											<Badge variant="subtle">{{ attachment.kind }}</Badge>
 											<Badge v-if="attachment.attachment.preview_status" variant="subtle">
-												Preview {{ attachment.attachment.preview_status }}
+												{{ __('Preview {0}', [attachment.attachment.preview_status]) }}
 											</Badge>
 											<Badge v-if="attachment.file_size" variant="subtle">
 												{{ formatBytes(attachment.file_size) }}
@@ -594,27 +614,31 @@
 							<div class="flex flex-wrap items-start justify-between gap-3">
 								<div class="min-w-0">
 									<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-										Feedback Draft
+										{{ __('Feedback Draft') }}
 									</p>
 									<h3 class="mt-2 text-sm font-semibold text-ink">
-										Version-bound feedback workspace
+										{{ __('Version-bound feedback workspace') }}
 									</h3>
 									<p class="mt-2 text-sm text-ink/70">
-										Summary and anchored comments bind to
-										{{ selectedSubmissionLabel }} and stay separate from official grade truth.
+										{{
+											__(
+												'Summary and anchored comments bind to {0} and stay separate from official grade truth.',
+												[selectedSubmissionLabel]
+											)
+										}}
 									</p>
 								</div>
 								<div class="flex flex-wrap gap-2">
 									<Badge variant="subtle">
 										{{ feedbackForm.items.length }}
-										{{ feedbackForm.items.length === 1 ? 'item' : 'items' }}
+										{{ feedbackForm.items.length === 1 ? __('item') : __('items') }}
 									</Badge>
 									<Badge variant="subtle">
 										{{ feedbackForm.priorities.length }}
-										{{ feedbackForm.priorities.length === 1 ? 'priority' : 'priorities' }}
+										{{ feedbackForm.priorities.length === 1 ? __('priority') : __('priorities') }}
 									</Badge>
 									<Badge v-if="drawer.feedback_workspace?.modified" variant="subtle">
-										Updated {{ formatDateTime(drawer.feedback_workspace.modified) }}
+										{{ __('Updated {0}', [formatDateTime(drawer.feedback_workspace.modified)]) }}
 									</Badge>
 								</div>
 							</div>
@@ -624,12 +648,12 @@
 									<label
 										class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45"
 									>
-										Overall Summary
+										{{ __('Overall Summary') }}
 									</label>
 									<FormControl
 										type="textarea"
 										rows="3"
-										placeholder="Summarize what matters most in this submission draft."
+										:placeholder="__('Summarize what matters most in this submission draft.')"
 										:model-value="feedbackForm.summary.overall"
 										@update:modelValue="feedbackForm.summary.overall = String($event || '')"
 									/>
@@ -639,12 +663,12 @@
 									<label
 										class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45"
 									>
-										Strengths
+										{{ __('Strengths') }}
 									</label>
 									<FormControl
 										type="textarea"
 										rows="3"
-										placeholder="Capture the strongest evidence first."
+										:placeholder="__('Capture the strongest evidence first.')"
 										:model-value="feedbackForm.summary.strengths"
 										@update:modelValue="feedbackForm.summary.strengths = String($event || '')"
 									/>
@@ -654,12 +678,12 @@
 									<label
 										class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45"
 									>
-										Improvements
+										{{ __('Improvements') }}
 									</label>
 									<FormControl
 										type="textarea"
 										rows="3"
-										placeholder="Call out the main gaps to address."
+										:placeholder="__('Call out the main gaps to address.')"
 										:model-value="feedbackForm.summary.improvements"
 										@update:modelValue="feedbackForm.summary.improvements = String($event || '')"
 									/>
@@ -669,12 +693,12 @@
 									<label
 										class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45"
 									>
-										Next Steps
+										{{ __('Next Steps') }}
 									</label>
 									<FormControl
 										type="textarea"
 										rows="3"
-										placeholder="State the next actions the student should take."
+										:placeholder="__('State the next actions the student should take.')"
 										:model-value="feedbackForm.summary.next_steps"
 										@update:modelValue="feedbackForm.summary.next_steps = String($event || '')"
 									/>
@@ -685,11 +709,14 @@
 								<div class="flex flex-wrap items-start justify-between gap-3">
 									<div>
 										<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-											Pinned Priorities
+											{{ __('Pinned Priorities') }}
 										</p>
 										<p class="mt-2 text-sm text-ink/70">
-											Keep the student’s first actions tight. Link a priority to a note when you
-											want the navigator to jump directly into the document.
+											{{
+												__(
+													'Keep the student’s first actions tight. Link a priority to a note when you want the navigator to jump directly into the document.'
+												)
+											}}
 										</p>
 									</div>
 									<button
@@ -698,7 +725,7 @@
 										:disabled="priorityLimitReached"
 										@click="addFeedbackPriority"
 									>
-										{{ priorityLimitReached ? 'Priority limit reached' : 'Add priority' }}
+										{{ priorityLimitReached ? __('Priority limit reached') : __('Add priority') }}
 									</button>
 								</div>
 
@@ -710,9 +737,11 @@
 									>
 										<div class="flex items-start justify-between gap-3">
 											<div>
-												<p class="text-sm font-semibold text-ink">Priority {{ index + 1 }}</p>
+												<p class="text-sm font-semibold text-ink">
+													{{ __('Priority {0}', [index + 1]) }}
+												</p>
 												<p class="mt-1 text-xs text-ink/55">
-													Use a short title plus one concrete action cue.
+													{{ __('Use a short title plus one concrete action cue.') }}
 												</p>
 											</div>
 											<button
@@ -720,7 +749,7 @@
 												class="text-sm font-medium text-flame transition hover:underline"
 												@click="removeFeedbackPriority(index)"
 											>
-												Remove
+												{{ __('Remove') }}
 											</button>
 										</div>
 
@@ -729,11 +758,11 @@
 												<label
 													class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45"
 												>
-													Title
+													{{ __('Title') }}
 												</label>
 												<FormControl
 													type="text"
-													placeholder="Lead with the next move."
+													:placeholder="__('Lead with the next move.')"
 													:model-value="priority.title"
 													@update:modelValue="
 														feedbackForm.priorities[index].title = String($event || '')
@@ -744,12 +773,12 @@
 												<label
 													class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45"
 												>
-													Linked note
+													{{ __('Linked note') }}
 												</label>
 												<FormControl
 													type="select"
 													:options="[
-														{ label: 'No linked note', value: '' },
+														{ label: __('No linked note'), value: '' },
 														...feedbackItemOptions,
 													]"
 													option-label="label"
@@ -761,19 +790,23 @@
 													"
 												/>
 												<p v-if="!feedbackItemOptions.length" class="text-xs text-ink/55">
-													Save the feedback draft once to link priorities back to anchored notes.
+													{{
+														__(
+															'Save the feedback draft once to link priorities back to anchored notes.'
+														)
+													}}
 												</p>
 											</div>
 											<div class="space-y-1.5 lg:col-span-2">
 												<label
 													class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45"
 												>
-													Detail
+													{{ __('Detail') }}
 												</label>
 												<FormControl
 													type="textarea"
 													rows="2"
-													placeholder="Tell the student what to do with this feedback."
+													:placeholder="__('Tell the student what to do with this feedback.')"
 													:model-value="priority.detail"
 													@update:modelValue="
 														feedbackForm.priorities[index].detail = String($event || '')
@@ -784,12 +817,12 @@
 												<label
 													class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45"
 												>
-													Criterion
+													{{ __('Criterion') }}
 												</label>
 												<FormControl
 													type="select"
 													:options="[
-														{ label: 'No linked criterion', value: '' },
+														{ label: __('No linked criterion'), value: '' },
 														...feedbackCriteriaOptions,
 													]"
 													option-label="label"
@@ -809,8 +842,11 @@
 									v-else
 									class="mt-4 rounded-2xl border border-dashed border-border/70 bg-white p-4 text-sm text-ink/60"
 								>
-									Add up to five priorities so the released navigator opens with a clear first pass
-									instead of a dense wall of notes.
+									{{
+										__(
+											'Add up to five priorities so the released navigator opens with a clear first pass instead of a dense wall of notes.'
+										)
+									}}
 								</div>
 							</div>
 
@@ -818,8 +854,11 @@
 								class="mt-4 flex items-center justify-between gap-3 border-t border-border/60 pt-4"
 							>
 								<p class="text-xs text-ink/45">
-									Save one bounded draft for this selected submission version after updating
-									summary text, priorities, or anchored comments.
+									{{
+										__(
+											'Save one bounded draft for this selected submission version after updating summary text, priorities, or anchored comments.'
+										)
+									}}
 								</p>
 								<button
 									type="button"
@@ -827,7 +866,7 @@
 									:disabled="feedbackBusy || !feedbackDraftDirty || !canSaveFeedbackDraft"
 									@click="emitSaveFeedbackDraft"
 								>
-									{{ feedbackBusy ? 'Saving…' : 'Save Feedback Draft' }}
+									{{ feedbackBusy ? __('Saving…') : __('Save Feedback Draft') }}
 								</button>
 							</div>
 						</div>
@@ -836,19 +875,22 @@
 							<div class="flex flex-wrap items-start justify-between gap-3">
 								<div>
 									<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-										Student Replies
+										{{ __('Student Replies') }}
 									</p>
 									<h3 class="mt-2 text-sm font-semibold text-ink">
-										Clarifications and learner uptake
+										{{ __('Clarifications and learner uptake') }}
 									</h3>
 									<p class="mt-2 text-sm text-ink/70">
-										Keep reply handling in the drawer so instructors do not leave the marking
-										context to answer one student.
+										{{
+											__(
+												'Keep reply handling in the drawer so instructors do not leave the marking context to answer one student.'
+											)
+										}}
 									</p>
 								</div>
 								<Badge variant="subtle">
 									{{ feedbackThreads.length }}
-									{{ feedbackThreads.length === 1 ? 'thread' : 'threads' }}
+									{{ feedbackThreads.length === 1 ? __('thread') : __('threads') }}
 								</Badge>
 							</div>
 
@@ -864,7 +906,9 @@
 												{{ threadTargetLabel(thread) }}
 											</p>
 											<p class="mt-1 text-xs text-ink/55">
-												Updated {{ formatDateTime(thread.modified) || 'recently' }}
+												{{
+													__('Updated {0}', [formatDateTime(thread.modified) || __('recently')])
+												}}
 											</p>
 										</div>
 										<div class="flex flex-wrap gap-2">
@@ -875,7 +919,7 @@
 												variant="subtle"
 												:theme="thread.thread_status === 'resolved' ? 'green' : undefined"
 											>
-												{{ thread.thread_status === 'resolved' ? 'Resolved' : 'Open' }}
+												{{ thread.thread_status === 'resolved' ? __('Resolved') : __('Open') }}
 											</Badge>
 										</div>
 									</div>
@@ -896,11 +940,15 @@
 										>
 											<div class="flex flex-wrap items-center gap-2">
 												<Badge variant="subtle">
-													{{ message.author_role === 'student' ? 'Student' : 'Instructor' }}
+													{{
+														message.author_role === 'student' ? __('Student') : __('Instructor')
+													}}
 												</Badge>
 												<span class="text-xs text-ink/55">
 													{{
-														message.message_kind === 'clarification' ? 'Clarification' : 'Reply'
+														message.message_kind === 'clarification'
+															? __('Clarification')
+															: __('Reply')
 													}}
 												</span>
 											</div>
@@ -917,7 +965,7 @@
 										<FormControl
 											type="textarea"
 											rows="2"
-											placeholder="Reply to the student inside the grading drawer."
+											:placeholder="__('Reply to the student inside the grading drawer.')"
 											:model-value="threadReplyDrafts[thread.thread_id] || ''"
 											@update:modelValue="
 												threadReplyDrafts[thread.thread_id] = String($event || '')
@@ -930,7 +978,7 @@
 												:disabled="threadBusy || !threadReplyDrafts[thread.thread_id]?.trim()"
 												@click="emitSaveFeedbackThreadReply(thread.thread_id)"
 											>
-												{{ threadBusy ? 'Sending…' : 'Send reply' }}
+												{{ threadBusy ? __('Sending…') : __('Send reply') }}
 											</button>
 											<button
 												type="button"
@@ -945,10 +993,10 @@
 											>
 												{{
 													threadBusy
-														? 'Updating…'
+														? __('Updating…')
 														: thread.thread_status === 'resolved'
-															? 'Reopen'
-															: 'Mark resolved'
+															? __('Reopen')
+															: __('Mark resolved')
 												}}
 											</button>
 										</div>
@@ -960,7 +1008,7 @@
 								v-else
 								class="mt-4 rounded-2xl border border-dashed border-border/70 bg-gray-50/40 p-4 text-sm text-ink/60"
 							>
-								No student replies or clarification requests yet.
+								{{ __('No student replies or clarification requests yet.') }}
 							</div>
 						</div>
 					</div>
@@ -970,27 +1018,32 @@
 					<div class="grid gap-4 sm:grid-cols-2">
 						<div class="rounded-2xl border border-border/70 bg-gray-50/40 p-4">
 							<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-								Official Status
+								{{ __('Official Status') }}
 							</p>
 							<div class="mt-3 space-y-2 text-sm text-ink/70">
-								<p>Grading status: {{ drawer.outcome.grading_status || '—' }}</p>
-								<p>Procedural status: {{ drawer.outcome.procedural_status || '—' }}</p>
-								<p>Released: {{ drawer.outcome.is_published ? 'Yes' : 'No' }}</p>
+								<p>{{ __('Grading status:') }} {{ drawer.outcome.grading_status || '—' }}</p>
+								<p>
+									{{ __('Procedural status:') }}
+									{{ drawer.outcome.procedural_status || '—' }}
+								</p>
+								<p>
+									{{ __('Released:') }} {{ drawer.outcome.is_published ? __('Yes') : __('No') }}
+								</p>
 								<p v-if="drawer.outcome.published_on">
-									Released on: {{ formatDateTime(drawer.outcome.published_on) }}
+									{{ __('Released on:') }} {{ formatDateTime(drawer.outcome.published_on) }}
 								</p>
 							</div>
 						</div>
 
 						<div class="rounded-2xl border border-border/70 bg-gray-50/40 p-4">
 							<p class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-								Official Result
+								{{ __('Official Result') }}
 							</p>
 							<div class="mt-3 space-y-2 text-sm text-ink/70">
-								<p>Score: {{ formatPoints(drawer.outcome.official.score) }}</p>
-								<p>Grade: {{ drawer.outcome.official.grade || '—' }}</p>
+								<p>{{ __('Score:') }} {{ formatPoints(drawer.outcome.official.score) }}</p>
+								<p>{{ __('Grade:') }} {{ drawer.outcome.official.grade || '—' }}</p>
 								<p>
-									Grade value:
+									{{ __('Grade value:') }}
 									{{ formatPoints(drawer.outcome.official.grade_value) }}
 								</p>
 							</div>
@@ -1001,7 +1054,7 @@
 						v-if="drawer.outcome.official.feedback"
 						class="rounded-2xl border border-border/70 bg-white p-4"
 					>
-						<h3 class="text-sm font-semibold text-ink">Official Feedback</h3>
+						<h3 class="text-sm font-semibold text-ink">{{ __('Official Feedback') }}</h3>
 						<p class="mt-3 whitespace-pre-wrap text-sm text-ink/75">
 							{{ normalizeFeedback(drawer.outcome.official.feedback) }}
 						</p>
@@ -1011,7 +1064,7 @@
 						v-if="drawer.outcome.criteria.length"
 						class="space-y-3 rounded-2xl border border-border/70 bg-white p-4"
 					>
-						<h3 class="text-sm font-semibold text-ink">Official Criteria</h3>
+						<h3 class="text-sm font-semibold text-ink">{{ __('Official Criteria') }}</h3>
 						<div class="grid gap-3">
 							<div
 								v-for="criterion in drawer.outcome.criteria"
@@ -1035,29 +1088,37 @@
 					>
 						<div class="flex flex-wrap items-start justify-between gap-3">
 							<div>
-								<h3 class="text-sm font-semibold text-ink">Assessment Publication Channels</h3>
+								<h3 class="text-sm font-semibold text-ink">
+									{{ __('Assessment Publication Channels') }}
+								</h3>
 								<p class="mt-1 text-sm text-ink/60">
-									These explicit feedback and grade visibility states are stored per selected
-									submission version.
+									{{
+										__(
+											'These explicit feedback and grade visibility states are stored per selected submission version.'
+										)
+									}}
 									<span v-if="publicationContextMissing">
-										Select a submission version to change them.
+										{{ __('Select a submission version to change them.') }}
 									</span>
-									Current student/guardian portals still follow the legacy outcome release path
-									until the feedback navigator lands.
+									{{
+										__(
+											'Current student/guardian portals still follow the legacy outcome release path until the feedback navigator lands.'
+										)
+									}}
 								</p>
 							</div>
 							<Badge
 								v-if="drawer.feedback_workspace?.publication.derived_from_legacy_outcome"
 								variant="subtle"
 							>
-								Derived from legacy release
+								{{ __('Derived from legacy release') }}
 							</Badge>
 						</div>
 
 						<div class="mt-4 grid gap-4 md:grid-cols-2">
 							<div class="space-y-1.5">
 								<label class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-									Feedback Visibility
+									{{ __('Feedback Visibility') }}
 								</label>
 								<FormControl
 									type="select"
@@ -1072,7 +1133,7 @@
 
 							<div class="space-y-1.5">
 								<label class="block text-xs font-semibold uppercase tracking-[0.16em] text-ink/45">
-									Grade Visibility
+									{{ __('Grade Visibility') }}
 								</label>
 								<FormControl
 									type="select"
@@ -1090,8 +1151,11 @@
 							class="mt-4 flex items-center justify-between gap-3 border-t border-border/60 pt-4"
 						>
 							<p class="text-xs text-ink/45">
-								Stored channel state is audit-friendly and separate from the current one-bit
-								outcome release.
+								{{
+									__(
+										'Stored channel state is audit-friendly and separate from the current one-bit outcome release.'
+									)
+								}}
 							</p>
 							<button
 								type="button"
@@ -1099,7 +1163,7 @@
 								:disabled="publicationBusy || !publicationDirty || !canSaveFeedbackPublication"
 								@click="emitSaveFeedbackPublication"
 							>
-								{{ publicationBusy ? 'Saving…' : 'Save Publication State' }}
+								{{ publicationBusy ? __('Saving…') : __('Save Publication State') }}
 							</button>
 						</div>
 					</div>
@@ -1107,9 +1171,9 @@
 					<div class="rounded-2xl border border-border/70 bg-white p-4">
 						<div class="flex flex-wrap items-center justify-between gap-3">
 							<div>
-								<h3 class="text-sm font-semibold text-ink">Release</h3>
+								<h3 class="text-sm font-semibold text-ink">{{ __('Release') }}</h3>
 								<p class="mt-1 text-sm text-ink/60">
-									Current runtime still uses one published state on the outcome.
+									{{ __('Current runtime still uses one published state on the outcome.') }}
 								</p>
 							</div>
 							<div class="flex flex-wrap gap-2">
@@ -1119,7 +1183,7 @@
 									:disabled="exportButtonDisabled"
 									@click="emit('export-feedback-pdf')"
 								>
-									{{ exportBusy ? 'Preparing…' : exportButtonLabel }}
+									{{ exportBusy ? __('Preparing…') : exportButtonLabel }}
 								</button>
 								<button
 									v-if="drawer.outcome.is_published"
@@ -1128,7 +1192,7 @@
 									:disabled="publishBusy || !drawer.allowed_actions.can_unpublish"
 									@click="emit('unpublish')"
 								>
-									{{ publishBusy ? 'Updating…' : 'Unrelease' }}
+									{{ publishBusy ? __('Updating…') : __('Unrelease') }}
 								</button>
 								<button
 									v-else
@@ -1137,15 +1201,15 @@
 									:disabled="publishBusy || !drawer.allowed_actions.can_publish"
 									@click="emit('publish')"
 								>
-									{{ publishBusy ? 'Updating…' : 'Release' }}
+									{{ publishBusy ? __('Updating…') : __('Release') }}
 								</button>
 							</div>
 						</div>
 						<p class="mt-3 text-xs text-ink/45">
 							{{ exportHelperText }}
-							<span v-if="publicationDirty">Save publication state first.</span>
+							<span v-if="publicationDirty">{{ __('Save publication state first.') }}</span>
 							<span v-else-if="!hasExportableFeedbackRelease">
-								Student feedback must be visible before export.
+								{{ __('Student feedback must be visible before export.') }}
 							</span>
 						</p>
 					</div>
@@ -1156,7 +1220,7 @@
 						v-if="!drawer.contributions.length"
 						class="rounded-2xl border border-dashed border-border/70 bg-gray-50/40 p-6 text-sm text-ink/60"
 					>
-						No contribution history yet.
+						{{ __('No contribution history yet.') }}
 					</div>
 					<div
 						v-for="row in drawer.contributions"
@@ -1174,16 +1238,20 @@
 								</p>
 							</div>
 							<div class="flex flex-wrap gap-2">
-								<Badge v-if="Boolean(row.is_stale)" variant="subtle" theme="orange"> Stale </Badge>
+								<Badge v-if="Boolean(row.is_stale)" variant="subtle" theme="orange">
+									{{ __('Stale') }}
+								</Badge>
 								<Badge v-if="row.task_submission" variant="subtle">
 									{{ submissionLabel(row.task_submission) }}
 								</Badge>
 							</div>
 						</div>
 						<div class="mt-3 grid gap-2 text-sm text-ink/70 sm:grid-cols-3">
-							<p>Score: {{ formatPoints(row.score) }}</p>
-							<p>Grade: {{ row.grade || '—' }}</p>
-							<p>Saved: {{ formatDateTime(row.submitted_on || row.modified) || '—' }}</p>
+							<p>{{ __('Score:') }} {{ formatPoints(row.score) }}</p>
+							<p>{{ __('Grade:') }} {{ row.grade || '—' }}</p>
+							<p>
+								{{ __('Saved:') }} {{ formatDateTime(row.submitted_on || row.modified) || '—' }}
+							</p>
 						</div>
 						<p v-if="row.feedback" class="mt-3 whitespace-pre-wrap text-sm text-ink/75">
 							{{ normalizeFeedback(row.feedback) }}
@@ -1198,15 +1266,21 @@
 					>
 						<div class="flex flex-wrap items-start justify-between gap-3">
 							<div>
-								<h3 class="text-sm font-semibold text-ink">Moderation Actions</h3>
+								<h3 class="text-sm font-semibold text-ink">{{ __('Moderation Actions') }}</h3>
 								<p class="mt-1 text-sm text-ink/60">
-									Approve or Adjust applies the current My Marking values as the moderated outcome.
-									Return to Grader leaves official truth unchanged and sends the outcome back to In
-									Progress.
+									{{
+										__(
+											'Approve or Adjust applies the current My Marking values as the moderated outcome. Return to Grader leaves official truth unchanged and sends the outcome back to In Progress.'
+										)
+									}}
 								</p>
 								<p v-if="isViewingHistoricalSubmission" class="mt-2 text-sm text-clay">
-									You are reviewing {{ selectedSubmissionLabel }}. Moderation actions still target
-									{{ latestSubmissionLabel }}.
+									{{
+										__('You are reviewing {0}. Moderation actions still target {1}.', [
+											selectedSubmissionLabel,
+											latestSubmissionLabel,
+										])
+									}}
 								</p>
 							</div>
 							<div class="flex flex-wrap gap-2">
@@ -1216,7 +1290,7 @@
 									:disabled="moderationBusy"
 									@click="emitModeratorAction('Approve')"
 								>
-									{{ moderationBusy ? 'Updating…' : 'Approve' }}
+									{{ moderationBusy ? __('Updating…') : __('Approve') }}
 								</button>
 								<button
 									type="button"
@@ -1224,7 +1298,7 @@
 									:disabled="moderationBusy"
 									@click="emitModeratorAction('Adjust')"
 								>
-									{{ moderationBusy ? 'Updating…' : 'Adjust' }}
+									{{ moderationBusy ? __('Updating…') : __('Adjust') }}
 								</button>
 								<button
 									type="button"
@@ -1232,7 +1306,7 @@
 									:disabled="moderationBusy"
 									@click="emitModeratorAction('Return to Grader')"
 								>
-									{{ moderationBusy ? 'Updating…' : 'Return to Grader' }}
+									{{ moderationBusy ? __('Updating…') : __('Return to Grader') }}
 								</button>
 							</div>
 						</div>
@@ -1242,7 +1316,7 @@
 						v-if="!drawer.moderation_history.length"
 						class="rounded-2xl border border-dashed border-border/70 bg-gray-50/40 p-6 text-sm text-ink/60"
 					>
-						No moderation actions have been recorded for this outcome.
+						{{ __('No moderation actions have been recorded for this outcome.') }}
 					</div>
 					<div
 						v-for="entry in drawer.moderation_history"
@@ -1250,7 +1324,9 @@
 						class="rounded-2xl border border-border/70 bg-white p-4"
 					>
 						<p class="text-sm font-semibold text-ink">{{ entry.by }}</p>
-						<p class="mt-1 text-sm text-ink/70">{{ entry.action || 'Moderation update' }}</p>
+						<p class="mt-1 text-sm text-ink/70">
+							{{ entry.action || __('Moderation update') }}
+						</p>
 						<p class="mt-1 text-xs text-ink/55">
 							{{ formatDateTime(entry.on) || '—' }}
 						</p>
@@ -1267,6 +1343,7 @@ import { Badge, FeatherIcon, FormControl, Spinner } from 'frappe-ui';
 
 import AttachmentPreviewCard from '@/components/attachments/AttachmentPreviewCard.vue';
 import StudentInsightNoteButton from '@/components/student/StudentInsightNoteButton.vue';
+import { __ } from '@/lib/i18n';
 import type { CommentBankScopeMode } from '@/types/contracts/gradebook/comment_bank';
 import type {
 	FeedbackIntent,
@@ -1406,18 +1483,18 @@ const emit = defineEmits<{
 }>();
 
 const statusOptions = [
-	{ label: 'Not Started', value: 'Not Started' },
-	{ label: 'In Progress', value: 'In Progress' },
-	{ label: 'Needs Review', value: 'Needs Review' },
-	{ label: 'Moderated', value: 'Moderated' },
-	{ label: 'Finalized', value: 'Finalized' },
-	{ label: 'Not Applicable', value: 'Not Applicable' },
+	{ label: __('Not Started'), value: 'Not Started' },
+	{ label: __('In Progress'), value: 'In Progress' },
+	{ label: __('Needs Review'), value: 'Needs Review' },
+	{ label: __('Moderated'), value: 'Moderated' },
+	{ label: __('Finalized'), value: 'Finalized' },
+	{ label: __('Not Applicable'), value: 'Not Applicable' },
 ];
 
 const publicationOptions: Array<{ label: string; value: FeedbackVisibility }> = [
-	{ label: 'Hidden', value: 'hidden' },
-	{ label: 'Student only', value: 'student' },
-	{ label: 'Student and guardian', value: 'student_and_guardian' },
+	{ label: __('Hidden'), value: 'hidden' },
+	{ label: __('Student only'), value: 'student' },
+	{ label: __('Student and guardian'), value: 'student_and_guardian' },
 ];
 const feedbackCriteriaOptions = computed(() =>
 	(props.drawer?.delivery.criteria || []).map(row => ({
@@ -1454,13 +1531,13 @@ const publicationBaseline = ref('');
 
 const visibleTabs = computed(() => {
 	const base = [
-		{ id: 'marking' as DrawerTab, label: 'My Marking' },
-		{ id: 'evidence' as DrawerTab, label: 'Evidence' },
-		{ id: 'official' as DrawerTab, label: 'Official Result' },
-		{ id: 'compare' as DrawerTab, label: 'Compare' },
+		{ id: 'marking' as DrawerTab, label: __('My Marking') },
+		{ id: 'evidence' as DrawerTab, label: __('Evidence') },
+		{ id: 'official' as DrawerTab, label: __('Official Result') },
+		{ id: 'compare' as DrawerTab, label: __('Compare') },
 	];
 	if (props.drawer?.allowed_actions.show_review_tab) {
-		base.push({ id: 'review' as DrawerTab, label: 'Review' });
+		base.push({ id: 'review' as DrawerTab, label: __('Review') });
 	}
 	return base;
 });
@@ -1504,12 +1581,12 @@ const currentFeedbackArtifactUrl = computed(
 		null
 );
 const exportButtonLabel = computed(() =>
-	currentFeedbackArtifactUrl.value ? 'Open latest student PDF' : 'Prepare student PDF'
+	currentFeedbackArtifactUrl.value ? __('Open latest student PDF') : __('Prepare student PDF')
 );
 const exportHelperText = computed(() =>
 	currentFeedbackArtifactUrl.value
-		? 'The latest governed student-facing feedback PDF is ready to open.'
-		: 'Generate the current student-facing released feedback as a governed PDF artifact.'
+		? __('The latest governed student-facing feedback PDF is ready to open.')
+		: __('Generate the current student-facing released feedback as a governed PDF artifact.')
 );
 const exportButtonDisabled = computed(
 	() =>
@@ -1537,7 +1614,9 @@ const feedbackItemOptions = computed(() =>
 	feedbackForm.items
 		.filter(item => item.id)
 		.map((item, index) => ({
-			label: `Note ${index + 1}${item.comment ? ` · ${item.comment.slice(0, 48)}` : ''}`,
+			label: item.comment
+				? __('Note {0} · {1}', [index + 1, item.comment.slice(0, 48)])
+				: __('Note {0}', [index + 1]),
 			value: item.id || '',
 		}))
 );
@@ -1547,14 +1626,14 @@ const priorityLimitReached = computed(() => feedbackForm.priorities.length >= 5)
 
 const selectedSubmissionLabel = computed(() => {
 	const row = props.drawer?.selected_submission;
-	if (!row) return 'No digital submission';
-	return `Version ${row.version}${row.is_stub ? ' (stub)' : ''}`;
+	if (!row) return __('No digital submission');
+	return row.is_stub ? __('Version {0} (stub)', [row.version]) : __('Version {0}', [row.version]);
 });
 
 const latestSubmissionLabel = computed(() => {
 	const row = props.drawer?.latest_submission;
-	if (!row) return 'the latest submission';
-	return `Version ${row.version}${row.is_stub ? ' (stub)' : ''}`;
+	if (!row) return __('the latest submission');
+	return row.is_stub ? __('Version {0} (stub)', [row.version]) : __('Version {0}', [row.version]);
 });
 
 const isViewingHistoricalSubmission = computed(() => {
@@ -1763,31 +1842,33 @@ function threadTargetLabel(thread: FeedbackThread) {
 		const index = feedbackForm.items.findIndex(item => item.id === thread.target_feedback_item);
 		const item = feedbackForm.items.find(row => row.id === thread.target_feedback_item);
 		if (index >= 0) {
-			return `Feedback note ${index + 1}${item?.comment ? ` · ${item.comment.slice(0, 48)}` : ''}`;
+			return item?.comment
+				? __('Feedback note {0} · {1}', [index + 1, item.comment.slice(0, 48)])
+				: __('Feedback note {0}', [index + 1]);
 		}
-		return 'Feedback note';
+		return __('Feedback note');
 	}
 	if (thread.target_type === 'priority' && thread.target_priority) {
 		const priority = feedbackForm.priorities.find(row => row.id === thread.target_priority);
-		return priority?.title || 'Pinned priority';
+		return priority?.title || __('Pinned priority');
 	}
 	if (thread.target_type === 'summary') {
-		return `Summary · ${summaryFieldLabel(thread.summary_field)}`;
+		return __('Summary · {0}', [summaryFieldLabel(thread.summary_field)]);
 	}
-	return 'Released feedback thread';
+	return __('Released feedback thread');
 }
 
 function summaryFieldLabel(field?: string | null) {
-	if (field === 'strengths') return 'Strengths';
-	if (field === 'improvements') return 'Improvements';
-	if (field === 'next_steps') return 'Next steps';
-	return 'Overall';
+	if (field === 'strengths') return __('Strengths');
+	if (field === 'improvements') return __('Improvements');
+	if (field === 'next_steps') return __('Next steps');
+	return __('Overall');
 }
 
 function learnerStateLabel(state?: string | null) {
-	if (state === 'understood') return 'Understood';
-	if (state === 'acted_on') return 'Acted on';
-	return 'Open';
+	if (state === 'understood') return __('Understood');
+	if (state === 'acted_on') return __('Acted on');
+	return __('Open');
 }
 
 function emitSaveFeedbackThreadReply(threadId: string) {
@@ -1909,8 +1990,8 @@ function submissionLabel(submissionId?: string | null) {
 	const row = props.drawer?.submission_versions.find(
 		entry => entry.submission_id === submissionId
 	);
-	if (!row) return 'Submission';
-	return `Version ${row.version}${row.is_stub ? ' · Stub' : ''}`;
+	if (!row) return __('Submission');
+	return row.is_stub ? __('Version {0} · Stub', [row.version]) : __('Version {0}', [row.version]);
 }
 
 function formatBytes(value?: number | null) {
@@ -1958,13 +2039,13 @@ function isPdfAttachment(attachment: SubmissionAttachmentRow): boolean {
 }
 
 function annotationModeLabel(readiness: AnnotationReadinessPayload): string {
-	if (readiness.mode === 'reduced') return 'Reduced mode';
-	if (readiness.mode === 'unavailable') return 'Preview fallback';
-	return 'Not applicable';
+	if (readiness.mode === 'reduced') return __('Reduced mode');
+	if (readiness.mode === 'unavailable') return __('Preview fallback');
+	return __('Not applicable');
 }
 
 function annotationPreviewActionLabel(readiness: AnnotationReadinessPayload): string {
-	return readiness.preview_status === 'ready' ? 'Open preview' : 'Try preview';
+	return readiness.preview_status === 'ready' ? __('Open preview') : __('Try preview');
 }
 
 function onFeedbackItemsChanged(items: FeedbackWorkspaceItem[]) {

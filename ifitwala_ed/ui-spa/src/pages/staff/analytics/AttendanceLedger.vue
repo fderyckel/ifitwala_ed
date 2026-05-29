@@ -5,6 +5,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import AnalyticsCard from '@/components/analytics/AnalyticsCard.vue';
 import DateRangePills from '@/components/filters/DateRangePills.vue';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
+import { __ } from '@/lib/i18n';
 import { createAttendanceAnalyticsService } from '@/lib/services/attendance/attendanceAnalyticsService';
 import { createStudentAttendanceService } from '@/lib/services/studentAttendance/studentAttendanceService';
 
@@ -75,12 +76,12 @@ const filters = reactive<{
 });
 
 const presetItems: Array<{ label: string; value: WindowPreset }> = [
-	{ label: 'Term', value: 'term' },
-	{ label: 'Today', value: 'today' },
-	{ label: '1W', value: 'last_week' },
-	{ label: '2W', value: 'last_2_weeks' },
-	{ label: '1M', value: 'last_month' },
-	{ label: '3M', value: 'last_3_months' },
+	{ label: __('Term'), value: 'term' },
+	{ label: __('Today'), value: 'today' },
+	{ label: __('1W'), value: 'last_week' },
+	{ label: __('2W'), value: 'last_2_weeks' },
+	{ label: __('1M'), value: 'last_month' },
+	{ label: __('3M'), value: 'last_3_months' },
 ];
 
 const pageLengthOptions = [50, 80, 120, 200];
@@ -105,7 +106,7 @@ function isoDate(value: Date): string {
 
 function formatError(error: unknown): string {
 	if (error instanceof Error && error.message) return error.message;
-	return 'Unable to load attendance ledger right now.';
+	return __('Unable to load attendance ledger right now.');
 }
 
 function applyPreset(nextPreset: WindowPreset) {
@@ -183,7 +184,7 @@ function formatPercent(value: unknown): string {
 
 function exportCurrentSliceCsv() {
 	if (!rows.value.length || !columns.value.length) {
-		actionError.value = 'No ledger rows to export for current filters.';
+		actionError.value = __('No ledger rows to export for current filters.');
 		return;
 	}
 
@@ -232,16 +233,16 @@ function toggleSort(fieldname: string) {
 function scheduleReload() {
 	if (!filtersReady.value) return;
 	if (!filters.academic_year && academicYears.value.length) {
-		actionError.value = 'Academic Year is required for the ledger.';
+		actionError.value = __('Academic Year is required for the ledger.');
 		return;
 	}
 	if (Boolean(filters.start_date) !== Boolean(filters.end_date)) {
-		actionError.value = 'Select both start and end dates for a calendar range.';
+		actionError.value = __('Select both start and end dates for a calendar range.');
 		return;
 	}
 	if (
-		actionError.value === 'Academic Year is required for the ledger.' ||
-		actionError.value === 'Select both start and end dates for a calendar range.'
+		actionError.value === __('Academic Year is required for the ledger.') ||
+		actionError.value === __('Select both start and end dates for a calendar range.')
 	) {
 		actionError.value = null;
 	}
@@ -400,9 +401,9 @@ onMounted(async () => {
 	<div class="analytics-shell">
 		<header class="page-header">
 			<div class="page-header__intro">
-				<h1 class="type-h1 text-canopy">Attendance Ledger</h1>
+				<h1 class="type-h1 text-canopy">{{ __('Attendance Ledger') }}</h1>
 				<p class="type-meta text-slate-token/80">
-					Row-level attendance evidence for follow-up, compliance, and code integrity.
+					{{ __('Row-level attendance evidence for follow-up, compliance, and code integrity.') }}
 				</p>
 			</div>
 			<div class="page-header__actions">
@@ -416,7 +417,7 @@ onMounted(async () => {
 
 		<FiltersBar>
 			<div class="flex w-44 flex-col gap-1">
-				<label class="type-label">School</label>
+				<label class="type-label">{{ __('School') }}</label>
 				<select
 					v-model="filters.school"
 					class="h-9 rounded-md border border-slate-200 px-2 text-sm"
@@ -428,12 +429,12 @@ onMounted(async () => {
 			</div>
 
 			<div class="flex w-44 flex-col gap-1">
-				<label class="type-label">Academic Year</label>
+				<label class="type-label">{{ __('Academic Year') }}</label>
 				<select
 					v-model="filters.academic_year"
 					class="h-9 rounded-md border border-slate-200 px-2 text-sm"
 				>
-					<option :value="null">Select</option>
+					<option :value="null">{{ __('Select') }}</option>
 					<option v-for="year in academicYears" :key="year.name" :value="year.name">
 						{{ year.name }}
 					</option>
@@ -441,9 +442,9 @@ onMounted(async () => {
 			</div>
 
 			<div class="flex w-44 flex-col gap-1">
-				<label class="type-label">Term</label>
+				<label class="type-label">{{ __('Term') }}</label>
 				<select v-model="filters.term" class="h-9 rounded-md border border-slate-200 px-2 text-sm">
-					<option :value="null">All</option>
+					<option :value="null">{{ __('All') }}</option>
 					<option v-for="term in terms" :key="term.name" :value="term.name">
 						{{ term.name }}
 					</option>
@@ -451,12 +452,12 @@ onMounted(async () => {
 			</div>
 
 			<div class="flex w-44 flex-col gap-1">
-				<label class="type-label">Program</label>
+				<label class="type-label">{{ __('Program') }}</label>
 				<select
 					v-model="filters.program"
 					class="h-9 rounded-md border border-slate-200 px-2 text-sm"
 				>
-					<option :value="null">All</option>
+					<option :value="null">{{ __('All') }}</option>
 					<option v-for="program in programs" :key="program.name" :value="program.name">
 						{{ program.program_name || program.name }}
 					</option>
@@ -464,12 +465,12 @@ onMounted(async () => {
 			</div>
 
 			<div class="flex w-44 flex-col gap-1">
-				<label class="type-label">Student Group</label>
+				<label class="type-label">{{ __('Student Group') }}</label>
 				<select
 					v-model="filters.student_group"
 					class="h-9 rounded-md border border-slate-200 px-2 text-sm"
 				>
-					<option :value="null">All</option>
+					<option :value="null">{{ __('All') }}</option>
 					<option v-for="group in studentGroups" :key="group.name" :value="group.name">
 						{{ group.student_group_name || group.name }}
 					</option>
@@ -477,7 +478,7 @@ onMounted(async () => {
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">From Date</label>
+				<label class="type-label">{{ __('From Date') }}</label>
 				<input
 					v-model="filters.start_date"
 					type="date"
@@ -487,7 +488,7 @@ onMounted(async () => {
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">To Date</label>
+				<label class="type-label">{{ __('To Date') }}</label>
 				<input
 					v-model="filters.end_date"
 					type="date"
@@ -497,18 +498,18 @@ onMounted(async () => {
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Calendar Range</label>
+				<label class="type-label">{{ __('Calendar Range') }}</label>
 				<button
 					type="button"
 					class="h-9 rounded-md border border-slate-200 px-3 text-xs text-slate-700 hover:bg-slate-50"
 					@click="clearCalendarRange"
 				>
-					Clear Custom Range
+					{{ __('Clear Custom Range') }}
 				</button>
 			</div>
 
 			<div class="flex flex-col gap-1">
-				<label class="type-label">Attendance Mode</label>
+				<label class="type-label">{{ __('Attendance Mode') }}</label>
 				<div class="flex items-center gap-2">
 					<button
 						type="button"
@@ -520,7 +521,7 @@ onMounted(async () => {
 						"
 						@click="filters.whole_day = 1"
 					>
-						Whole Day
+						{{ __('Whole Day') }}
 					</button>
 					<button
 						type="button"
@@ -532,19 +533,19 @@ onMounted(async () => {
 						"
 						@click="filters.whole_day = 0"
 					>
-						By Block
+						{{ __('By Block') }}
 					</button>
 				</div>
 			</div>
 
 			<div class="flex w-40 flex-col gap-1">
-				<label class="type-label">Student</label>
+				<label class="type-label">{{ __('Student') }}</label>
 				<input
 					v-model="filters.student"
 					list="attendance-ledger-student-options"
 					type="text"
 					class="h-9 rounded-md border border-slate-200 px-2 text-sm"
-					placeholder="Student ID"
+					:placeholder="__('Student ID')"
 				/>
 				<datalist id="attendance-ledger-student-options">
 					<option
@@ -558,13 +559,13 @@ onMounted(async () => {
 			</div>
 
 			<div class="flex w-40 flex-col gap-1">
-				<label class="type-label">Instructor</label>
+				<label class="type-label">{{ __('Instructor') }}</label>
 				<input
 					v-model="filters.instructor"
 					list="attendance-ledger-instructor-options"
 					type="text"
 					class="h-9 rounded-md border border-slate-200 px-2 text-sm"
-					placeholder="Instructor ID"
+					:placeholder="__('Instructor ID')"
 				/>
 				<datalist id="attendance-ledger-instructor-options">
 					<option v-for="instructor in instructorOptions" :key="instructor" :value="instructor" />
@@ -572,13 +573,13 @@ onMounted(async () => {
 			</div>
 
 			<div class="flex w-40 flex-col gap-1">
-				<label class="type-label">Course</label>
+				<label class="type-label">{{ __('Course') }}</label>
 				<input
 					v-model="filters.course"
 					list="attendance-ledger-course-options"
 					type="text"
 					class="h-9 rounded-md border border-slate-200 px-2 text-sm"
-					placeholder="Course ID"
+					:placeholder="__('Course ID')"
 					:disabled="filters.whole_day === 1"
 				/>
 				<datalist id="attendance-ledger-course-options">
@@ -591,12 +592,12 @@ onMounted(async () => {
 			</div>
 
 			<div class="flex w-40 flex-col gap-1">
-				<label class="type-label">Attendance Code</label>
+				<label class="type-label">{{ __('Attendance Code') }}</label>
 				<select
 					v-model="filters.attendance_code"
 					class="h-9 rounded-md border border-slate-200 px-2 text-sm"
 				>
-					<option :value="null">All</option>
+					<option :value="null">{{ __('All') }}</option>
 					<option
 						v-for="code in codeFilterOptions"
 						:key="code.attendance_code"
@@ -624,22 +625,22 @@ onMounted(async () => {
 
 		<section class="analytics-grid attendance-ledger-grid">
 			<AnalyticsCard
-				title="Attendance Ledger (Grouped View)"
+				:title="__('Attendance Ledger (Grouped View)')"
 				:interactive="false"
 				class="analytics-card--wide"
 			>
 				<template #body>
 					<div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
-						<p>{{ totalRows }} grouped row(s)</p>
+						<p>{{ __('{0} grouped row(s)', [totalRows]) }}</p>
 						<div class="flex items-center gap-2">
 							<button
 								type="button"
 								class="rounded-md border border-slate-200 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
 								@click="exportCurrentSliceCsv"
 							>
-								Export CSV
+								{{ __('Export CSV') }}
 							</button>
-							<label class="type-label">Rows per page</label>
+							<label class="type-label">{{ __('Rows per page') }}</label>
 							<select
 								v-model.number="pageLength"
 								class="h-8 rounded-md border border-slate-200 px-2"
@@ -728,7 +729,7 @@ onMounted(async () => {
 										:colspan="Math.max(columns.length, 1)"
 										class="py-6 text-center text-slate-400"
 									>
-										No attendance ledger rows match these filters.
+										{{ __('No attendance ledger rows match these filters.') }}
 									</td>
 								</tr>
 							</tbody>
@@ -736,7 +737,9 @@ onMounted(async () => {
 					</div>
 
 					<div class="mt-3 flex flex-wrap items-center justify-between gap-3">
-						<p class="text-xs text-slate-500">Page {{ page }} of {{ totalPages }}</p>
+						<p class="text-xs text-slate-500">
+							{{ __('Page {0} of {1}', [page, totalPages]) }}
+						</p>
 						<div class="flex items-center gap-2">
 							<button
 								type="button"
@@ -744,7 +747,7 @@ onMounted(async () => {
 								:disabled="page <= 1 || isLoading"
 								@click="page = Math.max(page - 1, 1)"
 							>
-								Previous
+								{{ __('Previous') }}
 							</button>
 							<button
 								type="button"
@@ -752,42 +755,42 @@ onMounted(async () => {
 								:disabled="page >= totalPages || isLoading"
 								@click="page = Math.min(page + 1, totalPages)"
 							>
-								Next
+								{{ __('Next') }}
 							</button>
 						</div>
 					</div>
 				</template>
 			</AnalyticsCard>
 
-			<AnalyticsCard title="Slice Summary" :interactive="false">
+			<AnalyticsCard :title="__('Slice Summary')" :interactive="false">
 				<template #body>
 					<div class="space-y-2 text-xs text-slate-700">
 						<p>
-							<span class="font-medium text-slate-800">Raw records:</span>
+							<span class="font-medium text-slate-800">{{ __('Raw records:') }}</span>
 							{{ ledger?.summary.raw_records || 0 }}
 						</p>
 						<p>
-							<span class="font-medium text-slate-800">Distinct students:</span>
+							<span class="font-medium text-slate-800">{{ __('Distinct students:') }}</span>
 							{{ ledger?.summary.total_students || 0 }}
 						</p>
 						<p>
-							<span class="font-medium text-slate-800">Present rows:</span>
+							<span class="font-medium text-slate-800">{{ __('Present rows:') }}</span>
 							{{ ledger?.summary.total_present || 0 }}
 						</p>
 						<p>
-							<span class="font-medium text-slate-800">Late rows (present):</span>
+							<span class="font-medium text-slate-800">{{ __('Late rows (present):') }}</span>
 							{{ ledger?.summary.total_late_present || 0 }}
 						</p>
 						<p>
-							<span class="font-medium text-slate-800">Total rows:</span>
+							<span class="font-medium text-slate-800">{{ __('Total rows:') }}</span>
 							{{ ledger?.summary.total_attendance || 0 }}
 						</p>
 						<p>
-							<span class="font-medium text-slate-800">% Present:</span>
+							<span class="font-medium text-slate-800">{{ __('% Present:') }}</span>
 							{{ formatPercent(ledger?.summary.percentage_present) }}%
 						</p>
 						<p>
-							<span class="font-medium text-slate-800">% Late:</span>
+							<span class="font-medium text-slate-800">{{ __('% Late:') }}</span>
 							{{ formatPercent(ledger?.summary.percentage_late) }}%
 						</p>
 					</div>
@@ -795,7 +798,9 @@ onMounted(async () => {
 			</AnalyticsCard>
 		</section>
 
-		<p v-if="isLoading" class="analytics-empty">Refreshing attendance ledger...</p>
+		<p v-if="isLoading" class="analytics-empty">
+			{{ __('Refreshing attendance ledger...') }}
+		</p>
 	</div>
 </template>
 

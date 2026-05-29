@@ -76,7 +76,7 @@ Receipt context:
 - owner: `Expense Claim`
 - primary subject: `Employee`
 - data class: `financial`
-- purpose: `financial_record`
+- purpose: `administrative`
 - retention policy: `fixed_7y`
 - binding role: `expense_claim_receipt`
 

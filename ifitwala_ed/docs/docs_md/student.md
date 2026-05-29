@@ -3,8 +3,8 @@ title: "Student: Your Learner Records Made Simple"
 slug: student
 category: Students
 doc_order: 1
-version: "1.3.9"
-last_change_date: "2026-05-28"
+version: "1.4.0"
+last_change_date: "2026-05-29"
 summary: "Manage learner records with confidence—from admissions intake to alumni status. Understand when to use the admissions pipeline versus importing existing students."
 seo_title: "Student: Your Learner Records Made Simple"
 seo_description: "Learn how to manage Student records in Ifitwala Ed—from admissions promotion to bulk importing existing students with full portal access and health record integration."
@@ -185,9 +185,24 @@ This flow is especially useful after migration/import when staff have already li
 
 ### Finance & Billing
 - Link to Account Holder for invoicing
+- Create an Account Holder from existing Guardian rows for imported/enrolled students
+- Link Guardians as Account Holder billing contacts for finance follow-up
 - View billing plans and payment history
 - Manage fee concessions and scholarships
 - Track family financial relationships
+
+### Account Holder From Guardians
+
+When an already enrolled or imported student has Guardian rows but no Account Holder, use **Create Account Holder with Guardians** from the Student form actions.
+
+What it does:
+
+- creates the Account Holder in the student's Organization
+- links the Student to that Account Holder
+- links the selected Guardians as billing contacts
+- fills the Account Holder primary email and phone from the primary selected Guardian
+
+If the Student already has an Account Holder, the action becomes **Link Guardians to Account Holder** and attaches the selected Guardians as finance billing contacts.
 
 ### Family Engagement
 - Student portal for assignments and grades

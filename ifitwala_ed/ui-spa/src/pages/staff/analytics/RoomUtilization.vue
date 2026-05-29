@@ -3,14 +3,14 @@
 	<div class="analytics-shell">
 		<header class="page-header">
 			<div class="page-header__intro">
-				<h1 class="type-h1 text-canopy">Room Utilization</h1>
+				<h1 class="type-h1 text-canopy">{{ __('Room Utilization') }}</h1>
 				<p class="type-meta text-slate-token/80">
-					Find free rooms across your campus and book spaces.
+					{{ __('Find free rooms across your campus and book spaces.') }}
 				</p>
 			</div>
 			<div v-if="canViewAnalytics" class="page-header__actions">
 				<button type="button" class="if-button if-button--quiet" @click="refreshMetrics">
-					Refresh Data
+					{{ __('Refresh Data') }}
 				</button>
 			</div>
 		</header>
@@ -27,10 +27,13 @@
 				class="relative z-10 flex flex-wrap items-end justify-between gap-4 border-b border-slate-100 pb-5 mb-5"
 			>
 				<div>
-					<h3 class="analytics-card__title">Free Rooms Finder</h3>
+					<h3 class="analytics-card__title">{{ __('Free Rooms Finder') }}</h3>
 					<p class="analytics-card__meta mt-1 max-w-2xl">
-						Locate available spaces by checking against all meetings, school events, and teaching
-						bookings.
+						{{
+							__(
+								'Locate available spaces by checking against all meetings, school events, and teaching bookings.'
+							)
+						}}
 					</p>
 				</div>
 				<div class="flex flex-wrap items-center gap-3">
@@ -48,7 +51,7 @@
 						class="if-button if-button--quiet"
 						@click="openCreateTeamMeeting"
 					>
-						Schedule team meeting
+						{{ __('Schedule team meeting') }}
 					</button>
 					<button
 						type="button"
@@ -61,7 +64,7 @@
 						"
 						@click="loadFreeRooms"
 					>
-						Find Free Rooms
+						{{ __('Find Free Rooms') }}
 					</button>
 				</div>
 			</div>
@@ -71,18 +74,18 @@
 				<div class="p-4 rounded-xl bg-slate-50 border border-slate-200/60 h-fit">
 					<div class="space-y-4">
 						<div class="flex flex-col gap-1.5">
-							<label class="type-label">School Context</label>
+							<label class="type-label">{{ __('School Context') }}</label>
 							<select
 								v-model="selectedSchool"
 								class="h-10 w-full rounded-md border-slate-300 bg-white px-3 text-sm focus:border-leaf focus:ring-leaf/20"
 							>
-								<option value="">Select School</option>
+								<option value="">{{ __('Select School') }}</option>
 								<option v-for="s in schools" :key="s.name" :value="s.name">{{ s.label }}</option>
 							</select>
 						</div>
 
 						<div class="flex flex-col gap-1.5">
-							<label class="type-label">Target Date</label>
+							<label class="type-label">{{ __('Target Date') }}</label>
 							<input
 								type="date"
 								v-model="availabilityFilters.date"
@@ -92,7 +95,7 @@
 
 						<div class="grid grid-cols-2 gap-3">
 							<div class="flex flex-col gap-1.5">
-								<label class="type-label">Start Time</label>
+								<label class="type-label">{{ __('Start Time') }}</label>
 								<input
 									type="time"
 									v-model="availabilityFilters.start_time"
@@ -100,7 +103,7 @@
 								/>
 							</div>
 							<div class="flex flex-col gap-1.5">
-								<label class="type-label">End Time</label>
+								<label class="type-label">{{ __('End Time') }}</label>
 								<input
 									type="time"
 									v-model="availabilityFilters.end_time"
@@ -110,24 +113,24 @@
 						</div>
 
 						<div class="flex flex-col gap-1.5">
-							<label class="type-label">Min Capacity</label>
+							<label class="type-label">{{ __('Min Capacity') }}</label>
 							<input
 								type="number"
 								min="1"
 								step="1"
 								v-model="availabilityFilters.capacity_needed"
-								placeholder="Optional"
+								:placeholder="__('Optional')"
 								class="h-10 w-full rounded-md border-slate-300 bg-white px-3 text-sm focus:border-leaf focus:ring-leaf/20"
 							/>
 						</div>
 
 						<div class="flex flex-col gap-1.5">
-							<label class="type-label">Room Type</label>
+							<label class="type-label">{{ __('Room Type') }}</label>
 							<select
 								v-model="selectedLocationType"
 								class="h-10 w-full rounded-md border-slate-300 bg-white px-3 text-sm focus:border-leaf focus:ring-leaf/20"
 							>
-								<option value="">All schedulable rooms</option>
+								<option value="">{{ __('All schedulable rooms') }}</option>
 								<option v-for="option in locationTypes" :key="option.value" :value="option.value">
 									{{ option.label }}
 								</option>
@@ -140,14 +143,14 @@
 				<div class="min-h-[200px] relative">
 					<div class="flex items-center gap-3 mb-4">
 						<StatsTile
-							label="Available Rooms"
+							:label="__('Available Rooms')"
 							:value="freeRooms.length"
 							:tone="freeRooms.length ? 'success' : 'warning'"
 							class="!bg-white !border-slate-100"
 						/>
 						<div class="h-8 w-px bg-slate-200"></div>
 						<div class="text-xs text-slate-500">
-							<span class="font-medium text-slate-700">Search Window:</span>
+							<span class="font-medium text-slate-700">{{ __('Search Window:') }}</span>
 							{{ freeWindowLabel }}
 						</div>
 					</div>
@@ -160,7 +163,9 @@
 							<div
 								class="h-6 w-6 animate-spin rounded-full border-2 border-leaf border-t-transparent"
 							></div>
-							<span class="text-sm text-slate-500 font-medium">Checking availability...</span>
+							<span class="text-sm text-slate-500 font-medium">
+								{{ __('Checking availability...') }}
+							</span>
 						</div>
 					</div>
 
@@ -184,8 +189,10 @@
 								/>
 							</svg>
 						</div>
-						<p class="text-sm font-medium text-slate-600">No free rooms found</p>
-						<p class="text-xs text-slate-400 mt-1">Try adjusting the time window or capacity.</p>
+						<p class="text-sm font-medium text-slate-600">{{ __('No free rooms found') }}</p>
+						<p class="text-xs text-slate-400 mt-1">
+							{{ __('Try adjusting the time window or capacity.') }}
+						</p>
 					</div>
 
 					<div v-else class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -200,14 +207,14 @@
 										{{ room.room_name }}
 									</div>
 									<div class="text-xs text-slate-500 mt-0.5">
-										{{ room.building || 'Main Building' }}
+										{{ room.building || __('Main Building') }}
 										<span v-if="room.location_type_name"> · {{ room.location_type_name }}</span>
 									</div>
 								</div>
 								<div
 									class="flex h-6 items-center justify-center rounded-full bg-slate-100 px-2 text-[10px] font-bold text-slate-600"
 								>
-									{{ room.max_capacity ? `${room.max_capacity} pax` : '—' }}
+									{{ room.max_capacity ? __('{0} pax', [room.max_capacity]) : '—' }}
 								</div>
 							</div>
 						</article>
@@ -222,11 +229,13 @@
 			<section class="analytics-card h-full">
 				<div class="flex flex-wrap items-start justify-between gap-3 mb-4">
 					<div>
-						<h3 class="analytics-card__title text-jacaranda">Time Utilization</h3>
-						<p class="analytics-card__meta mt-1">Booked minutes vs available minutes per day.</p>
+						<h3 class="analytics-card__title text-jacaranda">{{ __('Time Utilization') }}</h3>
+						<p class="analytics-card__meta mt-1">
+							{{ __('Booked minutes vs available minutes per day.') }}
+						</p>
 					</div>
 					<StatsTile
-						label="Avg Utilization"
+						:label="__('Avg Utilization')"
 						:value="avgUtilizationLabel"
 						tone="info"
 						class="!bg-white"
@@ -236,9 +245,9 @@
 				<div class="bg-slate-50/80 rounded-xl p-3 border border-slate-100 mb-4">
 					<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 						<div class="space-y-1">
-							<label class="text-[10px] uppercase tracking-wider font-semibold text-slate-400"
-								>Date Range</label
-							>
+							<label class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">{{
+								__('Date Range')
+							}}</label>
 							<div class="flex items-center gap-2">
 								<input
 									type="date"
@@ -254,9 +263,9 @@
 							</div>
 						</div>
 						<div class="space-y-1">
-							<label class="text-[10px] uppercase tracking-wider font-semibold text-slate-400"
-								>Day Window</label
-							>
+							<label class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">{{
+								__('Day Window')
+							}}</label>
 							<div class="flex items-center gap-2">
 								<input
 									type="time"
@@ -280,7 +289,7 @@
 							type="checkbox"
 							class="h-4 w-4 rounded border-slate-300 text-jacaranda focus:ring-jacaranda/30"
 						/>
-						<span>Include weekends and holidays</span>
+						<span>{{ __('Include weekends and holidays') }}</span>
 					</label>
 				</div>
 
@@ -294,8 +303,8 @@
 					v-else-if="!timeRooms.length"
 					class="flex-1 flex flex-col items-center justify-center py-8 text-center bg-slate-50 rounded-xl border border-slate-100 border-dashed"
 				>
-					<p class="text-sm text-slate-500">No utilization data.</p>
-					<p class="text-xs text-slate-400">Check the school or date range.</p>
+					<p class="text-sm text-slate-500">{{ __('No utilization data.') }}</p>
+					<p class="text-xs text-slate-400">{{ __('Check the school or date range.') }}</p>
 				</div>
 
 				<div v-else class="flex-1 overflow-auto custom-scrollbar relative">
@@ -304,10 +313,10 @@
 							class="text-xs text-slate-500 uppercase bg-slate-50/50 sticky top-0 backdrop-blur-sm z-10"
 						>
 							<tr>
-								<th class="px-3 py-2 font-semibold">Room</th>
-								<th class="px-3 py-2 font-semibold text-right">Booked</th>
-								<th class="px-3 py-2 font-semibold text-right">Avail</th>
-								<th class="px-3 py-2 font-semibold text-right">Util %</th>
+								<th class="px-3 py-2 font-semibold">{{ __('Room') }}</th>
+								<th class="px-3 py-2 font-semibold text-right">{{ __('Booked') }}</th>
+								<th class="px-3 py-2 font-semibold text-right">{{ __('Avail') }}</th>
+								<th class="px-3 py-2 font-semibold text-right">{{ __('Util %') }}</th>
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-slate-100">
@@ -351,11 +360,11 @@
 			<section class="analytics-card h-full">
 				<div class="flex flex-wrap items-start justify-between gap-3 mb-4">
 					<div>
-						<h3 class="analytics-card__title text-flame">Capacity Utilization</h3>
-						<p class="analytics-card__meta mt-1">Participants vs room capacity.</p>
+						<h3 class="analytics-card__title text-flame">{{ __('Capacity Utilization') }}</h3>
+						<p class="analytics-card__meta mt-1">{{ __('Participants vs room capacity.') }}</p>
 					</div>
 					<StatsTile
-						label="Over-Cap Rooms"
+						:label="__('Over-Cap Rooms')"
 						:value="overCapRooms"
 						tone="warning"
 						class="!bg-white"
@@ -364,9 +373,9 @@
 
 				<div class="bg-slate-50/80 rounded-xl p-3 border border-slate-100 mb-4">
 					<div class="space-y-1">
-						<label class="text-[10px] uppercase tracking-wider font-semibold text-slate-400"
-							>Date Range</label
-						>
+						<label class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">{{
+							__('Date Range')
+						}}</label>
 						<div class="flex items-center gap-2">
 							<input
 								type="date"
@@ -393,8 +402,8 @@
 					v-else-if="!capacityRooms.length"
 					class="flex-1 flex flex-col items-center justify-center py-8 text-center bg-slate-50 rounded-xl border border-slate-100 border-dashed"
 				>
-					<p class="text-sm text-slate-500">No capacity data.</p>
-					<p class="text-xs text-slate-400">Check the school or date range.</p>
+					<p class="text-sm text-slate-500">{{ __('No capacity data.') }}</p>
+					<p class="text-xs text-slate-400">{{ __('Check the school or date range.') }}</p>
 				</div>
 
 				<div v-else class="flex-1 overflow-auto custom-scrollbar relative">
@@ -403,11 +412,11 @@
 							class="text-xs text-slate-500 uppercase bg-slate-50/50 sticky top-0 backdrop-blur-sm z-10"
 						>
 							<tr>
-								<th class="px-3 py-2 font-semibold">Room</th>
-								<th class="px-3 py-2 font-semibold text-center">Cap</th>
-								<th class="px-3 py-2 font-semibold text-center">Avg/Peak</th>
-								<th class="px-3 py-2 font-semibold text-right">Avg %</th>
-								<th class="px-3 py-2 font-semibold text-right">Count</th>
+								<th class="px-3 py-2 font-semibold">{{ __('Room') }}</th>
+								<th class="px-3 py-2 font-semibold text-center">{{ __('Cap') }}</th>
+								<th class="px-3 py-2 font-semibold text-center">{{ __('Avg/Peak') }}</th>
+								<th class="px-3 py-2 font-semibold text-right">{{ __('Avg %') }}</th>
+								<th class="px-3 py-2 font-semibold text-right">{{ __('Count') }}</th>
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-slate-100">
@@ -458,10 +467,13 @@
 				class="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-5"
 			>
 				<div>
-					<h3 class="analytics-card__title text-canopy">Location Calendar</h3>
+					<h3 class="analytics-card__title text-canopy">{{ __('Location Calendar') }}</h3>
 					<p class="analytics-card__meta mt-1 max-w-2xl">
-						Read-only timeline of everything booked into a shared room or building, including
-						teaching, meetings, and school events.
+						{{
+							__(
+								'Read-only timeline of everything booked into a shared room or building, including teaching, meetings, and school events.'
+							)
+						}}
 					</p>
 				</div>
 				<div class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600">
@@ -473,19 +485,19 @@
 				<div class="h-fit rounded-xl border border-slate-200/60 bg-slate-50 p-4">
 					<div class="space-y-4">
 						<div class="flex flex-col gap-1.5">
-							<label class="type-label">School Context</label>
+							<label class="type-label">{{ __('School Context') }}</label>
 							<select
 								v-model="selectedSchool"
 								class="h-10 w-full rounded-md border-slate-300 bg-white px-3 text-sm focus:border-canopy focus:ring-canopy/20"
 							>
-								<option value="">Select School</option>
+								<option value="">{{ __('Select School') }}</option>
 								<option v-for="s in schools" :key="s.name" :value="s.name">{{ s.label }}</option>
 							</select>
 						</div>
 
 						<div class="grid grid-cols-2 gap-3">
 							<div class="flex flex-col gap-1.5">
-								<label class="type-label">From</label>
+								<label class="type-label">{{ __('From') }}</label>
 								<input
 									type="date"
 									v-model="locationCalendarFilters.from_date"
@@ -493,7 +505,7 @@
 								/>
 							</div>
 							<div class="flex flex-col gap-1.5">
-								<label class="type-label">To</label>
+								<label class="type-label">{{ __('To') }}</label>
 								<input
 									type="date"
 									v-model="locationCalendarFilters.to_date"
@@ -503,12 +515,12 @@
 						</div>
 
 						<div class="flex flex-col gap-1.5">
-							<label class="type-label">Location or Building</label>
+							<label class="type-label">{{ __('Location or Building') }}</label>
 							<select
 								v-model="locationCalendarFilters.location"
 								class="h-10 w-full rounded-md border-slate-300 bg-white px-3 text-sm focus:border-canopy focus:ring-canopy/20"
 							>
-								<option value="">Select Location</option>
+								<option value="">{{ __('Select Location') }}</option>
 								<option
 									v-for="option in locationCalendarLocationOptions"
 									:key="option.value"
@@ -534,7 +546,9 @@
 							<div
 								class="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-canopy"
 							></div>
-							<span class="text-sm font-medium text-slate-500">Loading location calendar...</span>
+							<span class="text-sm font-medium text-slate-500">
+								{{ __('Loading location calendar...') }}
+							</span>
 						</div>
 					</div>
 
@@ -542,7 +556,7 @@
 						v-if="!selectedSchool"
 						class="flex h-full min-h-[240px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center text-sm text-slate-500"
 					>
-						Select a school to load shared facilities and their booking timeline.
+						{{ __('Select a school to load shared facilities and their booking timeline.') }}
 					</div>
 
 					<div
@@ -556,14 +570,17 @@
 						v-else-if="!locationCalendarEvents.length"
 						class="flex h-full min-h-[240px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center text-sm text-slate-500"
 					>
-						No bookings were found for {{ selectedLocationCalendarLabel || 'this selection' }} in
-						the chosen date range.
+						{{
+							__('No bookings were found for {0} in the chosen date range.', [
+								selectedLocationCalendarLabel || __('this selection'),
+							])
+						}}
 					</div>
 
 					<div v-else class="space-y-5">
 						<div class="rounded-xl border border-slate-200/70 bg-slate-50 px-4 py-3">
 							<p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-								Current Selection
+								{{ __('Current Selection') }}
 							</p>
 							<p class="mt-1 text-base font-semibold text-ink">
 								{{ selectedLocationCalendarLabel }}
@@ -578,7 +595,11 @@
 							<div class="mb-3 flex items-center justify-between gap-3">
 								<h4 class="text-sm font-semibold text-ink">{{ day.label }}</h4>
 								<span class="text-xs text-slate-400">
-									{{ day.events.length }} booking{{ day.events.length === 1 ? '' : 's' }}
+									{{
+										day.events.length === 1
+											? __('{0} booking', [day.events.length])
+											: __('{0} bookings', [day.events.length])
+									}}
 								</span>
 							</div>
 
@@ -603,7 +624,7 @@
 											<span
 												class="rounded-full bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500"
 											>
-												{{ event.meta?.occupancy_type || 'Busy' }}
+												{{ event.meta?.occupancy_type || __('Busy') }}
 											</span>
 										</div>
 										<p
@@ -633,6 +654,7 @@ import { createResource } from 'frappe-ui';
 import StatsTile from '@/components/analytics/StatsTile.vue';
 import KpiRow from '@/components/analytics/KpiRow.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import { __ } from '@/lib/i18n';
 
 type SchoolOption = { name: string; label: string };
 type LocationTypeOption = { value: string; label: string };
@@ -722,7 +744,7 @@ function extractTimeValue(value: string | null | undefined) {
 }
 
 function formatDateKeyLabel(dateKey: string) {
-	if (!dateKey) return 'Unknown day';
+	if (!dateKey) return __('Unknown day');
 	const date = new Date(`${dateKey}T00:00:00`);
 	if (Number.isNaN(date.getTime())) return dateKey;
 	return date.toLocaleDateString(undefined, {
@@ -835,8 +857,8 @@ const canCreateSchoolEvent = computed(() =>
 );
 const canOpenCreateEvent = computed(() => canCreateMeeting.value || canCreateSchoolEvent.value);
 const eventQuickActionTitle = computed(() => {
-	if (canCreateMeeting.value && !canCreateSchoolEvent.value) return 'Schedule meeting';
-	return 'Create event';
+	if (canCreateMeeting.value && !canCreateSchoolEvent.value) return __('Schedule meeting');
+	return __('Create event');
 });
 
 const timeUtilResource = createResource({
@@ -904,15 +926,19 @@ const selectedLocationCalendarLabel = computed(
 
 const locationCalendarNote = computed(
 	() =>
-		locationCalendarResource.data?.note || 'Select a location or building to load its calendar.'
+		locationCalendarResource.data?.note ||
+		__('Select a location or building to load its calendar.')
 );
 
 const locationCalendarSummary = computed(() => {
-	if (!selectedSchool.value) return 'Select a school';
+	if (!selectedSchool.value) return __('Select a school');
 	if (!locationCalendarFilters.value.location) {
-		return `${locationCalendarLocationOptions.value.length} locations in scope`;
+		return __('{0} locations in scope', [locationCalendarLocationOptions.value.length]);
 	}
-	return `${locationCalendarEvents.value.length} booking${locationCalendarEvents.value.length === 1 ? '' : 's'}`;
+	if (locationCalendarEvents.value.length === 1) {
+		return __('{0} booking', [locationCalendarEvents.value.length]);
+	}
+	return __('{0} bookings', [locationCalendarEvents.value.length]);
 });
 
 const groupedLocationCalendarEvents = computed(() => {
@@ -937,22 +963,22 @@ const groupedLocationCalendarEvents = computed(() => {
 const kpiItems = computed(() => [
 	{
 		id: 'free_rooms',
-		label: 'Free Rooms (last search)',
+		label: __('Free Rooms (last search)'),
 		value: freeRooms.value.length,
 	},
 	{
 		id: 'total_rooms',
-		label: 'Rooms in Scope',
+		label: __('Rooms in Scope'),
 		value: Array.isArray(timeUtilResource.data?.rooms) ? timeRooms.value.length : '—',
 	},
 	{
 		id: 'avg_util',
-		label: 'Average Utilization',
+		label: __('Average Utilization'),
 		value: avgUtilizationLabel.value,
 	},
 	{
 		id: 'over_cap',
-		label: 'Over-Cap Rooms',
+		label: __('Over-Cap Rooms'),
 		value: overCapRooms.value,
 	},
 ]);

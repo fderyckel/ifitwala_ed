@@ -3,37 +3,37 @@
 		<header class="card-surface p-5 sm:p-6">
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 				<div class="space-y-2">
-					<p class="type-overline text-ink/60">Expenses</p>
-					<h1 class="type-h1 text-ink">My Reimbursements</h1>
+					<p class="type-overline text-ink/60">{{ __('Expenses') }}</p>
+					<h1 class="type-h1 text-ink">{{ __('My Reimbursements') }}</h1>
 				</div>
 				<button type="button" class="if-button if-button--secondary" @click="loadBoard">
 					<FeatherIcon name="refresh-cw" class="h-4 w-4" />
-					<span>Refresh</span>
+					<span>{{ __('Refresh') }}</span>
 				</button>
 			</div>
 		</header>
 
 		<section class="grid gap-3 sm:grid-cols-4">
 			<article class="mini-kpi-card">
-				<p class="type-overline text-slate-token/70">Draft</p>
+				<p class="type-overline text-slate-token/70">{{ __('Draft') }}</p>
 				<p class="type-h2 text-ink">{{ board?.stats.draft ?? 0 }}</p>
 			</article>
 			<article class="mini-kpi-card">
-				<p class="type-overline text-slate-token/70">Submitted</p>
+				<p class="type-overline text-slate-token/70">{{ __('Submitted') }}</p>
 				<p class="type-h2 text-ink">{{ board?.stats.submitted ?? 0 }}</p>
 			</article>
 			<article class="mini-kpi-card">
-				<p class="type-overline text-slate-token/70">Approved</p>
+				<p class="type-overline text-slate-token/70">{{ __('Approved') }}</p>
 				<p class="type-h2 text-ink">{{ board?.stats.approved ?? 0 }}</p>
 			</article>
 			<article class="mini-kpi-card">
-				<p class="type-overline text-slate-token/70">Outstanding</p>
+				<p class="type-overline text-slate-token/70">{{ __('Outstanding') }}</p>
 				<p class="type-h2 text-ink">{{ money(board?.stats.outstanding || 0) }}</p>
 			</article>
 		</section>
 
 		<section v-if="loading" class="card-surface p-5">
-			<p class="type-body text-slate-token">Loading expense claims...</p>
+			<p class="type-body text-slate-token">{{ __('Loading expense claims...') }}</p>
 		</section>
 
 		<section v-else-if="errorMessage" class="card-surface p-5">
@@ -45,26 +45,26 @@
 				<form class="space-y-5" @submit.prevent="submitDraft">
 					<div class="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
 						<label class="space-y-2">
-							<span class="type-label text-ink">Title</span>
+							<span class="type-label text-ink">{{ __('Title') }}</span>
 							<input v-model.trim="draft.claim_title" class="form-input" type="text" required />
 						</label>
 						<label class="space-y-2">
-							<span class="type-label text-ink">Claim Date</span>
+							<span class="type-label text-ink">{{ __('Claim Date') }}</span>
 							<input v-model="draft.claim_date" class="form-input" type="date" required />
 						</label>
 					</div>
 
 					<label class="space-y-2">
-						<span class="type-label text-ink">Purpose</span>
+						<span class="type-label text-ink">{{ __('Purpose') }}</span>
 						<textarea v-model.trim="draft.purpose" class="form-textarea min-h-20" />
 					</label>
 
 					<div class="space-y-3">
 						<div class="flex items-center justify-between gap-3">
-							<h2 class="type-h3 text-ink">Items</h2>
+							<h2 class="type-h3 text-ink">{{ __('Items') }}</h2>
 							<button type="button" class="if-button if-button--secondary" @click="addItem">
 								<FeatherIcon name="plus" class="h-4 w-4" />
-								<span>Add</span>
+								<span>{{ __('Add') }}</span>
 							</button>
 						</div>
 
@@ -72,10 +72,14 @@
 							<table class="min-w-full divide-y divide-slate-200 text-left">
 								<thead class="bg-slate-50">
 									<tr>
-										<th class="px-3 py-2 type-label text-slate-token">Date</th>
-										<th class="px-3 py-2 type-label text-slate-token">Category</th>
-										<th class="px-3 py-2 type-label text-slate-token">Description</th>
-										<th class="px-3 py-2 type-label text-slate-token">Amount</th>
+										<th class="px-3 py-2 type-label text-slate-token">{{ __('Date') }}</th>
+										<th class="px-3 py-2 type-label text-slate-token">
+											{{ __('Category') }}
+										</th>
+										<th class="px-3 py-2 type-label text-slate-token">
+											{{ __('Description') }}
+										</th>
+										<th class="px-3 py-2 type-label text-slate-token">{{ __('Amount') }}</th>
 										<th class="w-12 px-3 py-2"></th>
 									</tr>
 								</thead>
@@ -140,11 +144,11 @@
 
 					<div class="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
 						<label class="space-y-2">
-							<span class="type-label text-ink">Receipts</span>
+							<span class="type-label text-ink">{{ __('Receipts') }}</span>
 							<input class="form-input" type="file" multiple @change="onReceiptFilesChange" />
 						</label>
 						<div class="text-right">
-							<p class="type-overline text-slate-token/70">Total</p>
+							<p class="type-overline text-slate-token/70">{{ __('Total') }}</p>
 							<p class="type-h2 text-ink">{{ money(draftTotal) }}</p>
 						</div>
 					</div>
@@ -164,20 +168,20 @@
 					<div class="flex flex-wrap justify-end gap-3">
 						<button type="button" class="if-button if-button--secondary" @click="resetDraft">
 							<FeatherIcon name="x" class="h-4 w-4" />
-							<span>Clear</span>
+							<span>{{ __('Clear') }}</span>
 						</button>
 						<button type="submit" class="if-button if-button--primary" :disabled="saving">
 							<FeatherIcon name="send" class="h-4 w-4" />
-							<span>{{ saving ? 'Submitting...' : 'Submit Claim' }}</span>
+							<span>{{ saving ? __('Submitting...') : __('Submit Claim') }}</span>
 						</button>
 					</div>
 				</form>
 			</section>
 
 			<section class="space-y-3">
-				<h2 class="type-h2 text-ink">My Claims</h2>
+				<h2 class="type-h2 text-ink">{{ __('My Claims') }}</h2>
 				<article v-if="!board.my_claims.length" class="card-surface p-5">
-					<p class="type-body text-slate-token">No expense claims yet.</p>
+					<p class="type-body text-slate-token">{{ __('No expense claims yet.') }}</p>
 				</article>
 				<article v-for="claim in board.my_claims" :key="claim.name" class="card-surface p-5">
 					<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -207,10 +211,10 @@
 							</div>
 						</div>
 						<div class="grid gap-1 text-right">
-							<p class="type-overline text-slate-token/70">Claimed</p>
+							<p class="type-overline text-slate-token/70">{{ __('Claimed') }}</p>
 							<p class="type-h3 text-ink">{{ money(claim.claimed_total) }}</p>
 							<p v-if="claim.outstanding_amount" class="type-caption text-flame">
-								Outstanding {{ money(claim.outstanding_amount) }}
+								{{ __('Outstanding {0}', [money(claim.outstanding_amount)]) }}
 							</p>
 						</div>
 					</div>
@@ -221,14 +225,14 @@
 							@click="cancelClaim(claim.name)"
 						>
 							<FeatherIcon name="slash" class="h-4 w-4" />
-							<span>Cancel</span>
+							<span>{{ __('Cancel') }}</span>
 						</button>
 					</div>
 				</article>
 			</section>
 
 			<section v-if="board.approval_queue.length" class="space-y-3">
-				<h2 class="type-h2 text-ink">Approvals</h2>
+				<h2 class="type-h2 text-ink">{{ __('Approvals') }}</h2>
 				<article v-for="claim in board.approval_queue" :key="claim.name" class="card-surface p-5">
 					<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 						<div class="space-y-2">
@@ -254,7 +258,7 @@
 								@click="decide(claim.name, 'reject')"
 							>
 								<FeatherIcon name="x" class="h-4 w-4" />
-								<span>Reject</span>
+								<span>{{ __('Reject') }}</span>
 							</button>
 							<button
 								type="button"
@@ -262,7 +266,7 @@
 								@click="decide(claim.name, 'approve')"
 							>
 								<FeatherIcon name="check" class="h-4 w-4" />
-								<span>Approve</span>
+								<span>{{ __('Approve') }}</span>
 							</button>
 						</div>
 					</div>
@@ -270,7 +274,7 @@
 			</section>
 
 			<section v-if="board.viewer.can_finance && board.finance_queue.length" class="space-y-3">
-				<h2 class="type-h2 text-ink">Finance Queue</h2>
+				<h2 class="type-h2 text-ink">{{ __('Finance Queue') }}</h2>
 				<article v-for="claim in board.finance_queue" :key="claim.name" class="card-surface p-5">
 					<div class="space-y-4">
 						<div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -282,13 +286,13 @@
 								</p>
 							</div>
 							<p v-if="claim.outstanding_amount" class="type-body-strong text-flame">
-								{{ money(claim.outstanding_amount) }} outstanding
+								{{ __('{0} outstanding', [money(claim.outstanding_amount)]) }}
 							</p>
 						</div>
 
 						<div v-if="financeForms[claim.name]" class="grid gap-3 lg:grid-cols-3">
 							<label v-if="claim.status === 'Approved'" class="space-y-2">
-								<span class="type-label text-ink">Expense Account</span>
+								<span class="type-label text-ink">{{ __('Expense Account') }}</span>
 								<select v-model="financeForms[claim.name].expense_account" class="form-select">
 									<option value=""></option>
 									<option
@@ -301,7 +305,7 @@
 								</select>
 							</label>
 							<label v-if="claim.status === 'Approved'" class="space-y-2">
-								<span class="type-label text-ink">Payable Account</span>
+								<span class="type-label text-ink">{{ __('Payable Account') }}</span>
 								<select v-model="financeForms[claim.name].payable_account" class="form-select">
 									<option value=""></option>
 									<option
@@ -314,7 +318,7 @@
 								</select>
 							</label>
 							<label v-if="claim.status === 'Payable Posted'" class="space-y-2">
-								<span class="type-label text-ink">Bank or Cash</span>
+								<span class="type-label text-ink">{{ __('Bank or Cash') }}</span>
 								<select v-model="financeForms[claim.name].paid_to" class="form-select">
 									<option value=""></option>
 									<option
@@ -327,7 +331,7 @@
 								</select>
 							</label>
 							<label v-if="claim.status === 'Payable Posted'" class="space-y-2">
-								<span class="type-label text-ink">Paid Amount</span>
+								<span class="type-label text-ink">{{ __('Paid Amount') }}</span>
 								<input
 									v-model.number="financeForms[claim.name].paid_amount"
 									class="form-input"
@@ -346,7 +350,7 @@
 								@click="postPayable(claim.name)"
 							>
 								<FeatherIcon name="file-plus" class="h-4 w-4" />
-								<span>Post Payable</span>
+								<span>{{ __('Post Payable') }}</span>
 							</button>
 							<button
 								v-if="claim.status === 'Payable Posted'"
@@ -355,7 +359,7 @@
 								@click="payClaim(claim.name)"
 							>
 								<FeatherIcon name="credit-card" class="h-4 w-4" />
-								<span>Pay</span>
+								<span>{{ __('Pay') }}</span>
 							</button>
 						</div>
 					</div>
@@ -369,6 +373,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { FeatherIcon, toast } from 'frappe-ui';
 
+import { __ } from '@/lib/i18n';
 import {
 	cancelExpenseClaim,
 	createExpenseClaimPayment,
@@ -515,7 +520,7 @@ async function loadBoard() {
 	try {
 		board.value = await getExpenseClaimBoard();
 	} catch (error: any) {
-		errorMessage.value = error?.message || 'Unknown error';
+		errorMessage.value = error?.message || __('Unknown error');
 	} finally {
 		loading.value = false;
 	}
@@ -523,16 +528,16 @@ async function loadBoard() {
 
 function validateDraft() {
 	if (!board.value?.viewer.expense_approver) {
-		return 'No expense approver is set on your Employee record.';
+		return __('No expense approver is set on your Employee record.');
 	}
 	if (!draft.claim_title.trim()) {
-		return 'Title is required.';
+		return __('Title is required.');
 	}
 	if (!draft.items.length) {
-		return 'At least one expense item is required.';
+		return __('At least one expense item is required.');
 	}
 	if (draft.items.some(item => Number(item.claimed_amount || 0) <= 0)) {
-		return 'Each item needs an amount greater than zero.';
+		return __('Each item needs an amount greater than zero.');
 	}
 	return '';
 }
@@ -560,10 +565,14 @@ async function submitDraft() {
 		});
 		board.value = submitResponse.board;
 		resetDraft();
-		toast.create({ title: 'Expense claim submitted', icon: 'check' });
+		toast.create({ title: __('Expense claim submitted'), icon: 'check' });
 	} catch (error: any) {
-		formError.value = error?.message || 'Could not submit this claim.';
-		toast.create({ title: 'Could not submit claim', text: formError.value, icon: 'alert-circle' });
+		formError.value = error?.message || __('Could not submit this claim.');
+		toast.create({
+			title: __('Could not submit claim'),
+			text: formError.value,
+			icon: 'alert-circle',
+		});
 	} finally {
 		saving.value = false;
 	}
@@ -573,10 +582,10 @@ async function cancelClaim(expenseClaim: string) {
 	try {
 		const response = await cancelExpenseClaim({ expense_claim: expenseClaim });
 		board.value = response.board;
-		toast.create({ title: 'Expense claim cancelled', icon: 'check' });
+		toast.create({ title: __('Expense claim cancelled'), icon: 'check' });
 	} catch (error: any) {
 		toast.create({
-			title: 'Could not cancel claim',
+			title: __('Could not cancel claim'),
 			text: error?.message || '',
 			icon: 'alert-circle',
 		});
@@ -588,12 +597,12 @@ async function decide(expenseClaim: string, decision: 'approve' | 'reject') {
 		const response = await decideExpenseClaim({ expense_claim: expenseClaim, decision });
 		board.value = response.board;
 		toast.create({
-			title: decision === 'approve' ? 'Expense claim approved' : 'Expense claim rejected',
+			title: decision === 'approve' ? __('Expense claim approved') : __('Expense claim rejected'),
 			icon: 'check',
 		});
 	} catch (error: any) {
 		toast.create({
-			title: 'Could not decide claim',
+			title: __('Could not decide claim'),
 			text: error?.message || '',
 			icon: 'alert-circle',
 		});
@@ -603,7 +612,7 @@ async function decide(expenseClaim: string, decision: 'approve' | 'reject') {
 async function postPayable(expenseClaim: string) {
 	const form = financeForms[expenseClaim];
 	if (!form?.expense_account || !form?.payable_account) {
-		toast.create({ title: 'Select accounts before posting', icon: 'alert-circle' });
+		toast.create({ title: __('Select accounts before posting'), icon: 'alert-circle' });
 		return;
 	}
 	try {
@@ -613,10 +622,10 @@ async function postPayable(expenseClaim: string) {
 			payable_account: form.payable_account,
 		});
 		board.value = response.board;
-		toast.create({ title: 'Payable posted', icon: 'check' });
+		toast.create({ title: __('Payable posted'), icon: 'check' });
 	} catch (error: any) {
 		toast.create({
-			title: 'Could not post payable',
+			title: __('Could not post payable'),
 			text: error?.message || '',
 			icon: 'alert-circle',
 		});
@@ -626,7 +635,7 @@ async function postPayable(expenseClaim: string) {
 async function payClaim(expenseClaim: string) {
 	const form = financeForms[expenseClaim];
 	if (!form?.paid_to) {
-		toast.create({ title: 'Select a bank or cash account', icon: 'alert-circle' });
+		toast.create({ title: __('Select a bank or cash account'), icon: 'alert-circle' });
 		return;
 	}
 	try {
@@ -636,10 +645,10 @@ async function payClaim(expenseClaim: string) {
 			paid_amount: form.paid_amount,
 		});
 		board.value = response.board;
-		toast.create({ title: 'Payment posted', icon: 'check' });
+		toast.create({ title: __('Payment posted'), icon: 'check' });
 	} catch (error: any) {
 		toast.create({
-			title: 'Could not post payment',
+			title: __('Could not post payment'),
 			text: error?.message || '',
 			icon: 'alert-circle',
 		});

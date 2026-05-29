@@ -1,0 +1,72 @@
+{
+ "actions": [],
+ "creation": "2026-05-29 13:08:32.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "guardian",
+  "guardian_name",
+  "relation",
+  "source_student",
+  "is_primary",
+  "receives_billing_follow_up"
+ ],
+ "fields": [
+  {
+   "fieldname": "guardian",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Guardian",
+   "options": "Guardian",
+   "reqd": 1
+  },
+  {
+   "fieldname": "guardian_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Guardian Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "relation",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Relation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_student",
+   "fieldtype": "Link",
+   "label": "Source Student",
+   "options": "Student",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_primary",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Primary"
+  },
+  {
+   "default": "1",
+   "fieldname": "receives_billing_follow_up",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Receives Billing Follow-up"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-05-29 13:08:32.000000",
+ "modified_by": "Administrator",
+ "module": "Accounting",
+ "name": "Account Holder Billing Contact",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

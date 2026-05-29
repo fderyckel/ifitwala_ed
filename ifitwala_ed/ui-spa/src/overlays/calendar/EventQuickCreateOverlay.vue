@@ -81,6 +81,16 @@
 												)
 											}}
 										</p>
+										<p
+											v-else-if="showRoomConflictRecovery"
+											class="mt-2 type-caption text-rose-900/70"
+										>
+											{{
+												__(
+													'The form is still open. Use room suggestions to replace the booked room without losing this draft.'
+												)
+											}}
+										</p>
 									</div>
 									<button
 										v-if="showStudentConflictRecovery"
@@ -90,6 +100,15 @@
 										@click="recoverFromStudentConflict"
 									>
 										{{ __('Find common times') }}
+									</button>
+									<button
+										v-else-if="showRoomConflictRecovery"
+										type="button"
+										class="inline-flex items-center justify-center rounded-full bg-rose-900 px-4 py-2 type-button-label text-white transition hover:bg-rose-950 disabled:cursor-not-allowed disabled:bg-rose-300"
+										:disabled="submitting || roomLoading"
+										@click="recoverFromRoomConflict"
+									>
+										{{ __('Suggest rooms') }}
 									</button>
 								</div>
 							</div>
@@ -633,6 +652,7 @@
 
 									<div
 										v-if="showRoomAssistant"
+										ref="roomSuggestionsSection"
 										class="rounded-2xl border border-border/70 bg-white p-4 shadow-soft"
 									>
 										<div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
@@ -1137,6 +1157,7 @@ const options = ref<EventQuickCreateOptionsResponse | null>(null);
 const activeType = ref<EventType>('meeting');
 const initialFocus = ref<HTMLElement | null>(null);
 const commonTimesSection = ref<HTMLElement | null>(null);
+const roomSuggestionsSection = ref<HTMLElement | null>(null);
 
 const attendeeSearchQuery = ref('');
 const attendeeSearchLoading = ref(false);
@@ -1429,6 +1450,13 @@ const showStudentConflictRecovery = computed(
 		Boolean(errorMessage.value) &&
 		errorCode.value === 'StudentAvailabilityConflictError'
 );
+const showRoomConflictRecovery = computed(
+	() =>
+		activeType.value === 'meeting' &&
+		showRoomAssistant.value &&
+		Boolean(errorMessage.value) &&
+		errorCode.value === 'LocationConflictError'
+);
 
 const exactMatchSummary = computed(() => {
 	if (!showRoomAssistant.value) {
@@ -1568,9 +1596,9 @@ function parseOverlayServerMessages(raw: unknown): string | null {
 				}
 			})
 			.filter(line => typeof line === 'string' && line.trim());
-		return lines.length ? lines.join('\n') : null;
+		return lines.length ? lines.join('\n').replace(/<br\s*\/?>/gi, '\n') : null;
 	} catch {
-		return raw.trim();
+		return raw.trim().replace(/<br\s*\/?>/gi, '\n');
 	}
 }
 
@@ -1625,6 +1653,7 @@ function extractOverlayErrorCode(
 	error: unknown,
 	message: string | null = typeof error === 'string' ? error : null
 ) {
+	let fallbackCode: string | null = null;
 	if (error && typeof error === 'object') {
 		const maybe = error as Record<string, unknown> & {
 			response?: Record<string, unknown>;
@@ -1642,15 +1671,27 @@ function extractOverlayErrorCode(
 		];
 		for (const candidate of candidates) {
 			const code = normalizeOverlayErrorCode(candidate);
-			if (code) return code;
+			if (!code) continue;
+			if (code === 'ValidationError' || code === 'frappe.exceptions.ValidationError') {
+				fallbackCode = code;
+				continue;
+			}
+			return code;
 		}
 	}
 
 	const effectiveMessage =
 		typeof message === 'string' ? message : extractOverlayErrorMessage(error, '');
-	return effectiveMessage.startsWith('Student availability conflict')
-		? 'StudentAvailabilityConflictError'
-		: null;
+	if (effectiveMessage.startsWith('Student availability conflict')) {
+		return 'StudentAvailabilityConflictError';
+	}
+	if (
+		effectiveMessage.startsWith('Location ') &&
+		effectiveMessage.includes(' is already booked')
+	) {
+		return 'LocationConflictError';
+	}
+	return fallbackCode;
 }
 
 function clearErrorState() {
@@ -2275,6 +2316,14 @@ async function recoverFromStudentConflict() {
 	await nextTick();
 	commonTimesSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 	await findCommonTimes();
+}
+
+async function recoverFromRoomConflict() {
+	if (roomLoading.value) return;
+	clearErrorState();
+	await nextTick();
+	roomSuggestionsSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	await findRoomSuggestions();
 }
 
 async function loadOptions() {

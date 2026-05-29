@@ -367,4 +367,91 @@ describe('EventQuickCreateOverlay meeting attendees', () => {
 		expect(document.body.textContent || '').toContain('Teacher Example');
 		expect(document.body.textContent || '').toContain('1 invitee + organizer');
 	});
+
+	it('offers room suggestions when create is blocked by a booked room', async () => {
+		getEventQuickCreateOptionsMock.mockResolvedValue({
+			...baseOptions,
+			can_create_meeting: true,
+			can_create_school_event: false,
+			attendee_kinds: [{ value: 'employee', label: 'Employees' }],
+			locations: [
+				{ value: 'D202', label: 'D202', location_type: null, max_capacity: 20, is_group: 0 },
+			],
+			locations_by_school: {
+				ISS: [
+					{ value: 'D202', label: 'D202', location_type: null, max_capacity: 20, is_group: 0 },
+				],
+			},
+		});
+		getMeetingTeamAttendeesMock.mockResolvedValue({
+			team: 'TEAM-1',
+			results: [
+				{
+					value: 'teacher@example.com',
+					label: 'Teacher Example',
+					meta: 'TEAM-1',
+					kind: 'employee',
+					availability_mode: 'authoritative',
+				},
+			],
+		});
+		createMeetingQuickMock.mockRejectedValue({
+			_server_messages: JSON.stringify([
+				JSON.stringify({
+					message:
+						'Location D202 is already booked:<br>Student Group 25-26-G6-Eng/IIS 2025-2026 from 29-05-2026 10:15:00 to 29-05-2026 11:10:00',
+					title: 'Location Conflict',
+				}),
+			]),
+			exc_type: 'ValidationError',
+		});
+		suggestMeetingRoomsMock.mockResolvedValue({
+			rooms: [
+				{
+					value: 'D204',
+					label: 'D204',
+					building: null,
+					location_type: null,
+					location_type_name: null,
+					max_capacity: 20,
+				},
+			],
+			notes: [],
+		});
+
+		mountOverlay({
+			eventType: 'meeting',
+			lockEventType: true,
+			meetingMode: 'ad_hoc',
+		});
+		await flushUi();
+
+		setInputByPlaceholder('Family support meeting', 'Workflow');
+		updateSelectByLabel('Bulk-add a team', 'TEAM-1');
+		await flushUi();
+		updateSelectByLabel('Location (optional)', 'D202');
+		await flushUi();
+
+		clickButton('Create meeting');
+		await flushUi();
+
+		expect(document.body.textContent || '').toContain('Location D202 is already booked:');
+		expect(document.body.textContent || '').toContain(
+			'Use room suggestions to replace the booked room'
+		);
+		expect(document.body.textContent || '').not.toContain('<br>');
+
+		clickButton('Suggest rooms');
+		await flushUi();
+
+		expect(suggestMeetingRoomsMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				school: 'ISS',
+				location_type: null,
+				capacity_needed: 2,
+				limit: 8,
+			})
+		);
+		expect(document.body.textContent || '').toContain('D204');
+	});
 });

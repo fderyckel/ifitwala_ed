@@ -9,6 +9,7 @@ import StatsTile from '@/components/analytics/StatsTile.vue';
 import FiltersBar from '@/components/filters/FiltersBar.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { formatLocalizedDateTime } from '@/lib/datetime';
+import { __ } from '@/lib/i18n';
 import { openAnalyticsChartOverlay, openAnalyticsTableOverlay } from '@/lib/analyticsOverlay';
 import {
 	createDebouncedRunner,
@@ -88,7 +89,7 @@ const recentHasMore = recentState.hasMore;
 const dashboardError = computed(() => {
 	const error = dashboardRecord.value?.error;
 	if (typeof error === 'string') return error;
-	if (error instanceof Error) return error.message || 'Analytics summary request failed.';
+	if (error instanceof Error) return error.message || __('Analytics summary request failed.');
 	return '';
 });
 
@@ -255,7 +256,7 @@ function chartHasData(series: StudentLogChartSeries[] | null | undefined) {
 }
 
 function dashboardCardMessage(fallback: string) {
-	return dashboardError.value ? 'Summary unavailable while analytics reloads.' : fallback;
+	return dashboardError.value ? __('Summary unavailable while analytics reloads.') : fallback;
 }
 
 function followUpsFor(row: TableRow) {
@@ -272,7 +273,7 @@ function hiddenFollowUpCount(row: TableRow, limit = INLINE_FOLLOW_UP_LIMIT) {
 }
 
 function followUpEmptyLabel(row: TableRow) {
-	return row.requires_follow_up ? 'Awaiting submitted follow-up' : 'No follow-up recorded';
+	return row.requires_follow_up ? __('Awaiting submitted follow-up') : __('No follow-up recorded');
 }
 
 function formatRespondedAt(value: string | null | undefined) {
@@ -280,7 +281,7 @@ function formatRespondedAt(value: string | null | undefined) {
 }
 
 function responseMetric(followUp: StudentLogFollowUpSummary) {
-	return followUp.responded_in_label ? `Responded in ${followUp.responded_in_label}` : '';
+	return followUp.responded_in_label ? __('Responded in {0}', [followUp.responded_in_label]) : '';
 }
 </script>
 
@@ -288,26 +289,26 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 	<div class="analytics-shell">
 		<header class="page-header">
 			<div class="page-header__intro">
-				<h1 class="type-h1 text-canopy">Student Log Analytics</h1>
+				<h1 class="type-h1 text-canopy">{{ __('Student Log Analytics') }}</h1>
 				<p class="type-meta text-slate-token/80">
-					Trends and follow-ups for the students you have access to.
+					{{ __('Trends and follow-ups for the students you have access to.') }}
 				</p>
 			</div>
 
 			<div class="page-header__actions">
-				<StatsTile :value="openFollowUps" label="Open follow-ups" tone="warning" />
+				<StatsTile :value="openFollowUps" :label="__('Open follow-ups')" tone="warning" />
 			</div>
 		</header>
 
 		<FiltersBar>
 			<div class="flex flex-col gap-1 w-40">
-				<label class="type-label">School</label>
+				<label class="type-label">{{ __('School') }}</label>
 				<select
 					v-model="filters.school"
 					class="h-9 rounded-md border border-slate-200 px-2"
 					:disabled="filterMetaLoading"
 				>
-					<option value="">All</option>
+					<option value="">{{ __('All') }}</option>
 					<option v-for="s in schools" :key="s.name" :value="s.name">
 						{{ s.label || s.name }}
 					</option>
@@ -315,12 +316,12 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 			</div>
 
 			<div class="flex flex-col gap-1 w-40">
-				<label class="type-label">Academic Year</label>
+				<label class="type-label">{{ __('Academic Year') }}</label>
 				<select
 					v-model="filters.academic_year"
 					class="h-9 rounded-md border border-slate-200 px-2"
 				>
-					<option value="">All</option>
+					<option value="">{{ __('All') }}</option>
 					<option v-for="ay in academicYears" :key="ay.name" :value="ay.name">
 						{{ ay.label || ay.name }}
 					</option>
@@ -328,9 +329,9 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 			</div>
 
 			<div class="flex flex-col gap-1 w-48">
-				<label class="type-label">Program</label>
+				<label class="type-label">{{ __('Program') }}</label>
 				<select v-model="filters.program" class="h-9 rounded-md border border-slate-200 px-2">
-					<option value="">All</option>
+					<option value="">{{ __('All') }}</option>
 					<option v-for="p in programsForSchool" :key="p.name" :value="p.name">
 						{{ p.label || p.name }}
 					</option>
@@ -338,9 +339,9 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 			</div>
 
 			<div class="flex flex-col gap-1 w-48">
-				<label class="type-label">Author</label>
+				<label class="type-label">{{ __('Author') }}</label>
 				<select v-model="filters.author" class="h-9 rounded-md border border-slate-200 px-2">
-					<option value="">All</option>
+					<option value="">{{ __('All') }}</option>
 					<option v-for="a in authors" :key="a.user_id" :value="a.label">
 						{{ a.label }}
 					</option>
@@ -348,7 +349,7 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 			</div>
 
 			<div class="flex flex-col gap-1 w-32">
-				<label class="type-label">From</label>
+				<label class="type-label">{{ __('From') }}</label>
 				<input
 					v-model="filters.from_date"
 					type="date"
@@ -357,7 +358,7 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 			</div>
 
 			<div class="flex flex-col gap-1 w-32">
-				<label class="type-label">To</label>
+				<label class="type-label">{{ __('To') }}</label>
 				<input
 					v-model="filters.to_date"
 					type="date"
@@ -370,9 +371,11 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 			v-if="dashboardError"
 			class="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3"
 		>
-			<h2 class="text-sm font-semibold text-amber-900">Analytics summary unavailable</h2>
+			<h2 class="text-sm font-semibold text-amber-900">
+				{{ __('Analytics summary unavailable') }}
+			</h2>
 			<p class="mt-1 text-xs text-amber-800">
-				The summary cards could not be loaded. Recent student logs still load below.
+				{{ __('The summary cards could not be loaded. Recent student logs still load below.') }}
 			</p>
 			<p class="mt-1 text-xs text-amber-700">
 				{{ dashboardError }}
@@ -382,65 +385,74 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 		<section class="analytics-grid">
 			<AnalyticsCard
 				class="analytics-card--wide"
-				title="Logs Over Time"
-				@expand="openChartOverlay('Logs Over Time', incidentsOption)"
+				:title="__('Logs Over Time')"
+				@expand="openChartOverlay(__('Logs Over Time'), incidentsOption)"
 			>
 				<template #body>
 					<AnalyticsChart v-if="chartHasData(incidentsOverTime)" :option="incidentsOption" />
 					<div v-else class="analytics-empty">
-						{{ dashboardCardMessage('No logs for this period.') }}
+						{{ dashboardCardMessage(__('No logs for this period.')) }}
 					</div>
 				</template>
 			</AnalyticsCard>
 
-			<AnalyticsCard title="Log Types" @expand="openChartOverlay('Log Types', logTypeOption)">
+			<AnalyticsCard
+				:title="__('Log Types')"
+				@expand="openChartOverlay(__('Log Types'), logTypeOption)"
+			>
 				<template #body>
 					<AnalyticsChart v-if="chartHasData(logTypeCount)" :option="logTypeOption" />
-					<div v-else class="analytics-empty">{{ dashboardCardMessage('No logs found.') }}</div>
+					<div v-else class="analytics-empty">
+						{{ dashboardCardMessage(__('No logs found.')) }}
+					</div>
 				</template>
 			</AnalyticsCard>
 
 			<AnalyticsCard
-				title="Next Step Types"
-				@expand="openChartOverlay('Next Step Types', nextStepTypesOption)"
+				:title="__('Next Step Types')"
+				@expand="openChartOverlay(__('Next Step Types'), nextStepTypesOption)"
 			>
 				<template #body>
 					<AnalyticsChart v-if="chartHasData(nextStepTypes)" :option="nextStepTypesOption" />
 					<div v-else class="analytics-empty">
-						{{ dashboardCardMessage('No next steps recorded.') }}
+						{{ dashboardCardMessage(__('No next steps recorded.')) }}
 					</div>
 				</template>
 			</AnalyticsCard>
 
 			<AnalyticsCard
-				title="Logs by Cohort"
-				@expand="openChartOverlay('Logs by Cohort', logsByCohortOption)"
+				:title="__('Logs by Cohort')"
+				@expand="openChartOverlay(__('Logs by Cohort'), logsByCohortOption)"
 			>
 				<template #body>
 					<AnalyticsChart v-if="chartHasData(logsByCohort)" :option="logsByCohortOption" />
-					<div v-else class="analytics-empty">{{ dashboardCardMessage('No cohorts found.') }}</div>
+					<div v-else class="analytics-empty">
+						{{ dashboardCardMessage(__('No cohorts found.')) }}
+					</div>
 				</template>
 			</AnalyticsCard>
 
 			<AnalyticsCard
-				title="Logs by Program"
-				@expand="openChartOverlay('Logs by Program', logsByProgramOption)"
+				:title="__('Logs by Program')"
+				@expand="openChartOverlay(__('Logs by Program'), logsByProgramOption)"
 			>
 				<template #body>
 					<AnalyticsChart v-if="chartHasData(logsByProgram)" :option="logsByProgramOption" />
 					<div v-else class="analytics-empty">
-						{{ dashboardCardMessage('No programs found.') }}
+						{{ dashboardCardMessage(__('No programs found.')) }}
 					</div>
 				</template>
 			</AnalyticsCard>
 
 			<AnalyticsCard
-				title="Logs by Author"
-				@expand="openChartOverlay('Logs by Author', logsByAuthorOption)"
+				:title="__('Logs by Author')"
+				@expand="openChartOverlay(__('Logs by Author'), logsByAuthorOption)"
 			>
 				<template #body>
 					<AnalyticsChart v-if="chartHasData(logsByAuthor)" :option="logsByAuthorOption" />
-					<div v-else class="analytics-empty">{{ dashboardCardMessage('No authors found.') }}</div>
+					<div v-else class="analytics-empty">
+						{{ dashboardCardMessage(__('No authors found.')) }}
+					</div>
 				</template>
 			</AnalyticsCard>
 
@@ -450,8 +462,8 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 			   ============================================================ -->
 			<AnalyticsCard
 				class="md:col-span-2 xl:col-span-2"
-				title="Recent Student Logs"
-				@expand="openTableOverlay('Recent Student Logs', recentRows)"
+				:title="__('Recent Student Logs')"
+				@expand="openTableOverlay(__('Recent Student Logs'), recentRows)"
 			>
 				<template #body>
 					<div class="max-h-[320px] overflow-auto">
@@ -465,11 +477,21 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 							</colgroup>
 							<thead>
 								<tr class="border-b border-slate-200 bg-slate-50">
-									<th class="px-2 py-2 text-left type-label text-slate-token/70">Date</th>
-									<th class="px-2 py-2 text-left type-label text-slate-token/70">Student</th>
-									<th class="px-2 py-2 text-left type-label text-slate-token/70">Type</th>
-									<th class="px-2 py-2 text-left type-label text-slate-token/70">Log</th>
-									<th class="px-2 py-2 text-left type-label text-slate-token/70">Follow-ups</th>
+									<th class="px-2 py-2 text-left type-label text-slate-token/70">
+										{{ __('Date') }}
+									</th>
+									<th class="px-2 py-2 text-left type-label text-slate-token/70">
+										{{ __('Student') }}
+									</th>
+									<th class="px-2 py-2 text-left type-label text-slate-token/70">
+										{{ __('Type') }}
+									</th>
+									<th class="px-2 py-2 text-left type-label text-slate-token/70">
+										{{ __('Log') }}
+									</th>
+									<th class="px-2 py-2 text-left type-label text-slate-token/70">
+										{{ __('Follow-ups') }}
+									</th>
 								</tr>
 							</thead>
 
@@ -513,7 +535,7 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 												<div class="analytics-followup-card__meta">
 													<span class="analytics-followup-card__chip">{{ followUp.doctype }}</span>
 													<span v-if="followUp.next_step"
-														>Next step: {{ followUp.next_step }}</span
+														>{{ __('Next step:') }} {{ followUp.next_step }}</span
 													>
 													<span v-if="responseMetric(followUp)">
 														{{ responseMetric(followUp) }}
@@ -536,11 +558,7 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 												/>
 											</div>
 											<p v-if="hiddenFollowUpCount(row)" class="analytics-followup-stack__more">
-												+{{ hiddenFollowUpCount(row) }} more follow-up<span
-													v-if="hiddenFollowUpCount(row) > 1"
-												>
-													s
-												</span>
+												{{ __('+{0} more follow-up(s)', [hiddenFollowUpCount(row)]) }}
 											</p>
 										</div>
 										<div v-else class="analytics-followup-empty">
@@ -551,7 +569,7 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 
 								<tr v-if="!recentRows.length">
 									<td colspan="5" class="px-2 py-3 text-center type-empty">
-										No logs in this period.
+										{{ __('No logs in this period.') }}
 									</td>
 								</tr>
 							</tbody>
@@ -565,7 +583,13 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 							:disabled="recentLoading || !recentHasMore"
 							@click.stop="recentState.reload()"
 						>
-							{{ recentLoading ? 'Loading...' : recentHasMore ? 'Load more' : 'No more logs' }}
+							{{
+								recentLoading
+									? __('Loading...')
+									: recentHasMore
+										? __('Load more')
+										: __('No more logs')
+							}}
 						</button>
 					</div>
 				</template>
@@ -577,10 +601,10 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 			   ============================================================ -->
 			<AnalyticsCard
 				class="md:col-span-2 xl:col-span-3"
-				title="Selected Student Logs"
+				:title="__('Selected Student Logs')"
 				@expand="
 					openTableOverlay(
-						'Selected Student Logs',
+						__('Selected Student Logs'),
 						studentLogs,
 						selectedStudentLabel || filters.student
 					)
@@ -591,7 +615,7 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 						{{ selectedStudentLabel || filters.student }}
 					</span>
 					<span v-else class="type-caption text-slate-token/60">
-						Choose a student (from the table) to see their logs.
+						{{ __('Choose a student (from the table) to see their logs.') }}
 					</span>
 				</template>
 
@@ -600,11 +624,21 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 						<table class="min-w-full border-collapse text-ink/80">
 							<thead>
 								<tr class="border-b border-slate-200 bg-slate-50">
-									<th class="px-2 py-2 text-left type-label text-slate-token/70">Date</th>
-									<th class="px-2 py-2 text-left type-label text-slate-token/70">Type</th>
-									<th class="px-2 py-2 text-left type-label text-slate-token/70">Log</th>
-									<th class="px-2 py-2 text-left type-label text-slate-token/70">Author</th>
-									<th class="px-2 py-2 text-left type-label text-slate-token/70">Follow-ups</th>
+									<th class="px-2 py-2 text-left type-label text-slate-token/70">
+										{{ __('Date') }}
+									</th>
+									<th class="px-2 py-2 text-left type-label text-slate-token/70">
+										{{ __('Type') }}
+									</th>
+									<th class="px-2 py-2 text-left type-label text-slate-token/70">
+										{{ __('Log') }}
+									</th>
+									<th class="px-2 py-2 text-left type-label text-slate-token/70">
+										{{ __('Author') }}
+									</th>
+									<th class="px-2 py-2 text-left type-label text-slate-token/70">
+										{{ __('Follow-ups') }}
+									</th>
 								</tr>
 							</thead>
 
@@ -640,7 +674,7 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 												<div class="analytics-followup-card__meta">
 													<span class="analytics-followup-card__chip">{{ followUp.doctype }}</span>
 													<span v-if="followUp.next_step"
-														>Next step: {{ followUp.next_step }}</span
+														>{{ __('Next step:') }} {{ followUp.next_step }}</span
 													>
 													<span v-if="responseMetric(followUp)">
 														{{ responseMetric(followUp) }}
@@ -663,11 +697,7 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 												/>
 											</div>
 											<p v-if="hiddenFollowUpCount(row)" class="analytics-followup-stack__more">
-												+{{ hiddenFollowUpCount(row) }} more follow-up<span
-													v-if="hiddenFollowUpCount(row) > 1"
-												>
-													s
-												</span>
+												{{ __('+{0} more follow-up(s)', [hiddenFollowUpCount(row)]) }}
 											</p>
 										</div>
 										<div v-else class="analytics-followup-empty">
@@ -678,7 +708,7 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 
 								<tr v-if="!studentLogs.length">
 									<td colspan="5" class="px-2 py-3 text-center type-empty">
-										{{ dashboardCardMessage('No logs to show yet.') }}
+										{{ dashboardCardMessage(__('No logs to show yet.')) }}
 									</td>
 								</tr>
 							</tbody>

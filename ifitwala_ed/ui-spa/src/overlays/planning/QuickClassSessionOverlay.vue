@@ -39,22 +39,25 @@
 							tabindex="0"
 							@click="emitClose('programmatic')"
 						>
-							Close
+							{{ __('Close') }}
 						</button>
 
 						<div class="if-overlay__header px-6 pt-6">
 							<div class="min-w-0">
-								<p class="type-overline text-ink/55">Class Session</p>
-								<DialogTitle class="type-h2 text-ink">Plan This Session</DialogTitle>
+								<p class="type-overline text-ink/55">{{ __('Class Session') }}</p>
+								<DialogTitle class="type-h2 text-ink">{{ __('Plan This Session') }}</DialogTitle>
 								<p class="mt-1 type-caption text-ink/60">
-									Use the clicked calendar slot to plan the actual session flow for this class
-									without leaving the calendar context.
+									{{
+										__(
+											'Use the clicked calendar slot to plan the actual session flow for this class without leaving the calendar context.'
+										)
+									}}
 								</p>
 							</div>
 							<button
 								type="button"
 								class="if-overlay__close"
-								aria-label="Close"
+								:aria-label="__('Close')"
 								@click="emitClose('programmatic')"
 							>
 								<FeatherIcon name="x" class="h-5 w-5" />
@@ -65,9 +68,9 @@
 							<section class="rounded-[1.75rem] border border-line-soft bg-surface-soft p-5">
 								<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 									<div class="space-y-1">
-										<p class="type-overline text-ink/55">Calendar Context</p>
+										<p class="type-overline text-ink/55">{{ __('Calendar Context') }}</p>
 										<h3 class="type-h3 text-ink">
-											{{ props.classTitle || surface?.group.title || 'Selected class' }}
+											{{ props.classTitle || surface?.group.title || __('Selected class') }}
 										</h3>
 										<p class="type-caption text-ink/70">
 											{{ courseLabel }}
@@ -86,7 +89,7 @@
 								class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 shadow-soft"
 								role="alert"
 							>
-								<p class="type-body-strong text-rose-900">Action blocked</p>
+								<p class="type-body-strong text-rose-900">{{ __('Action blocked') }}</p>
 								<p class="mt-1 whitespace-pre-wrap type-caption text-rose-900/80">
 									{{ errorMessage }}
 								</p>
@@ -96,7 +99,9 @@
 								v-if="loading && !surface"
 								class="rounded-2xl border border-line-soft bg-white px-5 py-8"
 							>
-								<p class="type-body text-ink/70">Loading class planning surface...</p>
+								<p class="type-body text-ink/70">
+									{{ __('Loading class planning surface...') }}
+								</p>
 							</section>
 
 							<template v-else-if="surface">
@@ -105,11 +110,16 @@
 									class="grid gap-5 rounded-[1.75rem] border border-line-soft bg-white p-5 xl:grid-cols-[minmax(0,18rem),minmax(0,1fr)]"
 								>
 									<div class="space-y-2">
-										<p class="type-overline text-ink/55">Step 1</p>
-										<h3 class="type-h3 text-ink">Initialize the class teaching plan</h3>
+										<p class="type-overline text-ink/55">{{ __('Step 1') }}</p>
+										<h3 class="type-h3 text-ink">
+											{{ __('Initialize the class teaching plan') }}
+										</h3>
 										<p class="type-caption text-ink/70">
-											This class needs a class-owned planning record before the session can be
-											saved.
+											{{
+												__(
+													'This class needs a class-owned planning record before the session can be saved.'
+												)
+											}}
 										</p>
 									</div>
 
@@ -118,18 +128,25 @@
 											v-if="!surface.course_plans.length"
 											class="rounded-2xl border border-dashed border-line-soft px-4 py-4"
 										>
-											<p class="type-body-strong text-ink">No shared course plan is available.</p>
+											<p class="type-body-strong text-ink">
+												{{ __('No shared course plan is available.') }}
+											</p>
 											<p class="mt-1 type-caption text-ink/70">
-												Create the shared course plan first, then return here to plan this class
-												session.
+												{{
+													__(
+														'Create the shared course plan first, then return here to plan this class session.'
+													)
+												}}
 											</p>
 										</div>
 
 										<template v-else>
 											<label class="block space-y-2">
-												<span class="type-caption text-ink/70">Governing course plan</span>
+												<span class="type-caption text-ink/70">
+													{{ __('Governing course plan') }}
+												</span>
 												<select v-model="draftCoursePlan" class="if-input w-full">
-													<option value="">Select a course plan</option>
+													<option value="">{{ __('Select a course plan') }}</option>
 													<option
 														v-for="plan in surface.course_plans"
 														:key="plan.course_plan"
@@ -148,7 +165,7 @@
 												>
 													<p class="type-body-strong text-ink">{{ plan.title }}</p>
 													<p class="mt-1 type-caption text-ink/70">
-														{{ plan.academic_year || 'No academic year' }}
+														{{ plan.academic_year || __('No academic year') }}
 														<span v-if="plan.cycle_label">· {{ plan.cycle_label }}</span>
 													</p>
 												</article>
@@ -161,10 +178,12 @@
 													:disabled="!draftCoursePlan || createPending"
 													@click="handleCreatePlan"
 												>
-													{{ createPending ? 'Creating...' : 'Create Class Teaching Plan' }}
+													{{
+														createPending ? __('Creating...') : __('Create Class Teaching Plan')
+													}}
 												</button>
 												<button type="button" class="if-action" @click="openFullPlanning">
-													Open Full Class Planning
+													{{ __('Open Full Class Planning') }}
 												</button>
 											</div>
 										</template>
@@ -175,13 +194,19 @@
 									v-else-if="!surface.curriculum.units.length"
 									class="rounded-[1.75rem] border border-line-soft bg-white p-5"
 								>
-									<p class="type-body-strong text-ink">No governed units are available yet.</p>
+									<p class="type-body-strong text-ink">
+										{{ __('No governed units are available yet.') }}
+									</p>
 									<p class="mt-1 type-caption text-ink/70">
-										Add governed units to the shared course plan before planning class sessions.
+										{{
+											__(
+												'Add governed units to the shared course plan before planning class sessions.'
+											)
+										}}
 									</p>
 									<div class="mt-4">
 										<button type="button" class="if-action" @click="openFullPlanning">
-											Open Full Class Planning
+											{{ __('Open Full Class Planning') }}
 										</button>
 									</div>
 								</section>
@@ -190,19 +215,28 @@
 									<section class="rounded-[1.75rem] border border-line-soft bg-white p-5">
 										<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 											<div class="space-y-1">
-												<p class="type-overline text-ink/55">Class Planning Context</p>
+												<p class="type-overline text-ink/55">
+													{{ __('Class Planning Context') }}
+												</p>
 												<h3 class="type-h3 text-ink">{{ surface.teaching_plan.title }}</h3>
 												<p class="type-caption text-ink/70">
-													Session planning stays class-owned while the shared course plan stays
-													governed.
+													{{
+														__(
+															'Session planning stays class-owned while the shared course plan stays governed.'
+														)
+													}}
 												</p>
 											</div>
 											<div class="flex flex-wrap gap-2">
 												<span class="chip">{{
-													surface.teaching_plan.planning_status || 'Draft'
+													surface.teaching_plan.planning_status || __('Draft')
 												}}</span>
-												<span class="chip">{{ surface.curriculum.units.length }} units</span>
-												<span class="chip">{{ surface.curriculum.session_count }} sessions</span>
+												<span class="chip">
+													{{ __('{0} units', [surface.curriculum.units.length]) }}
+												</span>
+												<span class="chip">
+													{{ __('{0} sessions', [surface.curriculum.session_count]) }}
+												</span>
 											</div>
 										</div>
 
@@ -211,7 +245,9 @@
 												v-if="surface.class_teaching_plans.length > 1"
 												class="block space-y-2"
 											>
-												<span class="type-caption text-ink/70">Switch class teaching plan</span>
+												<span class="type-caption text-ink/70">
+													{{ __('Switch class teaching plan') }}
+												</span>
 												<select
 													:value="requestedPlan || surface.teaching_plan.class_teaching_plan"
 													class="if-input w-full"
@@ -229,7 +265,7 @@
 
 											<div class="flex flex-wrap gap-3 lg:justify-end">
 												<button type="button" class="if-action" @click="openFullPlanning">
-													Open Full Class Planning
+													{{ __('Open Full Class Planning') }}
 												</button>
 											</div>
 										</div>
@@ -244,13 +280,17 @@
 										>
 											<div>
 												<p class="type-body-strong text-ink">
-													A class session already exists for this calendar date.
+													{{ __('A class session already exists for this calendar date.') }}
 												</p>
 												<p class="mt-1 type-caption text-ink/70">
 													{{
 														currentSessionId === dateMatchedSession.class_session
-															? `You are editing ${dateMatchedSession.title || 'the saved session'}.`
-															: `The saved session is ${dateMatchedSession.title || 'untitled'}.`
+															? __('You are editing {0}.', [
+																	dateMatchedSession.title || __('the saved session'),
+																])
+															: __('The saved session is {0}.', [
+																	dateMatchedSession.title || __('untitled'),
+																])
 													}}
 												</p>
 											</div>
@@ -261,7 +301,7 @@
 													class="if-action"
 													@click="editMatchedSession"
 												>
-													Edit Existing
+													{{ __('Edit Existing') }}
 												</button>
 												<button
 													v-if="currentSessionId === dateMatchedSession.class_session"
@@ -269,7 +309,7 @@
 													class="if-action"
 													@click="startNewSessionDraft"
 												>
-													Start Another Session
+													{{ __('Start Another Session') }}
 												</button>
 											</div>
 										</div>
@@ -280,18 +320,21 @@
 											class="space-y-4 rounded-[1.75rem] border border-line-soft bg-white p-5"
 										>
 											<div>
-												<p class="type-overline text-ink/55">Suggested Unit</p>
+												<p class="type-overline text-ink/55">{{ __('Suggested Unit') }}</p>
 												<h3 class="mt-1 type-h3 text-ink">
-													{{ selectedUnit?.title || 'Select unit' }}
+													{{ selectedUnit?.title || __('Select unit') }}
 												</h3>
 												<p class="mt-1 type-caption text-ink/70">
-													The system suggests the current in-progress unit first, then the next
-													untaught unit.
+													{{
+														__(
+															'The system suggests the current in-progress unit first, then the next untaught unit.'
+														)
+													}}
 												</p>
 											</div>
 
 											<label class="block space-y-2">
-												<span class="type-caption text-ink/70">Unit plan</span>
+												<span class="type-caption text-ink/70">{{ __('Unit plan') }}</span>
 												<select
 													v-model="selectedUnitPlan"
 													class="if-input w-full"
@@ -302,7 +345,7 @@
 														:key="unit.unit_plan"
 														:value="unit.unit_plan"
 													>
-														{{ unit.unit_order ? `Unit ${unit.unit_order} · ` : ''
+														{{ unit.unit_order ? __('Unit {0} · ', [unit.unit_order]) : ''
 														}}{{ unit.title }}
 													</option>
 												</select>
@@ -314,9 +357,11 @@
 											>
 												<div class="flex flex-wrap gap-2">
 													<span class="chip">{{
-														selectedUnit.pacing_status || 'Not Started'
+														selectedUnit.pacing_status || __('Not Started')
 													}}</span>
-													<span class="chip">{{ selectedUnit.sessions.length }} sessions</span>
+													<span class="chip">
+														{{ __('{0} sessions', [selectedUnit.sessions.length]) }}
+													</span>
 													<span v-if="selectedUnit.unit_status" class="chip">
 														{{ selectedUnit.unit_status }}
 													</span>
@@ -333,45 +378,45 @@
 											<div class="flex items-start justify-between gap-3">
 												<div>
 													<p class="type-overline text-ink/55">
-														{{ currentSessionId ? 'Edit session' : 'New session' }}
+														{{ currentSessionId ? __('Edit session') : __('New session') }}
 													</p>
 													<h3 class="mt-1 type-h3 text-ink">
-														{{ form.title || 'Plan this class session' }}
+														{{ form.title || __('Plan this class session') }}
 													</h3>
 												</div>
-												<span class="chip">{{ form.session_status || 'Draft' }}</span>
+												<span class="chip">{{ form.session_status || __('Draft') }}</span>
 											</div>
 
 											<div class="grid gap-4 md:grid-cols-2">
 												<label class="block space-y-2 md:col-span-2">
-													<span class="type-caption text-ink/70">Session title</span>
+													<span class="type-caption text-ink/70">{{ __('Session title') }}</span>
 													<input
 														v-model="form.title"
 														type="text"
 														class="if-input w-full"
-														placeholder="e.g. Evidence walk and structured discussion"
+														:placeholder="__('e.g. Evidence walk and structured discussion')"
 													/>
 												</label>
 
 												<label class="block space-y-2">
-													<span class="type-caption text-ink/70">Session status</span>
+													<span class="type-caption text-ink/70">{{ __('Session status') }}</span>
 													<select v-model="form.session_status" class="if-input w-full">
-														<option value="Draft">Draft</option>
-														<option value="Planned">Planned</option>
-														<option value="In Progress">In Progress</option>
-														<option value="Taught">Taught</option>
-														<option value="Changed">Changed</option>
-														<option value="Canceled">Canceled</option>
+														<option value="Draft">{{ __('Draft') }}</option>
+														<option value="Planned">{{ __('Planned') }}</option>
+														<option value="In Progress">{{ __('In Progress') }}</option>
+														<option value="Taught">{{ __('Taught') }}</option>
+														<option value="Changed">{{ __('Changed') }}</option>
+														<option value="Canceled">{{ __('Canceled') }}</option>
 													</select>
 												</label>
 
 												<label class="block space-y-2">
-													<span class="type-caption text-ink/70">Session date</span>
+													<span class="type-caption text-ink/70">{{ __('Session date') }}</span>
 													<input v-model="form.session_date" type="date" class="if-input w-full" />
 												</label>
 
 												<label class="block space-y-2">
-													<span class="type-caption text-ink/70">Sequence</span>
+													<span class="type-caption text-ink/70">{{ __('Sequence') }}</span>
 													<input
 														v-model.number="form.sequence_index"
 														type="number"
@@ -382,22 +427,28 @@
 												</label>
 
 												<label class="block space-y-2 md:col-span-2">
-													<span class="type-caption text-ink/70">Learning goal</span>
+													<span class="type-caption text-ink/70">{{ __('Learning goal') }}</span>
 													<textarea
 														v-model="form.learning_goal"
 														rows="3"
 														class="if-input min-h-[6rem] w-full resize-y"
-														placeholder="State the learning goal students should understand and act on."
+														:placeholder="
+															__('State the learning goal students should understand and act on.')
+														"
 													/>
 												</label>
 
 												<label class="block space-y-2 md:col-span-2">
-													<span class="type-caption text-ink/70">Teacher note</span>
+													<span class="type-caption text-ink/70">{{ __('Teacher note') }}</span>
 													<textarea
 														v-model="form.teacher_note"
 														rows="4"
 														class="if-input min-h-[7rem] w-full resize-y"
-														placeholder="Capture delivery notes, reminders, or reflection prompts for this class."
+														:placeholder="
+															__(
+																'Capture delivery notes, reminders, or reflection prompts for this class.'
+															)
+														"
 													/>
 												</label>
 											</div>
@@ -405,13 +456,13 @@
 											<div class="space-y-3 border-t border-line-soft pt-4">
 												<div class="flex items-center justify-between gap-3">
 													<div>
-														<p class="type-overline text-ink/55">Session Flow</p>
+														<p class="type-overline text-ink/55">{{ __('Session Flow') }}</p>
 														<p class="type-caption text-ink/70">
-															Add the sequence of activities students will experience.
+															{{ __('Add the sequence of activities students will experience.') }}
 														</p>
 													</div>
 													<button type="button" class="if-action" @click="addActivity">
-														Add Activity
+														{{ __('Add Activity') }}
 													</button>
 												</div>
 
@@ -420,7 +471,11 @@
 													class="rounded-2xl border border-dashed border-line-soft px-4 py-4"
 												>
 													<p class="type-caption text-ink/70">
-														Add teaching moves, practice, checks for understanding, or reflection.
+														{{
+															__(
+																'Add teaching moves, practice, checks for understanding, or reflection.'
+															)
+														}}
 													</p>
 												</div>
 
@@ -432,35 +487,41 @@
 													>
 														<div class="grid gap-4 md:grid-cols-2">
 															<label class="block space-y-2 md:col-span-2">
-																<span class="type-caption text-ink/70">Activity title</span>
+																<span class="type-caption text-ink/70">
+																	{{ __('Activity title') }}
+																</span>
 																<input
 																	v-model="activity.title"
 																	type="text"
 																	class="if-input w-full"
-																	:placeholder="`Activity ${index + 1}`"
+																	:placeholder="__('Activity {0}', [index + 1])"
 																/>
 															</label>
 
 															<label class="block space-y-2">
-																<span class="type-caption text-ink/70">Activity type</span>
+																<span class="type-caption text-ink/70">
+																	{{ __('Activity type') }}
+																</span>
 																<select v-model="activity.activity_type" class="if-input w-full">
-																	<option value="Discuss">Discuss</option>
-																	<option value="Practice">Practice</option>
-																	<option value="Read">Read</option>
-																	<option value="Watch">Watch</option>
-																	<option value="Write">Write</option>
-																	<option value="Collaborate">Collaborate</option>
+																	<option value="Discuss">{{ __('Discuss') }}</option>
+																	<option value="Practice">{{ __('Practice') }}</option>
+																	<option value="Read">{{ __('Read') }}</option>
+																	<option value="Watch">{{ __('Watch') }}</option>
+																	<option value="Write">{{ __('Write') }}</option>
+																	<option value="Collaborate">{{ __('Collaborate') }}</option>
 																	<option value="Check for Understanding">
-																		Check for Understanding
+																		{{ __('Check for Understanding') }}
 																	</option>
-																	<option value="Reflect">Reflect</option>
-																	<option value="Assess">Assess</option>
-																	<option value="Other">Other</option>
+																	<option value="Reflect">{{ __('Reflect') }}</option>
+																	<option value="Assess">{{ __('Assess') }}</option>
+																	<option value="Other">{{ __('Other') }}</option>
 																</select>
 															</label>
 
 															<label class="block space-y-2">
-																<span class="type-caption text-ink/70">Estimated minutes</span>
+																<span class="type-caption text-ink/70">
+																	{{ __('Estimated minutes') }}
+																</span>
 																<input
 																	v-model.number="activity.estimated_minutes"
 																	type="number"
@@ -471,7 +532,9 @@
 															</label>
 
 															<label class="block space-y-2 md:col-span-2">
-																<span class="type-caption text-ink/70">Student direction</span>
+																<span class="type-caption text-ink/70">
+																	{{ __('Student direction') }}
+																</span>
 																<textarea
 																	v-model="activity.student_direction"
 																	rows="2"
@@ -480,7 +543,9 @@
 															</label>
 
 															<label class="block space-y-2">
-																<span class="type-caption text-ink/70">Teacher prompt</span>
+																<span class="type-caption text-ink/70">
+																	{{ __('Teacher prompt') }}
+																</span>
 																<textarea
 																	v-model="activity.teacher_prompt"
 																	rows="2"
@@ -489,7 +554,9 @@
 															</label>
 
 															<label class="block space-y-2">
-																<span class="type-caption text-ink/70">Resource note</span>
+																<span class="type-caption text-ink/70">
+																	{{ __('Resource note') }}
+																</span>
 																<textarea
 																	v-model="activity.resource_note"
 																	rows="2"
@@ -504,7 +571,7 @@
 																class="rounded-full border border-line-soft px-4 py-2 type-button-label text-ink transition hover:border-flame hover:text-flame"
 																@click="removeActivity(activity.local_id)"
 															>
-																Remove Activity
+																{{ __('Remove Activity') }}
 															</button>
 														</div>
 													</div>
@@ -520,10 +587,10 @@
 												>
 													{{
 														sessionPending
-															? 'Saving...'
+															? __('Saving...')
 															: currentSessionId
-																? 'Save Session'
-																: 'Create Session'
+																? __('Save Session')
+																: __('Create Session')
 													}}
 												</button>
 												<button
@@ -532,14 +599,14 @@
 													class="if-action"
 													@click="startNewSessionDraft"
 												>
-													Start New Draft
+													{{ __('Start New Draft') }}
 												</button>
 												<button
 													type="button"
 													class="rounded-full border border-line-soft px-4 py-2 type-button-label text-ink transition hover:border-ink/30"
 													@click="emitClose('programmatic')"
 												>
-													Cancel
+													{{ __('Cancel') }}
 												</button>
 											</div>
 										</section>
@@ -566,6 +633,7 @@ import { FeatherIcon, toast } from 'frappe-ui';
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
+import { __ } from '@/lib/i18n';
 import {
 	createClassTeachingPlan,
 	getStaffClassPlanningSurface,
@@ -663,7 +731,7 @@ const dateMatchedSession = computed<StaffPlanningSession | null>(() => {
 });
 
 const courseLabel = computed(() => {
-	return props.courseName || props.course || surface.value?.group.course || 'Course pending';
+	return props.courseName || props.course || surface.value?.group.course || __('Course pending');
 });
 
 const sessionDateLabel = computed(() => {
@@ -795,8 +863,9 @@ async function loadSurface() {
 	if (!studentGroup) {
 		loading.value = false;
 		surface.value = null;
-		errorMessage.value =
-			'Could not determine which class to plan. Please close this overlay and try again.';
+		errorMessage.value = __(
+			'Could not determine which class to plan. Please close this overlay and try again.'
+		);
 		return;
 	}
 
@@ -836,10 +905,10 @@ async function handleCreatePlan() {
 		});
 		requestedPlan.value = result.class_teaching_plan;
 		await loadSurface();
-		toast.success('Class teaching plan created.');
+		toast.success(__('Class teaching plan created.'));
 	} catch (error) {
 		toast.error(
-			error instanceof Error ? error.message : 'Could not create the class teaching plan.'
+			error instanceof Error ? error.message : __('Could not create the class teaching plan.')
 		);
 	} finally {
 		createPending.value = false;
@@ -921,10 +990,12 @@ async function handleSaveSession() {
 					resource_note: activity.resource_note,
 				})),
 		});
-		toast.success(currentSessionId.value ? 'Class session updated.' : 'Class session created.');
+		toast.success(
+			currentSessionId.value ? __('Class session updated.') : __('Class session created.')
+		);
 		emitClose('programmatic');
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : 'Could not save the class session.');
+		toast.error(error instanceof Error ? error.message : __('Could not save the class session.'));
 	} finally {
 		sessionPending.value = false;
 	}
@@ -955,7 +1026,8 @@ function emitAfterLeave() {
 
 const initialFocus = ref<HTMLElement | null>(null);
 
-function onDialogClose(_payload: unknown) {
+function onDialogClose(payload: unknown) {
+	void payload;
 	// no-op by design
 }
 
@@ -966,7 +1038,8 @@ function onKeydown(event: KeyboardEvent) {
 
 watch(
 	() => [props.open, props.studentGroup, props.classTeachingPlan] as const,
-	([isOpen, _studentGroup, classTeachingPlan]) => {
+	([isOpen, studentGroup, classTeachingPlan]) => {
+		void studentGroup;
 		if (!isOpen) return;
 		requestedPlan.value = String(classTeachingPlan || '').trim();
 		void loadSurface();

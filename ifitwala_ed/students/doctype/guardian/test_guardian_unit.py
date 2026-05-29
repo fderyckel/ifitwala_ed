@@ -125,13 +125,16 @@ class TestGuardianUnit(TestCase):
             with (
                 patch.object(guardian, "_has_user_changed", return_value=False),
                 patch.object(guardian, "_has_contact_point_data_changed", return_value=False),
+                patch.object(guardian, "_has_billing_contact_data_changed", return_value=False),
                 patch.object(guardian, "_ensure_guardian_portal_routing") as ensure_portal_routing,
                 patch.object(guardian, "sync_contact_points_for_linked_students") as sync_contact_points,
+                patch.object(guardian, "sync_account_holder_billing_contacts") as sync_billing_contacts,
             ):
                 guardian.on_update()
 
         ensure_portal_routing.assert_not_called()
         sync_contact_points.assert_not_called()
+        sync_billing_contacts.assert_not_called()
 
     def test_on_update_still_updates_portal_routing_when_user_changes(self):
         with _guardian_module() as guardian_module:
@@ -141,13 +144,16 @@ class TestGuardianUnit(TestCase):
             with (
                 patch.object(guardian, "_has_user_changed", return_value=True),
                 patch.object(guardian, "_has_contact_point_data_changed", return_value=False),
+                patch.object(guardian, "_has_billing_contact_data_changed", return_value=False),
                 patch.object(guardian, "_ensure_guardian_portal_routing") as ensure_portal_routing,
                 patch.object(guardian, "sync_contact_points_for_linked_students") as sync_contact_points,
+                patch.object(guardian, "sync_account_holder_billing_contacts") as sync_billing_contacts,
             ):
                 guardian.on_update()
 
         ensure_portal_routing.assert_called_once_with("guardian@example.com")
         sync_contact_points.assert_not_called()
+        sync_billing_contacts.assert_not_called()
 
     def test_on_update_syncs_contact_points_when_guardian_contact_data_changes(self):
         with _guardian_module() as guardian_module:
@@ -157,13 +163,35 @@ class TestGuardianUnit(TestCase):
             with (
                 patch.object(guardian, "_has_user_changed", return_value=False),
                 patch.object(guardian, "_has_contact_point_data_changed", return_value=True),
+                patch.object(guardian, "_has_billing_contact_data_changed", return_value=False),
                 patch.object(guardian, "_ensure_guardian_portal_routing") as ensure_portal_routing,
                 patch.object(guardian, "sync_contact_points_for_linked_students") as sync_contact_points,
+                patch.object(guardian, "sync_account_holder_billing_contacts") as sync_billing_contacts,
             ):
                 guardian.on_update()
 
         ensure_portal_routing.assert_not_called()
         sync_contact_points.assert_called_once_with()
+        sync_billing_contacts.assert_not_called()
+
+    def test_on_update_syncs_account_holder_billing_contacts_when_identity_changes(self):
+        with _guardian_module() as guardian_module:
+            guardian = guardian_module.Guardian.__new__(guardian_module.Guardian)
+            guardian.user = "guardian@example.com"
+
+            with (
+                patch.object(guardian, "_has_user_changed", return_value=False),
+                patch.object(guardian, "_has_contact_point_data_changed", return_value=False),
+                patch.object(guardian, "_has_billing_contact_data_changed", return_value=True),
+                patch.object(guardian, "_ensure_guardian_portal_routing") as ensure_portal_routing,
+                patch.object(guardian, "sync_contact_points_for_linked_students") as sync_contact_points,
+                patch.object(guardian, "sync_account_holder_billing_contacts") as sync_billing_contacts,
+            ):
+                guardian.on_update()
+
+        ensure_portal_routing.assert_not_called()
+        sync_contact_points.assert_not_called()
+        sync_billing_contacts.assert_called_once_with()
 
     def test_sync_contact_points_for_linked_students_uses_linked_student_schools(self):
         with _guardian_module() as guardian_module:

@@ -121,6 +121,7 @@ An Account Holder:
   * An adult learner
   * A sponsoring organization
 * Belongs to exactly one Organization
+* Can carry explicit billing-contact links to one or more `Guardian` records when the payer is represented by real family members
 
 ### 3.3 Cardinality Rules (Locked)
 
@@ -128,6 +129,30 @@ An Account Holder:
 * **One Account Holder may be responsible for multiple students** (siblings, family accounts)
 
 All invoices, advances, credits, and balances are tracked **per Account Holder**.
+
+### 3.4 Billing Contact Links
+
+Status: Implemented
+Code refs: `ifitwala_ed/accounting/doctype/account_holder/account_holder.json`, `ifitwala_ed/accounting/doctype/account_holder_billing_contact/account_holder_billing_contact.json`, `ifitwala_ed/accounting/account_holder_contacts.py`, `ifitwala_ed/students/doctype/student/student.js`
+Test refs: `ifitwala_ed/accounting/test_account_holder_contacts_unit.py`, `ifitwala_ed/accounting/doctype/account_holder/test_account_holder.py`
+
+`Account Holder` remains the legal debtor. `Guardian` remains the real-person record that owns guardian name, email, and phone data.
+
+When an enrolled/imported student already has guardian rows, staff can create or update the student's Account Holder directly from the Student form using the guardian data already in the system. The workflow:
+
+* creates the `Account Holder` in the student's Organization when the student has none
+* links the Student to that Account Holder
+* links selected Guardians as Account Holder billing contacts
+* stores the primary payer email and phone snapshot on Account Holder for finance list/form use
+* syncs purpose-bound Guardian contact points with `purpose = billing` for audited finance follow-up
+
+Rules:
+
+* this is explicit user action, never a silent automatic payer assignment
+* the source Student must have `anchor_school`
+* the Account Holder Organization must match the Student's school Organization
+* the Guardian must be linked to the source Student when `source_student` is set on the billing-contact row
+* raw billing contact reveal is a named finance workflow and must use the contact privacy service, not broad Guardian/Contact exports
 
 ---
 

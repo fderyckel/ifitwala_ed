@@ -12,7 +12,7 @@ from frappe import _
 
 EXPENSE_CLAIM_RECEIPT_BINDING_ROLE = "expense_claim_receipt"
 EXPENSE_CLAIM_RECEIPT_DATA_CLASS = "financial"
-EXPENSE_CLAIM_RECEIPT_PURPOSE = "financial_record"
+EXPENSE_CLAIM_RECEIPT_PURPOSE = "administrative"
 EXPENSE_CLAIM_RECEIPT_RETENTION_POLICY = "fixed_7y"
 EXPENSE_CLAIM_RECEIPT_SLOT_PREFIX = "expense_claim_receipt__"
 EXPENSE_CLAIM_RECEIPT_CATEGORY = "Expense Claim Receipt"

@@ -4,13 +4,15 @@
 		<!-- HEADER -->
 		<header class="page-header">
 			<div class="page-header__intro">
-				<h1 class="type-h1 text-canopy">Morning Briefing</h1>
-				<p class="type-meta text-slate-token/80">Daily Operational &amp; Academic Pulse</p>
+				<h1 class="type-h1 text-canopy">{{ __('Morning Briefing') }}</h1>
+				<p class="type-meta text-slate-token/80">
+					{{ __('Daily Operational & Academic Pulse') }}
+				</p>
 			</div>
 
 			<div class="page-header__actions">
 				<div class="text-right">
-					<span class="section-header block mb-0.5">Today</span>
+					<span class="section-header block mb-0.5">{{ __('Today') }}</span>
 					<span class="type-h3 text-ink">
 						{{ formattedDate }}
 					</span>
@@ -43,7 +45,7 @@
 						<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
 							<div class="space-y-2">
 								<div class="flex flex-wrap items-center gap-2">
-									<h2 class="section-header text-canopy/70">Morning Messages</h2>
+									<h2 class="section-header text-canopy/70">{{ __('Morning Messages') }}</h2>
 									<span
 										class="inline-flex items-center rounded-full border border-[rgb(var(--surface-strong-rgb)/0.72)] bg-[rgb(var(--surface-strong-rgb)/0.76)] px-3 py-1 text-[11px] font-semibold text-slate-token/74"
 									>
@@ -54,12 +56,15 @@
 										data-testid="morning-announcements-unread-count"
 										class="inline-flex items-center rounded-full border border-[rgb(var(--flame-rgb)/0.18)] bg-[rgb(var(--flame-rgb)/0.08)] px-3 py-1 text-[11px] font-semibold text-flame"
 									>
-										{{ unreadAnnouncementCount }} unread
+										{{ __('{0} unread', [unreadAnnouncementCount]) }}
 									</span>
 								</div>
 								<p class="max-w-2xl text-sm leading-relaxed text-slate-token/82">
-									Newest updates stay at the top. Open any message for the full body, attachments,
-									and staff responses.
+									{{
+										__(
+											'Newest updates stay at the top. Open any message for the full body, attachments, and staff responses.'
+										)
+									}}
 								</p>
 							</div>
 
@@ -73,7 +78,7 @@
 								"
 								@click="showUnreadOnly = !showUnreadOnly"
 							>
-								{{ showUnreadOnly ? 'Show all' : 'Unread only' }}
+								{{ showUnreadOnly ? __('Show all') : __('Unread only') }}
 							</button>
 						</div>
 
@@ -106,7 +111,7 @@
 												class="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold"
 												:class="getPriorityClasses(item.priority)"
 											>
-												{{ item.priority || 'Info' }}
+												{{ item.priority || __('Info') }}
 											</span>
 											<span
 												data-testid="morning-announcement-status"
@@ -117,7 +122,7 @@
 														: 'bg-[rgb(var(--canopy-rgb)/0.08)] text-canopy'
 												"
 											>
-												{{ item.is_unread ? 'Unread' : 'Read' }}
+												{{ item.is_unread ? __('Unread') : __('Read') }}
 											</span>
 										</div>
 
@@ -141,15 +146,19 @@
 												v-if="hasVisibleAnnouncementActions(item)"
 												class="inline-flex items-center gap-2 rounded-full border border-[rgb(var(--surface-strong-rgb)/0.8)] bg-[rgb(var(--surface-strong-rgb)/0.8)] px-3 py-1.5"
 											>
-												<span>Reactions {{ getInteractionStatsFor(item).reactions_total }}</span>
+												<span>
+													{{ __('Reactions {0}', [getInteractionStatsFor(item).reactions_total]) }}
+												</span>
 												<span class="h-3 w-px bg-border/70"></span>
-												<span>Comments {{ getInteractionStatsFor(item).comments_total }}</span>
+												<span>
+													{{ __('Comments {0}', [getInteractionStatsFor(item).comments_total]) }}
+												</span>
 											</div>
 											<span
 												v-if="getInteractionFor(item).self"
 												class="inline-flex items-center rounded-full bg-jacaranda/10 px-3 py-1.5 font-medium text-jacaranda"
 											>
-												You responded
+												{{ __('You responded') }}
 											</span>
 										</div>
 									</div>
@@ -161,10 +170,10 @@
 											class="if-action"
 											@click.stop="acknowledgeAnnouncement(item)"
 										>
-											Acknowledge
+											{{ __('Acknowledge') }}
 										</button>
 										<button type="button" class="if-action" @click="openAnnouncement(item)">
-											Open update
+											{{ __('Open update') }}
 										</button>
 									</div>
 								</div>
@@ -178,8 +187,8 @@
 							<p>
 								{{
 									showUnreadOnly
-										? 'You have no unread morning messages.'
-										: 'No morning messages are available right now.'
+										? __('You have no unread morning messages.')
+										: __('No morning messages are available right now.')
 								}}
 							</p>
 							<button
@@ -188,7 +197,7 @@
 								class="mt-3 inline-flex items-center rounded-full border border-border/60 bg-[rgb(var(--surface-strong-rgb)/0.75)] px-3 py-1 text-xs font-semibold text-slate-token/78 transition-colors hover:bg-surface-soft"
 								@click="showUnreadOnly = false"
 							>
-								Show all updates
+								{{ __('Show all updates') }}
 							</button>
 						</div>
 					</div>
@@ -213,13 +222,13 @@
 							class="paper-card cursor-pointer border-l-4 border-l-flame p-5 transition-shadow hover:shadow-md"
 							@click="openCriticalIncidentsOverlay"
 						>
-							<h3 class="section-header mb-1 text-flame/80">Critical Incidents</h3>
+							<h3 class="section-header mb-1 text-flame/80">{{ __('Critical Incidents') }}</h3>
 							<div class="text-3xl font-bold text-ink">
 								{{ widgets.data.critical_incidents }}
 							</div>
 							<p class="mt-1 flex items-center gap-1 text-xs font-medium text-flame">
 								<FeatherIcon name="alert-circle" class="h-3 w-3" />
-								Open Follow-ups
+								{{ __('Open Follow-ups') }}
 							</p>
 						</div>
 
@@ -238,9 +247,9 @@
 										<FeatherIcon name="thermometer" class="h-4 w-4" />
 									</div>
 									<div>
-										<h3 class="text-sm font-semibold text-canopy">Clinic Volume</h3>
+										<h3 class="text-sm font-semibold text-canopy">{{ __('Clinic Volume') }}</h3>
 										<p class="mt-0.5 text-[11px] text-slate-token/70">
-											{{ clinicVolume?.school || 'School context' }}
+											{{ clinicVolume?.school || __('School context') }}
 										</p>
 									</div>
 								</div>
@@ -277,7 +286,7 @@
 								</div>
 							</div>
 							<p v-else class="text-xs text-slate-token/75">
-								No clinic visits in this business window.
+								{{ __('No clinic visits in this business window.') }}
 							</p>
 						</div>
 					</div>
@@ -291,7 +300,9 @@
 								>
 									<FeatherIcon name="users" class="h-4 w-4" />
 								</div>
-								<h3 class="text-sm font-semibold text-canopy">Admissions (Last 7 Days)</h3>
+								<h3 class="text-sm font-semibold text-canopy">
+									{{ __('Admissions (Last 7 Days)') }}
+								</h3>
 							</div>
 							<span class="text-2xl font-bold text-ink">
 								{{ widgets.data.admissions_pulse.total_new_weekly }}
@@ -379,7 +390,7 @@
 											@click="openLog(log)"
 											class="mt-1 flex items-center gap-1 text-[11px] font-medium text-jacaranda transition-colors hover:text-jacaranda/80"
 										>
-											Read Full Log
+											{{ __('Read Full Log') }}
 											<FeatherIcon name="maximize-2" class="h-3 w-3" />
 										</button>
 									</div>
@@ -407,7 +418,7 @@
 							>
 								<FeatherIcon name="gift" class="h-3.5 w-3.5" />
 							</div>
-							<span class="section-header text-canopy/70">Community Pulse</span>
+							<span class="section-header text-canopy/70">{{ __('Community Pulse') }}</span>
 						</div>
 
 						<div class="space-y-3">
@@ -415,11 +426,14 @@
 								class="max-w-2xl text-[1.9rem] text-ink sm:text-[2.2rem]"
 								style="font-family: var(--font-serif); line-height: 0.98"
 							>
-								This week&apos;s birthdays
+								{{ __("This week's birthdays") }}
 							</h2>
 							<p class="max-w-2xl type-meta text-slate-token/82">
-								A quieter note in the brief, bringing forward the staff and student moments worth
-								noticing before the day gets busy.
+								{{
+									__(
+										'A quieter note in the brief, bringing forward the staff and student moments worth noticing before the day gets busy.'
+									)
+								}}
 							</p>
 						</div>
 					</div>
@@ -428,31 +442,33 @@
 						<div
 							class="rounded-[1.35rem] border border-[rgb(var(--surface-strong-rgb)/0.72)] bg-[rgb(var(--surface-strong-rgb)/0.74)] p-3 shadow-[0_10px_28px_rgb(var(--ink-rgb)/0.04)] backdrop-blur-sm"
 						>
-							<p class="type-overline text-slate-token/58">In View</p>
+							<p class="type-overline text-slate-token/58">{{ __('In View') }}</p>
 							<p class="mt-2 text-2xl font-semibold tracking-tight text-canopy">
 								{{ communityBirthdayTotal }}
 							</p>
-							<p class="mt-1 text-[11px] text-slate-token/70">birthdays this week</p>
+							<p class="mt-1 text-[11px] text-slate-token/70">
+								{{ __('birthdays this week') }}
+							</p>
 						</div>
 
 						<div
 							class="rounded-[1.35rem] border border-[rgb(var(--clay-rgb)/0.12)] bg-[rgb(var(--sand-rgb)/0.78)] p-3 shadow-[0_10px_28px_rgb(var(--ink-rgb)/0.04)]"
 						>
-							<p class="type-overline text-slate-token/58">Staff</p>
+							<p class="type-overline text-slate-token/58">{{ __('Staff') }}</p>
 							<p class="mt-2 text-2xl font-semibold tracking-tight text-clay">
 								{{ staffBirthdayCount }}
 							</p>
-							<p class="mt-1 text-[11px] text-slate-token/70">across the school</p>
+							<p class="mt-1 text-[11px] text-slate-token/70">{{ __('across the school') }}</p>
 						</div>
 
 						<div
 							class="rounded-[1.35rem] border border-[rgb(var(--jacaranda-rgb)/0.14)] bg-[rgb(var(--sky-rgb)/0.82)] p-3 shadow-[0_10px_28px_rgb(var(--ink-rgb)/0.04)]"
 						>
-							<p class="type-overline text-slate-token/58">My Groups</p>
+							<p class="type-overline text-slate-token/58">{{ __('My Groups') }}</p>
 							<p class="mt-2 text-2xl font-semibold tracking-tight text-jacaranda">
 								{{ studentBirthdayCount }}
 							</p>
-							<p class="mt-1 text-[11px] text-slate-token/70">students in view</p>
+							<p class="mt-1 text-[11px] text-slate-token/70">{{ __('students in view') }}</p>
 						</div>
 					</div>
 				</div>
@@ -464,8 +480,10 @@
 						>
 							<div class="mb-4 flex items-start justify-between gap-3">
 								<div class="space-y-1.5">
-									<p class="type-overline text-slate-token/58">Staff Birthdays</p>
-									<p class="text-base font-semibold text-ink">Across the school this week.</p>
+									<p class="type-overline text-slate-token/58">{{ __('Staff Birthdays') }}</p>
+									<p class="text-base font-semibold text-ink">
+										{{ __('Across the school this week.') }}
+									</p>
 								</div>
 								<span
 									class="inline-flex h-8 min-w-[2rem] items-center justify-center rounded-full border border-[rgb(var(--clay-rgb)/0.14)] bg-[rgb(var(--surface-strong-rgb)/0.72)] px-2.5 text-[11px] font-semibold text-clay"
@@ -508,7 +526,7 @@
 								v-else
 								class="rounded-2xl border border-dashed border-[rgb(var(--clay-rgb)/0.18)] bg-[rgb(var(--surface-strong-rgb)/0.55)] px-4 py-6 text-sm text-slate-token/72"
 							>
-								No staff birthdays in this window.
+								{{ __('No staff birthdays in this window.') }}
 							</div>
 						</div>
 
@@ -517,8 +535,10 @@
 						>
 							<div class="mb-4 flex items-start justify-between gap-3">
 								<div class="space-y-1.5">
-									<p class="type-overline text-slate-token/58">Student Birthdays</p>
-									<p class="text-base font-semibold text-ink">Inside your teaching groups.</p>
+									<p class="type-overline text-slate-token/58">{{ __('Student Birthdays') }}</p>
+									<p class="text-base font-semibold text-ink">
+										{{ __('Inside your teaching groups.') }}
+									</p>
 								</div>
 								<span
 									class="inline-flex h-8 min-w-[2rem] items-center justify-center rounded-full border border-[rgb(var(--jacaranda-rgb)/0.18)] bg-[rgb(var(--surface-strong-rgb)/0.72)] px-2.5 text-[11px] font-semibold text-jacaranda"
@@ -561,7 +581,7 @@
 								v-else
 								class="rounded-2xl border border-dashed border-[rgb(var(--jacaranda-rgb)/0.2)] bg-[rgb(var(--surface-strong-rgb)/0.55)] px-4 py-6 text-sm text-slate-token/72"
 							>
-								No student birthdays in your groups for this window.
+								{{ __('No student birthdays in your groups for this window.') }}
 							</div>
 						</div>
 					</div>
@@ -598,8 +618,8 @@
 		<!-- CLINIC HISTORY DIALOG -->
 		<HistoryDialog
 			v-model="showClinicHistory"
-			title="Clinic Volume"
-			subtitle="Student patient visits over time"
+			:title="__('Clinic Volume')"
+			:subtitle="__('Student patient visits over time')"
 			method="ifitwala_ed.api.morning_brief.get_clinic_visits_trend"
 			:initial-school="clinicVolume?.school || ''"
 			:show-comments="false"
@@ -609,12 +629,12 @@
 
 		<CommentThreadDrawer
 			:open="showInteractionDrawer"
-			title="Announcement Comments"
+			:title="__('Announcement Comments')"
 			:rows="interactionThreadRows"
 			:loading="interactionThreadLoading"
 			v-model:comment="newComment"
-			submit-label="Send"
-			placeholder="Add a short comment (max 300 characters)"
+			:submit-label="__('Send')"
+			:placeholder="__('Add a short comment (max 300 characters)')"
 			:format-timestamp="formatThreadTimestamp"
 			@close="showInteractionDrawer = false"
 			@submit="submitComment"
@@ -628,6 +648,7 @@ import { createResource, FeatherIcon, toast } from 'frappe-ui';
 
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import { formatLocalizedDateTime } from '@/lib/datetime';
+import { __ } from '@/lib/i18n';
 import { createCommunicationInteractionService } from '@/lib/services/communicationInteraction/communicationInteractionService';
 import { createOrgCommunicationArchiveService } from '@/lib/services/orgCommunicationArchive/orgCommunicationArchiveService';
 import { SIGNAL_ORG_COMMUNICATION_INVALIDATE, uiSignals } from '@/lib/uiSignals';
@@ -726,15 +747,15 @@ const widgets = createResource<WidgetsPayload>({
 	auto: true,
 });
 const clinicVolumeViewOptions = [
-	{ label: '3 days', value: '3D' },
-	{ label: '3 weeks', value: '3W' },
+	{ label: __('3 days'), value: '3D' },
+	{ label: __('3 weeks'), value: '3W' },
 ] as const;
 const clinicHistoryRangeOptions = [
 	...clinicVolumeViewOptions,
-	{ label: '1M', value: '1M' },
-	{ label: '3M', value: '3M' },
-	{ label: '6M', value: '6M' },
-	{ label: 'YTD', value: 'YTD' },
+	{ label: __('1M'), value: '1M' },
+	{ label: __('3M'), value: '3M' },
+	{ label: __('6M'), value: '6M' },
+	{ label: __('YTD'), value: 'YTD' },
 ] as const;
 type ClinicVolumeView = (typeof clinicVolumeViewOptions)[number]['value'];
 const clinicVolumeView = ref<ClinicVolumeView>('3D');
@@ -786,7 +807,7 @@ const unreadAnnouncementCount = computed(
 );
 const announcementCountLabel = computed(() => {
 	const total = widgets.data?.announcements?.length ?? 0;
-	return `${total} ${total === 1 ? 'update' : 'updates'}`;
+	return total === 1 ? __('1 update') : __('{0} updates', [total]);
 });
 
 function syncCriticalIncidentsOverlayState(): void {
@@ -907,9 +928,10 @@ async function refreshInteractionThread(orgCommunication: string, opts?: { silen
 	} catch (err) {
 		interactionThreadRows.value = [];
 		if (!opts?.silent) {
-			const message = err instanceof Error ? err.message : 'Unable to load announcement comments.';
+			const message =
+				err instanceof Error ? err.message : __('Unable to load announcement comments.');
 			toast({
-				title: 'Unable to load comments',
+				title: __('Unable to load comments'),
 				text: message,
 				icon: 'alert-circle',
 				appearance: 'danger',
@@ -1004,10 +1026,10 @@ async function loadAnnouncementDetail(name: string): Promise<void> {
 		const message =
 			err instanceof Error
 				? err.message
-				: 'Could not load attachments for this announcement. Close and reopen it to retry.';
+				: __('Could not load attachments for this announcement. Close and reopen it to retry.');
 		announcementDetailError.value[resolvedName] = message;
 		toast({
-			title: 'Unable to load announcement detail',
+			title: __('Unable to load announcement detail'),
 			text: message,
 			icon: 'alert-circle',
 			appearance: 'danger',
@@ -1038,8 +1060,8 @@ function getInteractionStatsFor(item: Announcement) {
 function openInteractionThread(item: Announcement): void {
 	if (!canCommentOnAnnouncement(item)) {
 		toast({
-			title: 'Comments unavailable',
-			text: 'Comments are not available for this announcement in this interaction mode.',
+			title: __('Comments unavailable'),
+			text: __('Comments are not available for this announcement in this interaction mode.'),
 			icon: 'info',
 		});
 		return;
@@ -1082,9 +1104,10 @@ async function markAnnouncementRead(item: Announcement): Promise<void> {
 		await interactionService.markOrgCommunicationRead({ org_communication: commName });
 		item.is_unread = false;
 	} catch (err) {
-		const message = err instanceof Error ? err.message : 'Unable to mark this message as read.';
+		const message =
+			err instanceof Error ? err.message : __('Unable to mark this message as read.');
 		toast({
-			title: 'Unable to update read state',
+			title: __('Unable to update read state'),
 			text: message,
 			icon: 'alert-circle',
 			appearance: 'danger',
@@ -1097,8 +1120,8 @@ async function markAnnouncementRead(item: Announcement): Promise<void> {
 async function acknowledgeAnnouncement(item: Announcement): Promise<void> {
 	if (!item?.name) {
 		toast({
-			title: 'Unable to save acknowledgement',
-			text: 'Please try again.',
+			title: __('Unable to save acknowledgement'),
+			text: __('Please try again.'),
 			icon: 'alert-circle',
 			appearance: 'danger',
 		});
@@ -1106,8 +1129,8 @@ async function acknowledgeAnnouncement(item: Announcement): Promise<void> {
 	}
 	if (!canReactToAnnouncement(item)) {
 		toast({
-			title: 'Reactions unavailable',
-			text: 'Reactions are disabled for this announcement.',
+			title: __('Reactions unavailable'),
+			text: __('Reactions are disabled for this announcement.'),
 			icon: 'info',
 		});
 		return;
@@ -1120,9 +1143,9 @@ async function acknowledgeAnnouncement(item: Announcement): Promise<void> {
 			surface: ORG_SURFACES.MORNING_BRIEF,
 		});
 	} catch (err) {
-		const message = err instanceof Error ? err.message : 'Unable to save acknowledgement.';
+		const message = err instanceof Error ? err.message : __('Unable to save acknowledgement.');
 		toast({
-			title: 'Unable to save acknowledgement',
+			title: __('Unable to save acknowledgement'),
 			text: message,
 			icon: 'alert-circle',
 			appearance: 'danger',
@@ -1133,16 +1156,16 @@ async function acknowledgeAnnouncement(item: Announcement): Promise<void> {
 async function submitComment(): Promise<void> {
 	if (!activeCommunication.value?.name) {
 		toast({
-			title: 'Select an announcement',
-			text: 'Choose an announcement before posting a comment.',
+			title: __('Select an announcement'),
+			text: __('Choose an announcement before posting a comment.'),
 			icon: 'info',
 		});
 		return;
 	}
 	if (!canCommentOnAnnouncement(activeCommunication.value)) {
 		toast({
-			title: 'Comments unavailable',
-			text: 'Comments are not available for this announcement in this interaction mode.',
+			title: __('Comments unavailable'),
+			text: __('Comments are not available for this announcement in this interaction mode.'),
 			icon: 'info',
 		});
 		return;
@@ -1151,8 +1174,8 @@ async function submitComment(): Promise<void> {
 	const note = newComment.value.trim();
 	if (!note) {
 		toast({
-			title: 'Comment required',
-			text: 'Write a comment before posting.',
+			title: __('Comment required'),
+			text: __('Write a comment before posting.'),
 			icon: 'info',
 		});
 		return;
@@ -1166,9 +1189,9 @@ async function submitComment(): Promise<void> {
 		});
 		newComment.value = '';
 	} catch (err) {
-		const message = err instanceof Error ? err.message : 'Unable to post comment.';
+		const message = err instanceof Error ? err.message : __('Unable to post comment.');
 		toast({
-			title: 'Unable to post comment',
+			title: __('Unable to post comment'),
 			text: message,
 			icon: 'alert-circle',
 			appearance: 'danger',
@@ -1179,8 +1202,8 @@ async function submitComment(): Promise<void> {
 async function reactToAnnouncement(item: Announcement, reaction: ReactionCode): Promise<void> {
 	if (!item?.name) {
 		toast({
-			title: 'Unable to save reaction',
-			text: 'Please try again.',
+			title: __('Unable to save reaction'),
+			text: __('Please try again.'),
 			icon: 'alert-circle',
 			appearance: 'danger',
 		});
@@ -1188,8 +1211,8 @@ async function reactToAnnouncement(item: Announcement, reaction: ReactionCode): 
 	}
 	if (!canReactToAnnouncement(item)) {
 		toast({
-			title: 'Reactions unavailable',
-			text: 'Reactions are disabled for this announcement.',
+			title: __('Reactions unavailable'),
+			text: __('Reactions are disabled for this announcement.'),
 			icon: 'info',
 		});
 		return;
@@ -1207,9 +1230,9 @@ async function reactToAnnouncement(item: Announcement, reaction: ReactionCode): 
 			surface: ORG_SURFACES.MORNING_BRIEF,
 		});
 	} catch (err) {
-		const message = err instanceof Error ? err.message : 'Unable to save reaction.';
+		const message = err instanceof Error ? err.message : __('Unable to save reaction.');
 		toast({
-			title: 'Unable to save reaction',
+			title: __('Unable to save reaction'),
 			text: message,
 			icon: 'alert-circle',
 			appearance: 'danger',
@@ -1247,7 +1270,7 @@ const formattedDate = computed<string>(() => widgets.data?.today_label ?? '');
 
 function formatAnnouncementDate(value?: string | null): string {
 	const raw = String(value || '').trim();
-	if (!raw) return 'Current briefing';
+	if (!raw) return __('Current briefing');
 
 	const normalized = raw.length <= 10 ? `${raw}T12:00:00` : raw;
 	const parsed = new Date(normalized);
@@ -1308,10 +1331,10 @@ function formatAnnouncementWindow(startValue?: string | null, endValue?: string 
 	const endLabel = formatBriefWindowDate(endValue);
 
 	if (startLabel && endLabel && startLabel !== endLabel) {
-		return `Appears ${startLabel} until ${endLabel}`;
+		return __('Appears {0} until {1}', [startLabel, endLabel]);
 	}
-	if (startLabel) return `Appears ${startLabel}`;
-	if (endLabel) return `Appears until ${endLabel}`;
+	if (startLabel) return __('Appears {0}', [startLabel]);
+	if (endLabel) return __('Appears until {0}', [endLabel]);
 	return '';
 }
 
