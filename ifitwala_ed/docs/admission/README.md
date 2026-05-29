@@ -1,13 +1,14 @@
 # Admissions Documentation Index
 
 Status: Canonical index
-Code refs: None
-Test refs: None
+Code refs: `ifitwala_ed/admission/api/`, `ifitwala_ed/api/`
+Test refs: `ifitwala_ed/admission/api/test_*.py`, `ifitwala_ed/api/test_*_facade.py`
 
 `ifitwala_ed/docs/admission/` is the canonical home for admissions pipeline rules, applicant runtime behavior, evidence/review modeling, admissions portal boundaries, and the applicant-to-enrollment bridge.
 
 Admissions API implementation modules live under `ifitwala_ed/admission/api/`.
 Public Frappe RPC paths remain under `ifitwala_ed.api.*` unless an explicit endpoint contract migration is approved.
+Admissions API implementation tests live with the admission API implementation; root API tests should cover only facade delegation, payload binding, and public compatibility.
 
 Read in this order for current runtime:
 
@@ -32,6 +33,8 @@ Partial / planned target contracts:
   Inquiry dynamic capture, public family acknowledgement, CRM DocTypes, manual intake, Admissions Inbox backend/actions, admission visits, the backend contextual Admissions Timeline endpoint, Inbox/Cockpit timeline drawers, Cockpit CRM log activity/message drawer actions, Inbox/Cockpit applicant-stage offer/deposit/promotion drawer actions, Inbox/Cockpit schedule-visit drawer actions, and Inquiry/Student Applicant Desk entry points are partially implemented; provider adapters, governed media conversion, education-wide Relationship CRM, and lead-scoring/read-model work remain planned until implemented
 - `12_admission_visit_contract.md`
   admissions visit workflow for pre-applicant and applicant-stage tours, including CRM linkage and participant-only calendar projection
+- `13_admission_api_maintainability_plan.md`
+  proposal for splitting large admissions API and admissions test files after ownership moves are complete
 
 Supporting current-state notes:
 

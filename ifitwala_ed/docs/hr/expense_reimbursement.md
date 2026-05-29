@@ -36,7 +36,7 @@ flowchart LR
 
 The claimant submits. The approver does not submit on behalf of the employee.
 
-The assigned approver is `Employee.expense_approver`. HR and system roles can override approval when required, but the normal school flow is one approver before accounting acts. Accounting is notified after approval, then remains responsible for payable posting and payment.
+The assigned approver is `Employee.expense_approver`. The selected user must be an enabled staff `System User`; Student and Guardian portal users are filtered from the Employee form and blocked by server-side Employee validation. HR and system roles can override approval when required, but the normal school flow is one approver before accounting acts. Accounting is notified after approval, then remains responsible for payable posting and payment.
 
 ## Status Contract
 

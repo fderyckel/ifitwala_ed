@@ -53,6 +53,17 @@ Permission scope for `Employee`:
 - Employee Desk list, tree, and report surfaces must follow the same scripted visibility scope and must not inject an implicit `employment_status = "Active"` filter.
 - Legacy persisted `employment_status = "Active"` list filters from older defaults are remediated by the one-shot patch `ifitwala_ed.patches.clear_legacy_employee_active_list_filters`; Employee list runtime must not repair inherited list state.
 
+### Approver User Eligibility
+
+`Employee.expense_approver` and `Employee.leave_approver` link to `User`, but they are staff workflow authorities, not portal-user fields.
+
+Current runtime:
+- the Employee Desk form filters both approver fields through `employee_approver_user_query`
+- candidates must be enabled `System User` records
+- candidates with `Student` or `Guardian` roles are hidden
+- `Employee.validate()` enforces the same rule server-side so API writes, imports, and direct document saves cannot assign Student or Guardian portal users as approvers
+- HR-governed save behavior can still add `Leave Approver` or `Expense Approver` roles to a valid staff user when the corresponding approver field changes
+
 ### 1.1 Staff Portal Holiday Resolution (Portal Calendar Contract)
 
 For staff portal calendar reads, holiday resolution follows this server-owned precedence:

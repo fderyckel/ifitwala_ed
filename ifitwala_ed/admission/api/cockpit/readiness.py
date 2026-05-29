@@ -9,9 +9,9 @@ from frappe import _
 from frappe.utils import cint
 
 from ifitwala_ed.admission.api.cockpit.access import _to_text
+from ifitwala_ed.admission.api.recommendation_intake import get_recommendation_status_batch_for_applicants
 from ifitwala_ed.admission.applicant_document_readiness import build_document_review_payload_batch
 from ifitwala_ed.admission.doctype.student_applicant.student_applicant import STUDENT_PROFILE_REQUIRED_FIELD_LABELS
-from ifitwala_ed.api.recommendation_intake import get_recommendation_status_batch_for_applicants
 from ifitwala_ed.governance.policy_scope_utils import (
     get_organization_ancestors_including_self,
     get_school_ancestors_including_self,

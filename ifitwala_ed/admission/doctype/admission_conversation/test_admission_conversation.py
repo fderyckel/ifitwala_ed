@@ -3,16 +3,26 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.api.admissions_crm import (
-    archive_inquiry_from_inbox,
-    create_admissions_intake,
-    create_inquiry_from_admission_conversation,
-    log_admission_message,
-    mark_inquiry_contacted_from_inbox,
-    qualify_inquiry_from_inbox,
-    record_admission_crm_activity,
-    update_admission_conversation_status,
+from ifitwala_ed.admission.api.crm.activities import record_admission_crm_activity_impl as record_admission_crm_activity
+from ifitwala_ed.admission.api.crm.conversations import (
+    update_admission_conversation_status_impl as update_admission_conversation_status,
 )
+from ifitwala_ed.admission.api.crm.inquiry_actions import (
+    archive_inquiry_from_inbox_impl as archive_inquiry_from_inbox,
+)
+from ifitwala_ed.admission.api.crm.inquiry_actions import (
+    mark_inquiry_contacted_from_inbox_impl as mark_inquiry_contacted_from_inbox,
+)
+from ifitwala_ed.admission.api.crm.inquiry_actions import (
+    qualify_inquiry_from_inbox_impl as qualify_inquiry_from_inbox,
+)
+from ifitwala_ed.admission.api.crm.intake import (
+    create_admissions_intake_impl as create_admissions_intake,
+)
+from ifitwala_ed.admission.api.crm.intake import (
+    create_inquiry_from_admission_conversation_impl as create_inquiry_from_admission_conversation,
+)
+from ifitwala_ed.admission.api.crm.messages import log_admission_message_impl as log_admission_message
 
 
 class TestAdmissionConversation(FrappeTestCase):

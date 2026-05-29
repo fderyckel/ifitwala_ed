@@ -123,6 +123,7 @@ def stubbed_frappe(extra_modules: dict[str, object] | None = None) -> Iterator[t
     frappe.ValidationError = StubValidationError
     frappe.throw = lambda message, exc=StubValidationError, **kwargs: _raise(exc, message)
     frappe.whitelist = _whitelist
+    frappe.validate_and_sanitize_search_inputs = lambda fn: fn
     frappe.parse_json = lambda value: value
     frappe.session = types.SimpleNamespace(user="unit.test@example.com")
     frappe.get_roles = lambda user: []

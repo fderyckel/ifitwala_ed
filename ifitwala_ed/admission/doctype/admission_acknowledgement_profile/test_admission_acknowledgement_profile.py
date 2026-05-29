@@ -5,12 +5,12 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.admission.api.inquiry import inquiry_school_link_query
 from ifitwala_ed.admission.inquiry_acknowledgement import (
     build_public_acknowledgement_context,
     queue_inquiry_family_acknowledgement,
     send_inquiry_family_acknowledgement,
 )
-from ifitwala_ed.api.inquiry import inquiry_school_link_query
 
 
 class TestAdmissionAcknowledgementProfile(FrappeTestCase):

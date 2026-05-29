@@ -1,4 +1,4 @@
-# ifitwala_ed/api/test_admissions_document_items.py
+# ifitwala_ed/admission/api/test_admissions_document_items.py
 # Copyright (c) 2026, François de Ryckel and contributors
 # See license.txt
 
@@ -11,10 +11,14 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from ifitwala_ed.admission.admissions_portal import _resolve_applicant_document
-from ifitwala_ed.api.admissions_portal import (
-    list_applicant_document_types,
-    list_applicant_documents,
-    upload_applicant_document,
+from ifitwala_ed.admission.api.portal.documents import (
+    list_applicant_document_types_impl as list_applicant_document_types,
+)
+from ifitwala_ed.admission.api.portal.documents import (
+    list_applicant_documents_impl as list_applicant_documents,
+)
+from ifitwala_ed.admission.api.portal.documents import (
+    upload_applicant_document_impl as upload_applicant_document,
 )
 
 

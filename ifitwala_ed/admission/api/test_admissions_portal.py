@@ -1,4 +1,4 @@
-# ifitwala_ed/api/test_admissions_portal.py
+# ifitwala_ed/admission/api/test_admissions_portal.py
 # Copyright (c) 2026, François de Ryckel and contributors
 # See license.txt
 

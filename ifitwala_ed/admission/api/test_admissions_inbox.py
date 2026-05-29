@@ -4,8 +4,11 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import add_days, nowdate
 
-from ifitwala_ed.api.admissions_crm import create_admissions_intake, log_admission_message
-from ifitwala_ed.api.admissions_inbox import get_admissions_inbox_context
+from ifitwala_ed.admission.api.crm.intake import create_admissions_intake_impl as create_admissions_intake
+from ifitwala_ed.admission.api.crm.messages import log_admission_message_impl as log_admission_message
+from ifitwala_ed.admission.api.inbox.context import (
+    get_admissions_inbox_context_impl as get_admissions_inbox_context,
+)
 
 
 class TestAdmissionsInbox(FrappeTestCase):

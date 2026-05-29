@@ -6,6 +6,11 @@ from urllib.parse import parse_qs, urlparse
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.admission.api.recommendation_intake import (
+    create_recommendation_request,
+    get_recommendation_review_payload,
+    submit_recommendation,
+)
 from ifitwala_ed.admission.doctype.applicant_interview.applicant_interview import (
     get_applicant_workspace,
     get_interview_workspace,
@@ -14,11 +19,6 @@ from ifitwala_ed.admission.doctype.applicant_interview.applicant_interview impor
 )
 from ifitwala_ed.api.file_access import download_admissions_file
 from ifitwala_ed.api.focus import get_focus_context, list_focus_items
-from ifitwala_ed.api.recommendation_intake import (
-    create_recommendation_request,
-    get_recommendation_review_payload,
-    submit_recommendation,
-)
 from ifitwala_ed.stock.doctype.location_booking.location_booking import (
     build_slot_key_single,
     build_source_key,

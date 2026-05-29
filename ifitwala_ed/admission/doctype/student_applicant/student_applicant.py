@@ -2243,7 +2243,7 @@ class StudentApplicant(Document):
             },
         }
         try:
-            from ifitwala_ed.api.recommendation_intake import get_recommendation_status_for_applicant
+            from ifitwala_ed.admission.api.recommendation_intake import get_recommendation_status_for_applicant
 
             return get_recommendation_status_for_applicant(
                 student_applicant=self.name,

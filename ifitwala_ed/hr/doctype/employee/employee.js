@@ -15,6 +15,8 @@ const DEFAULT_EMPLOYEE_AVATAR_DATA_URL = `data:image/svg+xml;utf8,${encodeURICom
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none"><rect width="96" height="96" rx="48" fill="#E5E7EB"/><circle cx="48" cy="35" r="16" fill="#9CA3AF"/><path d="M20 78c6-16 18-24 28-24s22 8 28 24" fill="#9CA3AF"/></svg>',
 )}`;
 const EMPLOYEE_IMAGE_VARIANT_RETRY_DELAYS_MS = [800, 1600, 3200];
+const EMPLOYEE_APPROVER_USER_QUERY =
+  "ifitwala_ed.hr.doctype.employee.employee.employee_approver_user_query";
 
 function clearEmployeeImageVariantRetry(frm) {
   if (frm.__employeeImageVariantRetryTimer) {
@@ -50,6 +52,12 @@ frappe.ui.form.on("Employee", {
     frm.fields_dict.reports_to.get_query = function () {
       return { query: "ifitwala_ed.controllers.queries.employee_query" };
     };
+
+    const approverUserQuery = () => ({
+      query: EMPLOYEE_APPROVER_USER_QUERY,
+    });
+    frm.set_query("expense_approver", approverUserQuery);
+    frm.set_query("leave_approver", approverUserQuery);
   },
 
   onload(frm) {

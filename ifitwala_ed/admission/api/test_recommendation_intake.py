@@ -1,4 +1,4 @@
-# ifitwala_ed/api/test_recommendation_intake.py
+# ifitwala_ed/admission/api/test_recommendation_intake.py
 # Copyright (c) 2026, François de Ryckel and contributors
 # See license.txt
 
@@ -9,19 +9,21 @@ from urllib.parse import urlparse
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.admission.doctype.applicant_interview.applicant_interview import (
-    get_applicant_workspace,
-    save_my_interview_feedback,
-)
-from ifitwala_ed.api.admission_cockpit import get_admissions_cockpit_data
-from ifitwala_ed.api.admissions_review import review_applicant_document_submission
-from ifitwala_ed.api.recommendation_intake import (
+from ifitwala_ed.admission.api.cockpit.data import get_admissions_cockpit_data_impl as get_admissions_cockpit_data
+from ifitwala_ed.admission.api.recommendation_intake import (
     create_recommendation_request,
     get_recommendation_intake_payload,
     get_recommendation_review_payload,
     get_recommendation_status_for_applicant,
     list_recommendation_requests,
     submit_recommendation,
+)
+from ifitwala_ed.admission.api.review import (
+    review_applicant_document_submission_impl as review_applicant_document_submission,
+)
+from ifitwala_ed.admission.doctype.applicant_interview.applicant_interview import (
+    get_applicant_workspace,
+    save_my_interview_feedback,
 )
 
 
@@ -176,7 +178,7 @@ class TestRecommendationIntake(FrappeTestCase):
         frappe.set_user("Guest")
         pdf_content = base64.b64encode(b"%PDF-1.4\n% ifitwala recommendation test\n").decode()
         with patch(
-            "ifitwala_ed.api.recommendation_intake.admission_upload_api.upload_applicant_document",
+            "ifitwala_ed.admission.api.recommendation_intake.admission_upload_api.upload_applicant_document",
             return_value={
                 "applicant_document": request_row.get("applicant_document"),
                 "applicant_document_item": request_row.get("applicant_document_item"),
@@ -225,7 +227,7 @@ class TestRecommendationIntake(FrappeTestCase):
         frappe.set_user("Guest")
         text_content = base64.b64encode(b"not a supported recommendation attachment").decode()
         with patch(
-            "ifitwala_ed.api.recommendation_intake.admission_upload_api.upload_applicant_document"
+            "ifitwala_ed.admission.api.recommendation_intake.admission_upload_api.upload_applicant_document"
         ) as upload_document:
             with self.assertRaises(frappe.ValidationError):
                 submit_recommendation(

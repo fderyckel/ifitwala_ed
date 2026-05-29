@@ -29,6 +29,9 @@ class InactiveEmployeeStatusError(frappe.ValidationError):
     pass
 
 
+EMPLOYEE_APPROVER_BLOCKED_ROLES = ("Guardian", "Student")
+
+
 def invalidate_staff_portal_calendar_cache(*args, **kwargs):
     from ifitwala_ed.hr.utils import invalidate_staff_portal_calendar_cache as current_invalidate
 
@@ -96,6 +99,29 @@ def _refresh_runtime_bindings():
     return frappe
 
 
+def _get_blocked_approver_roles(user: str) -> tuple[str, ...]:
+    if not user:
+        return tuple()
+
+    rows = frappe.get_all(
+        "Has Role",
+        filters={
+            "parent": user,
+            "parenttype": "User",
+            "role": ["in", list(EMPLOYEE_APPROVER_BLOCKED_ROLES)],
+        },
+        pluck="role",
+        limit=len(EMPLOYEE_APPROVER_BLOCKED_ROLES),
+    )
+
+    roles = {
+        cstr(row.get("role") if isinstance(row, dict) else row).strip()
+        for row in rows
+        if cstr(row.get("role") if isinstance(row, dict) else row).strip()
+    }
+    return tuple(role for role in EMPLOYEE_APPROVER_BLOCKED_ROLES if role in roles)
+
+
 class Employee(NestedSet):
     nsm_parent_field = "reports_to"
 
@@ -139,6 +165,7 @@ class Employee(NestedSet):
         self.validate_status()
         self.validate_reports_to()
         self.validate_preferred_email()
+        self.validate_approvers()
         self.validate_employee_history()
         self.validate_public_website_fields()
         self._sync_staff_calendar()
@@ -416,6 +443,48 @@ class Employee(NestedSet):
                 frappe.msgprint(_("Please enter {field_label}").format(field_label=self.preferred_contact_email))
             elif self.preferred_contact_email and not self.get("employee_" + scrub(self.preferred_contact_email)):
                 frappe.msgprint(_("Please enter {field_label}").format(field_label=self.preferred_contact_email))
+
+    def validate_approvers(self):
+        self._validate_approver_user("expense_approver", _("Expense Approver"))
+        self._validate_approver_user("leave_approver", _("Leave Approver"))
+
+    def _validate_approver_user(self, fieldname: str, field_label: str):
+        approver = cstr(getattr(self, fieldname, "")).strip()
+        if not approver:
+            return
+
+        user_row = frappe.db.get_value("User", approver, ["enabled", "user_type"], as_dict=True)
+        if not user_row:
+            frappe.throw(
+                _("{field_label} user {user} does not exist.").format(
+                    field_label=field_label,
+                    user=frappe.bold(approver),
+                ),
+                frappe.ValidationError,
+            )
+
+        if int(user_row.get("enabled") or 0) != 1:
+            frappe.throw(
+                _("{field_label} must be an enabled user.").format(field_label=field_label),
+                frappe.ValidationError,
+            )
+
+        if cstr(user_row.get("user_type")).strip() != "System User":
+            frappe.throw(
+                _(
+                    "{field_label} must be an enabled staff System User. Student and Guardian portal users cannot approve staff workflows."
+                ).format(field_label=field_label),
+                frappe.ValidationError,
+            )
+
+        blocked_roles = _get_blocked_approver_roles(approver)
+        if blocked_roles:
+            frappe.throw(
+                _(
+                    "{field_label} cannot be a Student or Guardian portal user. Select an enabled staff System User instead."
+                ).format(field_label=field_label),
+                frappe.ValidationError,
+            )
 
     def update_user_default_school(self):
         _refresh_runtime_bindings()
@@ -995,6 +1064,55 @@ class Employee(NestedSet):
     # ------------------------------------------------------------------
     # Employee Image Governance
     # ------------------------------------------------------------------
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def employee_approver_user_query(doctype, txt, searchfield, start, page_len, filters):
+    from frappe.desk.reportview import get_match_cond
+
+    search_text = f"%{(txt or '').strip()}%"
+    rank_text = cstr(txt).replace("%", "")
+    match_cond = get_match_cond("User")
+    return frappe.db.sql(
+        f"""
+        SELECT
+            `tabUser`.name,
+            COALESCE(NULLIF(`tabUser`.full_name, ''), `tabUser`.name) AS full_name
+        FROM `tabUser`
+        WHERE `tabUser`.enabled = 1
+          AND `tabUser`.user_type = 'System User'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM `tabHas Role` blocked
+              WHERE blocked.parent = `tabUser`.name
+                AND blocked.parenttype = 'User'
+                AND blocked.role IN %(blocked_roles)s
+          )
+          AND (
+              `tabUser`.name LIKE %(search_text)s
+              OR COALESCE(`tabUser`.full_name, '') LIKE %(search_text)s
+          )
+          {match_cond}
+        ORDER BY
+            CASE
+                WHEN LOCATE(%(rank_text)s, `tabUser`.name) > 0 THEN LOCATE(%(rank_text)s, `tabUser`.name)
+                WHEN LOCATE(%(rank_text)s, COALESCE(`tabUser`.full_name, '')) > 0
+                    THEN LOCATE(%(rank_text)s, COALESCE(`tabUser`.full_name, ''))
+                ELSE 99999
+            END,
+            COALESCE(NULLIF(`tabUser`.full_name, ''), `tabUser`.name) ASC,
+            `tabUser`.name ASC
+        LIMIT %(start)s, %(page_len)s
+        """,
+        {
+            "blocked_roles": tuple(EMPLOYEE_APPROVER_BLOCKED_ROLES),
+            "search_text": search_text,
+            "rank_text": rank_text,
+            "start": int(start or 0),
+            "page_len": int(page_len or 20),
+        },
+    )
 
 
 @frappe.whitelist()

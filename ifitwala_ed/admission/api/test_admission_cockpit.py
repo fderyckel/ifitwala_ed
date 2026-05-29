@@ -1,4 +1,4 @@
-# ifitwala_ed/api/test_admission_cockpit.py
+# ifitwala_ed/admission/api/test_admission_cockpit.py
 # Copyright (c) 2026, François de Ryckel and contributors
 # See license.txt
 
@@ -9,17 +9,25 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.api.admission_cockpit import (
-    get_admissions_cockpit_data,
-    get_or_create_admissions_cockpit_offer_plan,
-    hydrate_admissions_cockpit_request,
-    promote_admissions_cockpit_applicant,
-    send_admissions_cockpit_offer,
+from ifitwala_ed.admission.api.cockpit.actions import (
+    get_or_create_admissions_cockpit_offer_plan_impl as get_or_create_admissions_cockpit_offer_plan,
 )
-from ifitwala_ed.api.admissions_portal import upload_applicant_document
-from ifitwala_ed.api.admissions_review import (
-    review_applicant_document_submission,
-    set_document_requirement_override,
+from ifitwala_ed.admission.api.cockpit.actions import (
+    hydrate_admissions_cockpit_request_impl as hydrate_admissions_cockpit_request,
+)
+from ifitwala_ed.admission.api.cockpit.actions import (
+    promote_admissions_cockpit_applicant_impl as promote_admissions_cockpit_applicant,
+)
+from ifitwala_ed.admission.api.cockpit.actions import (
+    send_admissions_cockpit_offer_impl as send_admissions_cockpit_offer,
+)
+from ifitwala_ed.admission.api.cockpit.data import get_admissions_cockpit_data_impl as get_admissions_cockpit_data
+from ifitwala_ed.admission.api.portal.documents import upload_applicant_document_impl as upload_applicant_document
+from ifitwala_ed.admission.api.review import (
+    review_applicant_document_submission_impl as review_applicant_document_submission,
+)
+from ifitwala_ed.admission.api.review import (
+    set_document_requirement_override_impl as set_document_requirement_override,
 )
 from ifitwala_ed.governance.doctype.policy_version.policy_version import has_permission as policy_version_has_permission
 from ifitwala_ed.governance.policy_utils import ensure_policy_audience_records
@@ -189,7 +197,7 @@ class TestAdmissionCockpit(FrappeTestCase):
         upload = self._upload_submission(document_type=document_type, item_key="passport_scan")
 
         frappe.set_user(self.staff_user.name)
-        with patch("ifitwala_ed.api.admissions_review.invalidate_admissions_cockpit_cache") as invalidate_mock:
+        with patch("ifitwala_ed.admission.api.review.invalidate_admissions_cockpit_cache") as invalidate_mock:
             review_applicant_document_submission(
                 student_applicant=self.applicant.name,
                 applicant_document_item=upload.get("applicant_document_item"),

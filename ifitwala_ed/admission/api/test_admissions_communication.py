@@ -1,4 +1,4 @@
-# ifitwala_ed/api/test_admissions_communication.py
+# ifitwala_ed/admission/api/test_admissions_communication.py
 
 from datetime import timedelta
 from types import SimpleNamespace
@@ -8,13 +8,16 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 from frappe.utils import now_datetime
 
-from ifitwala_ed.api import admissions_communication
-from ifitwala_ed.api.admission_cockpit import _ensure_cockpit_access, _get_roles_for_user
-from ifitwala_ed.api.admissions_communication import (
-    _require_actor_context,
-    _session_user,
-    get_admissions_thread_summaries_for_applicants,
+from ifitwala_ed.admission.api.cockpit.access import _ensure_cockpit_access, _get_roles_for_user
+from ifitwala_ed.admission.api.communication.context import _require_actor_context, _session_user
+from ifitwala_ed.admission.api.communication.messages import (
+    send_admissions_case_message_impl as send_admissions_case_message,
 )
+from ifitwala_ed.admission.api.communication.read_receipts import (
+    mark_admissions_case_thread_read_impl as mark_admissions_case_thread_read,
+)
+from ifitwala_ed.admission.api.communication.summaries import get_admissions_thread_summaries_for_applicants
+from ifitwala_ed.admission.api.communication.threads import _create_thread, _get_or_create_thread
 
 
 class _NoopLock:
@@ -158,14 +161,6 @@ class TestAdmissionsCommunicationAuthGuards(FrappeTestCase):
             with self.assertRaises(frappe.PermissionError):
                 _require_actor_context(context_doctype="Student Applicant", context_name="APP-0001")
 
-    def test_case_thread_endpoints_allow_guest_to_reach_auth_guard(self):
-        self.assertIn(admissions_communication.send_admissions_case_message, frappe.whitelisted)
-        self.assertIn(admissions_communication.get_admissions_case_thread, frappe.whitelisted)
-        self.assertIn(admissions_communication.mark_admissions_case_thread_read, frappe.whitelisted)
-        self.assertTrue(bool(getattr(admissions_communication.send_admissions_case_message, "allow_guest", False)))
-        self.assertTrue(bool(getattr(admissions_communication.get_admissions_case_thread, "allow_guest", False)))
-        self.assertTrue(bool(getattr(admissions_communication.mark_admissions_case_thread_read, "allow_guest", False)))
-
     def test_require_actor_context_allows_linked_family_workspace_user(self):
         with (
             patch(
@@ -234,7 +229,7 @@ class TestAdmissionsCommunicationCanonicalWriters(FrappeTestCase):
             patch("ifitwala_ed.admission.api.communication.threads.frappe.db.exists", return_value=False),
             patch("ifitwala_ed.admission.api.communication.threads.frappe.new_doc", return_value=fake_doc),
         ):
-            thread_name = admissions_communication._create_thread(
+            thread_name = _create_thread(
                 context_doctype="Student Applicant",
                 context_name="APP-0001",
                 context_row={"organization": "ORG-1", "school": "SCH-1"},
@@ -284,7 +279,7 @@ class TestAdmissionsCommunicationCanonicalWriters(FrappeTestCase):
                     side_effect=fake_create_thread,
                 ),
             ):
-                thread_name = admissions_communication._get_or_create_thread(
+                thread_name = _get_or_create_thread(
                     context_doctype="Student Applicant",
                     context_name="APP-0001",
                     context_row={"organization": "ORG-1", "school": "SCH-1"},
@@ -334,7 +329,7 @@ class TestAdmissionsCommunicationCanonicalWriters(FrappeTestCase):
                 return_value=latest_row,
             ),
         ):
-            result = admissions_communication.send_admissions_case_message(
+            result = send_admissions_case_message(
                 context_doctype="Student Applicant",
                 context_name="APP-0001",
                 body="Can I upload the passport tomorrow?",
@@ -383,7 +378,7 @@ class TestAdmissionsCommunicationCanonicalWriters(FrappeTestCase):
                 return_value=latest_row,
             ),
         ):
-            result = admissions_communication.send_admissions_case_message(
+            result = send_admissions_case_message(
                 context_doctype="Student Applicant",
                 context_name="APP-0001",
                 body="Can we confirm the interview time?",
@@ -419,7 +414,7 @@ class TestAdmissionsCommunicationCanonicalWriters(FrappeTestCase):
                 "ifitwala_ed.admission.api.communication.read_receipts.upsert_org_communication_read_receipt"
             ) as mark_read_mock,
         ):
-            result = admissions_communication.mark_admissions_case_thread_read(
+            result = mark_admissions_case_thread_read(
                 context_doctype="Student Applicant",
                 context_name="APP-0001",
             )

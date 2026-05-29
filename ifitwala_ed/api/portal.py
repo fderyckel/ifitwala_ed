@@ -9,11 +9,11 @@ import frappe
 from frappe import _
 
 from ifitwala_ed.admission.admission_utils import ADMISSIONS_ROLES
+from ifitwala_ed.admission.api.inquiry import ALLOWED_ANALYTICS_ROLES as INQUIRY_ANALYTICS_ROLES
 from ifitwala_ed.api import guardian_communications as guardian_communications_api
 from ifitwala_ed.api import student_communications as student_communications_api
 from ifitwala_ed.api.attendance import ADMIN_ROLES, COUNSELOR_ROLES, INSTRUCTOR_ROLES
 from ifitwala_ed.api.enrollment_analytics import ALLOWED_ANALYTICS_ROLES as ENROLLMENT_ANALYTICS_ROLES
-from ifitwala_ed.api.inquiry import ALLOWED_ANALYTICS_ROLES as INQUIRY_ANALYTICS_ROLES
 from ifitwala_ed.api.org_communication_quick_create import (
     get_org_communication_quick_create_capability,
 )

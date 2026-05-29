@@ -81,7 +81,7 @@ Existing-site rollout uses `ifitwala_ed.patches.backfill_default_leave_types` to
 - `company` fields and filters mapped to `organization`
 - Employee status checks mapped to `employment_status`
 - Employee display/name references mapped to `employee_full_name`
-- Employee-level leave approver resolved from `Employee.leave_approver`
+- Employee-level leave approver resolved from `Employee.leave_approver`; the assigned approver must be an enabled staff `System User`, and Student or Guardian portal users are blocked by the Employee form query and server validation
 - Leave date validations and balance computations anchored on existing Employee + Leave Allocation + Leave Ledger Entry contracts
 
 `school` remains present on some leave records as optional context, but is not used as a holiday resolution source in HR leave flows.

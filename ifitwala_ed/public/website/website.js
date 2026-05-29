@@ -3,6 +3,9 @@
 
 // ifitwala_ed/public/website/website.js
 
+let peopleProfileDialogState = null;
+let peopleProfileDialogClickListenerReady = false;
+
 function initNavigationToggle() {
 	const navToggle = document.querySelector('[data-site-nav-toggle]');
 	const navPanel = document.querySelector('[data-site-nav-panel]');
@@ -119,11 +122,24 @@ function getFocusableDialogNodes(dialog) {
 }
 
 function initPeopleProfileDialogs() {
-	const cards = Array.from(document.querySelectorAll('[data-person-card]'));
-	if (!cards.length) {
+	if (peopleProfileDialogClickListenerReady) {
 		return;
 	}
+	peopleProfileDialogClickListenerReady = true;
+	document.addEventListener('click', event => {
+		const card = event.target?.closest?.('[data-person-card]');
+		if (!card) {
+			return;
+		}
+		event.preventDefault();
+		getPeopleProfileDialogState().openDialog(card);
+	});
+}
 
+function getPeopleProfileDialogState() {
+	if (peopleProfileDialogState) {
+		return peopleProfileDialogState;
+	}
 	const dialog = getPeopleProfileDialog();
 	const closeButton = dialog.querySelector('[data-person-dialog-close]');
 	const backdrop = dialog.querySelector('[data-person-dialog-backdrop]');
@@ -219,20 +235,15 @@ function initPeopleProfileDialogs() {
 		}
 	};
 
-	cards.forEach(card => {
-		if (card.dataset.personDialogReady === '1') {
-			return;
-		}
-		card.dataset.personDialogReady = '1';
-		card.addEventListener('click', event => {
-			event.preventDefault();
-			openDialog(card);
-		});
-	});
-
 	closeButton.addEventListener('click', closeDialog);
 	backdrop.addEventListener('click', closeDialog);
 	document.addEventListener('keydown', handleKeydown);
+
+	peopleProfileDialogState = {
+		openDialog,
+		closeDialog,
+	};
+	return peopleProfileDialogState;
 }
 
 function initRevealAnimations() {

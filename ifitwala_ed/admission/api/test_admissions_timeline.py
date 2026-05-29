@@ -3,8 +3,11 @@ from unittest.mock import patch
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.api.admissions_crm import create_admissions_intake, log_admission_message
-from ifitwala_ed.api.admissions_timeline import get_admissions_timeline_context
+from ifitwala_ed.admission.api.crm.intake import create_admissions_intake_impl as create_admissions_intake
+from ifitwala_ed.admission.api.crm.messages import log_admission_message_impl as log_admission_message
+from ifitwala_ed.admission.api.timeline.context import (
+    get_admissions_timeline_context_impl as get_admissions_timeline_context,
+)
 
 
 class TestAdmissionsTimeline(FrappeTestCase):

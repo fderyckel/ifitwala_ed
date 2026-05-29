@@ -14,10 +14,10 @@ from ifitwala_ed.admission.api.portal.enrollment import (
 )
 from ifitwala_ed.admission.api.portal.health import _portal_health_state
 from ifitwala_ed.admission.api.portal.profile import _application_context_payload, _serialize_applicant_profile
+from ifitwala_ed.admission.api.recommendation_intake import get_recommendation_status_for_applicant
 from ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan import (
     get_latest_applicant_enrollment_plan,
 )
-from ifitwala_ed.api.recommendation_intake import get_recommendation_status_for_applicant
 
 
 def _completion_state_for_requirement(required: list, missing: list, unapproved: list | None = None) -> str:

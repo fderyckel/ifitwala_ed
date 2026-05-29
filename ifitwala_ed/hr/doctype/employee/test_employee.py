@@ -360,6 +360,83 @@ class TestEmployee(FrappeTestCase):
         access_signature.assert_not_called()
         sync_access.assert_called_once_with(emp, notify_role_additions=True)
 
+    def test_validate_approvers_allows_enabled_system_user_without_portal_roles(self):
+        emp = employee_controller.Employee.__new__(employee_controller.Employee)
+        emp.expense_approver = "staff.approver@example.com"
+        emp.leave_approver = ""
+
+        with (
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.db.get_value",
+                return_value=frappe._dict(enabled=1, user_type="System User"),
+            ),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_all", return_value=[]) as get_all,
+        ):
+            emp.validate_approvers()
+
+        get_all.assert_called_once_with(
+            "Has Role",
+            filters={
+                "parent": "staff.approver@example.com",
+                "parenttype": "User",
+                "role": ["in", ["Guardian", "Student"]],
+            },
+            pluck="role",
+            limit=2,
+        )
+
+    def test_validate_approvers_rejects_website_user(self):
+        emp = employee_controller.Employee.__new__(employee_controller.Employee)
+        emp.expense_approver = "guardian@example.com"
+        emp.leave_approver = ""
+
+        with (
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.db.get_value",
+                return_value=frappe._dict(enabled=1, user_type="Website User"),
+            ),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.get_all") as get_all,
+        ):
+            with self.assertRaises(frappe.ValidationError):
+                emp.validate_approvers()
+
+        get_all.assert_not_called()
+
+    def test_validate_approvers_rejects_student_or_guardian_role(self):
+        emp = employee_controller.Employee.__new__(employee_controller.Employee)
+        emp.expense_approver = ""
+        emp.leave_approver = "student@example.com"
+
+        with (
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.db.get_value",
+                return_value=frappe._dict(enabled=1, user_type="System User"),
+            ),
+            patch(
+                "ifitwala_ed.hr.doctype.employee.employee.frappe.get_all",
+                return_value=["Student"],
+            ),
+        ):
+            with self.assertRaises(frappe.ValidationError):
+                emp.validate_approvers()
+
+    def test_employee_approver_user_query_filters_to_non_portal_system_users(self):
+        with (
+            patch("frappe.desk.reportview.get_match_cond", return_value=""),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.sql", return_value=[]) as sql,
+        ):
+            rows = employee_controller.employee_approver_user_query("User", "approver", "name", 5, 10, None)
+
+        self.assertEqual(rows, [])
+        query, params = sql.call_args.args
+        self.assertIn("`tabUser`.enabled = 1", query)
+        self.assertIn("`tabUser`.user_type = 'System User'", query)
+        self.assertIn("blocked.role IN %(blocked_roles)s", query)
+        self.assertEqual(params["blocked_roles"], ("Guardian", "Student"))
+        self.assertEqual(params["search_text"], "%approver%")
+        self.assertEqual(params["start"], 5)
+        self.assertEqual(params["page_len"], 10)
+
     def test_update_user_sets_stable_governed_avatar_route(self):
         emp = employee_controller.Employee.__new__(employee_controller.Employee)
         emp.user_id = "staff@example.com"
