@@ -45,14 +45,14 @@
 								class="comment-thread__header flex items-start justify-between gap-3 border-b border-border/60 px-4 py-4"
 							>
 								<div class="min-w-0">
-									<p class="type-overline text-ink/60">Thread</p>
+									<p class="type-overline text-ink/60">{{ __('Thread') }}</p>
 									<DialogTitle class="type-h3 mt-2 text-ink">{{ title }}</DialogTitle>
 								</div>
 								<button
 									ref="closeButtonRef"
 									type="button"
 									class="if-overlay__icon-button"
-									aria-label="Close"
+									:aria-label="__('Close')"
 									@click="emit('close')"
 								>
 									<FeatherIcon name="x" class="h-4 w-4" />
@@ -74,11 +74,11 @@
 									:key="comment.name || comment.id || comment.creation"
 									class="flex gap-3"
 								>
-									<Avatar :label="comment.full_name || comment.user || 'User'" size="md" />
+									<Avatar :label="comment.full_name || comment.user || fallbackUserLabel" size="md" />
 									<div class="flex-1 space-y-1">
 										<div class="flex items-center justify-between gap-2">
 											<span class="type-body-strong text-ink">
-												{{ comment.full_name || comment.user || 'User' }}
+												{{ comment.full_name || comment.user || fallbackUserLabel }}
 											</span>
 											<span class="type-caption text-ink/50">
 												{{ formatTimestamp(comment.creation) }}
@@ -132,6 +132,7 @@ import {
 } from '@headlessui/vue';
 import { computed, ref } from 'vue';
 import { Avatar, Button, FeatherIcon, FormControl, LoadingIndicator } from 'frappe-ui';
+import { __ } from '@/lib/i18n';
 
 type ThreadRow = {
 	id?: string | number;
@@ -157,12 +158,12 @@ const props = withDefaults(
 		formatTimestamp?: (value: string | null | undefined) => string;
 	}>(),
 	{
-		title: 'Comments',
+		title: __('Comments'),
 		rows: () => [],
-		submitLabel: 'Post Comment',
+		submitLabel: __('Post Comment'),
 		submitLoading: false,
-		placeholder: 'Write a comment...',
-		emptyMessage: 'No comments yet. Start the conversation!',
+		placeholder: __('Write a comment...'),
+		emptyMessage: __('No comments yet. Start the conversation!'),
 	}
 );
 
@@ -173,6 +174,7 @@ const emit = defineEmits<{
 }>();
 
 const closeButtonRef = ref<HTMLButtonElement | null>(null);
+const fallbackUserLabel = __('User');
 
 const safeRows = computed(() => props.rows || []);
 

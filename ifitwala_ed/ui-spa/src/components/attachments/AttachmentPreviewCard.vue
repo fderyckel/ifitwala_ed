@@ -20,7 +20,7 @@
 				>
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink/45">
-							Image preview
+							{{ __('Image preview') }}
 						</p>
 						<p class="mt-1 text-sm text-ink/80">
 							{{ imagePreviewBody }}
@@ -41,7 +41,7 @@
 			>
 				<img
 					:src="inlinePdfUrl || undefined"
-					:alt="`${titleToUse} first page preview`"
+					:alt="__('{0} first page preview', [titleToUse])"
 					class="h-56 w-full bg-white object-contain"
 					loading="lazy"
 					@error="handlePdfPreviewError"
@@ -51,7 +51,7 @@
 				>
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink/45">
-							PDF preview
+							{{ __('PDF preview') }}
 						</p>
 						<p class="mt-1 text-sm text-ink/80">
 							{{ compactPdfBody }}
@@ -71,7 +71,7 @@
 				<div class="flex items-start justify-between gap-3 border-b border-line-soft px-4 py-4">
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink/45">
-							PDF preview
+							{{ __('PDF preview') }}
 						</p>
 						<p class="mt-2 text-base font-semibold text-ink">
 							{{ titleToUse }}
@@ -86,13 +86,14 @@
 						</p>
 						<p class="mt-1 text-xs text-ink/60">
 							{{ showCommunicationPdfPreview ? 'First page ready' : 'Open original' }}
+							{{ showCommunicationPdfPreview ? __('First page ready') : __('Open original') }}
 						</p>
 					</div>
 				</div>
 				<div v-if="showCommunicationPdfPreview" class="bg-surface-soft/60 p-3">
 					<img
 						:src="inlinePdfUrl || undefined"
-						:alt="`${titleToUse} first page preview`"
+						:alt="__('{0} first page preview', [titleToUse])"
 						class="h-80 w-full rounded-xl bg-white object-contain"
 						loading="lazy"
 					/>
@@ -103,9 +104,11 @@
 				>
 					<div>
 						<p class="text-sm font-semibold uppercase tracking-[0.18em] text-ink/45">
-							PDF attachment
+							{{ __('PDF attachment') }}
 						</p>
-						<p class="mt-3 text-base font-semibold text-ink">Preview not available yet</p>
+						<p class="mt-3 text-base font-semibold text-ink">
+							{{ __('Preview not available yet') }}
+						</p>
 						<p class="mt-2 text-sm text-ink/70">
 							{{ communicationPdfFallbackMessage }}
 						</p>
@@ -124,7 +127,7 @@
 				<div class="flex items-start justify-between gap-3">
 					<div>
 						<p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink/45">
-							PDF preview
+							{{ __('PDF preview') }}
 						</p>
 						<p class="mt-2 text-base font-semibold text-ink">
 							{{ titleToUse }}
@@ -137,7 +140,7 @@
 						<p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-clay">
 							{{ extensionLabel }}
 						</p>
-						<p class="mt-1 text-xs text-ink/60">Preview ready</p>
+						<p class="mt-1 text-xs text-ink/60">{{ __('Preview ready') }}</p>
 					</div>
 				</div>
 			</a>
@@ -176,7 +179,7 @@
 				rel="noreferrer"
 				:class="actionClass"
 			>
-				Open preview image
+				{{ __('Open preview image') }}
 			</a>
 			<a
 				v-if="showSecondaryFileAction"
@@ -196,6 +199,7 @@
 import { computed, ref, useSlots, watch } from 'vue';
 
 import type { AttachmentPreviewItem } from '@/types/contracts/attachments/shared';
+import { __ } from '@/lib/i18n';
 
 type AttachmentPreviewCardVariant = 'communication' | 'planning' | 'learning' | 'evidence';
 
@@ -223,7 +227,7 @@ const pdfPreviewFailed = ref(false);
 
 const titleToUse = computed(() => {
 	const explicitTitle = String(props.title || '').trim();
-	return explicitTitle || props.attachment.display_name || 'Attachment';
+	return explicitTitle || props.attachment.display_name || __('Attachment');
 });
 const descriptionToUse = computed(() => {
 	const explicitDescription = String(props.description || '').trim();
@@ -244,7 +248,7 @@ const extensionLabel = computed(() => {
 	const extension = String(props.attachment.extension || '')
 		.trim()
 		.toUpperCase();
-	return extension || 'FILE';
+	return extension || __('FILE');
 });
 const imagePreviewClass = computed(() =>
 	props.variant === 'planning'
@@ -256,15 +260,15 @@ const imagePreviewBody = computed(() => {
 		return 'Open the governed preview from this communication.';
 	}
 	if (props.variant === 'learning') {
-		return 'Open the guided preview without leaving this learning space.';
+		return __('Open the guided preview without leaving this learning space.');
 	}
-	return 'Open the governed preview without losing planning context.';
+	return __('Open the governed preview without losing planning context.');
 });
 const compactPdfBody = computed(() => {
 	if (props.variant === 'learning') {
-		return 'Open a compact preview for this guided resource.';
+		return __('Open a compact preview for this guided resource.');
 	}
-	return 'Open a compact governed preview for this PDF attachment.';
+	return __('Open a compact governed preview for this PDF attachment.');
 });
 const inlineImageUrl = computed(() => {
 	if (props.attachment.kind !== 'image') return null;
@@ -357,12 +361,12 @@ const primaryActionLabel = computed(() => {
 		props.attachment.kind === 'pdf' &&
 		props.attachment.open_url
 	) {
-		return 'Open PDF';
+		return __('Open PDF');
 	}
 	if (props.attachment.preview_url) {
-		return 'Preview';
+		return __('Preview');
 	}
-	return props.attachment.kind === 'link' ? 'Open link' : 'Open';
+	return props.attachment.kind === 'link' ? __('Open link') : __('Open');
 });
 const secondaryFileActionUrl = computed(() => {
 	if (props.variant === 'learning') {
@@ -386,10 +390,10 @@ const showSecondaryPreviewAction = computed(() => {
 	);
 });
 const openOriginalLabel = computed(() =>
-	props.variant === 'evidence' ? 'Open' : 'Open original'
+	props.variant === 'evidence' ? __('Open') : __('Open original')
 );
 const secondaryFileActionLabel = computed(() => {
-	if (props.variant === 'learning') return 'Download';
+	if (props.variant === 'learning') return __('Download');
 	return openOriginalLabel.value;
 });
 const actionClass = computed(() =>
@@ -406,18 +410,18 @@ const hasActionRow = computed(() => {
 });
 const communicationPdfMessage = computed(() => {
 	if (showCommunicationPdfPreview.value) {
-		return 'First-page preview from this governed PDF attachment.';
+		return __('First-page preview from this governed PDF attachment.');
 	}
-	return 'Open the original PDF from this communication while the preview is unavailable.';
+	return __('Open the original PDF from this communication while the preview is unavailable.');
 });
 const communicationPdfFallbackMessage = computed(() => {
 	if (props.attachment.preview_status === 'pending') {
-		return 'The first-page preview is still processing. Use Open PDF to review the full document now.';
+		return __('The first-page preview is still processing. Use Open PDF to review the full document now.');
 	}
 	if (props.attachment.preview_status === 'failed') {
-		return 'The first-page preview could not be generated. Use Open PDF to review the original file.';
+		return __('The first-page preview could not be generated. Use Open PDF to review the original file.');
 	}
-	return 'Use Open PDF to review the original file from this communication.';
+	return __('Use Open PDF to review the original file from this communication.');
 });
 const kindDataAttribute = computed(() => {
 	if (props.variant === 'communication') return 'data-communication-attachment-kind';

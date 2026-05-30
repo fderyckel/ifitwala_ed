@@ -51,7 +51,7 @@
 									ref="closeButtonRef"
 									type="button"
 									class="if-overlay__icon-button"
-									aria-label="Close"
+									:aria-label="__('Close')"
 									@click="emitClose"
 								>
 									<FeatherIcon name="x" class="h-4 w-4" />
@@ -60,10 +60,10 @@
 							<section class="if-overlay__body custom-scrollbar px-4 py-3">
 								<slot name="filters" />
 								<div v-if="loading" class="py-6 text-center type-caption text-ink/60">
-									Loading...
+									{{ __('Loading...') }}
 								</div>
 								<div v-else-if="!rows.length" class="py-6 text-center type-body text-ink/55">
-									No records for this slice.
+									{{ __('No records for this slice.') }}
 								</div>
 								<ul v-else class="divide-y divide-border/45">
 									<li v-for="row in rows" :key="row.id || row.name" class="py-3">
@@ -85,7 +85,7 @@
 									class="rounded-xl border border-border/70 bg-[rgb(var(--surface-strong-rgb)/1)] px-3 py-2 type-button-label text-ink/80 transition-colors hover:bg-surface-soft"
 									@click="onLoadMore"
 								>
-									Load more
+									{{ __('Load more') }}
 								</button>
 							</footer>
 						</DialogPanel>
@@ -106,6 +106,7 @@ import {
 } from '@headlessui/vue';
 import { computed, ref } from 'vue';
 import { FeatherIcon } from 'frappe-ui';
+import { __ } from '@/lib/i18n';
 
 type EntityType = 'student' | 'guardian';
 
@@ -127,9 +128,9 @@ const closeButtonRef = ref<HTMLButtonElement | null>(null);
 
 const entityLabel = computed(() => {
 	if (props.entityLabel) return props.entityLabel;
-	if (props.entity === 'student') return 'Students';
-	if (props.entity === 'guardian') return 'Guardians';
-	return 'Items';
+	if (props.entity === 'student') return __('Students');
+	if (props.entity === 'guardian') return __('Guardians');
+	return __('Items');
 });
 
 function emitClose() {

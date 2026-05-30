@@ -1,13 +1,16 @@
 <!-- ifitwala_ed/ui-spa/src/components/StudentContextSidebar.vue -->
 <template>
-	<aside class="hidden xl:block xl:w-[18rem] xl:shrink-0" aria-label="Student context navigation">
+	<aside
+		class="hidden xl:block xl:w-[18rem] xl:shrink-0"
+		:aria-label="__('Student context navigation')"
+	>
 		<div class="sticky top-20 space-y-4 px-2 pb-6">
 			<section class="student-context-panel">
 				<p class="type-overline text-ink/60">{{ currentPanel.kicker }}</p>
 				<h2 class="mt-1 type-h3 text-ink">{{ currentPanel.title }}</h2>
 				<p class="mt-2 type-caption text-ink/70">{{ currentPanel.description }}</p>
 
-				<nav class="mt-4 space-y-2" :aria-label="`${currentPanel.title} links`">
+				<nav class="mt-4 space-y-2" :aria-label="__('{0} links', [currentPanel.title])">
 					<RouterLink
 						v-for="link in currentPanel.links"
 						:key="link.label"
@@ -34,6 +37,7 @@ import { computed } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
 import { FeatherIcon } from 'frappe-ui';
+import { __ } from '@/lib/i18n';
 
 type SidebarLink = {
 	label: string;
@@ -53,34 +57,34 @@ type Panel = {
 const route = useRoute();
 
 const dashboardPanel = computed<Panel>(() => ({
-	kicker: 'Dashboard',
-	title: 'Today Workspace',
-	description: 'Jump quickly across your daily student workflow.',
+	kicker: __('Dashboard'),
+	title: __('Today Workspace'),
+	description: __('Jump quickly across your daily student workflow.'),
 	links: [
 		{
-			label: 'Today',
-			helper: 'See your current plan',
+			label: __('Today'),
+			helper: __('See your current plan'),
 			icon: 'sun',
 			to: { name: 'student-home' },
 			activeNames: ['student-home'],
 		},
 		{
-			label: 'My Courses',
-			helper: 'Open your learning spaces',
+			label: __('My Courses'),
+			helper: __('Open your learning spaces'),
 			icon: 'book-open',
 			to: { name: 'student-courses' },
 			activeNames: ['student-courses', 'student-course-detail', 'student-quiz'],
 		},
 		{
-			label: 'Activities',
-			helper: 'Browse activity options',
+			label: __('Activities'),
+			helper: __('Browse activity options'),
 			icon: 'star',
 			to: { name: 'student-activities' },
 			activeNames: ['student-activities'],
 		},
 		{
-			label: 'Portfolio',
-			helper: 'Review reflections and evidence',
+			label: __('Portfolio'),
+			helper: __('Review reflections and evidence'),
 			icon: 'layers',
 			to: { name: 'student-portfolio' },
 			activeNames: ['student-portfolio'],
@@ -89,27 +93,27 @@ const dashboardPanel = computed<Panel>(() => ({
 }));
 
 const activitiesPanel: Panel = {
-	kicker: 'Activities',
-	title: 'Activities Board',
-	description: 'Manage bookings and return to your core learning flow.',
+	kicker: __('Activities'),
+	title: __('Activities Board'),
+	description: __('Manage bookings and return to your core learning flow.'),
 	links: [
 		{
-			label: 'Activities',
-			helper: 'Current activity offers',
+			label: __('Activities'),
+			helper: __('Current activity offers'),
 			icon: 'star',
 			to: { name: 'student-activities' },
 			activeNames: ['student-activities'],
 		},
 		{
-			label: 'Today',
-			helper: 'Back to daily cockpit',
+			label: __('Today'),
+			helper: __('Back to daily cockpit'),
 			icon: 'home',
 			to: { name: 'student-home' },
 			activeNames: ['student-home'],
 		},
 		{
-			label: 'My Courses',
-			helper: 'Continue course learning',
+			label: __('My Courses'),
+			helper: __('Continue course learning'),
 			icon: 'book-open',
 			to: { name: 'student-courses' },
 			activeNames: ['student-courses', 'student-course-detail', 'student-quiz'],
@@ -118,27 +122,27 @@ const activitiesPanel: Panel = {
 };
 
 const portfolioPanel: Panel = {
-	kicker: 'Portfolio',
-	title: 'Reflection Loop',
-	description: 'Capture, review, and share portfolio-ready evidence.',
+	kicker: __('Portfolio'),
+	title: __('Reflection Loop'),
+	description: __('Capture, review, and share portfolio-ready evidence.'),
 	links: [
 		{
-			label: 'Portfolio & Journal',
-			helper: 'Your reflections and showcase',
+			label: __('Portfolio & Journal'),
+			helper: __('Your reflections and showcase'),
 			icon: 'layers',
 			to: { name: 'student-portfolio' },
 			activeNames: ['student-portfolio'],
 		},
 		{
-			label: 'My Courses',
-			helper: 'Return to class work',
+			label: __('My Courses'),
+			helper: __('Return to class work'),
 			icon: 'book-open',
 			to: { name: 'student-courses' },
 			activeNames: ['student-courses', 'student-course-detail', 'student-quiz'],
 		},
 		{
-			label: 'Today',
-			helper: 'Back to plan',
+			label: __('Today'),
+			helper: __('Back to plan'),
 			icon: 'home',
 			to: { name: 'student-home' },
 			activeNames: ['student-home'],
@@ -157,27 +161,27 @@ const coursesPanel = computed<Panel>(() => {
 		: { name: 'student-courses' };
 
 	return {
-		kicker: 'Courses',
-		title: 'Learning Workspace',
-		description: 'Move between course overview and active class work without losing context.',
+		kicker: __('Courses'),
+		title: __('Learning Workspace'),
+		description: __('Move between course overview and active class work without losing context.'),
 		links: [
 			{
-				label: 'All Courses',
-				helper: 'Course list and year filter',
+				label: __('All Courses'),
+				helper: __('Course list and year filter'),
 				icon: 'book-open',
 				to: { name: 'student-courses' },
 				activeNames: ['student-courses'],
 			},
 			{
-				label: 'Current Course',
-				helper: courseId ? `Course ${courseId}` : 'Open selected course',
+				label: __('Current Course'),
+				helper: courseId ? __('Course {0}', [courseId]) : __('Open selected course'),
 				icon: 'compass',
 				to: currentCourseTarget,
 				activeNames: ['student-course-detail', 'student-quiz'],
 			},
 			{
-				label: 'Today',
-				helper: 'Return to daily routing',
+				label: __('Today'),
+				helper: __('Return to daily routing'),
 				icon: 'home',
 				to: { name: 'student-home' },
 				activeNames: ['student-home'],
@@ -187,27 +191,27 @@ const coursesPanel = computed<Panel>(() => {
 });
 
 const studentLogPanel: Panel = {
-	kicker: 'Student Log',
-	title: 'Student Log Surface',
-	description: 'Review your student log entries with clear next actions.',
+	kicker: __('Student Log'),
+	title: __('Student Log Surface'),
+	description: __('Review your student log entries with clear next actions.'),
 	links: [
 		{
-			label: 'Student Log',
-			helper: 'Open entries and follow-ups',
+			label: __('Student Log'),
+			helper: __('Open entries and follow-ups'),
 			icon: 'file-text',
 			to: { name: 'student-logs' },
 			activeNames: ['student-logs'],
 		},
 		{
-			label: 'Today',
-			helper: 'Back to daily cockpit',
+			label: __('Today'),
+			helper: __('Back to daily cockpit'),
 			icon: 'home',
 			to: { name: 'student-home' },
 			activeNames: ['student-home'],
 		},
 		{
-			label: 'My Courses',
-			helper: 'Continue learning',
+			label: __('My Courses'),
+			helper: __('Continue learning'),
 			icon: 'book-open',
 			to: { name: 'student-courses' },
 			activeNames: ['student-courses', 'student-course-detail', 'student-quiz'],
@@ -216,27 +220,27 @@ const studentLogPanel: Panel = {
 };
 
 const profilePanel: Panel = {
-	kicker: 'Profile',
-	title: 'Account Surface',
-	description: 'Manage your identity settings and return to learning quickly.',
+	kicker: __('Profile'),
+	title: __('Account Surface'),
+	description: __('Manage your identity settings and return to learning quickly.'),
 	links: [
 		{
-			label: 'Profile',
-			helper: 'Account and personal info',
+			label: __('Profile'),
+			helper: __('Account and personal info'),
 			icon: 'user',
 			to: { name: 'student-profile' },
 			activeNames: ['student-profile'],
 		},
 		{
-			label: 'Today',
-			helper: 'Back to plan',
+			label: __('Today'),
+			helper: __('Back to plan'),
 			icon: 'home',
 			to: { name: 'student-home' },
 			activeNames: ['student-home'],
 		},
 		{
-			label: 'My Courses',
-			helper: 'Continue classwork',
+			label: __('My Courses'),
+			helper: __('Continue classwork'),
 			icon: 'book-open',
 			to: { name: 'student-courses' },
 			activeNames: ['student-courses', 'student-course-detail', 'student-quiz'],

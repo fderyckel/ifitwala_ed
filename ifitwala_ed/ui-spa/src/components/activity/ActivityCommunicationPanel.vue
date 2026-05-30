@@ -2,17 +2,17 @@
 <template>
 	<section class="card-surface p-5">
 		<div class="mb-4 flex items-center justify-between">
-			<h3 class="type-h3 text-ink">Activity Updates</h3>
+			<h3 class="type-h3 text-ink">{{ __('Activity Updates') }}</h3>
 			<button type="button" class="if-action" :disabled="loading" @click="loadFeed">
-				Refresh
+				{{ __('Refresh') }}
 			</button>
 		</div>
 
 		<p v-if="actionError" class="mb-3 type-caption text-flame">{{ actionError }}</p>
-		<p v-if="loading" class="type-body text-ink/70">Loading activity updates...</p>
+		<p v-if="loading" class="type-body text-ink/70">{{ __('Loading activity updates...') }}</p>
 		<p v-else-if="errorMessage" class="type-body text-flame">{{ errorMessage }}</p>
 		<p v-else-if="!feedItems.length" class="type-body text-ink/70">
-			No updates for this activity yet.
+			{{ __('No updates for this activity yet.') }}
 		</p>
 
 		<div v-else class="space-y-3">
@@ -78,6 +78,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { toast } from 'frappe-ui';
+import { __ } from '@/lib/i18n';
 
 import InteractionEmojiChips from '@/components/InteractionEmojiChips.vue';
 import CommentThreadDrawer from '@/components/CommentThreadDrawer.vue';
@@ -163,7 +164,7 @@ const threadTitle = computed(() =>
 );
 
 function formatDate(value: string | null | undefined): string {
-	if (!value) return 'Date unavailable';
+	if (!value) return __('Date unavailable');
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) return String(value);
 	return date.toLocaleDateString();
@@ -198,7 +199,7 @@ async function loadFeed() {
 		await loadSummaries(feedItems.value);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		errorMessage.value = message || 'Could not load activity updates.';
+		errorMessage.value = message || __('Could not load activity updates.');
 	} finally {
 		loading.value = false;
 	}
@@ -207,7 +208,7 @@ async function loadFeed() {
 async function react(item: OrgCommunicationListItem, code: ReactionCode) {
 	actionError.value = '';
 	if (!canReact(item)) {
-		actionError.value = 'Reactions are not enabled for this update.';
+		actionError.value = __('Reactions are not enabled for this update.');
 		return;
 	}
 	try {
@@ -219,7 +220,7 @@ async function react(item: OrgCommunicationListItem, code: ReactionCode) {
 		await loadSummaries(feedItems.value);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		actionError.value = message || 'Could not record reaction.';
+		actionError.value = message || __('Could not record reaction.');
 	}
 }
 
@@ -263,7 +264,7 @@ async function submitComment() {
 	actionError.value = '';
 	const comm = selectedComm.value;
 	if (!comm) {
-		actionError.value = 'Select a communication first.';
+		actionError.value = __('Select a communication first.');
 		return;
 	}
 	if (!canComment(comm)) {

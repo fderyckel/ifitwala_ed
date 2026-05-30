@@ -38,14 +38,14 @@
 							class="inline-flex rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
 							@click.stop="close"
 						>
-							<span class="sr-only">Close</span>
+							<span class="sr-only">{{ __('Close') }}</span>
 							<FeatherIcon name="x" class="h-5 w-5" aria-hidden="true" />
 						</button>
 					</div>
 				</div>
 			</div>
 			<div class="bg-gray-50 px-4 py-2 text-xs text-gray-500 italic">
-				Click anywhere to dismiss
+				{{ __('Click anywhere to dismiss') }}
 			</div>
 		</div>
 	</Transition>
@@ -55,6 +55,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { FeatherIcon } from 'frappe-ui';
 import { socket } from '../lib/socket';
+import { __ } from '@/lib/i18n';
 
 interface Notification {
 	title: string;
@@ -74,7 +75,7 @@ const close = () => {
 
 const show = (data: any) => {
 	notification.value = {
-		title: data.title || 'Notification',
+		title: data.title || __('Notification'),
 		content: data.content || '',
 		image: data.image,
 		type: data.type || 'info',
