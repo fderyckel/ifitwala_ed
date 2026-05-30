@@ -39,7 +39,7 @@ Rules:
 ## Capability Modes
 Status: Planned
 Code refs: `ifitwala_ed/governance/policy_utils.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/api/guardian_policy.py`
-Test refs: `ifitwala_ed/api/test_admissions_portal.py`, `ifitwala_ed/api/test_guardian_phase2.py`
+Test refs: `ifitwala_ed/admission/api/test_portal_*.py`, `ifitwala_ed/api/test_guardian_phase2.py`
 
 Rules:
 
@@ -717,7 +717,7 @@ Risks:
 ## Contract Matrix
 Status: Planned
 Code refs: `ifitwala_ed/governance/doctype/institutional_policy/institutional_policy.json`, `ifitwala_ed/governance/doctype/policy_version/policy_version.json`, `ifitwala_ed/governance/doctype/policy_acknowledgement/policy_acknowledgement.json`, `ifitwala_ed/admission/doctype/student_applicant_guardian/student_applicant_guardian.json`, `ifitwala_ed/students/doctype/student_guardian/student_guardian.json`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/api/guardian_policy.py`, `ifitwala_ed/api/policy_communication.py`, `ifitwala_ed/api/policy_signature.py`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianPolicies.vue`, `ifitwala_ed/ui-spa/src/pages/guardian/GuardianHome.vue`, `ifitwala_ed/ui-spa/src/pages/staff/analytics/PolicySignatureAnalytics.vue`
-Test refs: `ifitwala_ed/api/test_admissions_portal.py`, `ifitwala_ed/api/test_guardian_phase2.py`, `ifitwala_ed/api/test_policy_signature.py`
+Test refs: `ifitwala_ed/admission/api/test_portal_*.py`, `ifitwala_ed/api/test_guardian_phase2.py`, `ifitwala_ed/api/test_policy_signature.py`
 
 | Layer | Current canonical owner | Phase-2 extension | Status |
 |---|---|---|---|

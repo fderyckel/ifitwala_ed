@@ -12,7 +12,7 @@
 
 Status: Implemented
 Code refs: `ifitwala_ed/api/recommendation_intake.py`, `ifitwala_ed/admission/doctype/recommendation_request/recommendation_request.py`, `ifitwala_ed/admission/doctype/recommendation_submission/recommendation_submission.py`, `ifitwala_ed/api/admissions_portal.py`
-Test refs: `ifitwala_ed/api/test_recommendation_intake.py`, `ifitwala_ed/admission/doctype/recommendation_request/test_recommendation_request.py`, `ifitwala_ed/admission/doctype/recommendation_submission/test_recommendation_submission.py`
+Test refs: `ifitwala_ed/admission/api/test_recommendation_intake.py`, `ifitwala_ed/admission/doctype/recommendation_request/test_recommendation_request.py`, `ifitwala_ed/admission/doctype/recommendation_submission/test_recommendation_submission.py`
 
 1. Admissions portal authentication remains password login for `Admissions Applicant` users only.
 2. Recommender intake is a separate guest surface (`/admissions/recommendation/<token>`), not admissions portal authentication.
@@ -78,7 +78,7 @@ Key fields:
 
 Status: Implemented
 Code refs: `ifitwala_ed/api/recommendation_intake.py`, `ifitwala_ed/admission/doctype/recommendation_request/recommendation_request.py`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
-Test refs: `ifitwala_ed/api/test_recommendation_intake.py`, `ifitwala_ed/admission/doctype/recommendation_request/test_recommendation_request.py`
+Test refs: `ifitwala_ed/admission/api/test_recommendation_intake.py`, `ifitwala_ed/admission/doctype/recommendation_request/test_recommendation_request.py`
 
 Multiple letters are supported via repeatable `Applicant Document Item` slots:
 
@@ -95,7 +95,7 @@ This avoids fake `Recommendation 1/2/3` document types and keeps admissions file
 
 Status: Implemented
 Code refs: `ifitwala_ed/api/recommendation_intake.py`, `ifitwala_ed/admission/doctype/recommendation_submission/recommendation_submission.py`, `ifitwala_ed/api/admissions_portal.py`
-Test refs: `ifitwala_ed/api/test_recommendation_intake.py`, `ifitwala_ed/api/test_admissions_portal.py`
+Test refs: `ifitwala_ed/admission/api/test_recommendation_intake.py`, `ifitwala_ed/admission/api/test_portal_*.py`
 
 Implemented controls:
 - link token stored as SHA-256 hash (`token_hash`), never plaintext
@@ -112,7 +112,7 @@ Implemented controls:
 
 Status: Implemented
 Code refs: `ifitwala_ed/api/recommendation_intake.py`, `ifitwala_ed/admission/doctype/recommendation_template/recommendation_template.py`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.js`
-Test refs: `ifitwala_ed/api/test_recommendation_intake.py`, `ifitwala_ed/admission/doctype/recommendation_template/test_recommendation_template.py`
+Test refs: `ifitwala_ed/admission/api/test_recommendation_intake.py`, `ifitwala_ed/admission/doctype/recommendation_template/test_recommendation_template.py`
 
 1. Staff creates request from applicant context using a school-scoped template.
    - when template author left `target_document_type` empty, save auto-resolves/creates the managed recommendation document type before requests can be created
@@ -130,7 +130,7 @@ Test refs: `ifitwala_ed/api/test_recommendation_intake.py`, `ifitwala_ed/admissi
 
 Status: Implemented
 Code refs: `ifitwala_ed/api/recommendation_intake.py`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/admission/doctype/applicant_interview/applicant_interview.py`
-Test refs: `ifitwala_ed/api/test_recommendation_intake.py`, `ifitwala_ed/admission/doctype/applicant_interview/test_applicant_interview.py`
+Test refs: `ifitwala_ed/admission/api/test_recommendation_intake.py`, `ifitwala_ed/admission/doctype/applicant_interview/test_applicant_interview.py`
 
 Staff actions:
 - `list_recommendation_templates`
@@ -157,7 +157,7 @@ Readiness/status:
 
 Status: Implemented
 Code refs: `ifitwala_ed/api/recommendation_intake.py`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/api/admission_cockpit.py`
-Test refs: `ifitwala_ed/api/test_recommendation_intake.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`
+Test refs: `ifitwala_ed/admission/api/test_recommendation_intake.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`
 
 Recommendation readiness is evaluated per in-scope active template:
 
@@ -172,7 +172,7 @@ Recommendation readiness is evaluated per in-scope active template:
 
 Status: Implemented
 Code refs: `ifitwala_ed/api/recommendation_intake.py`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.js`, `ifitwala_ed/ui-spa/src/overlays/admissions/AdmissionsWorkspaceOverlay.vue`
-Test refs: `ifitwala_ed/api/test_recommendation_intake.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`
+Test refs: `ifitwala_ed/admission/api/test_recommendation_intake.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`
 
 1. Applicant visibility is status-only and controlled by template `applicant_can_view_status`.
 2. Template max allowed requests is enforced against open/submitted requests.
@@ -183,7 +183,7 @@ Test refs: `ifitwala_ed/api/test_recommendation_intake.py`, `ifitwala_ed/admissi
 
 Status: Implemented
 Code refs: `ifitwala_ed/api/recommendation_intake.py`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.js`, `ifitwala_ed/ui-spa/src/overlays/admissions/AdmissionsWorkspaceOverlay.vue`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`
-Test refs: `ifitwala_ed/api/test_recommendation_intake.py`
+Test refs: `ifitwala_ed/admission/api/test_recommendation_intake.py`
 
 Staff review surfacing is applicant-centered:
 
@@ -196,7 +196,7 @@ Staff review surfacing is applicant-centered:
 
 Status: Implemented
 Code refs: `ifitwala_ed/api/recommendation_intake.py`, `ifitwala_ed/api/admission_cockpit.py`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.js`, `ifitwala_ed/admission/doctype/applicant_interview/applicant_interview.py`, `ifitwala_ed/ui-spa/src/overlays/admissions/AdmissionsWorkspaceOverlay.vue`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`
-Test refs: `ifitwala_ed/api/test_recommendation_intake.py`, `ifitwala_ed/admission/doctype/applicant_interview/test_applicant_interview.py`
+Test refs: `ifitwala_ed/admission/api/test_recommendation_intake.py`, `ifitwala_ed/admission/doctype/applicant_interview/test_applicant_interview.py`
 
 | Area | Contract | State |
 | --- | --- | --- |

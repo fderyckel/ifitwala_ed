@@ -331,7 +331,7 @@ In both modes, access is enforced **server-side**, not via UI hiding.
 
 Status: Implemented
 Code refs: `ifitwala_ed/admission/api/portal/profile.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantProfile.vue`
-Test refs: `ifitwala_ed/api/test_admissions_portal.py`, `cypress/e2e/admissions/profile-save.cy.js`
+Test refs: `ifitwala_ed/admission/api/test_portal_*.py`, `cypress/e2e/admissions/profile-save.cy.js`
 
 The profile page collects promotion-required identity/address fields and optional context that helps the school welcome the student.
 

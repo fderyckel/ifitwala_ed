@@ -35,7 +35,7 @@ Test refs:
 - `ifitwala_ed/hr/doctype/employee/test_employee.py`
 - `ifitwala_ed/admission/doctype/inquiry/test_inquiry.py`
 - `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`
-- `ifitwala_ed/api/test_admissions_portal.py`
+- `ifitwala_ed/admission/api/test_portal_*.py`
 - `ifitwala_ed/api/test_family_consent.py`
 - `ifitwala_ed/accounting/test_account_holder_contacts_unit.py`
 - `ifitwala_ed/accounting/doctype/account_holder/test_account_holder.py`

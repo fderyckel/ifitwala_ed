@@ -294,7 +294,7 @@ Implemented cutover sequence:
 
 Status: Implemented
 Code refs: `ifitwala_ed/admission/doctype/applicant_enrollment_plan/applicant_enrollment_plan.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantEnrollmentChoices.vue`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantStatus.vue`, `ifitwala_ed/docs/docs_md/applicant-enrollment-plan.md`
-Test refs: `ifitwala_ed/api/test_admissions_portal.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/ui-spa/src/pages/admissions/applicantEnrollmentChoices.test.ts`
+Test refs: `ifitwala_ed/admission/api/test_portal_*.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/ui-spa/src/pages/admissions/applicantEnrollmentChoices.test.ts`
 
 This cleanup is now the runtime contract for applicant-facing choice pages.
 

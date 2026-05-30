@@ -8,7 +8,7 @@ The filename is historical. The content below reflects the implemented runtime.
 
 Status: Implemented
 Code refs: `ifitwala_ed/admission/doctype/applicant_document/applicant_document.py`, `ifitwala_ed/admission/doctype/applicant_document_item/applicant_document_item.py`, `ifitwala_ed/admission/applicant_review_workflow.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`
-Test refs: `ifitwala_ed/admission/doctype/applicant_document/test_applicant_document.py`, `ifitwala_ed/admission/doctype/applicant_document_item/test_applicant_document_item.py`, `ifitwala_ed/api/test_admissions_document_items.py`, `ifitwala_ed/api/test_focus_applicant_review.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`
+Test refs: `ifitwala_ed/admission/doctype/applicant_document/test_applicant_document.py`, `ifitwala_ed/admission/doctype/applicant_document_item/test_applicant_document_item.py`, `ifitwala_ed/admission/api/test_admissions_document_items.py`, `ifitwala_ed/api/test_focus_applicant_review.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`
 
 This contract defines:
 
@@ -90,7 +90,7 @@ This is the only supported waiver / exception path. Ad hoc reviewer edits on sub
 
 Status: Implemented
 Code refs: `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/admission/admissions_portal.py`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantDocuments.vue`, `ifitwala_ed/ui-spa/src/overlays/admissions/ApplicantDocumentUploadOverlay.vue`
-Test refs: `ifitwala_ed/api/test_admissions_document_items.py`
+Test refs: `ifitwala_ed/admission/api/test_admissions_document_items.py`
 
 The applicant portal is requirement-centric:
 
@@ -104,7 +104,7 @@ The applicant portal is requirement-centric:
 
 Status: Implemented
 Code refs: `ifitwala_ed/admission/applicant_document_readiness.py`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.js`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/admission/doctype/applicant_interview/applicant_interview.py`, `ifitwala_ed/admission/admission_utils.py`, `ifitwala_ed/api/admission_cockpit.py`, `ifitwala_ed/api/file_access.py`, `ifitwala_ed/api/recommendation_intake.py`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`, `ifitwala_ed/ui-spa/src/overlays/admissions/AdmissionsWorkspaceOverlay.vue`, `ifitwala_ed/ui-spa/src/components/focus/ApplicantReviewAssignmentAction.vue`, `ifitwala_ed/api/focus_listing.py`, `ifitwala_ed/api/focus_context.py`, `ifitwala_ed/api/focus_actions_applicant_review.py`
-Test refs: `ifitwala_ed/api/test_admission_cockpit.py`, `ifitwala_ed/api/test_focus_applicant_review.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/admission/doctype/applicant_interview/test_applicant_interview.py`
+Test refs: `ifitwala_ed/admission/api/test_admission_cockpit.py`, `ifitwala_ed/api/test_focus_applicant_review.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/admission/doctype/applicant_interview/test_applicant_interview.py`
 
 Staff surface split is now explicit and role-based:
 
@@ -150,7 +150,7 @@ Permission hardening implemented with this contract:
 
 Status: Implemented
 Code refs: `ifitwala_ed/admission/applicant_review_workflow.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.js`, `ifitwala_ed/admission/doctype/applicant_interview/applicant_interview.py`, `ifitwala_ed/api/focus_listing.py`, `ifitwala_ed/api/focus_context.py`, `ifitwala_ed/api/focus_actions_applicant_review.py`
-Test refs: `ifitwala_ed/api/test_admissions_document_items.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/api/test_focus_applicant_review.py`
+Test refs: `ifitwala_ed/admission/api/test_admissions_document_items.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/api/test_focus_applicant_review.py`
 
 Retired behavior:
 
@@ -168,7 +168,7 @@ The current contract has one canonical evidence path: requirement card -> submis
 
 Status: Implemented
 Code refs: `ifitwala_ed/admission/applicant_document_readiness.py`, `ifitwala_ed/admission/doctype/applicant_document/applicant_document.py`, `ifitwala_ed/admission/doctype/applicant_document_item/applicant_document_item.py`, `ifitwala_ed/admission/applicant_review_workflow.py`, `ifitwala_ed/api/admission_cockpit.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantDocuments.vue`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`, `ifitwala_ed/ui-spa/src/overlays/admissions/AdmissionsWorkspaceOverlay.vue`
-Test refs: `ifitwala_ed/admission/doctype/applicant_document/test_applicant_document.py`, `ifitwala_ed/admission/doctype/applicant_document_item/test_applicant_document_item.py`, `ifitwala_ed/admission/doctype/applicant_review_assignment/test_applicant_review_assignment.py`, `ifitwala_ed/api/test_admission_cockpit.py`, `ifitwala_ed/api/test_admissions_document_items.py`, `ifitwala_ed/api/test_focus_applicant_review.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`
+Test refs: `ifitwala_ed/admission/doctype/applicant_document/test_applicant_document.py`, `ifitwala_ed/admission/doctype/applicant_document_item/test_applicant_document_item.py`, `ifitwala_ed/admission/doctype/applicant_review_assignment/test_applicant_review_assignment.py`, `ifitwala_ed/admission/api/test_admission_cockpit.py`, `ifitwala_ed/admission/api/test_admissions_document_items.py`, `ifitwala_ed/api/test_focus_applicant_review.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`
 
 | Area | Contract | State |
 | --- | --- | --- |

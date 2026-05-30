@@ -3,8 +3,8 @@ title: "Admissions Cockpit: Applicant Progress and Blockers"
 slug: admission-cockpit
 category: Admission
 doc_order: 3
-version: "1.1.0"
-last_change_date: "2026-05-21"
+version: "1.1.1"
+last_change_date: "2026-05-30"
 summary: "Monitor active applicants, blockers, assignments, messages, offers, deposits, and enrollment-plan actions from one staff cockpit."
 seo_title: "Admissions Cockpit: Applicant Progress and Blockers"
 seo_description: "Use Admissions Cockpit to monitor active applicants by stage, filter admissions scope, review blockers, open applicant workspaces, and run offer, deposit, and enrollment-plan actions."
@@ -150,7 +150,7 @@ No. Deposit invoice generation creates or returns the draft invoice bridge owned
 - **Service map**: `ifitwala_ed/ui-spa/src/lib/admission.ts`
 - **Backend API**: `ifitwala_ed/api/admission_cockpit.py`
 - **Test refs**:
-  - `ifitwala_ed/api/test_admission_cockpit.py`
+  - `ifitwala_ed/admission/api/test_admission_cockpit.py`
   - `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsCockpit.test.ts`
 
 ### Payload and Actions

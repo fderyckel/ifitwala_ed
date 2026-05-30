@@ -10,7 +10,7 @@ It now documents the implemented Option A runtime:
 
 Status: Implemented
 Code refs: `ifitwala_ed/admission/doctype/applicant_enrollment_plan/applicant_enrollment_plan.py`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/admission/doctype/admission_deposit_default/admission_deposit_default.json`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.json`
-Test refs: `ifitwala_ed/admission/doctype/applicant_enrollment_plan/test_applicant_enrollment_plan.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/api/test_admissions_portal.py`
+Test refs: `ifitwala_ed/admission/doctype/applicant_enrollment_plan/test_applicant_enrollment_plan.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/admission/api/test_portal_*.py`
 
 The admissions-to-enrollment bridge is implemented as a dual-stage model:
 
@@ -22,7 +22,7 @@ The admissions-to-enrollment bridge is implemented as a dual-stage model:
 
 Status: Implemented
 Code refs: `ifitwala_ed/admission/doctype/applicant_enrollment_plan/applicant_enrollment_plan.py`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/api/admissions_portal.py`
-Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/api/test_admissions_portal.py`
+Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/admission/api/test_portal_*.py`
 
 Canonical runtime flow:
 
@@ -109,7 +109,7 @@ Runtime rules:
 
 Status: Implemented
 Code refs: `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantStatus.vue`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsService.ts`
-Test refs: `ifitwala_ed/api/test_admissions_portal.py`
+Test refs: `ifitwala_ed/admission/api/test_portal_*.py`
 
 Portal behavior:
 
@@ -148,7 +148,7 @@ Current runtime meaning:
 
 Status: Implemented
 Code refs: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.js`, `ifitwala_ed/admission/doctype/applicant_enrollment_plan/applicant_enrollment_plan.py`, `ifitwala_ed/api/admission_cockpit.py`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`
-Test refs: `ifitwala_ed/admission/doctype/applicant_enrollment_plan/test_applicant_enrollment_plan.py`, `ifitwala_ed/api/test_admission_cockpit.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsCockpit.test.ts`
+Test refs: `ifitwala_ed/admission/doctype/applicant_enrollment_plan/test_applicant_enrollment_plan.py`, `ifitwala_ed/admission/api/test_admission_cockpit.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsCockpit.test.ts`
 
 Implemented in-product staff path:
 
@@ -169,7 +169,7 @@ Current cockpit shape:
 
 Status: Implemented
 Code refs: `ifitwala_ed/admission/doctype/applicant_enrollment_plan/applicant_enrollment_plan.py`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/api/admission_cockpit.py`, `ifitwala_ed/schedule/doctype/program_enrollment_request/program_enrollment_request.json`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantStatus.vue`, `ifitwala_ed/ui-spa/src/pages/staff/admissions/AdmissionsCockpit.vue`
-Test refs: `ifitwala_ed/admission/doctype/applicant_enrollment_plan/test_applicant_enrollment_plan.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/api/test_admissions_portal.py`, `ifitwala_ed/api/test_admission_cockpit.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsCockpit.test.ts`
+Test refs: `ifitwala_ed/admission/doctype/applicant_enrollment_plan/test_applicant_enrollment_plan.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/admission/api/test_portal_*.py`, `ifitwala_ed/admission/api/test_admission_cockpit.py`, `ifitwala_ed/ui-spa/src/pages/staff/__tests__/AdmissionsCockpit.test.ts`
 
 | Area | Runtime owner | Primary surfaces | State |
 | --- | --- | --- | --- |

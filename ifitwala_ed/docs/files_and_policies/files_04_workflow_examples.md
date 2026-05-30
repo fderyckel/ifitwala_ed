@@ -10,7 +10,7 @@ Code refs:
 Test refs:
 - `ifitwala_ed/integrations/drive/test_tasks.py`
 - `ifitwala_ed/api/test_file_access.py`
-- `ifitwala_ed/api/test_admissions_portal.py`
+- `ifitwala_ed/admission/api/test_portal_*.py`
 
 ## Bottom Line
 

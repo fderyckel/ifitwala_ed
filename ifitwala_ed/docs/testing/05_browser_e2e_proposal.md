@@ -5,7 +5,7 @@ Status: Implemented (phase 1, local/manual)
 Scope: repo-level browser E2E for `/hub` and `/admissions`
 Canonical impact: none until explicitly approved and folded into `01_test_strategy.md` and `02_ci_policy.md`
 Code refs: `package.json`, `ifitwala_ed/ui-spa/package.json`, `ifitwala_ed/codex_cli.py`, `.github/workflows/ci.yml`, `.github/workflows/nightly.yml`, `ifitwala_ed/ui-spa/src/router/index.ts`, `ifitwala_ed/ui-spa/src/router/admissions.ts`, `ifitwala_ed/ui-spa/src/apps/portal/main.ts`, `ifitwala_ed/ui-spa/src/apps/admissions/main.ts`, `ifitwala_ed/ui-spa/src/composables/useAdmissionsSession.ts`, `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsService.ts`
-Test refs: `ifitwala_ed/api/test_users.py`, `ifitwala_ed/website/tests/test_portal_route.py`, `ifitwala_ed/api/test_admissions_portal.py`, `ifitwala_ed/api/test_guardian_home.py`, `ifitwala_ed/tests/factories/*`, `ifitwala_ed/docs/testing/01_test_strategy.md`, `ifitwala_ed/docs/testing/02_ci_policy.md`, `ifitwala_ed/docs/testing/03_staging_data_policy.md`
+Test refs: `ifitwala_ed/api/test_users.py`, `ifitwala_ed/website/tests/test_portal_route.py`, `ifitwala_ed/admission/api/test_portal_*.py`, `ifitwala_ed/api/test_guardian_home.py`, `ifitwala_ed/tests/factories/*`, `ifitwala_ed/docs/testing/01_test_strategy.md`, `ifitwala_ed/docs/testing/02_ci_policy.md`, `ifitwala_ed/docs/testing/03_staging_data_policy.md`
 
 ## 1. Bottom line
 
@@ -32,7 +32,7 @@ It is not repo-accurate as written. This repository already has strong server-si
 4. The admissions portal already has a sizable browser-facing contract surface.
    - `ifitwala_ed/ui-spa/src/lib/services/admissions/admissionsService.ts` wraps the key admissions mutations and emits portal invalidation signals.
    - `ifitwala_ed/ui-spa/src/composables/useAdmissionsSession.ts` owns applicant switching and route-query synchronization.
-   - `ifitwala_ed/api/test_admissions_portal.py` already validates many server-side admissions contracts.
+   - `ifitwala_ed/admission/api/test_portal_*.py` already validates many server-side admissions contracts.
 
 5. There is no existing browser-test orchestration contract yet.
    - No Cypress or Playwright config exists today.

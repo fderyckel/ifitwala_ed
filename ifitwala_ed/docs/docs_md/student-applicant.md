@@ -3,8 +3,8 @@ title: "Student Applicant: The Admission Record of Truth"
 slug: student-applicant
 category: Admission
 doc_order: 4
-version: "1.22.1"
-last_change_date: "2026-05-28"
+version: "1.22.2"
+last_change_date: "2026-05-30"
 summary: "Manage each applicant from invitation to promotion, with readiness checks across profile, documents, policies, recommendations, health, offers, deposits, and enrollment handoff."
 seo_title: "Student Applicant: The Admission Record of Truth"
 seo_description: "Use Student Applicant to manage the applicant lifecycle from invitation to promotion, with readiness checks, portal access, family collaboration, and enrollment handoff."
@@ -517,7 +517,7 @@ Code refs:
 Test refs:
 
 - `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`
-- `ifitwala_ed/api/test_admissions_portal.py`
+- `ifitwala_ed/admission/api/test_portal_*.py`
 - `ifitwala_ed/api/test_guardian_phase2.py`
 - `ifitwala_ed/governance/doctype/institutional_policy/test_institutional_policy.py`
 
@@ -525,11 +525,11 @@ Test refs:
 |---|---|---|---|
 | Schema / DocType | Applicant-stage and student-stage guardian relationship rows carry canonical signer authority; policy audience remains on Institutional Policy | `admission/doctype/student_applicant_guardian/student_applicant_guardian.json`, `students/doctype/student_guardian/student_guardian.json`, `governance/doctype/institutional_policy/institutional_policy.json` | `admission/doctype/student_applicant/test_student_applicant.py`, `governance/doctype/institutional_policy/test_institutional_policy.py` |
 | Controller / workflow logic | Promotion carries signer authority forward; policy audience uses canonical `Table MultiSelect` rows; guardian/student acknowledgement visibility respects signer authority | `admission/doctype/student_applicant/student_applicant.py`, `governance/doctype/institutional_policy/institutional_policy.py`, `governance/doctype/policy_acknowledgement/policy_acknowledgement.py`, `api/guardian_policy.py` | `admission/doctype/student_applicant/test_student_applicant.py`, `api/test_guardian_phase2.py`, `governance/doctype/institutional_policy/test_institutional_policy.py` |
-| API endpoints | Admissions family invite eligibility and guardian policy visibility use the signer-authority contract; admissions policy acknowledgement remains a named workflow | `api/admissions_portal.py`, `api/guardian_policy.py` | `api/test_admissions_portal.py`, `api/test_guardian_phase2.py` |
+| API endpoints | Admissions family invite eligibility and guardian policy visibility use the signer-authority contract; admissions policy acknowledgement remains a named workflow | `api/admissions_portal.py`, `api/guardian_policy.py` | `admission/api/test_portal_*.py`, `api/test_guardian_phase2.py` |
 | SPA / UI surfaces | Admissions family guardian rows present signer authority explicitly; guardian portal policy page consumes the filtered policy overview | `ui-spa/src/pages/admissions/ApplicantProfile.vue`, `ui-spa/src/overlays/admissions/AdmissionsWorkspaceOverlay.vue`, `ui-spa/src/pages/guardian/GuardianPolicies.vue` | `ui-spa/src/pages/guardian/__tests__/GuardianPolicies.test.ts` |
 | Reports / dashboards / briefings | Staff policy communication defaults and guardian policy status views follow the canonical audience-row contract | `api/policy_communication.py`, `api/policy_signature.py`, `ui-spa/src/pages/guardian/GuardianPolicies.vue` | `api/test_guardian_phase2.py` |
 | Scheduler / background jobs | None in this signer-authority workflow | None | None |
-| Tests | Coverage exists for policy audience normalization, guardian policy filtering, and promotion carry-forward of signer authority | `governance/doctype/institutional_policy/test_institutional_policy.py`, `api/test_guardian_phase2.py`, `admission/doctype/student_applicant/test_student_applicant.py`, `api/test_admissions_portal.py` | Implemented |
+| Tests | Coverage exists for policy audience normalization, guardian policy filtering, and promotion carry-forward of signer authority | `governance/doctype/institutional_policy/test_institutional_policy.py`, `api/test_guardian_phase2.py`, `admission/doctype/student_applicant/test_student_applicant.py`, `admission/api/test_portal_*.py` | Implemented |
 
 ### Desk and SPA Surfaces
 

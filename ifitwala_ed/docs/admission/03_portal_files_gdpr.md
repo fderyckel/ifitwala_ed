@@ -3,7 +3,7 @@
 Status: Current supporting contract
 Date: 2026-04-19
 Code refs: `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/admission/admissions_portal.py`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/integrations/drive/admissions.py`, `ifitwala_ed/integrations/drive/authority.py`, `ifitwala_ed/api/file_access.py`, `../ifitwala_drive/ifitwala_drive/docs/04_coupling_with_ifiwala_ed.md`, `../ifitwala_drive/ifitwala_drive/docs/21_cross_portal_governed_attachment_preview_contract.md`
-Test refs: `ifitwala_ed/api/test_admissions_portal.py`, `ifitwala_ed/admission/test_admissions_portal_uploads_unit.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`
+Test refs: `ifitwala_ed/admission/api/test_portal_*.py`, `ifitwala_ed/admission/test_admissions_portal_uploads_unit.py`, `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`
 Related docs:
 
 - `01_governance.md`

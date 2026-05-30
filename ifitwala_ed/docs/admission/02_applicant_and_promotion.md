@@ -14,7 +14,7 @@ Evidence and review behavior is defined by the implemented contract in `docs/adm
 
 Status: Implemented
 Code refs: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/admission/admissions_portal.py`
-Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/api/test_admissions_portal.py`, `ifitwala_ed/api/test_admissions_document_items.py`
+Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/admission/api/test_portal_*.py`, `ifitwala_ed/admission/api/test_admissions_document_items.py`
 
 The admissions runtime boundary is:
 
@@ -33,7 +33,7 @@ Authority split:
 
 Status: Implemented
 Code refs: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.json`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/api/admissions_portal.py`
-Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/api/test_admissions_portal.py`
+Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/admission/api/test_portal_*.py`
 
 `Student Applicant` is the sole pre-student admissions container.
 
@@ -69,7 +69,7 @@ Status transitions are only valid through lifecycle methods on `StudentApplicant
 
 Status: Implemented
 Code refs: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/admission/applicant_review_workflow.py`, `ifitwala_ed/admission/doctype/student_applicant/student_applicant.js`, `ifitwala_ed/docs/admission/07_applicant_evidence_review_redesign.md`
-Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/api/test_admissions_document_items.py`, `ifitwala_ed/api/test_focus_applicant_review.py`
+Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/admission/api/test_admissions_document_items.py`, `ifitwala_ed/api/test_focus_applicant_review.py`
 
 Approval readiness is computed on demand by `StudentApplicant.get_readiness_snapshot()`.
 
@@ -171,15 +171,15 @@ The main remaining gaps relevant to this feature area are:
 
 Status: Partial
 Code refs: `ifitwala_ed/admission/doctype/student_applicant/student_applicant.py`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/admission/admissions_portal.py`, `ifitwala_ed/admission/applicant_review_workflow.py`, `ifitwala_ed/ui-spa/src/pages/admissions/ApplicantDocuments.vue`
-Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/api/test_admissions_portal.py`, `ifitwala_ed/api/test_admissions_document_items.py`, `ifitwala_ed/api/test_focus_applicant_review.py`
+Test refs: `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py`, `ifitwala_ed/admission/api/test_portal_*.py`, `ifitwala_ed/admission/api/test_admissions_document_items.py`, `ifitwala_ed/api/test_focus_applicant_review.py`
 
 | Area | Runtime owner | Primary surfaces | Test refs | State |
 | --- | --- | --- | --- | --- |
-| Applicant lifecycle and status transitions | `StudentApplicant` controller | Desk applicant form, admissions portal status, lifecycle methods | `test_student_applicant.py`, `test_admissions_portal.py` | Implemented |
-| Applicant portal identity and editability | `ifitwala_ed.api.admissions_portal.*` | `/admissions` SPA | `test_admissions_portal.py` | Implemented |
+| Applicant lifecycle and status transitions | `StudentApplicant` controller | Desk applicant form, admissions portal status, lifecycle methods | `test_student_applicant.py`, `test_portal_*.py` | Implemented |
+| Applicant portal identity and editability | `ifitwala_ed.api.admissions_portal.*` | `/admissions` SPA | `test_portal_*.py` | Implemented |
 | Evidence upload and storage | `ifitwala_ed.admission.admissions_portal.upload_applicant_document` | Portal documents page, governed Drive workflow | `test_admissions_document_items.py` | Implemented |
 | Evidence review workflow | `ifitwala_ed.admission.applicant_review_workflow` | Desk `Student Applicant`, admissions cockpit workspace, Focus for non-admissions reviewers, Focus-launched admissions workspace for delegated `Student Applicant` final reviewers | `test_student_applicant.py`, `test_applicant_interview.py`, `test_focus_applicant_review.py` | Implemented |
 | Approval readiness | `StudentApplicant.get_readiness_snapshot()` | Desk review snapshot, portal next actions | `test_student_applicant.py` | Implemented |
-| Admissions-to-enrollment bridge | `Applicant Enrollment Plan`, `StudentApplicant.promote_to_student()` | Desk applicant action, admissions portal status, post-promotion request hydration | `test_student_applicant.py`, `test_admissions_portal.py` | Implemented |
+| Admissions-to-enrollment bridge | `Applicant Enrollment Plan`, `StudentApplicant.promote_to_student()` | Desk applicant action, admissions portal status, post-promotion request hydration | `test_student_applicant.py`, `test_portal_*.py` | Implemented |
 | Promotion data boundary | `StudentApplicant.promote_to_student()` | Desk action | `test_student_applicant.py` | Implemented |
 | Identity upgrade access boundary | `StudentApplicant.upgrade_identity()`, `ProgramEnrollment.on_update()` | Desk action or first active `Program Enrollment` trigger | `test_student_applicant.py`, `test_program_enrollment.py` | Implemented |

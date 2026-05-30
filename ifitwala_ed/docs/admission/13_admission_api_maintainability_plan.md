@@ -1,9 +1,9 @@
 # Admission API Maintainability Plan
 
-Status: Proposal
+Status: Active proposal with completed portal-test split
 Code refs: `ifitwala_ed/admission/api/`, `ifitwala_ed/api/`
 Test refs: `ifitwala_ed/admission/api/test_*.py`
-Last updated: 2026-05-29
+Last updated: 2026-05-30
 
 This proposal tracks admissions API and admissions-test files that are over 1000 lines and should be split only after their public paths, permissions, tenant scope, idempotency, and governed-file contracts are preserved.
 
@@ -11,9 +11,23 @@ This proposal tracks admissions API and admissions-test files that are over 1000
 
 - `ifitwala_ed/admission/api/recommendation_intake.py` (~2400 lines)
 - `ifitwala_ed/admission/api/inquiry.py` (~1200 lines)
-- `ifitwala_ed/admission/api/test_admissions_portal.py` (~3000 lines)
 - `ifitwala_ed/admission/doctype/applicant_interview/test_applicant_interview.py` (~1700 lines)
 - `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py` (~2200 lines)
+
+## Completed Splits
+
+The former `ifitwala_ed/admission/api/test_admissions_portal.py` suite is split into focused files:
+
+- `ifitwala_ed/admission/api/test_portal_access_contracts.py`
+- `ifitwala_ed/admission/api/test_portal_invites.py`
+- `ifitwala_ed/admission/api/test_portal_submission_snapshot.py`
+- `ifitwala_ed/admission/api/test_portal_enrollment.py`
+- `ifitwala_ed/admission/api/test_portal_policies.py`
+- `ifitwala_ed/admission/api/test_portal_profile.py`
+- `ifitwala_ed/admission/api/test_portal_profile_images.py`
+- `ifitwala_ed/admission/api/test_portal_health.py`
+- `ifitwala_ed/admission/api/portal_test_helpers.py`
+- `ifitwala_ed/api/test_admissions_portal_facade.py`
 
 ## Recommended Sequence
 
@@ -43,9 +57,9 @@ This proposal tracks admissions API and admissions-test files that are over 1000
 - `link_queries.py`: Desk link query endpoints
 - `lookups.py`: inquiry types, sources, organizations, schools, acknowledgement context
 
-`test_admissions_portal.py` should split first among tests:
+The admissions portal implementation test suite should stay split by workflow:
 
-- `test_portal_access.py`
+- `test_portal_access_contracts.py`
 - `test_portal_invites.py`
 - `test_portal_submission_snapshot.py`
 - `test_portal_enrollment.py`

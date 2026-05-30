@@ -52,7 +52,7 @@ Runtime guardrails:
 ## Reuse Model
 Status: Implemented
 Code refs: `ifitwala_ed/ui-spa/src/overlays/admissions/ApplicantPolicyAcknowledgeOverlay.vue`, `ifitwala_ed/ui-spa/src/components/focus/StaffPolicyAcknowledgeAction.vue`, `ifitwala_ed/api/admissions_portal.py`, `ifitwala_ed/api/guardian_policy.py`
-Test refs: `ifitwala_ed/api/test_admissions_portal.py`, `ifitwala_ed/api/test_focus_policy_signature.py`, `ifitwala_ed/api/test_guardian_phase2.py`, `ifitwala_ed/api/test_student_policy.py`
+Test refs: `ifitwala_ed/admission/api/test_portal_*.py`, `ifitwala_ed/api/test_focus_policy_signature.py`, `ifitwala_ed/api/test_guardian_phase2.py`, `ifitwala_ed/api/test_student_policy.py`
 
 Rules:
 
