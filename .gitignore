@@ -19,6 +19,8 @@ package-lock.json
 codex_setup.sh
 codex.log
 .i18n-audit/
+AGENTS.md
+**/docs/
 
 # Others
 /.pycache/
