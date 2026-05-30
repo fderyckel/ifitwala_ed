@@ -1,6 +1,6 @@
 # Admission API Maintainability Plan
 
-Status: Active proposal with completed portal-test split
+Status: Active proposal with completed portal-test and inquiry splits
 Code refs: `ifitwala_ed/admission/api/`, `ifitwala_ed/api/`
 Test refs: `ifitwala_ed/admission/api/test_*.py`
 Last updated: 2026-05-30
@@ -10,7 +10,6 @@ This proposal tracks admissions API and admissions-test files that are over 1000
 ## Current Large Files
 
 - `ifitwala_ed/admission/api/recommendation_intake.py` (~2400 lines)
-- `ifitwala_ed/admission/api/inquiry.py` (~1200 lines)
 - `ifitwala_ed/admission/doctype/applicant_interview/test_applicant_interview.py` (~1700 lines)
 - `ifitwala_ed/admission/doctype/student_applicant/test_student_applicant.py` (~2200 lines)
 
@@ -28,6 +27,16 @@ The former `ifitwala_ed/admission/api/test_admissions_portal.py` suite is split 
 - `ifitwala_ed/admission/api/test_portal_health.py`
 - `ifitwala_ed/admission/api/portal_test_helpers.py`
 - `ifitwala_ed/api/test_admissions_portal_facade.py`
+
+The former `ifitwala_ed/admission/api/inquiry.py` implementation is split into focused implementation modules:
+
+- `ifitwala_ed/admission/api/inquiry/access.py`
+- `ifitwala_ed/admission/api/inquiry/dashboard.py`
+- `ifitwala_ed/admission/api/inquiry/dates.py`
+- `ifitwala_ed/admission/api/inquiry/lookups.py`
+- `ifitwala_ed/admission/api/inquiry/scope.py`
+- `ifitwala_ed/admission/api/inquiry/zero_lost.py`
+- `ifitwala_ed/api/inquiry.py` as the stable public Frappe RPC facade
 
 ## Recommended Sequence
 
@@ -47,15 +56,6 @@ The former `ifitwala_ed/admission/api/test_admissions_portal.py` suite is split 
 - `document_integration.py`: Applicant Document and Applicant Document Item handoff
 - `access.py`: token/session/permission guards
 - `dto.py`: response shaping and serializers
-
-`inquiry.py` should split into:
-
-- `dashboard.py`: admissions inquiry dashboard aggregation
-- `zero_lost.py`: zero-lost-lead views and row DTOs
-- `scope.py`: organization/school/user-scope filters
-- `dates.py`: academic-year and preset-window resolution
-- `link_queries.py`: Desk link query endpoints
-- `lookups.py`: inquiry types, sources, organizations, schools, acknowledgement context
 
 The admissions portal implementation test suite should stay split by workflow:
 

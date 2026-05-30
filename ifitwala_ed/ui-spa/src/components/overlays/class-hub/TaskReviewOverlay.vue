@@ -41,24 +41,27 @@
 						<div class="if-overlay__header px-6 pt-6">
 							<div class="flex items-start justify-between gap-4">
 								<div>
-									<p class="type-overline text-slate-token/70">Task Review</p>
+									<p class="type-overline text-slate-token/70">{{ __('Task Review') }}</p>
 									<h2 class="type-h2 text-ink">{{ title }}</h2>
 								</div>
 								<button
 									type="button"
 									class="if-overlay__icon-button"
-									aria-label="Close"
+									:aria-label="__('Close')"
 									@click="emitClose('programmatic')"
 								>
-									<span aria-hidden="true">x</span>
+									<FeatherIcon name="x" class="h-4 w-4" aria-hidden="true" />
 								</button>
 							</div>
 						</div>
 
 						<div class="if-overlay__body space-y-4">
 							<p class="type-body text-slate-token/70">
-								This task is ready for review. Open the gradebook to review evidence and give
-								feedback.
+								{{
+									__(
+										'This task is ready for review. Open the gradebook to review evidence and give feedback.'
+									)
+								}}
 							</p>
 						</div>
 
@@ -68,14 +71,14 @@
 								class="rounded-full border border-slate-200 bg-white px-4 py-2 type-button-label text-ink"
 								@click="emitClose('programmatic')"
 							>
-								Close
+								{{ __('Close') }}
 							</button>
 							<RouterLink
 								:to="gradebookTarget"
 								class="rounded-full bg-jacaranda px-5 py-2 type-button-label text-white shadow-soft"
 								@click="emitClose('programmatic')"
 							>
-								Go to gradebook
+								{{ __('Go to gradebook') }}
 							</RouterLink>
 						</div>
 					</DialogPanel>
@@ -88,7 +91,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, watch } from 'vue';
 import { RouterLink } from 'vue-router';
+import { FeatherIcon } from 'frappe-ui';
 import { Dialog, DialogPanel, TransitionChild, TransitionRoot } from '@headlessui/vue';
+import { __ } from '@/lib/i18n';
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';
 
@@ -131,7 +136,8 @@ function emitClose(reason: CloseReason = 'programmatic') {
 	emit('close', reason);
 }
 
-function onDialogClose(_payload: unknown) {
+function onDialogClose(payload: unknown) {
+	void payload;
 	// OverlayHost owns close enforcement.
 }
 

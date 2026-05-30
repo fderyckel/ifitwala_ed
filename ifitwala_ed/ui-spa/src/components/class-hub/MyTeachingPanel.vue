@@ -19,13 +19,13 @@
 	<section class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 		<div class="card-surface p-4 space-y-3">
 			<div class="flex items-center justify-between">
-				<p class="type-overline text-slate-token/70">Notes & Observations</p>
+				<p class="type-overline text-slate-token/70">{{ __('Notes & Observations') }}</p>
 				<button
 					type="button"
 					class="type-button-label text-jacaranda hover:text-canopy"
 					@click="$emit('add-note')"
 				>
-					Add note
+					{{ __('Add note') }}
 				</button>
 			</div>
 			<div class="space-y-2">
@@ -44,14 +44,16 @@
 					v-if="!notes.length"
 					class="rounded-xl border border-dashed border-slate-200 bg-white/80 px-3 py-3"
 				>
-					<p class="type-caption text-slate-token/70">No notes yet for this session.</p>
+					<p class="type-caption text-slate-token/70">
+						{{ __('No notes yet for this session.') }}
+					</p>
 				</div>
 			</div>
 		</div>
 
 		<div class="card-surface p-4 space-y-3">
 			<div class="flex items-center justify-between">
-				<p class="type-overline text-slate-token/70">Tasks & Evidence</p>
+				<p class="type-overline text-slate-token/70">{{ __('Tasks & Evidence') }}</p>
 			</div>
 			<div class="space-y-2">
 				<button
@@ -68,7 +70,7 @@
 					v-if="!tasks.length"
 					class="rounded-xl border border-dashed border-slate-200 bg-white/80 px-3 py-3"
 				>
-					<p class="type-caption text-slate-token/70">No tasks waiting.</p>
+					<p class="type-caption text-slate-token/70">{{ __('No tasks waiting.') }}</p>
 				</div>
 			</div>
 		</div>
@@ -77,6 +79,7 @@
 
 <script setup lang="ts">
 import type { ClassHubBundle } from '@/types/classHub';
+import { __ } from '@/lib/i18n';
 
 defineProps<{
 	notes: ClassHubBundle['notes_preview'];

@@ -10,7 +10,7 @@ from ifitwala_ed.api import inquiry
 
 class TestInquiryFacade(TestCase):
     def test_inquiry_facade_preserves_public_method_delegation(self):
-        with patch("ifitwala_ed.admission.api.inquiry.get_inquiry_types", return_value=["Admissions"]) as impl:
+        with patch("ifitwala_ed.admission.api.inquiry.lookups.get_inquiry_types", return_value=["Admissions"]) as impl:
             self.assertEqual(inquiry.get_inquiry_types(), ["Admissions"])
 
         impl.assert_called_once_with()

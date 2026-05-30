@@ -176,7 +176,7 @@ Contact privacy service boundary status:
 - Callers must provide a non-empty `purpose`; masked DTOs are the default for Student/Guardian summaries.
 - Raw values are still allowed only through explicitly named current workflows such as applicant invite/prefill and family-consent write-back.
 - Guardian-owned native `Contact` write paths are retired: Guardian insert/user creation, Student Guardian link saves, and family-consent Guardian profile write-back now use school-scoped Contact Point sync where school context is proven.
-- Finance payer follow-up now uses Account Holder billing-contact links to `Guardian` plus `purpose = billing` Guardian Contact Points; masked billing-contact DTOs are shown by default, raw Account Holder delivery snapshots are hidden from generic list/report/export and guardian portal DTO surfaces, and raw reveal is limited to the named finance follow-up workflow.
+- Finance payer follow-up now uses Account Holder billing-contact links to `Guardian` plus `purpose = billing` Guardian Contact Points; authorized finance actors see direct billing-contact email/phone in the Account Holder panel through the named finance follow-up workflow, other Account Holder readers receive masked DTOs, and raw Account Holder delivery snapshots remain hidden from generic list/report/export and guardian portal DTO surfaces.
 - The app-owned `User.after_insert` hook now passes through `ifitwala_ed.utilities.contact_utils.update_user_contact(...)`, allowing Guardian user creation to suppress native User-to-Contact creation during that controlled workflow without disabling the hook globally.
 - Legacy Contact creation/update code in Student, Inquiry, and admissions profile flows remains a migration gap, not an approved pattern for new surfaces.
 - `Communication Contact Point` service helpers now exist for service-owned upsert, disable, masked owner DTOs, raw reads, recipient resolution, and explicit Guardian sync with a verified school context.
@@ -247,7 +247,7 @@ CSV generation, watermarking, and per-row export logging are not implemented yet
 
 ## 6. Raw-Value Access Contract
 
-Default UI display must use masked values.
+Default UI display must use masked values unless the surface is an explicitly named raw-value workflow such as finance payer follow-up on Account Holder.
 
 Examples:
 
@@ -334,7 +334,7 @@ This audit identifies native-`Contact` surfaces found in the current workspace. 
 | `api/admissions_portal.py` | Resolves applicant Contact prefill, creates/updates guardian Contact rows, links Contact to applicant/guardian, and hydrates family collaborators only after applicant/family or scoped staff access is proven. | Replace with applicant/guardian contact points; preserve low-friction invite UX through scoped services. |
 | `admission/doctype/student_applicant/student_applicant.py` | Carries guardian Contact links through promotion to Student/Guardian/Student Applicant through scoped applicant lifecycle methods. | Replace with explicit promotion of domain-owned contact points. |
 | `api/family_consent.py` | Reads and writes linked Contact email/mobile during signed portal write-back from authorized student/guardian context; callers cannot supply arbitrary Contact IDs. | Replace with signed, audited contact point write-back. |
-| `accounting/account_holder_contacts.py` | Links Account Holders to real Guardian billing contacts, maintains raw Account Holder delivery snapshots for server-side finance workflows, resolves masked payer-contact DTOs, and reveals raw billing values only through purpose-bound Contact Point reads. | Keep as named finance payer-contact workflow; keep raw snapshots hidden from generic list/report/export and portal DTOs; do not broaden into a generic contact browser. |
+| `accounting/account_holder_contacts.py` | Links Account Holders to real Guardian billing contacts, maintains raw Account Holder delivery snapshots for server-side finance workflows, resolves payer-contact DTOs, and exposes raw billing values only to authorized finance actors through purpose-bound Contact Point reads. | Keep as named finance payer-contact workflow; keep raw snapshots hidden from generic list/report/export and portal DTOs; do not broaden into a generic contact browser. |
 | `public/js/contact.js` and `public/js/queries.js` | Native Contact form/query helpers remain exposed to Desk flows. | Restrict to non-sensitive organization/external CRM surfaces or retire for education people data. |
 | `admission/doctype/admission_external_identity/*.json` and `admission/doctype/admission_message/*.json` | Planned CRM records can link to native `Contact`. | Keep only for external CRM identity if approved; must not become universal people registry. |
 

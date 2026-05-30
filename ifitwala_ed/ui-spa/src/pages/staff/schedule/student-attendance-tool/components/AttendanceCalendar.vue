@@ -17,7 +17,7 @@
 					class="if-button if-button--quiet if-button--icon"
 					:disabled="!previousMonthDate || loading"
 					@click="goToPrev"
-					aria-label="Previous month"
+					:aria-label="__('Previous month')"
 				>
 					<FeatherIcon name="chevron-left" class="h-4 w-4" />
 				</button>
@@ -26,7 +26,7 @@
 					class="if-button if-button--quiet if-button--icon"
 					:disabled="!nextMonthDate || loading"
 					@click="goToNext"
-					aria-label="Next month"
+					:aria-label="__('Next month')"
 				>
 					<FeatherIcon name="chevron-right" class="h-4 w-4" />
 				</button>

@@ -118,6 +118,7 @@ def _program_enrollment_module():
 @contextmanager
 def _program_enrollment_request_module():
     frappe_utils = ModuleType("frappe.utils")
+    frappe_utils.cint = lambda value=0: int(value or 0)
     frappe_utils.get_link_to_form = lambda doctype, name=None: name or doctype
 
     basket_group_utils = ModuleType("ifitwala_ed.schedule.basket_group_utils")

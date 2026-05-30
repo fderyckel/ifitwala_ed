@@ -329,6 +329,10 @@ doc_events = {
         ],
         "on_trash": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
     },
+    "Drive File Derivative": {
+        "after_save": "ifitwala_ed.website.public_people.invalidate_public_people_cache_for_drive_derivative",
+        "on_trash": "ifitwala_ed.website.public_people.invalidate_public_people_cache_for_drive_derivative",
+    },
     "Designation": {
         "after_save": "ifitwala_ed.website.public_people.invalidate_public_people_cache",
         "on_trash": "ifitwala_ed.website.public_people.invalidate_public_people_cache",

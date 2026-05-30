@@ -604,6 +604,7 @@ def _account_holder_summary(account_holder: str) -> dict[str, Any]:
 @frappe.whitelist()
 def get_account_holder_billing_contact_summary(account_holder: str) -> dict[str, Any]:
     doc = _require_account_holder_access(account_holder, ptype="read")
+    can_view_raw = _can_view_raw_billing_contacts()
     rows = list(doc.get("billing_contacts") or [])
     if not rows:
         return {
@@ -611,7 +612,8 @@ def get_account_holder_billing_contact_summary(account_holder: str) -> dict[str,
             "primary_email_masked": mask_email(_clean_data(doc.primary_email)),
             "primary_phone_masked": mask_phone(_clean_data(doc.primary_phone)),
             "contacts": [],
-            "can_reveal": _can_reveal_billing_contacts(),
+            "can_reveal": can_view_raw,
+            "shows_raw_contact_values": can_view_raw,
         }
 
     guardian_names = [_clean_data(row.get("guardian")) for row in rows if _clean_data(row.get("guardian"))]
@@ -620,15 +622,29 @@ def get_account_holder_billing_contact_summary(account_holder: str) -> dict[str,
     students = _student_rows_by_name(student_names)
 
     contacts = []
+    fallback_school = ""
     for row in rows:
         guardian_name = _clean_data(row.get("guardian"))
         source_student = _clean_data(row.get("source_student"))
         guardian = guardians.get(guardian_name, {})
         student = students.get(source_student, {})
         school = _clean_data(student.get("anchor_school"))
+        if not school and not fallback_school:
+            fallback_school = _first_account_holder_student_school(doc.name)
+        school = school or fallback_school
         masked_points = _masked_billing_points_for_guardian(guardian_name, school=school)
         email_masked = masked_points.get("email") or mask_email(_clean_data(guardian.get("guardian_email")))
         phone_masked = masked_points.get("phone") or mask_phone(_clean_data(guardian.get("guardian_mobile_phone")))
+        email_value = (
+            _get_raw_billing_contact_value_for_display(doc, row, school=school, channel_type="email")
+            if can_view_raw
+            else ""
+        )
+        phone_value = (
+            _get_raw_billing_contact_value_for_display(doc, row, school=school, channel_type="phone")
+            if can_view_raw
+            else ""
+        )
         contacts.append(
             {
                 "name": row.name,
@@ -641,8 +657,12 @@ def get_account_holder_billing_contact_summary(account_holder: str) -> dict[str,
                 "receives_billing_follow_up": _as_int(row.get("receives_billing_follow_up")),
                 "email_masked": email_masked,
                 "phone_masked": phone_masked,
-                "has_email": bool(email_masked),
-                "has_phone": bool(phone_masked),
+                "email_display": email_value or email_masked,
+                "phone_display": phone_value or phone_masked,
+                "email_is_raw": bool(email_value),
+                "phone_is_raw": bool(phone_value),
+                "has_email": bool(email_value or email_masked),
+                "has_phone": bool(phone_value or phone_masked),
             }
         )
 
@@ -651,14 +671,37 @@ def get_account_holder_billing_contact_summary(account_holder: str) -> dict[str,
         "primary_email_masked": mask_email(_clean_data(doc.primary_email)),
         "primary_phone_masked": mask_phone(_clean_data(doc.primary_phone)),
         "contacts": contacts,
-        "can_reveal": _can_reveal_billing_contacts(),
+        "can_reveal": can_view_raw,
+        "shows_raw_contact_values": can_view_raw,
     }
 
 
 def _can_reveal_billing_contacts() -> bool:
+    return _can_view_raw_billing_contacts()
+
+
+def _can_view_raw_billing_contacts() -> bool:
     user = _clean_data(getattr(frappe.session, "user", ""))
     roles = set(frappe.get_roles(user) or [])
     return user == "Administrator" or bool(roles & BILLING_CONTACT_RAW_ROLES)
+
+
+def _get_raw_billing_contact_value_for_display(doc, row, *, school: str, channel_type: str) -> str:
+    if not _as_int(row.get("receives_billing_follow_up")) or not school:
+        return ""
+
+    points = _billing_contact_points(row, school=school, channel_type=channel_type)
+    if not points:
+        _sync_billing_contact_points_for_row(row, doc.organization, school=school)
+        points = _billing_contact_points(row, school=school, channel_type=channel_type)
+    if not points:
+        return ""
+
+    return get_raw_contact_point_value(
+        contact_point=_clean_data(points[0].get("name")),
+        purpose=BILLING_CONTACT_PURPOSE,
+        workflow=BILLING_CONTACT_RAW_WORKFLOW,
+    )
 
 
 def _guardian_rows_by_name(guardian_names: list[str]) -> dict[str, dict[str, Any]]:

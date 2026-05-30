@@ -2,7 +2,7 @@
 	<div class="paper-card border-l-4 border-l-flame p-4 sm:p-5">
 		<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 			<h3 class="section-header flex items-center gap-2 text-flame">
-				<FeatherIcon name="user-x" class="h-3 w-3" /> Absences Today
+				<FeatherIcon name="user-x" class="h-3 w-3" /> {{ __('Absences Today') }}
 			</h3>
 			<span class="text-xs font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
 				{{ students.length }}
@@ -57,7 +57,7 @@
 						"{{ stu.remark }}"
 					</div>
 					<div v-else class="mt-1.5 text-[10px] text-red-500 font-medium flex items-center gap-1">
-						<FeatherIcon name="alert-circle" class="h-3 w-3" /> Unexplained
+						<FeatherIcon name="alert-circle" class="h-3 w-3" /> {{ __('Unexplained') }}
 					</div>
 				</div>
 			</div>
@@ -67,6 +67,7 @@
 
 <script setup>
 import { FeatherIcon } from 'frappe-ui';
+import { __ } from '@/lib/i18n';
 
 defineProps({
 	students: {

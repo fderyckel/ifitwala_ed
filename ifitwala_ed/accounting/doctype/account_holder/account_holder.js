@@ -29,7 +29,6 @@ frappe.ui.form.on("Account Holder", {
 		}).then((res) => {
 			const summary = res?.message || {};
 			field.$wrapper.html(buildBillingContactSummaryHtml(summary));
-			bindBillingContactRevealActions(frm, field.$wrapper);
 		}).catch((err) => {
 			field.$wrapper.html(
 				`<div class="text-muted small">${escapeBillingHtml(err?.message || __("Unable to load billing contacts."))}</div>`
@@ -51,13 +50,13 @@ function buildBillingContactSummaryHtml(summary) {
 	return `
 		<div class="if-billing-contact-panel" style="${PANEL_STYLE}">
 			<div style="display: grid; gap: 10px;">
-				${contacts.map((contact) => buildBillingContactRow(contact, Boolean(summary.can_reveal))).join("")}
+				${contacts.map((contact) => buildBillingContactRow(contact)).join("")}
 			</div>
 		</div>
 	`;
 }
 
-function buildBillingContactRow(contact, canReveal) {
+function buildBillingContactRow(contact) {
 	const name = contact.guardian_name || contact.guardian || "";
 	const relation = contact.relation ? ` · ${escapeBillingHtml(contact.relation)}` : "";
 	const source = contact.source_student_name
@@ -66,14 +65,8 @@ function buildBillingContactRow(contact, canReveal) {
 	const primary = billingCint(contact.is_primary)
 		? `<span class="indicator-pill green" style="margin-left: 6px;">${escapeBillingHtml(__("Primary"))}</span>`
 		: "";
-	const email = contact.email_masked || __("No email");
-	const phone = contact.phone_masked || __("No phone");
-	const revealEmail = canReveal && contact.has_email
-		? buildRevealButton(contact.name, "email", __("Reveal email"))
-		: "";
-	const revealPhone = canReveal && contact.has_phone
-		? buildRevealButton(contact.name, "phone", __("Reveal phone"))
-		: "";
+	const email = contact.email_display || contact.email_masked || __("No email");
+	const phone = contact.phone_display || contact.phone_masked || __("No phone");
 
 	return `
 		<div class="if-billing-contact-row" style="${ROW_STYLE}">
@@ -87,61 +80,14 @@ function buildBillingContactRow(contact, canReveal) {
 				<div class="small">
 					<span class="text-muted">${escapeBillingHtml(__("Email"))}:</span>
 					<span>${escapeBillingHtml(email)}</span>
-					${revealEmail}
 				</div>
 				<div class="small">
 					<span class="text-muted">${escapeBillingHtml(__("Phone"))}:</span>
 					<span>${escapeBillingHtml(phone)}</span>
-					${revealPhone}
 				</div>
 			</div>
 		</div>
 	`;
-}
-
-function buildRevealButton(rowName, channelType, label) {
-	return `
-		<button
-			type="button"
-			class="btn btn-xs btn-default"
-			style="margin-left: 6px;"
-			data-reveal-billing-contact="${escapeBillingHtml(rowName)}"
-			data-channel-type="${escapeBillingHtml(channelType)}"
-		>
-			${escapeBillingHtml(label)}
-		</button>
-	`;
-}
-
-function bindBillingContactRevealActions(frm, wrapper) {
-	wrapper.find("[data-reveal-billing-contact]").on("click", function() {
-		const $button = $(this);
-		const billingContact = String($button.attr("data-reveal-billing-contact") || "").trim();
-		const channelType = String($button.attr("data-channel-type") || "").trim();
-		if (!billingContact || !channelType) {
-			frappe.msgprint(__("Billing contact selection is missing. Refresh and try again."));
-			return;
-		}
-
-		frappe.call({
-			method: "ifitwala_ed.accounting.account_holder_contacts.reveal_account_holder_billing_contact_value",
-			args: {
-				account_holder: frm.doc.name,
-				billing_contact: billingContact,
-				channel_type: channelType,
-			},
-			freeze: true,
-			freeze_message: __("Loading billing contact..."),
-		}).then((res) => {
-			const payload = res?.message || {};
-			frappe.msgprint({
-				title: __("Billing Contact"),
-				message: `<div style="font-size: 14px;">${escapeBillingHtml(payload.value || "")}</div>`,
-			});
-		}).catch((err) => {
-			frappe.msgprint(err?.message || __("Unable to reveal billing contact."));
-		});
-	});
 }
 
 function billingCint(value) {

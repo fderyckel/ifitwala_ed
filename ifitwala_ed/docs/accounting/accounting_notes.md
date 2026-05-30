@@ -145,6 +145,7 @@ When an enrolled/imported student already has guardian rows, staff can create or
 * links selected Guardians as Account Holder billing contacts
 * stores the primary payer email and phone snapshot on Account Holder only for server-side finance delivery workflows; raw snapshots are hidden from generic list, report, print, export, and portal DTO surfaces
 * syncs purpose-bound Guardian contact points with `purpose = billing` for audited finance follow-up
+* shows raw billing email/phone directly on the Account Holder billing-contact panel only to authorized finance actors; other Account Holder readers receive masked values
 
 Rules:
 
@@ -152,7 +153,7 @@ Rules:
 * the source Student must have `anchor_school`
 * the Account Holder Organization must match the Student's school Organization
 * the Guardian must be linked to the source Student when `source_student` is set on the billing-contact row
-* raw billing contact reveal is a named finance workflow and must use the contact privacy service, not broad Guardian/Contact or Account Holder exports
+* raw billing contact display is a named finance workflow and must use the contact privacy service, not broad Guardian/Contact or Account Holder exports
 
 ---
 

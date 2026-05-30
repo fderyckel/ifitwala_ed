@@ -15,7 +15,8 @@ from ifitwala_ed.admission.admission_utils import (
     get_inquiry_assignees,
     is_school_available_for_public_inquiry,
 )
-from ifitwala_ed.admission.api.inquiry import get_zero_lost_lead_context, inquiry_school_link_query
+from ifitwala_ed.admission.api.inquiry.lookups import inquiry_school_link_query
+from ifitwala_ed.admission.api.inquiry.zero_lost import get_zero_lost_lead_context
 from ifitwala_ed.tests.factories.users import make_user
 
 

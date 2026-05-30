@@ -67,7 +67,7 @@ Create an `Account Holder` for the person or entity that will be invoiced. The r
 
 Then make sure the relevant `Student` record links to that same `Account Holder`.
 
-For already enrolled/imported students, staff do not need to re-enter guardian payer details. From the Student form, use **Create Account Holder with Guardians** when the student has guardian rows but no Account Holder. The action creates the payer record, links it back to the student, links the selected guardians as billing contacts, and fills the Account Holder primary email/phone delivery snapshot from the primary selected guardian. Raw snapshots are not exposed through generic list, report, export, or guardian portal DTO surfaces; staff should use the masked billing-contact summary and explicit reveal workflow where raw finance follow-up is permitted.
+For already enrolled/imported students, staff do not need to re-enter guardian payer details. From the Student form, use **Create Account Holder with Guardians** when the student has guardian rows but no Account Holder. The action creates the payer record, links it back to the student, links the selected guardians as billing contacts, and fills the Account Holder primary email/phone delivery snapshot from the primary selected guardian. Raw snapshots are not exposed through generic list, report, export, or guardian portal DTO surfaces; authorized finance users see the billing-contact email/phone directly on the Account Holder panel through the named finance follow-up workflow.
 
 If the Student already has an Account Holder, use **Link Guardians to Account Holder** from the same Student form action group to attach the existing guardian rows as finance billing contacts.
 
@@ -335,7 +335,7 @@ The follow-up layer now combines reports with dedicated Desk workflow objects.
 - `Payment Request`: tracks invoice-level payment outreach
 - `Dunning Notice`: groups overdue invoices into a collection notice
 - `Statement Of Accounts Run`: creates a finance work queue for statement processing
-- `Account Holder` billing-contact panel: shows linked guardian billing contacts with masked email/phone by default and purpose-bound reveal actions for finance follow-up
+- `Account Holder` billing-contact panel: shows linked guardian billing contacts with direct email/phone for authorized finance users and masked values for other Account Holder readers
 
 Current school-filter semantics for these reports are intentionally split:
 

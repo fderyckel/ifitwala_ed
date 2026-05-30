@@ -188,6 +188,32 @@ def invalidate_public_people_cache(*_args, **_kwargs):
         clear_cache()
 
 
+def invalidate_public_people_cache_for_drive_derivative(doc=None, *_args, **_kwargs):
+    drive_file = ""
+    if doc is not None:
+        drive_file = str(getattr(doc, "drive_file", "") or "").strip()
+        if not drive_file and isinstance(doc, dict):
+            drive_file = str(doc.get("drive_file") or "").strip()
+    if not drive_file:
+        return
+
+    drive_file_row = frappe.db.get_value(
+        "Drive File",
+        drive_file,
+        ["primary_subject_type", "purpose", "slot"],
+        as_dict=True,
+    )
+    if not drive_file_row:
+        return
+
+    if (
+        (drive_file_row.get("primary_subject_type") or "").strip() == "Employee"
+        and (drive_file_row.get("purpose") or "").strip() == "employee_profile_display"
+        and (drive_file_row.get("slot") or "").strip() == "profile_image"
+    ):
+        invalidate_public_people_cache()
+
+
 def get_public_people_records(*, school_names, organization_name: str) -> list[dict[str, object]]:
     normalized_school_names = _normalize_school_names(school_names)
     if not normalized_school_names:
