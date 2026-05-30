@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import types
 from unittest.mock import patch
 
 import frappe
@@ -191,6 +192,48 @@ class TestPublicPeopleService(FrappeTestCase):
                 }
             ],
         )
+
+    def test_drive_derivative_hook_invalidates_employee_profile_image_cache(self):
+        derivative_doc = types.SimpleNamespace(drive_file="DRIVE-EMP-1")
+
+        with (
+            patch(
+                "frappe.db.get_value",
+                return_value={
+                    "primary_subject_type": "Employee",
+                    "purpose": "employee_profile_display",
+                    "slot": "profile_image",
+                },
+            ) as get_value,
+            patch.object(public_people, "invalidate_public_people_cache") as invalidate,
+        ):
+            public_people.invalidate_public_people_cache_for_drive_derivative(derivative_doc)
+
+        get_value.assert_called_once_with(
+            "Drive File",
+            "DRIVE-EMP-1",
+            ["primary_subject_type", "purpose", "slot"],
+            as_dict=True,
+        )
+        invalidate.assert_called_once()
+
+    def test_drive_derivative_hook_ignores_non_employee_profile_image_cache(self):
+        derivative_doc = types.SimpleNamespace(drive_file="DRIVE-STUDENT-1")
+
+        with (
+            patch(
+                "frappe.db.get_value",
+                return_value={
+                    "primary_subject_type": "Student",
+                    "purpose": "student_profile_display",
+                    "slot": "profile_image",
+                },
+            ),
+            patch.object(public_people, "invalidate_public_people_cache") as invalidate,
+        ):
+            public_people.invalidate_public_people_cache_for_drive_derivative(derivative_doc)
+
+        invalidate.assert_not_called()
 
 
 def _make_designation(*, organization: str, school: str | None, title: str, role_profile: str):

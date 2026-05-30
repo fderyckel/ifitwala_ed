@@ -5,7 +5,7 @@
 <div style="max-width: 960px; margin: 24px auto; padding: 0 16px; font-family: Helvetica, Arial, sans-serif;">
   {% if share_error %}
     <section style="border: 1px solid #f0d0d0; background: #fff7f7; padding: 16px; border-radius: 12px;">
-      <h1 style="margin: 0 0 8px 0;">Share Link Unavailable</h1>
+      <h1 style="margin: 0 0 8px 0;">{{ _("Share Link Unavailable") }}</h1>
       <p style="margin: 0; color: #6b1b1b;">{{ share_error }}</p>
     </section>
   {% elif share %}
@@ -33,7 +33,7 @@
             {% if item.artefact_file_url and share.share_link.allow_download %}
             <p style="margin: 0;">
               <a href="{{ item.artefact_file_url }}" target="_blank" rel="noopener">
-                Open artefact{% if item.artefact_file_name %}: {{ item.artefact_file_name }}{% endif %}
+                {{ _("Open artefact") }}{% if item.artefact_file_name %}: {{ item.artefact_file_name }}{% endif %}
               </a>
             </p>
             {% endif %}
@@ -42,7 +42,7 @@
       </div>
     {% else %}
       <section style="border: 1px dashed #ddd; border-radius: 10px; padding: 16px; color: #555;">
-        No showcase items are available.
+        {{ _("No showcase items are available.") }}
       </section>
     {% endif %}
   {% endif %}

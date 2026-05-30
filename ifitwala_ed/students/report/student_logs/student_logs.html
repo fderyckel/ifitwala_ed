@@ -163,16 +163,16 @@
 
 <div class="print-container">
 	<div class="mb-2">
-		<div class="h-title">Student Log + Follow-ups</div>
+		<div class="h-title">{{ __("Student Log + Follow-ups") }}</div>
 		<div class="h-sub">
 			{% var fd = filters.from_date, td = filters.to_date; %}
-			{% if (fd && td) { %}Period: {{ fd }} → {{ td }}{% } %}
-			{% if (filters.student) { %} &nbsp;·&nbsp; Student: {{ filters.student }}{% } %}
-			{% if (filters.program) { %} &nbsp;·&nbsp; Program: {{ filters.program }}{% } %}
-			{% if (filters.school) { %} &nbsp;·&nbsp; School: {{ filters.school }}{% } %}
-			{% if (filters.academic_year) { %} &nbsp;·&nbsp; AY: {{ filters.academic_year }}{% } %}
-			{% if (filters.log_type) { %} &nbsp;·&nbsp; Type: {{ filters.log_type }}{% } %}
-			{% if (filters.follow_up_status) { %} &nbsp;·&nbsp; Status: {{ filters.follow_up_status }}{% } %}
+			{% if (fd && td) { %}{{ __("Period") }}: {{ fd }} → {{ td }}{% } %}
+			{% if (filters.student) { %} &nbsp;·&nbsp; {{ __("Student") }}: {{ filters.student }}{% } %}
+			{% if (filters.program) { %} &nbsp;·&nbsp; {{ __("Program") }}: {{ filters.program }}{% } %}
+			{% if (filters.school) { %} &nbsp;·&nbsp; {{ __("School") }}: {{ filters.school }}{% } %}
+			{% if (filters.academic_year) { %} &nbsp;·&nbsp; {{ __("AY") }}: {{ filters.academic_year }}{% } %}
+			{% if (filters.log_type) { %} &nbsp;·&nbsp; {{ __("Type") }}: {{ filters.log_type }}{% } %}
+			{% if (filters.follow_up_status) { %} &nbsp;·&nbsp; {{ __("Status") }}: {{ filters.follow_up_status }}{% } %}
 		</div>
 	</div>
 
@@ -209,27 +209,27 @@
 								if (norm === "in progress") badge = "badge-warning";  // orange
 								if (norm === "completed")   badge = "badge-success";  // green
 							%}
-							<span class="badge {{ badge }}">{{ st || "Open" }}</span>
-							<span class="badge badge-light" title="Follow-ups count">FU # {{ r.follow_up_count || 0 }}</span>
+							<span class="badge {{ badge }}">{{ st || __("Open") }}</span>
+							<span class="badge badge-light" title="{{ __('Follow-ups count') }}">{{ __("FU #") }} {{ r.follow_up_count || 0 }}</span>
 						</div>
 					</div>
 					<div class="meta mt-1">
-						<div>Program: <strong>{{ r.program || "-" }}</strong></div>
-						<div class="dot">School: <strong>{{ r.school || "-" }}</strong></div>
-						<div class="dot">AY: <strong>{{ r.academic_year || "-" }}</strong></div>
-						<div class="dot">Author: <strong>{{ r.author_name || "-" }}</strong></div>
+						<div>{{ __("Program") }}: <strong>{{ r.program || "-" }}</strong></div>
+						<div class="dot">{{ __("School") }}: <strong>{{ r.school || "-" }}</strong></div>
+						<div class="dot">{{ __("AY") }}: <strong>{{ r.academic_year || "-" }}</strong></div>
+						<div class="dot">{{ __("Author") }}: <strong>{{ r.author_name || "-" }}</strong></div>
 						{% if (r.visibility) { %}
-							<div class="dot">Visibility: <span style="font-size:1.05em">{{ r.visibility }}</span></div>
+							<div class="dot">{{ __("Visibility") }}: <span style="font-size:1.05em">{{ r.visibility }}</span></div>
 						{% } %}
 						{% if (r.requires_follow_up) { %}
-							<div class="dot"><span class="badge badge-info">Requires Follow-up</span></div>
+							<div class="dot"><span class="badge badge-info">{{ __("Requires Follow-up") }}</span></div>
 						{% } %}
 					</div>
 				</div>
 
 				<div class="card-body">
 					<div class="snip">
-						<span class="label label-log">Log:</span>
+						<span class="label label-log">{{ __("Log:") }}</span>
 						<span class="snip-text">{{ frappe.utils.escape_html(r.log_text || "") }}</span>
 					</div>
 
@@ -237,7 +237,7 @@
 					{% if (cnt > 0) { %}
 						<ol class="followups">
 					{% } else { %}
-						<p class="text-dim small mb-0">No follow-ups recorded.</p>
+						<p class="text-dim small mb-0">{{ __("No follow-ups recorded.") }}</p>
 					{% } %}
 
 					{% has_open_card = true; prev_follow_count = cnt; %}
@@ -245,7 +245,7 @@
 			<li class="followup-item">
 				<div class="followup-head">
 					<div><strong>{{ r.fu_date }}</strong></div>
-					<div class="text-dim">by {{ r.fu_author }}</div>
+					<div class="text-dim">{{ __("by") }} {{ r.fu_author }}</div>
 				</div>
 				<div class="followup-body">
 					{{ frappe.utils.escape_html(r.follow_up_text || "") }}

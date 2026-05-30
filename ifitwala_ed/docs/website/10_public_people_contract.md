@@ -132,6 +132,7 @@ Current runtime behavior:
 - website cards should prefer compact/card preview variants through semantic server-returned fields
 - public biography dialogs may use the approved medium/card preview variant, but not the original full-size employee image
 - guest delivery goes through `open_public_employee_image(...)`, which validates publication scope and resolves a short-lived Drive preview grant for the approved derivative only
+- if a current governed Employee `profile_image` exists but the needed public derivatives are not ready, the resolver requests Drive derivative generation and still renders the non-image fallback until Drive marks a derivative ready
 - public website people surfaces do not fall back to the original full-size employee image
 
 Public people surfaces must not fetch full original employee images by default when a derivative exists.
@@ -146,6 +147,7 @@ Current invalidation owners:
 - `Employee`
 - `Designation`
 - `School`
+- `Drive File Derivative` rows whose parent Drive File is an Employee `profile_image` for `employee_profile_display`
 
 Stale public-people cache without an invalidation owner is a bug.
 

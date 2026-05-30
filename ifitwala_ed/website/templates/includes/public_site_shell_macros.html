@@ -26,32 +26,32 @@
 							href="{{ landing.login_url }}"
 							class="inline-flex rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100 hover:text-slate-950"
 						>
-							Login
+							{{ _("Login") }}
 						</a>
 					{% else %}
 						<a
 							href="{{ landing.hub_url }}"
 							class="inline-flex rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100 hover:text-slate-950"
 						>
-							Hub
+							{{ _("Hub") }}
 						</a>
 						<a
 							href="{{ landing.logout_url }}"
 							class="inline-flex rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-100 hover:text-slate-950"
 						>
-							Logout
+							{{ _("Logout") }}
 						</a>
 					{% endif %}
 					<a
 						href="{{ landing.inquiry_url }}"
 						class="inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
 					>
-						Start an Inquiry
+						{{ _("Start an Inquiry") }}
 					</a>
 				</div>
 			</div>
 
-			<nav aria-label="Public site navigation" class="flex flex-wrap items-center gap-2">
+			<nav aria-label="{{ _('Public site navigation') }}" class="flex flex-wrap items-center gap-2">
 				{% for item in landing.navigation %}
 					{% set is_active = landing.current_route == item.url or (item.url != '/' and landing.current_route.startswith(item.url ~ '/')) %}
 					<a
@@ -72,7 +72,7 @@
 	<div class="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 py-6 text-sm text-slate-600 lg:flex-row lg:items-center lg:justify-between">
 		<div>
 			<span class="font-medium text-slate-900">{{ landing.brand_name }}</span>
-			<span class="ml-2">School discovery, admissions, and public information.</span>
+			<span class="ml-2">{{ _("School discovery, admissions, and public information.") }}</span>
 		</div>
 		<div>&copy; {{ current_year }} {{ landing.brand_name }}</div>
 	</div>

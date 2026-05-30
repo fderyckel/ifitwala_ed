@@ -38,7 +38,7 @@
 								item.image.card,
 								item.image.thumb,
 								item.image.original,
-								item.alt or data.heading or "Section carousel image",
+								item.alt or data.heading or _("Section carousel image"),
 								"h-full w-full object-cover",
 								fallback="carousel"
 							) }}
@@ -54,17 +54,17 @@
 						type="button"
 						class="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full border border-slate-200 bg-white/85 px-3 py-2 text-xs font-semibold text-slate-700"
 						data-section-carousel-prev
-						aria-label="Previous slide"
+						aria-label="{{ _('Previous slide') }}"
 					>
-						Prev
+						{{ _("Prev") }}
 					</button>
 					<button
 						type="button"
 						class="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full border border-slate-200 bg-white/85 px-3 py-2 text-xs font-semibold text-slate-700"
 						data-section-carousel-next
-						aria-label="Next slide"
+						aria-label="{{ _('Next slide') }}"
 					>
-						Next
+						{{ _("Next") }}
 					</button>
 
 					<div class="absolute bottom-3 right-3 z-20 inline-flex items-center gap-1.5 rounded-full bg-black/45 px-2 py-1">
@@ -74,7 +74,7 @@
 								class="h-2.5 w-2.5 rounded-full bg-white/70 transition {{ 'ring-1 ring-white' if loop.index == 1 else '' }}"
 								data-section-carousel-dot
 								data-slide-index="{{ loop.index0 }}"
-								aria-label="Go to slide {{ loop.index }}"
+								aria-label="{{ _('Go to slide {0}').format(loop.index) }}"
 							></button>
 						{% endfor %}
 					</div>

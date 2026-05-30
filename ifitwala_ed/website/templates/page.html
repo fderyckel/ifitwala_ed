@@ -76,7 +76,7 @@
 						</span>
 					</a>
 
-				<nav class="site-nav-desktop hidden min-w-0 flex-1 items-center justify-center lg:flex" aria-label="School navigation">
+				<nav class="site-nav-desktop hidden min-w-0 flex-1 items-center justify-center lg:flex" aria-label="{{ _('School navigation') }}">
 					<ul class="flex min-w-0 flex-wrap items-center justify-center gap-1.5">
 						{% for item in site_shell.navigation %}
 							{% set is_active = site_shell.current_route == item.url or (item.url != site_shell.brand_url and site_shell.current_route.startswith(item.url ~ '/')) %}
@@ -273,10 +273,10 @@
 		<a
 			href="{{ site_shell.inquiry_url }}"
 			class="site-talk-bubble fixed bottom-5 right-5 z-50 inline-flex flex-col rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
-			aria-label="Let's talk about admissions"
+			aria-label='{{ _("Let's talk about admissions") }}'
 		>
-			<span class="text-sm font-semibold text-slate-900">Let's Talk</span>
-			<span class="text-xs text-slate-600">Ask Admissions</span>
+			<span class="text-sm font-semibold text-slate-900">{{ _("Let's Talk") }}</span>
+			<span class="text-xs text-slate-600">{{ _("Ask Admissions") }}</span>
 		</a>
 	</div>
 

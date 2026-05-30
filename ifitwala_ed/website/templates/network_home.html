@@ -41,13 +41,13 @@
 						<div class="absolute inset-y-0 left-0 hidden w-32 rounded-full bg-emerald-400/20 blur-3xl lg:block"></div>
 						<div class="relative space-y-6">
 							<p class="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-200">
-								Public Home
+								{{ _("Public Home") }}
 							</p>
 							<h1 class="max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-								Discover the right school within {{ landing.brand_name }}.
+								{{ _("Discover the right school within {0}.").format(landing.brand_name | e) }}
 							</h1>
 							<p class="max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-								Explore campuses, compare public school profiles, review admissions pathways, and reach the right team before you ever need to log in.
+								{{ _("Explore campuses, compare public school profiles, review admissions pathways, and reach the right team before you ever need to log in.") }}
 							</p>
 
 							<div class="flex flex-wrap gap-3">
@@ -55,25 +55,25 @@
 									href="{{ landing.directory_url }}"
 									class="inline-flex rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
 								>
-									Explore Schools
+									{{ _("Explore Schools") }}
 								</a>
 								<a
 									href="{{ landing.inquiry_url }}"
 									class="inline-flex rounded-full border border-white/30 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/60 hover:bg-white/10"
 								>
-									Start an Inquiry
+									{{ _("Start an Inquiry") }}
 								</a>
 							</div>
 
 							<div class="flex flex-wrap gap-3 pt-2">
 								<div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
 									<div class="text-2xl font-semibold text-white">{{ landing.school_count }}</div>
-									<div class="text-xs uppercase tracking-[0.18em] text-slate-300">Published Schools</div>
+									<div class="text-xs uppercase tracking-[0.18em] text-slate-300">{{ _("Published Schools") }}</div>
 								</div>
 								{% if landing.program_count %}
 									<div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
 										<div class="text-2xl font-semibold text-white">{{ landing.program_count }}</div>
-										<div class="text-xs uppercase tracking-[0.18em] text-slate-300">Published Programs</div>
+										<div class="text-xs uppercase tracking-[0.18em] text-slate-300">{{ _("Published Programs") }}</div>
 									</div>
 								{% endif %}
 							</div>
@@ -84,7 +84,7 @@
 						<div class="rounded-[2rem] border border-white/10 bg-white/10 p-6 shadow-2xl backdrop-blur">
 							{% if landing.featured_school %}
 								<p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-200">
-									Featured School
+									{{ _("Featured School") }}
 								</p>
 								<div class="mt-5 flex items-start gap-4">
 									{% if landing.featured_school.logo %}
@@ -101,7 +101,7 @@
 									{% endif %}
 									<div class="min-w-0">
 										<h2 class="text-2xl font-semibold tracking-tight text-white">
-											{{ landing.featured_school.label }}
+											{{ landing.featured_school.label | e }}
 										</h2>
 										{% if landing.featured_school.tagline %}
 											<p class="mt-2 text-sm text-slate-200">{{ landing.featured_school.tagline }}</p>
@@ -123,31 +123,31 @@
 										href="{{ landing.featured_school.url }}"
 										class="inline-flex rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
 									>
-										Visit School Site
+										{{ _("Visit School Site") }}
 									</a>
 									<a
 										href="{{ landing.featured_school.inquiry_url }}"
 										class="inline-flex rounded-full border border-white/20 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-white/50 hover:bg-white/10"
 									>
-										Contact Admissions
+										{{ _("Contact Admissions") }}
 									</a>
 								</div>
 							{% else %}
 								<p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-200">
-									Public Setup
+									{{ _("Public Setup") }}
 								</p>
 								<h2 class="mt-4 text-2xl font-semibold tracking-tight text-white">
-									No published schools are available yet.
+									{{ _("No published schools are available yet.") }}
 								</h2>
 								<p class="mt-4 text-sm leading-7 text-slate-200">
-									Sign in to finish the first school setup, publish its website, and turn this homepage into a live public entry point.
+									{{ _("Sign in to finish the first school setup, publish its website, and turn this homepage into a live public entry point.") }}
 								</p>
 								<div class="mt-6">
 									<a
 										href="{{ landing.login_url }}"
 										class="inline-flex rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
 									>
-										Login
+										{{ _("Login") }}
 									</a>
 								</div>
 							{% endif %}
@@ -159,19 +159,19 @@
 			<section class="mx-auto w-full max-w-6xl px-6 py-14 lg:py-20">
 				<div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
 					<div>
-						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Schools</p>
+						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">{{ _("Schools") }}</p>
 						<h2 class="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
-							Start with the school that fits the learner.
+							{{ _("Start with the school that fits the learner.") }}
 						</h2>
 						<p class="mt-3 max-w-3xl text-base leading-7 text-slate-600">
-							Each school site carries its own programs, stories, and admissions details. Families can move from discovery to inquiry without jumping through the login screen first.
+							{{ _("Each school site carries its own programs, stories, and admissions details. Families can move from discovery to inquiry without jumping through the login screen first.") }}
 						</p>
 					</div>
 					<a
 						href="{{ landing.directory_url }}"
 						class="inline-flex rounded-full border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-white hover:text-slate-950"
 					>
-						View Full Directory
+						{{ _("View Full Directory") }}
 					</a>
 				</div>
 
@@ -186,7 +186,7 @@
 									{% if school.logo %}
 										<img
 											src="{{ school.logo }}"
-											alt="{{ school.label }}"
+												alt="{{ frappe.utils.escape_html(school.label) }}"
 											class="h-14 w-14 rounded-2xl bg-slate-100 object-cover"
 											loading="lazy"
 										>
@@ -196,7 +196,7 @@
 										</div>
 									{% endif %}
 									<div class="min-w-0 flex-1">
-										<h3 class="text-lg font-semibold tracking-tight text-slate-950">{{ school.label }}</h3>
+										<h3 class="text-lg font-semibold tracking-tight text-slate-950">{{ frappe.utils.escape_html(school.label) }}</h3>
 										{% if school.tagline %}
 											<p class="mt-1 text-sm text-slate-600">{{ school.tagline }}</p>
 										{% endif %}
@@ -219,30 +219,30 @@
 			<section class="border-y border-slate-200 bg-white">
 				<div class="mx-auto grid w-full max-w-6xl gap-6 px-6 py-14 lg:grid-cols-3">
 					<div class="rounded-[1.6rem] border border-slate-200 bg-stone-50 p-6">
-						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">1. Compare</p>
-						<h3 class="mt-3 text-xl font-semibold tracking-tight text-slate-950">Browse the schools.</h3>
+						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">{{ _("1. Compare") }}</p>
+						<h3 class="mt-3 text-xl font-semibold tracking-tight text-slate-950">{{ _("Browse the schools.") }}</h3>
 						<p class="mt-3 text-sm leading-7 text-slate-600">
-							See the public overview of each school before narrowing down the best fit.
+							{{ _("See the public overview of each school before narrowing down the best fit.") }}
 						</p>
-						<a href="{{ landing.directory_url }}" class="mt-5 inline-flex text-sm font-semibold text-slate-950">Open directory</a>
+						<a href="{{ landing.directory_url }}" class="mt-5 inline-flex text-sm font-semibold text-slate-950">{{ _("Open directory") }}</a>
 					</div>
 
 					<div class="rounded-[1.6rem] border border-slate-200 bg-stone-50 p-6">
-						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">2. Ask</p>
-						<h3 class="mt-3 text-xl font-semibold tracking-tight text-slate-950">Start the admissions conversation.</h3>
+						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">{{ _("2. Ask") }}</p>
+						<h3 class="mt-3 text-xl font-semibold tracking-tight text-slate-950">{{ _("Start the admissions conversation.") }}</h3>
 						<p class="mt-3 text-sm leading-7 text-slate-600">
-							Use the public inquiry flow to contact the right admissions team without a staff account.
+							{{ _("Use the public inquiry flow to contact the right admissions team without a staff account.") }}
 						</p>
-						<a href="{{ landing.inquiry_url }}" class="mt-5 inline-flex text-sm font-semibold text-slate-950">Start an inquiry</a>
+						<a href="{{ landing.inquiry_url }}" class="mt-5 inline-flex text-sm font-semibold text-slate-950">{{ _("Start an inquiry") }}</a>
 					</div>
 
 					<div class="rounded-[1.6rem] border border-slate-200 bg-stone-50 p-6">
-						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">3. Continue</p>
-						<h3 class="mt-3 text-xl font-semibold tracking-tight text-slate-950">Login only when needed.</h3>
+						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">{{ _("3. Continue") }}</p>
+						<h3 class="mt-3 text-xl font-semibold tracking-tight text-slate-950">{{ _("Login only when needed.") }}</h3>
 						<p class="mt-3 text-sm leading-7 text-slate-600">
-							Portal access stays an explicit action for staff, students, and guardians instead of the public front door.
+							{{ _("Portal access stays an explicit action for staff, students, and guardians instead of the public front door.") }}
 						</p>
-						<a href="{{ landing.login_url }}" class="mt-5 inline-flex text-sm font-semibold text-slate-950">Go to login</a>
+						<a href="{{ landing.login_url }}" class="mt-5 inline-flex text-sm font-semibold text-slate-950">{{ _("Go to login") }}</a>
 					</div>
 				</div>
 			</section>

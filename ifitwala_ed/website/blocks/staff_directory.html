@@ -16,11 +16,11 @@
 					<div class="grid gap-4 border-b border-slate-200/80 pb-5 md:grid-cols-[minmax(0,1.4fr)_repeat(2,minmax(0,0.8fr))_auto] md:items-end">
 						{% if data.show_search %}
 							<label class="grid gap-2">
-								<span class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Search</span>
+								<span class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{{ _("Search") }}</span>
 								<input
 									type="search"
 									class="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
-									placeholder="Search staff"
+									placeholder="{{ _('Search staff') }}"
 									data-directory-search
 								>
 							</label>
@@ -28,12 +28,12 @@
 
 						{% if data.show_designation_filter %}
 							<label class="grid gap-2">
-								<span class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Role</span>
+								<span class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{{ _("Role") }}</span>
 								<select
 									class="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
 									data-directory-designation
 								>
-									<option value="">All roles</option>
+									<option value="">{{ _("All roles") }}</option>
 									{% for option in data.designation_options %}
 										<option value="{{ option.value }}">{{ option.label }}</option>
 									{% endfor %}
@@ -43,12 +43,12 @@
 
 						{% if data.show_role_profile_filter %}
 							<label class="grid gap-2">
-								<span class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Group</span>
+								<span class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{{ _("Group") }}</span>
 								<select
 									class="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
 									data-directory-role-profile
 								>
-									<option value="">All groups</option>
+									<option value="">{{ _("All groups") }}</option>
 									{% for option in data.role_profile_options %}
 										<option value="{{ option.value }}">{{ option.label }}</option>
 									{% endfor %}
@@ -57,7 +57,7 @@
 						{% endif %}
 
 						<p class="text-sm font-medium text-slate-600 md:justify-self-end" aria-live="polite" data-directory-count>
-							{{ data.people_count }} {{ "person" if data.people_count == 1 else "people" }}
+							{{ data.people_count }} {{ _("person") if data.people_count == 1 else _("people") }}
 						</p>
 					</div>
 				{% endif %}
@@ -86,7 +86,7 @@
 								data-person-initials="{{ person.initials | e }}"
 								data-person-image="{{ modal_photo | e }}"
 								data-person-profile-url="{{ (person.profile_url or '') | e }}"
-								aria-label="Open {{ person.name | e }} biography"
+								aria-label="{{ _('Open {0} biography').format(person.name | e) }}"
 							>
 								<div class="relative aspect-square overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.14),_transparent_58%),linear-gradient(135deg,_#eff6ff,_#f8fafc_55%,_#eef2ff)]">
 									{% if has_photo %}
@@ -115,7 +115,7 @@
 									{% if person.title %}
 										<span class="site-people-role mt-1.5 text-xs font-medium leading-5 text-slate-600">{{ person.title }}</span>
 									{% endif %}
-									<span class="mt-auto pt-3 text-xs font-semibold text-slate-800">View profile</span>
+									<span class="mt-auto pt-3 text-xs font-semibold text-slate-800">{{ _("View profile") }}</span>
 								</div>
 							</button>
 						</article>
@@ -123,8 +123,8 @@
 				</div>
 
 				<div class="mt-6 hidden rounded-[1.4rem] border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center" data-directory-no-results>
-					<h3 class="text-lg font-semibold text-slate-900">No matching staff found</h3>
-					<p class="mt-2 text-sm text-slate-600">Try a different search or clear one of the filters.</p>
+					<h3 class="text-lg font-semibold text-slate-900">{{ _("No matching staff found") }}</h3>
+					<p class="mt-2 text-sm text-slate-600">{{ _("Try a different search or clear one of the filters.") }}</p>
 				</div>
 			</div>
 		{% else %}

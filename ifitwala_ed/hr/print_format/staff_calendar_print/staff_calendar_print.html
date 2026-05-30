@@ -15,7 +15,7 @@
 {% endif %}
 {% set month_count = (((to_date.year - from_date.year) * 12) + (to_date.month - from_date.month) + 1) if from_date and to_date else 0 %}
 {% set month_anchor = from_date.replace(day=1) if from_date else None %}
-{% set weekday_labels = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] %}
+{% set weekday_labels = [_("Sunday"), _("Monday"), _("Tuesday"), _("Wednesday"), _("Thursday"), _("Friday"), _("Saturday")] %}
 
 <div class="staff-calendar-print">
 	{% if month_count %}
@@ -34,11 +34,11 @@
 							style="width:44px; height:44px; max-width:44px; max-height:44px; object-fit:contain; display:block;"
 						>
 						{% else %}
-						<div class="calendar-header__fallback">SC</div>
+						<div class="calendar-header__fallback">{{ _("SC") }}</div>
 						{% endif %}
 					</td>
 					<td class="calendar-header__main">
-						<div class="calendar-header__kicker">Staff Calendar</div>
+						<div class="calendar-header__kicker">{{ _("Staff Calendar") }}</div>
 						<div class="calendar-header__eyebrow">{{ frappe.utils.escape_html(brand_name) }}</div>
 						<div class="calendar-header__month">{{ month_start.strftime("%B %Y") }}</div>
 						<div class="calendar-header__name">{{ frappe.utils.escape_html(doc.staff_calendar_name or doc.name) }}</div>
@@ -47,12 +47,12 @@
 						{% endif %}
 					</td>
 					<td class="calendar-header__side">
-						<div class="calendar-header__meta-label">Generated</div>
+						<div class="calendar-header__meta-label">{{ _("Generated") }}</div>
 						<div class="calendar-header__meta-value">{{ frappe.utils.escape_html(generated_on) }}</div>
-						<div class="calendar-header__meta-label">Window</div>
+						<div class="calendar-header__meta-label">{{ _("Window") }}</div>
 						<div class="calendar-header__meta-value">
 							{% if from_date %}{{ frappe.utils.escape_html(frappe.utils.formatdate(from_date)) }}{% else %}--{% endif %}
-							<span class="calendar-header__meta-sep">to</span>
+							<span class="calendar-header__meta-sep">{{ _("to") }}</span>
 							{% if to_date %}{{ frappe.utils.escape_html(frappe.utils.formatdate(to_date)) }}{% else %}--{% endif %}
 						</div>
 					</td>
@@ -62,35 +62,35 @@
 			<table class="calendar-summary" cellspacing="0" cellpadding="0">
 				<tr>
 					<td>
-						<div class="calendar-summary__label">School</div>
+						<div class="calendar-summary__label">{{ _("School") }}</div>
 						<div class="calendar-summary__value">
-							{% if doc.school %}{{ frappe.utils.escape_html(doc.get_formatted("school")) }}{% else %}Not assigned{% endif %}
+							{% if doc.school %}{{ frappe.utils.escape_html(doc.get_formatted("school")) }}{% else %}{{ _("Not assigned") }}{% endif %}
 						</div>
 					</td>
 					<td>
-						<div class="calendar-summary__label">Employee Group</div>
+						<div class="calendar-summary__label">{{ _("Employee Group") }}</div>
 						<div class="calendar-summary__value">
-							{% if doc.employee_group %}{{ frappe.utils.escape_html(doc.get_formatted("employee_group")) }}{% else %}Not assigned{% endif %}
+							{% if doc.employee_group %}{{ frappe.utils.escape_html(doc.get_formatted("employee_group")) }}{% else %}{{ _("Not assigned") }}{% endif %}
 						</div>
 					</td>
 					<td>
-						<div class="calendar-summary__label">Academic Year</div>
+						<div class="calendar-summary__label">{{ _("Academic Year") }}</div>
 						<div class="calendar-summary__value">
-							{% if doc.academic_year %}{{ frappe.utils.escape_html(doc.get_formatted("academic_year")) }}{% else %}Not assigned{% endif %}
+							{% if doc.academic_year %}{{ frappe.utils.escape_html(doc.get_formatted("academic_year")) }}{% else %}{{ _("Not assigned") }}{% endif %}
 						</div>
 					</td>
 					<td>
-						<div class="calendar-summary__label">Total Holidays</div>
+						<div class="calendar-summary__label">{{ _("Total Holidays") }}</div>
 						<div class="calendar-summary__value">{{ doc.total_holidays or holiday_rows|length }}</div>
 					</td>
 					<td>
-						<div class="calendar-summary__label">Working Days</div>
+						<div class="calendar-summary__label">{{ _("Working Days") }}</div>
 						<div class="calendar-summary__value">{{ doc.total_working_day or 0 }}</div>
 					</td>
 					<td class="calendar-summary__legend-cell">
-						<span class="legend-chip legend-chip--holiday">Holiday</span>
-						<span class="legend-chip legend-chip--weekly">Weekly Off</span>
-						<span class="legend-chip legend-chip--muted">Outside Range</span>
+						<span class="legend-chip legend-chip--holiday">{{ _("Holiday") }}</span>
+						<span class="legend-chip legend-chip--weekly">{{ _("Weekly Off") }}</span>
+						<span class="legend-chip legend-chip--muted">{{ _("Outside Range") }}</span>
 					</td>
 				</tr>
 			</table>
@@ -115,16 +115,16 @@
 							<div class="calendar-day__head">
 								<span class="calendar-day__number">{{ current_date.day }}</span>
 								{% if current_date == from_date %}
-								<span class="calendar-day__flag">Start</span>
+								<span class="calendar-day__flag">{{ _("Start") }}</span>
 								{% elif current_date == to_date %}
-								<span class="calendar-day__flag">End</span>
+								<span class="calendar-day__flag">{{ _("End") }}</span>
 								{% endif %}
 							</div>
 							<div class="calendar-day__events">
 								{% for row in holiday_rows %}
 								{% set row_date = frappe.utils.getdate(row.holiday_date) %}
 								{% if row_date == current_date %}
-								{% set holiday_label = (row.description or "").strip() or ("Weekly Off" if row.weekly_off else "Holiday") %}
+								{% set holiday_label = (row.description or "").strip() or (_("Weekly Off") if row.weekly_off else _("Holiday")) %}
 								<div class="calendar-day__event{{ ' calendar-day__event--weekly' if row.weekly_off else ' calendar-day__event--holiday' }}">
 									<span class="calendar-day__event-dot" style="background: {{ frappe.utils.escape_html(row.color or '#C7D2D9') }};"></span>
 									<span class="calendar-day__event-text">{{ frappe.utils.escape_html(holiday_label) }}</span>
@@ -145,13 +145,13 @@
 				</tbody>
 			</table>
 
-			<div class="calendar-footer">Prepared from Ifitwala Ed for staff planning and handwritten annotations.</div>
+			<div class="calendar-footer">{{ _("Prepared from Ifitwala Ed for staff planning and handwritten annotations.") }}</div>
 		</div>
 		{% endfor %}
 	{% else %}
 	<div class="calendar-empty-state">
-		<div class="calendar-empty-state__title">No printable calendar range is available.</div>
-		<div class="calendar-empty-state__copy">Set a date window or add holiday rows so the monthly calendar pages can be generated.</div>
+		<div class="calendar-empty-state__title">{{ _("No printable calendar range is available.") }}</div>
+		<div class="calendar-empty-state__copy">{{ _("Set a date window or add holiday rows so the monthly calendar pages can be generated.") }}</div>
 	</div>
 	{% endif %}
 </div>

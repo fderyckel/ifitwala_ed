@@ -160,6 +160,7 @@ Backend linkage:
 - consumers that need a smaller image must resolve the canonical compatibility variants instead of guessing file paths.
 - `update_user()` syncs linked `User.user_image` to the stable Ed-owned `open_employee_user_avatar` route. That route authorizes through the Employee profile-image surface, resolves the current governed `profile_image` through Drive, prefers compact-to-larger derivatives, and uses the governed original only as the last compatibility fallback.
 - existing linked Users with missing or stale avatars are normalized by the one-shot patch `ifitwala_ed.patches.backfill_employee_user_images`; runtime code must not add a login-time or form-load repair path for this legacy drift.
+- existing public website staff with legacy `Employee.employee_image` values but no linked `User` are normalized by the one-shot patch `ifitwala_ed.patches.backfill_public_employee_profile_images`; public website runtime must not fall back to raw/original Employee image URLs.
 
 Current read consumers using canonical variant resolution:
 - Employee form avatar (`employee.js`)

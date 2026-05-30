@@ -4,7 +4,7 @@
 
 Implemented
 Code refs: `ifitwala_ed/accounting/doctype/program_billing_plan/program_billing_plan.py`, `ifitwala_ed/accounting/doctype/program_billing_plan/program_billing_plan_list.js`, `ifitwala_ed/accounting/doctype/billing_schedule/billing_schedule.py`, `ifitwala_ed/accounting/doctype/billing_run/billing_run.py`, `ifitwala_ed/accounting/billing/schedule_generation.py`, `ifitwala_ed/accounting/billing/invoice_generation.py`, `ifitwala_ed/accounting/doctype/sales_invoice/sales_invoice.py`
-Test refs: `ifitwala_ed/accounting/doctype/program_billing_plan/test_program_billing_plan.py`, `ifitwala_ed/accounting/doctype/billing_schedule/test_billing_schedule.py`, `ifitwala_ed/accounting/doctype/billing_run/test_billing_run.py`
+Test refs: `ifitwala_ed/accounting/doctype/program_billing_plan/test_program_billing_plan.py`, `ifitwala_ed/accounting/doctype/program_billing_plan/test_program_billing_plan_list.py`, `ifitwala_ed/accounting/doctype/billing_schedule/test_billing_schedule.py`, `ifitwala_ed/accounting/doctype/billing_run/test_billing_run.py`
 
 ## 0. Objective
 
@@ -55,7 +55,7 @@ Test refs: `ifitwala_ed/accounting/doctype/sales_invoice/test_sales_invoice.py`
 
 Status: Implemented
 Code refs: `ifitwala_ed/accounting/doctype/program_billing_plan/program_billing_plan.json`, `ifitwala_ed/accounting/doctype/program_billing_plan/program_billing_plan.py`, `ifitwala_ed/accounting/doctype/program_billing_plan/program_billing_plan_list.js`
-Test refs: `ifitwala_ed/accounting/doctype/program_billing_plan/test_program_billing_plan.py`
+Test refs: `ifitwala_ed/accounting/doctype/program_billing_plan/test_program_billing_plan.py`, `ifitwala_ed/accounting/doctype/program_billing_plan/test_program_billing_plan_list.py`
 
 Purpose: define the billable structure for one `Program Offering` in one `Academic Year`.
 
@@ -74,7 +74,7 @@ Rules:
 - one active plan per `organization + program_offering + academic_year`
 - `program_offering` must resolve to the same `organization`
 - `academic_year` must be part of the selected `Program Offering`
-- Desk List view strips the generated `program_offering.offering_title` linked-title join so scoped `Program Offering` permission conditions do not leak into the parent list query under Frappe v16
+- Desk List view strips the generated `program_offering.offering_title` linked-title join so scoped `Program Offering` permission conditions do not leak into the parent list query under Frappe v16; visible rows are then hydrated with Program Offering titles through one bounded billing-plan-scoped lookup
 - the plan does not post accounting entries
 
 ### 3.2 Program Billing Plan Component

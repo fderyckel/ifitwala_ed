@@ -39,22 +39,22 @@
 				<div class="mx-auto w-full max-w-6xl px-6 py-14 lg:py-18">
 					<div class="max-w-4xl">
 						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-							School Directory
+							{{ _("School Directory") }}
 						</p>
 						<h1 class="mt-4 text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
-							Browse every published school in {{ landing.brand_name }}.
+							{{ _("Browse every published school in {0}.").format(landing.brand_name | e) }}
 						</h1>
 						<p class="mt-4 text-base leading-7 text-slate-600 sm:text-lg">
-							Open each school website to review its public story, admissions information, and school-specific pages without being pushed into login first.
+							{{ _("Open each school website to review its public story, admissions information, and school-specific pages without being pushed into login first.") }}
 						</p>
 
 						<div class="mt-6 flex flex-wrap items-center gap-3">
 							<div class="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700">
-								{{ landing.school_count }} published school{{ '' if landing.school_count == 1 else 's' }}
+								{{ landing.school_count }} {{ _("published school") if landing.school_count == 1 else _("published schools") }}
 							</div>
 							{% if landing.program_count %}
 								<div class="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700">
-									{{ landing.program_count }} published program{{ '' if landing.program_count == 1 else 's' }}
+									{{ landing.program_count }} {{ _("published program") if landing.program_count == 1 else _("published programs") }}
 								</div>
 							{% endif %}
 						</div>
@@ -74,7 +74,7 @@
 									{% if school.logo %}
 										<img
 											src="{{ school.logo }}"
-											alt="{{ school.label }}"
+											alt="{{ frappe.utils.escape_html(school.label) }}"
 											class="h-14 w-14 rounded-2xl bg-slate-100 object-cover"
 											loading="lazy"
 										>
@@ -84,7 +84,7 @@
 										</div>
 									{% endif %}
 									<div class="min-w-0 flex-1">
-										<h2 class="text-xl font-semibold tracking-tight text-slate-950">{{ school.label }}</h2>
+										<h2 class="text-xl font-semibold tracking-tight text-slate-950">{{ frappe.utils.escape_html(school.label) }}</h2>
 										{% if school.tagline %}
 											<p class="mt-1 text-sm text-slate-600">{{ school.tagline }}</p>
 										{% endif %}
@@ -101,7 +101,7 @@
 									<p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
 										{{ school.organization }}
 									</p>
-									<span class="text-sm font-semibold text-slate-950">Open site</span>
+									<span class="text-sm font-semibold text-slate-950">{{ _("Open site") }}</span>
 								</div>
 							</a>
 						{% endfor %}
@@ -109,20 +109,20 @@
 				{% else %}
 					<section class="rounded-[1.8rem] border border-amber-200 bg-amber-50 p-8 text-amber-950 shadow-sm">
 						<p class="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">
-							No Published Schools
+							{{ _("No Published Schools") }}
 						</p>
 						<h2 class="mt-4 text-2xl font-semibold tracking-tight">
-							The public directory is not ready yet.
+							{{ _("The public directory is not ready yet.") }}
 						</h2>
 						<p class="mt-4 max-w-2xl text-sm leading-7 text-amber-900">
-							Sign in to finish the first school setup, publish its website, and make it visible here for families.
+							{{ _("Sign in to finish the first school setup, publish its website, and make it visible here for families.") }}
 						</p>
 						<div class="mt-6">
 							<a
 								href="{{ landing.login_url }}"
 								class="inline-flex rounded-full border border-amber-300 bg-white px-4 py-2.5 text-sm font-semibold text-amber-950 transition hover:bg-amber-100"
 							>
-								Login
+								{{ _("Login") }}
 							</a>
 						</div>
 					</section>

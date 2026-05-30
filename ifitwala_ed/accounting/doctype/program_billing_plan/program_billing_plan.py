@@ -7,6 +7,8 @@ from frappe.utils import flt
 
 from ifitwala_ed.accounting.account_holder_utils import get_school_organization
 
+MAX_LIST_TITLE_LOOKUP = 100
+
 
 class ProgramBillingPlan(Document):
     def validate(self):
@@ -187,6 +189,71 @@ def _can_read_offering_academic_years_for_billing(program_offering: str, organiz
 
     school = frappe.db.get_value("Program Offering", program_offering, "school")
     return bool(school and get_school_organization(school) == organization)
+
+
+def _parse_name_list(value) -> list[str]:
+    if not value:
+        return []
+
+    parsed = frappe.parse_json(value) if isinstance(value, str) else value
+    if isinstance(parsed, str):
+        parsed = [parsed]
+
+    names = []
+    seen = set()
+    for raw_name in parsed or []:
+        name = (raw_name or "").strip()
+        if not name or name in seen:
+            continue
+        names.append(name)
+        seen.add(name)
+        if len(names) >= MAX_LIST_TITLE_LOOKUP:
+            break
+    return names
+
+
+def _row_value(row, fieldname: str):
+    if isinstance(row, dict):
+        return row.get(fieldname)
+    return getattr(row, fieldname, None)
+
+
+@frappe.whitelist()
+def get_program_offering_title_map_for_billing_plans(program_billing_plans=None) -> dict:
+    plan_names = _parse_name_list(program_billing_plans)
+    if not plan_names:
+        return {}
+
+    plan_rows = frappe.get_list(
+        "Program Billing Plan",
+        filters={"name": ["in", plan_names]},
+        fields=["name", "program_offering"],
+        limit=len(plan_names),
+    )
+    offering_names = sorted(
+        {_row_value(row, "program_offering") for row in plan_rows if _row_value(row, "program_offering")}
+    )
+    offering_titles = {}
+    if offering_names:
+        offering_titles = {
+            _row_value(row, "name"): _row_value(row, "offering_title")
+            for row in frappe.get_all(
+                "Program Offering",
+                filters={"name": ["in", offering_names]},
+                fields=["name", "offering_title"],
+                limit=len(offering_names),
+            )
+        }
+
+    return {
+        _row_value(row, "name"): {
+            "program_offering": _row_value(row, "program_offering"),
+            "offering_title": offering_titles.get(_row_value(row, "program_offering"))
+            or _row_value(row, "program_offering"),
+        }
+        for row in plan_rows
+        if _row_value(row, "name") and _row_value(row, "program_offering")
+    }
 
 
 @frappe.whitelist()

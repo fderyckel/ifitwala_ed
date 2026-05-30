@@ -7,34 +7,34 @@
 
 <div id="recommendation-intake-root" style="max-width: 860px; margin: 28px auto; padding: 0 16px; font-family: Helvetica, Arial, sans-serif;">
   <section style="border: 1px solid #e6e8ec; border-radius: 16px; background: #ffffff; padding: 20px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);">
-    <h1 style="margin: 0; font-size: 28px; line-height: 1.2; color: #122339;">Recommendation Letter</h1>
-    <p style="margin: 8px 0 0 0; color: #4f5f73;" id="subtitle">Submit your recommendation confidentially.</p>
+    <h1 style="margin: 0; font-size: 28px; line-height: 1.2; color: #122339;">{{ _("Recommendation Letter") }}</h1>
+    <p style="margin: 8px 0 0 0; color: #4f5f73;" id="subtitle">{{ _("Submit your recommendation confidentially.") }}</p>
 
     <div id="status-banner" style="display: none; margin-top: 14px; border-radius: 12px; padding: 12px 14px;"></div>
 
-    <div id="loading" style="margin-top: 18px; color: #4f5f73;">Loading request...</div>
+    <div id="loading" style="margin-top: 18px; color: #4f5f73;">{{ _("Loading request...") }}</div>
 
     <form id="recommendation-form" style="display: none; margin-top: 18px;">
       <div style="display: grid; gap: 10px; margin-bottom: 16px;">
         <div style="display: grid; gap: 4px;">
-          <label style="font-weight: 600; color: #22354d;">Recommender</label>
+          <label style="font-weight: 600; color: #22354d;">{{ _("Recommender") }}</label>
           <div id="recommender-meta" style="font-size: 14px; color: #4f5f73;"></div>
         </div>
         <div style="display: grid; gap: 4px;">
-          <label style="font-weight: 600; color: #22354d;">Expires on</label>
+          <label style="font-weight: 600; color: #22354d;">{{ _("Expires on") }}</label>
           <div id="expires-on" style="font-size: 14px; color: #4f5f73;"></div>
         </div>
       </div>
 
       <div id="otp-section" style="display: none; border: 1px solid #d8e4f4; border-radius: 12px; background: #f5f9ff; padding: 12px; margin-bottom: 16px;">
-        <p style="margin: 0 0 10px 0; color: #22354d; font-size: 14px;">Email verification is required before submission.</p>
+        <p style="margin: 0 0 10px 0; color: #22354d; font-size: 14px;">{{ _("Email verification is required before submission.") }}</p>
         <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
           <button id="send-otp-btn" type="button" style="border: 1px solid #8cb3e8; background: #ffffff; color: #1f4f8f; border-radius: 999px; padding: 8px 14px; cursor: pointer;">
-            Send OTP
+            {{ _("Send OTP") }}
           </button>
-          <input id="otp-code" type="text" inputmode="numeric" maxlength="6" placeholder="Enter 6-digit code" style="border: 1px solid #c9d2de; border-radius: 10px; padding: 8px 10px; width: 190px;" />
+          <input id="otp-code" type="text" inputmode="numeric" maxlength="6" placeholder="{{ _('Enter 6-digit code') }}" style="border: 1px solid #c9d2de; border-radius: 10px; padding: 8px 10px; width: 190px;" />
           <button id="verify-otp-btn" type="button" style="border: 1px solid #8cb3e8; background: #ffffff; color: #1f4f8f; border-radius: 999px; padding: 8px 14px; cursor: pointer;">
-            Verify OTP
+            {{ _("Verify OTP") }}
           </button>
         </div>
         <p id="otp-status" style="margin: 10px 0 0 0; color: #4f5f73; font-size: 13px;"></p>
@@ -43,19 +43,19 @@
       <div id="dynamic-fields" style="display: grid; gap: 14px;"></div>
 
       <div id="file-section" style="display: none; margin-top: 16px;">
-        <label for="recommendation-file" style="display: block; font-weight: 600; color: #22354d; margin-bottom: 4px;">Attachment (PDF or PNG)</label>
+        <label for="recommendation-file" style="display: block; font-weight: 600; color: #22354d; margin-bottom: 4px;">{{ _("Attachment (PDF or PNG)") }}</label>
         <input id="recommendation-file" type="file" accept=".pdf,.png,application/pdf,image/png" style="display: block;" />
         <p id="file-help" style="margin: 6px 0 0 0; color: #4f5f73; font-size: 13px;"></p>
       </div>
 
       <label style="display: flex; gap: 8px; align-items: flex-start; margin-top: 16px; color: #22354d; font-size: 14px;">
         <input id="attestation" type="checkbox" style="margin-top: 3px;" />
-        <span>I confirm this recommendation is accurate and provided in good faith.</span>
+        <span>{{ _("I confirm this recommendation is accurate and provided in good faith.") }}</span>
       </label>
 
       <div style="margin-top: 16px; display: flex; gap: 10px; align-items: center;">
         <button id="submit-btn" type="submit" style="border: none; background: #122339; color: white; border-radius: 999px; padding: 10px 18px; cursor: pointer;">
-          Submit Recommendation
+          {{ _("Submit Recommendation") }}
         </button>
         <span id="submit-status" style="font-size: 13px; color: #4f5f73;"></span>
       </div>
@@ -92,10 +92,45 @@
   const allowedUploadMimeTypes = new Set(["application/pdf", "image/png"]);
   const allowedUploadExtensions = new Set(["pdf", "png"]);
   const genericUploadMimeTypes = new Set(["", "application/octet-stream", "binary/octet-stream"]);
-  const uploadTypeHelpText = "Accepted file types: PDF or PNG.";
+  const text = {
+    requestFailed: {{ _("Request failed.") | tojson }},
+    unexpectedServerResponse: {{ _("Unexpected server response.") | tojson }},
+    acceptedUploadTypes: {{ _("Accepted file types: PDF or PNG.") | tojson }},
+    skillAttribute: {{ _("Skill / Attribute") | tojson }},
+    select: {{ _("Select") | tojson }},
+    otpVerified: {{ _("OTP verified.") | tojson }},
+    fileUploadRequired: {{ _("{0} File upload is required for this recommendation.") | tojson }},
+    fileUploadOptional: {{ _("{0} File upload is optional.") | tojson }},
+    requiredFieldMissing: {{ _("Required field is missing: {0}") | tojson }},
+    unableToReadFile: {{ _("Unable to read selected file.") | tojson }},
+    invalidFileEncoding: {{ _("Invalid file encoding.") | tojson }},
+    invalidLink: {{ _("This recommendation link is invalid.") | tojson }},
+    alreadySubmitted: {{ _("This recommendation was already submitted.") | tojson }},
+    recommendation: {{ _("Recommendation") | tojson }},
+    recommendationSubmission: {{ _("{0} submission") | tojson }},
+    unableToLoad: {{ _("Unable to load recommendation request.") | tojson }},
+    sendingOtp: {{ _("Sending OTP...") | tojson }},
+    otpSent: {{ _("OTP sent. Check your email.") | tojson }},
+    unableToSendOtp: {{ _("Unable to send OTP.") | tojson }},
+    enterOtpCode: {{ _("Enter the 6-digit OTP code.") | tojson }},
+    verifyingOtp: {{ _("Verifying OTP...") | tojson }},
+    otpVerificationFailed: {{ _("OTP verification failed.") | tojson }},
+    confirmAttestation: {{ _("You must confirm the attestation before submitting.") | tojson }},
+    completeRequiredFields: {{ _("Please complete required fields.") | tojson }},
+    submitting: {{ _("Submitting...") | tojson }},
+    otpRequiredBeforeSubmission: {{ _("OTP code is required before submission.") | tojson }},
+    submittedSuccessfully: {{ _("Recommendation submitted successfully.") | tojson }},
+    submissionComplete: {{ _("Submission complete") | tojson }},
+    unableToSubmit: {{ _("Unable to submit recommendation.") | tojson }},
+  };
+  const uploadTypeHelpText = text.acceptedUploadTypes;
+
+  function formatMessage(template, value) {
+    return String(template || "").replace("{0}", String(value ?? ""));
+  }
 
   function messageFromServerPayload(payload) {
-    if (!payload) return "Request failed.";
+    if (!payload) return text.requestFailed;
     if (typeof payload.message === "string" && payload.message.trim()) return payload.message.trim();
     if (typeof payload._error_message === "string" && payload._error_message.trim()) return payload._error_message.trim();
     if (Array.isArray(payload._server_messages) && payload._server_messages.length) {
@@ -104,7 +139,7 @@
         if (first && typeof first.message === "string" && first.message.trim()) return first.message.trim();
       } catch (_error) {}
     }
-    return "Request failed.";
+    return text.requestFailed;
   }
 
   async function callApi(method, payload) {
@@ -127,7 +162,7 @@
     try {
       data = await response.json();
     } catch (_error) {
-      throw new Error("Unexpected server response.");
+      throw new Error(text.unexpectedServerResponse);
     }
 
     if (!response.ok || data.exc || data.exception) {
@@ -249,7 +284,7 @@
     const thead = document.createElement("thead");
     const headerRow = document.createElement("tr");
     const firstHead = document.createElement("th");
-    firstHead.textContent = "Skill / Attribute";
+    firstHead.textContent = text.skillAttribute;
     firstHead.style.textAlign = "left";
     firstHead.style.padding = "10px 12px";
     firstHead.style.borderBottom = "1px solid #d8dee8";
@@ -345,7 +380,7 @@
         input = document.createElement("select");
         const emptyOption = document.createElement("option");
         emptyOption.value = "";
-        emptyOption.textContent = "Select";
+        emptyOption.textContent = text.select;
         input.appendChild(emptyOption);
         (field.options || []).forEach((optionLabel) => {
           const optionEl = document.createElement("option");
@@ -402,7 +437,7 @@
 
     otpSectionEl.style.display = "block";
     if (verified) {
-      otpStatusEl.textContent = "OTP verified.";
+      otpStatusEl.textContent = text.otpVerified;
       otpStatusEl.style.color = "#1d6a35";
       sendOtpBtnEl.disabled = true;
       verifyOtpBtnEl.disabled = true;
@@ -426,8 +461,8 @@
       return;
     }
     fileHelpEl.textContent = required
-      ? `${uploadTypeHelpText} File upload is required for this recommendation.`
-      : `${uploadTypeHelpText} File upload is optional.`;
+      ? formatMessage(text.fileUploadRequired, uploadTypeHelpText)
+      : formatMessage(text.fileUploadOptional, uploadTypeHelpText);
   }
 
   function setBusy(isBusy, message) {
@@ -457,7 +492,7 @@
           if (checked) {
             value[row.key] = checked.value;
           } else if (required) {
-            throw new Error(`Required field is missing: ${fieldLabel}`);
+            throw new Error(formatMessage(text.requiredFieldMissing, fieldLabel));
           }
         }
       } else {
@@ -466,10 +501,10 @@
 
       if (required) {
         if (fieldType === "Check" && !value) {
-          throw new Error(`Required field is missing: ${fieldKey}`);
+          throw new Error(formatMessage(text.requiredFieldMissing, fieldKey));
         }
         if (fieldType !== "Check" && !value) {
-          throw new Error(`Required field is missing: ${fieldKey}`);
+          throw new Error(formatMessage(text.requiredFieldMissing, fieldKey));
         }
       }
 
@@ -494,12 +529,12 @@
       }
 
       const reader = new FileReader();
-      reader.onerror = () => reject(new Error("Unable to read selected file."));
+      reader.onerror = () => reject(new Error(text.unableToReadFile));
       reader.onload = () => {
         const result = String(reader.result || "");
         const idx = result.indexOf(",");
         if (idx === -1) {
-          reject(new Error("Invalid file encoding."));
+          reject(new Error(text.invalidFileEncoding));
           return;
         }
         resolve({
@@ -534,7 +569,7 @@
     if (tokenMissing || !token) {
       loadingEl.style.display = "none";
       formEl.style.display = "none";
-      showBanner("This recommendation link is invalid.", "error");
+      showBanner(text.invalidLink, "error");
       return;
     }
 
@@ -550,14 +585,14 @@
       if (payload.status === "submitted") {
         loadingEl.style.display = "none";
         formEl.style.display = "none";
-        showBanner("This recommendation was already submitted.", "success");
+        showBanner(text.alreadySubmitted, "success");
         return;
       }
 
       const request = payload.request || {};
       const template = payload.template || {};
 
-      subtitleEl.textContent = (template.template_name || "Recommendation") + " submission";
+      subtitleEl.textContent = formatMessage(text.recommendationSubmission, template.template_name || text.recommendation);
       recommenderMetaEl.textContent = `${request.recommender_name || ""} (${request.recommender_email || ""})`;
       expiresOnEl.textContent = String(request.expires_on || "-");
 
@@ -571,20 +606,20 @@
     } catch (error) {
       loadingEl.style.display = "none";
       formEl.style.display = "none";
-      showBanner(error instanceof Error ? error.message : "Unable to load recommendation request.", "error");
+      showBanner(error instanceof Error ? error.message : text.unableToLoad, "error");
     }
   }
 
   sendOtpBtnEl.addEventListener("click", async () => {
-    otpStatusEl.textContent = "Sending OTP...";
+    otpStatusEl.textContent = text.sendingOtp;
     otpStatusEl.style.color = "#4f5f73";
     sendOtpBtnEl.disabled = true;
     try {
       await callApi("ifitwala_ed.api.recommendation_intake.send_recommendation_otp", { token });
-      otpStatusEl.textContent = "OTP sent. Check your email.";
+      otpStatusEl.textContent = text.otpSent;
       otpStatusEl.style.color = "#1f4f8f";
     } catch (error) {
-      otpStatusEl.textContent = error instanceof Error ? error.message : "Unable to send OTP.";
+      otpStatusEl.textContent = error instanceof Error ? error.message : text.unableToSendOtp;
       otpStatusEl.style.color = "#9d2525";
     } finally {
       if (!otpCodeEl.disabled) {
@@ -596,13 +631,13 @@
   verifyOtpBtnEl.addEventListener("click", async () => {
     const otpCode = String(otpCodeEl.value || "").trim();
     if (!otpCode) {
-      otpStatusEl.textContent = "Enter the 6-digit OTP code.";
+      otpStatusEl.textContent = text.enterOtpCode;
       otpStatusEl.style.color = "#9d2525";
       return;
     }
 
     verifyOtpBtnEl.disabled = true;
-    otpStatusEl.textContent = "Verifying OTP...";
+    otpStatusEl.textContent = text.verifyingOtp;
     otpStatusEl.style.color = "#4f5f73";
 
     try {
@@ -610,11 +645,11 @@
         token,
         otp_code: otpCode,
       });
-      otpStatusEl.textContent = "OTP verified.";
+      otpStatusEl.textContent = text.otpVerified;
       otpStatusEl.style.color = "#1d6a35";
       await loadPayload();
     } catch (error) {
-      otpStatusEl.textContent = error instanceof Error ? error.message : "OTP verification failed.";
+      otpStatusEl.textContent = error instanceof Error ? error.message : text.otpVerificationFailed;
       otpStatusEl.style.color = "#9d2525";
     } finally {
       if (!otpCodeEl.disabled) {
@@ -628,7 +663,7 @@
     hideBanner();
 
     if (!attestationEl.checked) {
-      showBanner("You must confirm the attestation before submitting.", "warning");
+      showBanner(text.confirmAttestation, "warning");
       return;
     }
 
@@ -636,11 +671,11 @@
     try {
       answers = readAnswers();
     } catch (error) {
-      showBanner(error instanceof Error ? error.message : "Please complete required fields.", "warning");
+      showBanner(error instanceof Error ? error.message : text.completeRequiredFields, "warning");
       return;
     }
 
-    setBusy(true, "Submitting...");
+    setBusy(true, text.submitting);
     try {
       const file = fileInputEl.files && fileInputEl.files[0] ? fileInputEl.files[0] : null;
       const filePayload = await readFileAsBase64(file);
@@ -661,17 +696,17 @@
       if (needsOtp && !otpVerified) {
         const otpCode = String(otpCodeEl.value || "").trim();
         if (!otpCode) {
-          throw new Error("OTP code is required before submission.");
+          throw new Error(text.otpRequiredBeforeSubmission);
         }
         payload.otp_code = otpCode;
       }
 
       await callApi("ifitwala_ed.api.recommendation_intake.submit_recommendation", payload);
-      showBanner("Recommendation submitted successfully.", "success");
+      showBanner(text.submittedSuccessfully, "success");
       formEl.style.display = "none";
-      subtitleEl.textContent = "Submission complete";
+      subtitleEl.textContent = text.submissionComplete;
     } catch (error) {
-      showBanner(error instanceof Error ? error.message : "Unable to submit recommendation.", "error");
+      showBanner(error instanceof Error ? error.message : text.unableToSubmit, "error");
     } finally {
       setBusy(false, "");
     }

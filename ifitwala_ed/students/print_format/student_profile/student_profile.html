@@ -38,32 +38,32 @@
 				{% if brand_logo %}
 				<img src="{{ frappe.utils.escape_html(brand_logo) }}" alt="{{ frappe.utils.escape_html(brand_name) }}">
 				{% else %}
-				<div class="brand-mark__fallback">SP</div>
+				<div class="brand-mark__fallback">{{ _("SP") }}</div>
 				{% endif %}
 			</div>
 			<div class="brand-block">
 				<div class="eyebrow">{{ frappe.utils.escape_html(brand_name) }}</div>
-				<h1>Student Profile</h1>
+				<h1>{{ _("Student Profile") }}</h1>
 				{% if brand_tagline %}
 				<div class="brand-tagline">{{ frappe.utils.escape_html(brand_tagline) }}</div>
 				{% endif %}
-				<div class="subtle">Generated on {{ frappe.utils.escape_html(generated_on) }}</div>
+				<div class="subtle">{{ _("Generated on {0}").format(frappe.utils.escape_html(generated_on)) }}</div>
 			</div>
 			<div class="doc-meta">
 				<div class="meta-row">
-					<div class="meta-key">Record</div>
+					<div class="meta-key">{{ _("Record") }}</div>
 					<div class="meta-value">{{ frappe.utils.escape_html(doc.name) }}</div>
 				</div>
 				{% if doc.student_id %}
 				<div class="meta-row">
-					<div class="meta-key">Student ID</div>
+					<div class="meta-key">{{ _("Student ID") }}</div>
 					<div class="meta-value">{{ frappe.utils.escape_html(doc.student_id) }}</div>
 				</div>
 				{% endif %}
 				<div class="meta-row">
-					<div class="meta-key">Status</div>
+					<div class="meta-key">{{ _("Status") }}</div>
 					<div class="meta-value">
-						<span class="status-pill {{ 'active' if is_active else 'inactive' }}">{{ 'Active' if is_active else 'Inactive' }}</span>
+						<span class="status-pill {{ 'active' if is_active else 'inactive' }}">{{ _("Active") if is_active else _("Inactive") }}</span>
 					</div>
 				</div>
 			</div>
@@ -72,25 +72,25 @@
 	{% else %}
 	<div class="document-banner">
 		<div class="document-banner__title-block">
-			<div class="document-banner__eyebrow">Student Record</div>
-			<h1>Student Profile</h1>
-			<div class="document-banner__subtle">Generated on {{ frappe.utils.escape_html(generated_on) }}</div>
+			<div class="document-banner__eyebrow">{{ _("Student Record") }}</div>
+			<h1>{{ _("Student Profile") }}</h1>
+			<div class="document-banner__subtle">{{ _("Generated on {0}").format(frappe.utils.escape_html(generated_on)) }}</div>
 		</div>
 		<div class="document-banner__meta">
 			<div class="document-banner__meta-item">
-				<div class="document-banner__label">Record</div>
+				<div class="document-banner__label">{{ _("Record") }}</div>
 				<div class="document-banner__value">{{ frappe.utils.escape_html(doc.name) }}</div>
 			</div>
 			{% if doc.student_id %}
 			<div class="document-banner__meta-item">
-				<div class="document-banner__label">Student ID</div>
+				<div class="document-banner__label">{{ _("Student ID") }}</div>
 				<div class="document-banner__value">{{ frappe.utils.escape_html(doc.student_id) }}</div>
 			</div>
 			{% endif %}
 			<div class="document-banner__meta-item">
-				<div class="document-banner__label">Status</div>
+				<div class="document-banner__label">{{ _("Status") }}</div>
 				<div class="document-banner__value">
-					<span class="status-pill {{ 'active' if is_active else 'inactive' }}">{{ 'Active' if is_active else 'Inactive' }}</span>
+					<span class="status-pill {{ 'active' if is_active else 'inactive' }}">{{ _("Active") if is_active else _("Inactive") }}</span>
 				</div>
 			</div>
 		</div>
@@ -99,10 +99,10 @@
 
 	<div class="hero-card">
 		<div class="hero-main">
-			<div class="hero-kicker">Student</div>
+			<div class="hero-kicker">{{ _("Student") }}</div>
 			<h2>{{ frappe.utils.escape_html(full_name) }}</h2>
 			{% if preferred_name and preferred_name != full_name %}
-			<div class="preferred-name">Preferred name: {{ frappe.utils.escape_html(preferred_name) }}</div>
+			<div class="preferred-name">{{ _("Preferred name: {0}").format(frappe.utils.escape_html(preferred_name)) }}</div>
 			{% endif %}
 			<div class="hero-subtitle">
 				{% if doc.anchor_school %}<span>{{ frappe.utils.escape_html(doc.get_formatted('anchor_school')) }}</span>{% endif %}
@@ -112,25 +112,25 @@
 			<div class="hero-grid">
 				{% if doc.anchor_school %}
 				<div class="hero-item">
-					<div class="hero-label">Anchor School</div>
+					<div class="hero-label">{{ _("Anchor School") }}</div>
 					<div class="hero-value">{{ frappe.utils.escape_html(doc.get_formatted('anchor_school')) }}</div>
 				</div>
 				{% endif %}
 				{% if doc.cohort %}
 				<div class="hero-item">
-					<div class="hero-label">Cohort</div>
+					<div class="hero-label">{{ _("Cohort") }}</div>
 					<div class="hero-value">{{ frappe.utils.escape_html(doc.get_formatted('cohort')) }}</div>
 				</div>
 				{% endif %}
 				{% if doc.student_house %}
 				<div class="hero-item">
-					<div class="hero-label">House</div>
+					<div class="hero-label">{{ _("House") }}</div>
 					<div class="hero-value">{{ frappe.utils.escape_html(doc.get_formatted('student_house')) }}</div>
 				</div>
 				{% endif %}
 				{% if doc.student_joining_date %}
 				<div class="hero-item">
-					<div class="hero-label">Joining Date</div>
+					<div class="hero-label">{{ _("Joining Date") }}</div>
 					<div class="hero-value">{{ frappe.utils.escape_html(doc.get_formatted('student_joining_date')) }}</div>
 				</div>
 				{% endif %}
@@ -145,7 +145,7 @@
 
 	<div class="section-grid">
 		<div class="section-card">
-			<div class="section-title">Personal</div>
+			<div class="section-title">{{ _("Personal") }}</div>
 			<div class="info-table">
 				{% set student_age = doc.student_age %}
 				{% if not student_age and doc.name %}
@@ -153,25 +153,25 @@
 				{% endif %}
 				{% if student_age %}
 				<div class="info-row">
-					<div class="info-key">Student Age</div>
+					<div class="info-key">{{ _("Student Age") }}</div>
 					<div class="info-value">{{ frappe.utils.escape_html(student_age) }}</div>
 				</div>
 				{% endif %}
 				{% if doc.student_gender %}
 				<div class="info-row">
-					<div class="info-key">Gender</div>
+					<div class="info-key">{{ _("Gender") }}</div>
 					<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('student_gender')) }}</div>
 				</div>
 				{% endif %}
 				{% if doc.student_email %}
 				<div class="info-row">
-					<div class="info-key">Email</div>
+					<div class="info-key">{{ _("Email") }}</div>
 					<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('student_email')) }}</div>
 				</div>
 				{% endif %}
 				{% if doc.student_mobile_number %}
 				<div class="info-row">
-					<div class="info-key">Mobile Number</div>
+					<div class="info-key">{{ _("Mobile Number") }}</div>
 					<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('student_mobile_number')) }}</div>
 				</div>
 				{% endif %}
@@ -179,35 +179,35 @@
 		</div>
 
 		<div class="section-card">
-			<div class="section-title">Identity and Language</div>
+			<div class="section-title">{{ _("Identity and Language") }}</div>
 			<div class="info-table">
 				{% if doc.student_nationality %}
 				<div class="info-row">
-					<div class="info-key">Nationality</div>
+					<div class="info-key">{{ _("Nationality") }}</div>
 					<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('student_nationality')) }}</div>
 				</div>
 				{% endif %}
 				{% if doc.student_second_nationality %}
 				<div class="info-row">
-					<div class="info-key">Second Nationality</div>
+					<div class="info-key">{{ _("Second Nationality") }}</div>
 					<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('student_second_nationality')) }}</div>
 				</div>
 				{% endif %}
 				{% if doc.student_first_language %}
 				<div class="info-row">
-					<div class="info-key">First Language</div>
+					<div class="info-key">{{ _("First Language") }}</div>
 					<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('student_first_language')) }}</div>
 				</div>
 				{% endif %}
 				{% if doc.student_second_language %}
 				<div class="info-row">
-					<div class="info-key">Second Language</div>
+					<div class="info-key">{{ _("Second Language") }}</div>
 					<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('student_second_language')) }}</div>
 				</div>
 				{% endif %}
 				{% if doc.residency_status %}
 				<div class="info-row">
-					<div class="info-key">Residency Status</div>
+					<div class="info-key">{{ _("Residency Status") }}</div>
 					<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('residency_status')) }}</div>
 				</div>
 				{% endif %}
@@ -217,11 +217,11 @@
 
 	{% if contact_name or address_names %}
 	<div class="section-card wide-card crm-card">
-		<div class="section-title">Contact and Address</div>
+		<div class="section-title">{{ _("Contact and Address") }}</div>
 		<div class="crm-grid">
 			{% if contact_name %}
 			<div class="crm-panel">
-				<div class="crm-panel__eyebrow">Linked Contact</div>
+				<div class="crm-panel__eyebrow">{{ _("Linked Contact") }}</div>
 				<div class="crm-panel__title">{{ frappe.utils.escape_html(contact_full_name or contact_name) }}</div>
 				{% if contact_full_name and contact_full_name != contact_name %}
 				<div class="crm-panel__subtle">{{ frappe.utils.escape_html(contact_name) }}</div>
@@ -230,7 +230,7 @@
 					{% if contact_email_rows %}
 						{% for row in contact_email_rows %}
 						<div class="contact-chip">
-							<span class="contact-chip__label">{{ "Primary Email" if row.is_primary else "Email" }}</span>
+							<span class="contact-chip__label">{{ _("Primary Email") if row.is_primary else _("Email") }}</span>
 							<span class="contact-chip__value">{{ frappe.utils.escape_html(row.email_id or "") }}</span>
 						</div>
 						{% endfor %}
@@ -238,13 +238,13 @@
 					{% if contact_phone_rows %}
 						{% for row in contact_phone_rows %}
 						<div class="contact-chip">
-							<span class="contact-chip__label">{{ "Primary Phone" if row.is_primary_mobile_no else "Phone" }}</span>
+							<span class="contact-chip__label">{{ _("Primary Phone") if row.is_primary_mobile_no else _("Phone") }}</span>
 							<span class="contact-chip__value">{{ frappe.utils.escape_html(row.phone or "") }}</span>
 						</div>
 						{% endfor %}
 					{% endif %}
 					{% if not contact_email_rows and not contact_phone_rows %}
-					<div class="crm-empty">No email or phone rows are linked to this contact.</div>
+					<div class="crm-empty">{{ _("No email or phone rows are linked to this contact.") }}</div>
 					{% endif %}
 				</div>
 			</div>
@@ -252,7 +252,9 @@
 
 			{% if address_names %}
 			<div class="crm-panel">
-				<div class="crm-panel__eyebrow">Linked Address{% if address_names|length > 1 %}es{% endif %}</div>
+				<div class="crm-panel__eyebrow">
+					{% if address_names|length > 1 %}{{ _("Linked Addresses") }}{% else %}{{ _("Linked Address") }}{% endif %}
+				</div>
 				<div class="address-stack">
 					{% for address_name in address_names %}
 					{% set address = address_map.get(address_name) %}
@@ -282,11 +284,11 @@
 
 	{% if doc.account_holder or (doc.guardians and doc.guardians|length) %}
 	<div class="section-card wide-card">
-		<div class="section-title">Family</div>
+		<div class="section-title">{{ _("Family") }}</div>
 		{% if doc.account_holder %}
 		<div class="info-table compact-table">
 			<div class="info-row">
-				<div class="info-key">Account Holder</div>
+				<div class="info-key">{{ _("Account Holder") }}</div>
 				<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('account_holder')) }}</div>
 			</div>
 		</div>
@@ -295,11 +297,11 @@
 		<table class="premium-table guardians-table">
 			<thead>
 				<tr>
-					<th>Guardian</th>
-					<th>Relation</th>
-					<th>Authorized Signer</th>
-					<th>Phone</th>
-					<th>Email</th>
+					<th>{{ _("Guardian") }}</th>
+					<th>{{ _("Relation") }}</th>
+					<th>{{ _("Authorized Signer") }}</th>
+					<th>{{ _("Phone") }}</th>
+					<th>{{ _("Email") }}</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -307,7 +309,7 @@
 				<tr>
 					<td>{{ frappe.utils.escape_html(row.guardian_name or row.guardian or '') }}</td>
 					<td>{{ frappe.utils.escape_html(row.relation or '') }}</td>
-					<td>{{ 'Yes' if row.can_consent else 'No' }}</td>
+					<td>{{ _("Yes") if row.can_consent else _("No") }}</td>
 					<td>{{ frappe.utils.escape_html(row.phone or '') }}</td>
 					<td>{{ frappe.utils.escape_html(row.email or '') }}</td>
 				</tr>
@@ -320,13 +322,13 @@
 
 	{% if doc.siblings and doc.siblings|length %}
 	<div class="section-card wide-card">
-		<div class="section-title">Siblings</div>
+		<div class="section-title">{{ _("Siblings") }}</div>
 		<table class="premium-table siblings-table">
 			<thead>
 				<tr>
-					<th>Sibling Name</th>
-					<th>Gender</th>
-					<th>Age</th>
+					<th>{{ _("Sibling Name") }}</th>
+					<th>{{ _("Gender") }}</th>
+					<th>{{ _("Age") }}</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -344,24 +346,24 @@
 
 	{% if doc.additional_comment %}
 	<div class="section-card wide-card notes-card">
-		<div class="section-title">Additional Comment</div>
+		<div class="section-title">{{ _("Additional Comment") }}</div>
 		<div class="notes-body">{{ frappe.utils.escape_html(doc.additional_comment).replace('\n', '<br>') | safe }}</div>
 	</div>
 	{% endif %}
 
 	{% if not is_active %}
 	<div class="section-card wide-card exit-card">
-		<div class="section-title">Exit Information</div>
+		<div class="section-title">{{ _("Exit Information") }}</div>
 		<div class="info-table">
 			{% if doc.student_exit_date %}
 			<div class="info-row">
-				<div class="info-key">Exit Date</div>
+				<div class="info-key">{{ _("Exit Date") }}</div>
 				<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('student_exit_date')) }}</div>
 			</div>
 			{% endif %}
 			{% if doc.student_exit_reason %}
 			<div class="info-row">
-				<div class="info-key">Exit Reason</div>
+				<div class="info-key">{{ _("Exit Reason") }}</div>
 				<div class="info-value">{{ frappe.utils.escape_html(doc.get_formatted('student_exit_reason')) }}</div>
 			</div>
 			{% endif %}

@@ -7,7 +7,7 @@
 
   <img
     src="{{ src }}"
-    alt="{{ alt }}"
+    alt="{{ frappe.utils.escape_html(alt or '') }}"
     class="{{ class }}"
     loading="{{ 'eager' if fallback=='carousel' else 'lazy' }}"
     decoding="async"

@@ -819,6 +819,7 @@ def build_public_employee_image_variants(
         original_url=original_url,
         slots=PUBLIC_EMPLOYEE_VARIANT_SLOTS,
         fallback_to_original=False,
+        request_missing_derivatives=True,
         statuses=PUBLIC_EMPLOYEE_CURRENT_FILE_STATUSES,
         display_url_resolver=_resolve_public_employee_variant_url,
     )

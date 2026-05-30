@@ -4,7 +4,7 @@
 {% block page_blocks %}
 <section class="block-stories-index">
 	<div class="mx-auto max-w-5xl px-6">
-		<h1 class="text-3xl font-semibold text-slate-900">Stories</h1>
+		<h1 class="text-3xl font-semibold text-slate-900">{{ _("Stories") }}</h1>
 		{% if stories %}
 			<div class="mt-8 grid gap-6">
 				{% for story in stories %}
@@ -19,7 +19,7 @@
 				{% endfor %}
 			</div>
 		{% else %}
-			<p class="mt-6 text-sm text-slate-600">No stories published yet.</p>
+			<p class="mt-6 text-sm text-slate-600">{{ _("No stories published yet.") }}</p>
 		{% endif %}
 	</div>
 </section>
