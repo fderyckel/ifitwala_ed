@@ -121,9 +121,15 @@ def get_recommendation_intake_payload(*, token: str | None = None):
     return get_recommendation_intake_payload_impl(token=token)
 
 
+get_recommendation_intake_payload.allow_guest = True
+
+
 @frappe.whitelist(allow_guest=True)
 def send_recommendation_otp(*, token: str | None = None):
     return send_recommendation_otp_impl(token=token)
+
+
+send_recommendation_otp.allow_guest = True
 
 
 @frappe.whitelist(allow_guest=True)
@@ -131,6 +137,12 @@ def verify_recommendation_otp(*, token: str | None = None, otp_code: str | None 
     return verify_recommendation_otp_impl(token=token, otp_code=otp_code)
 
 
+verify_recommendation_otp.allow_guest = True
+
+
 @frappe.whitelist(allow_guest=True)
 def submit_recommendation(payload=None, **kwargs):
     return submit_recommendation_impl(payload=payload, **kwargs)
+
+
+submit_recommendation.allow_guest = True

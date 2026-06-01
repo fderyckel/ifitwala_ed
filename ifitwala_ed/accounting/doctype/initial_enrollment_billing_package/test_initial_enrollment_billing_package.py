@@ -42,7 +42,12 @@ class TestInitialEnrollmentBillingPackage(AccountingTestMixin, FrappeTestCase):
 
     def test_bulk_generation_skips_returning_student(self):
         ctx = self._make_context()
-        old_offering = self.make_program_offering(ctx["organization"].name, school=ctx["school"])
+        old_offering = self.make_program_offering(
+            ctx["organization"].name,
+            school=ctx["school"],
+            academic_year_start_date="2024-08-01",
+            academic_year_end_date="2025-06-30",
+        )
         old_academic_year = self.get_program_offering_academic_year(old_offering.name)
         self.make_program_enrollment(
             organization=ctx["organization"].name,

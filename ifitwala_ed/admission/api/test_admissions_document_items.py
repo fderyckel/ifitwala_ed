@@ -701,5 +701,14 @@ class TestAdmissionsDocumentItems(FrappeTestCase):
 
     def _tiny_pdf_base64(self) -> str:
         return base64.b64encode(
-            b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n"
+            b"%PDF-1.4\n"
+            b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
+            b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
+            b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 1 1] >>\nendobj\n"
+            b"xref\n0 4\n"
+            b"0000000000 65535 f \n"
+            b"0000000009 00000 n \n"
+            b"0000000058 00000 n \n"
+            b"0000000115 00000 n \n"
+            b"trailer\n<< /Root 1 0 R /Size 4 >>\nstartxref\n182\n%%EOF\n"
         ).decode("ascii")

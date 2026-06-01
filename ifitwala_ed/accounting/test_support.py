@@ -165,15 +165,21 @@ class AccountingTestMixin:
             frappe.flags.in_migration = previous_in_migration
         return student
 
-    def make_program_offering(self, organization, school=None):
+    def make_program_offering(
+        self,
+        organization,
+        school=None,
+        academic_year_start_date="2025-08-01",
+        academic_year_end_date="2026-06-30",
+    ):
         school_name = school or self.make_school(organization).name
         academic_year = frappe.get_doc(
             {
                 "doctype": "Academic Year",
                 "academic_year_name": f"AY {frappe.generate_hash(length=6)}",
                 "school": school_name,
-                "year_start_date": "2025-08-01",
-                "year_end_date": "2026-06-30",
+                "year_start_date": academic_year_start_date,
+                "year_end_date": academic_year_end_date,
                 "archived": 0,
                 "visible_to_admission": 1,
             }

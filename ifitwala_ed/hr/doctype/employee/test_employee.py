@@ -423,12 +423,15 @@ class TestEmployee(FrappeTestCase):
     def test_employee_approver_user_query_filters_to_non_portal_system_users(self):
         with (
             patch("frappe.desk.reportview.get_match_cond", return_value=""),
+            patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.exists", return_value=True),
             patch("ifitwala_ed.hr.doctype.employee.employee.frappe.db.sql", return_value=[]) as sql,
         ):
             rows = employee_controller.employee_approver_user_query("User", "approver", "name", 5, 10, None)
 
         self.assertEqual(rows, [])
-        query, params = sql.call_args.args
+        query, params = next(
+            call.args for call in sql.call_args_list if call.args and "FROM `tabUser`" in call.args[0]
+        )
         self.assertIn("`tabUser`.enabled = 1", query)
         self.assertIn("`tabUser`.user_type = 'System User'", query)
         self.assertIn("blocked.role IN %(blocked_roles)s", query)

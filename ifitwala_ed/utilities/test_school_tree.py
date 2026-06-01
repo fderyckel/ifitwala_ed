@@ -77,13 +77,20 @@ class TestSchoolTreeScopes(FrappeTestCase):
 
     def _create_org(self):
         name = f"Org-{frappe.generate_hash(length=6)}"
-        doc = frappe.get_doc(
-            {
-                "doctype": "Organization",
-                "organization_name": name,
-                "abbr": name[:6].upper(),
-            }
-        ).insert(ignore_permissions=True)
+        previous_skip = getattr(frappe.flags, "skip_org_coa_setup", False)
+        frappe.flags.skip_org_coa_setup = True
+        try:
+            doc = frappe.get_doc(
+                {
+                    "doctype": "Organization",
+                    "organization_name": name,
+                    "abbr": name[:6].upper(),
+                }
+            )
+            doc.flags.skip_coa_setup = True
+            doc.insert(ignore_permissions=True)
+        finally:
+            frappe.flags.skip_org_coa_setup = previous_skip
         self._created.append(("Organization", doc.name))
         return doc.name
 

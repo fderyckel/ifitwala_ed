@@ -220,6 +220,7 @@ class TestEmployeePrintFormat(unittest.TestCase):
             letter_head="",
             footer="",
             no_letterhead=0,
+            _=lambda text: text,
         )
 
         for token in (
@@ -263,6 +264,7 @@ class TestEmployeePrintFormat(unittest.TestCase):
             letter_head="<div class='ifitwala-letterhead'>Letterhead</div>",
             footer="<div class='ifitwala-letterhead-footer'>Footer</div>",
             no_letterhead=0,
+            _=lambda text: text,
         )
 
         self.assertIn("ifitwala-letterhead", rendered)

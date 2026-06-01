@@ -108,6 +108,7 @@ class TestStaffCalendarPrintFormat(unittest.TestCase):
                 ],
             ),
             range=range,
+            _=lambda text: text,
         )
 
         for token in (

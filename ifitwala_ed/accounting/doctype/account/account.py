@@ -127,6 +127,8 @@ def update_account_name_number(name, account_name, account_number=None, reason=N
 
     if old_docname != new_docname:
         frappe.rename_doc("Account", old_docname, new_docname, force=1)
+        frappe.db.set_value("Account", new_docname, "account_name", account_name, update_modified=False)
+        frappe.db.set_value("Account", new_docname, "account_number", account_number, update_modified=False)
 
     audit_comment = _add_account_rename_audit_comment(
         new_docname,

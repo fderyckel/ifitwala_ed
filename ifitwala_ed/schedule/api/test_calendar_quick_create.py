@@ -212,6 +212,7 @@ class TestCalendarQuickCreate(TestCase):
                 return_value="SCHOOL-1",
             ),
             patch("ifitwala_ed.schedule.api.calendar.quick_create.meetings._ensure_allowed_team", return_value=None),
+            patch("ifitwala_ed.schedule.api.calendar.quick_create.meetings._", side_effect=lambda text: text),
         ):
             with self.assertRaises(frappe.ValidationError) as exc:
                 create_meeting_quick(
@@ -276,6 +277,7 @@ class TestCalendarQuickCreate(TestCase):
                 return_value="SCHOOL-1",
             ),
             patch("ifitwala_ed.schedule.api.calendar.quick_create.meetings._ensure_allowed_team", return_value=None),
+            patch("ifitwala_ed.schedule.api.calendar.quick_create.meetings._", side_effect=lambda text: text),
         ):
             with self.assertRaises(frappe.ValidationError) as exc:
                 create_meeting_quick(

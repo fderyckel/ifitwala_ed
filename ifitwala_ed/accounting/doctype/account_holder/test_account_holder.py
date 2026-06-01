@@ -58,7 +58,7 @@ class TestAccountHolderBillingContacts(FrappeTestCase):
             {
                 "doctype": "School",
                 "school_name": f"Billing Contact School {frappe.generate_hash(length=6)}",
-                "abbr": f"BS{frappe.generate_hash(length=4)}",
+                "abbr": f"B{frappe.generate_hash(length=4)}",
                 "organization": organization,
             }
         )

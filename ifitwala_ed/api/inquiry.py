@@ -62,6 +62,9 @@ def inquiry_organization_link_query(doctype=None, txt=None, searchfield=None, st
     )
 
 
+inquiry_organization_link_query.allow_guest = True
+
+
 @frappe.whitelist(allow_guest=True)
 @frappe.validate_and_sanitize_search_inputs
 def inquiry_school_link_query(doctype=None, txt=None, searchfield=None, start=0, page_len=20, filters=None):
@@ -75,6 +78,9 @@ def inquiry_school_link_query(doctype=None, txt=None, searchfield=None, start=0,
     )
 
 
+inquiry_school_link_query.allow_guest = True
+
+
 @frappe.whitelist(allow_guest=True)
 def get_inquiry_acknowledgement_context(organization=None, school=None, type_of_inquiry=None):
     return _lookups.get_inquiry_acknowledgement_context(
@@ -82,6 +88,9 @@ def get_inquiry_acknowledgement_context(organization=None, school=None, type_of_
         school=school,
         type_of_inquiry=type_of_inquiry,
     )
+
+
+get_inquiry_acknowledgement_context.allow_guest = True
 
 
 @frappe.whitelist()

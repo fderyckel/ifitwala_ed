@@ -35,6 +35,7 @@ class TestStudentAccountHolderTool(AccountingTestMixin, FrappeTestCase):
             student=first_student.name,
             academic_year=academic_year,
         )
+        first_student.reload()
 
         first_student.append("siblings", {"student": second_student.name})
         first_student.append("guardians", {"guardian": guardian.name, "relation": "Mother", "can_consent": 1})
