@@ -37,12 +37,12 @@
 		</section>
 
 		<section v-if="loading" class="student-hub-section">
-			<p class="type-body text-ink/70">{{ __('Loading student policies...') }}</p>
+			<p class="type-body text-ink/70">{{ __('Loading student policies…') }}</p>
 		</section>
 
 		<section v-else-if="errorMessage" class="if-banner if-banner--danger">
 			<p class="if-banner__title type-body-strong text-flame">
-				{{ __('Could not load student policies.') }}
+				{{ __('Unable to load student policies.') }}
 			</p>
 			<p class="if-banner__body type-body">{{ errorMessage }}</p>
 		</section>

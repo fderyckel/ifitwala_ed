@@ -436,7 +436,7 @@ function fetch_non_catalog_rows(frm, search, on_done) {
 		})
 		.catch(() => {
 			on_done([]);
-			frappe.show_alert({ message: __("Could not load non-catalog courses."), indicator: "orange" });
+			frappe.show_alert({ message: __("Unable to load non-catalog courses."), indicator: "orange" });
 		});
 }
 
@@ -741,6 +741,99 @@ function open_tuition_invoice_dialog(frm) {
 	d.show();
 }
 
+function can_create_charge_batch() {
+	return !frappe.model?.can_create || frappe.model.can_create("Charge Batch");
+}
+
+function open_activity_charge_batch_dialog(frm) {
+	if (frm.is_new() || frm.is_dirty()) {
+		frappe.msgprint({ message: __("Please save the Program Offering before creating a Charge Batch."), indicator: "orange" });
+		return;
+	}
+
+	const d = new frappe.ui.Dialog({
+		title: __("Create Activity Charge Batch"),
+		fields: [
+			{
+				fieldname: "billable_offering",
+				fieldtype: "Link",
+				label: __("Billable Offering"),
+				options: "Billable Offering",
+				default: frm.doc.activity_billable_offering || "",
+				reqd: !frm.doc.activity_billable_offering,
+			},
+			{
+				fieldname: "posting_date",
+				fieldtype: "Date",
+				label: __("Posting Date"),
+				default: frappe.datetime.get_today(),
+				reqd: 1,
+			},
+			{
+				fieldname: "due_date",
+				fieldtype: "Date",
+				label: __("Due Date"),
+			},
+			{
+				fieldname: "payment_terms_template",
+				fieldtype: "Link",
+				label: __("Payment Terms Template"),
+				options: "Payment Terms Template",
+			},
+			{ fieldtype: "Column Break" },
+			{
+				fieldname: "default_qty",
+				fieldtype: "Float",
+				label: __("Default Qty"),
+				default: 1,
+				reqd: 1,
+			},
+			{
+				fieldname: "default_rate",
+				fieldtype: "Currency",
+				label: __("Default Rate"),
+				default: frm.doc.activity_fee_amount || 0,
+				reqd: !frm.doc.activity_fee_amount,
+			},
+			{
+				fieldname: "description",
+				fieldtype: "Small Text",
+				label: __("Description"),
+				default: __("Activity fee for {0}", [frm.doc.offering_title || frm.doc.name]),
+			},
+		],
+		primary_action_label: __("Create Charge Batch"),
+		primary_action: async values => {
+			if (!values.due_date && !values.payment_terms_template) {
+				frappe.msgprint(__("Choose a Due Date or Payment Terms Template."));
+				return;
+			}
+			const response = await frappe.call({
+				method: "ifitwala_ed.accounting.charges.source_context.create_charge_batch_from_context",
+				args: {
+					source_doctype: "Program Offering",
+					source_name: frm.doc.name,
+					billable_offering: values.billable_offering,
+					posting_date: values.posting_date,
+					due_date: values.due_date,
+					payment_terms_template: values.payment_terms_template,
+					default_qty: values.default_qty,
+					default_rate: values.default_rate,
+					description: values.description,
+				},
+				freeze: true,
+				freeze_message: __("Creating Charge Batch..."),
+			});
+			const message = response.message || {};
+			d.hide();
+			if (message.charge_batch) {
+				frappe.set_route("Form", "Charge Batch", message.charge_batch);
+			}
+		},
+	});
+	d.show();
+}
+
 
 
 frappe.ui.form.on("Program Offering", {
@@ -767,6 +860,13 @@ frappe.ui.form.on("Program Offering", {
 		frm.add_custom_button(__("Add from Catalog"), () => open_catalog_picker(frm), actionGroup);
 		frm.add_custom_button(__("Add Non-catalog"), () => open_non_catalog_picker(frm), actionGroup);
 		frm.add_custom_button(__("Create Draft Tuition Invoice"), () => open_tuition_invoice_dialog(frm), actionGroup);
+		if (!frm.is_new() && Number(frm.doc.activity_booking_enabled || 0) === 1 && can_create_charge_batch()) {
+			frm.add_custom_button(
+				__("Create Activity Charge Batch"),
+				() => open_activity_charge_batch_dialog(frm),
+				actionGroup
+			);
+		}
 
 		if (!frm.is_new() && Number(frm.doc.allow_self_enroll || 0) === 1) {
 			frm.add_custom_button(

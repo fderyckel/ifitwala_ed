@@ -42,7 +42,7 @@
 								type="button"
 								class="if-overlay__close"
 								@click="emitClose('programmatic')"
-								aria-label="Close"
+								:aria-label="__('Close')"
 							>
 								<FeatherIcon name="x" class="h-5 w-5" />
 							</button>
@@ -64,7 +64,7 @@
 
 							<div v-if="loadingOptions" class="flex items-center gap-2 type-caption text-ink/60">
 								<Spinner class="h-4 w-4" />
-								<span>{{ __('Loading schedule options...') }}</span>
+								<span>{{ __('Loading schedule options…') }}</span>
 							</div>
 
 							<div v-else class="grid gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)]">
@@ -525,7 +525,7 @@ async function loadOptions() {
 			selectedInterviewers.value = [{ user: currentUser, label: currentUser }];
 		}
 	} catch (err: any) {
-		errorMessage.value = err?.message || __('Could not load schedule options.');
+		errorMessage.value = err?.message || __('Unable to load schedule options.');
 	} finally {
 		loadingOptions.value = false;
 	}

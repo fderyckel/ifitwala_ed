@@ -173,6 +173,25 @@ export type AssignInquiryFromInboxRequest = {
 	client_request_id?: string | null;
 };
 
+export type AdmissionsInboxAssigneeOption = {
+	value: string;
+	label: string;
+	meta?: string | null;
+	lane?: 'Admission' | 'Staff' | string | null;
+};
+
+export type SearchAdmissionsInboxAssigneesRequest = {
+	context_doctype?: 'Inquiry' | 'Admission Conversation' | string | null;
+	context_name?: string | null;
+	organization?: string | null;
+	school?: string | null;
+	assignment_lane?: 'Admission' | 'Staff' | '' | null;
+	query?: string | null;
+	limit?: number | string | null;
+};
+
+export type SearchAdmissionsInboxAssigneesResponse = AdmissionsInboxAssigneeOption[];
+
 export type ArchiveInquiryFromInboxRequest = {
 	inquiry: string;
 	reason: string;

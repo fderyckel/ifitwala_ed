@@ -7,11 +7,11 @@
 					class="inline-flex items-center gap-2 type-caption text-ink/70 transition hover:text-ink"
 				>
 					<span>←</span>
-					<span>Back to Course Plans</span>
+					<span>{{ __('Back to Course Plans') }}</span>
 				</RouterLink>
 				<div class="page-header">
 					<div class="page-header__intro">
-						<p class="type-overline text-ink/60">Governed Curriculum</p>
+						<p class="type-overline text-ink/60">{{ __('Governed Curriculum') }}</p>
 						<h1 class="mt-2 type-h1 text-canopy">
 							{{ surface?.course_plan.title || coursePlan || 'Course Plan' }}
 						</h1>
@@ -53,7 +53,7 @@
 
 				<div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
 					<div class="min-w-0">
-						<p class="type-overline text-ink/55">Quick Access</p>
+						<p class="type-overline text-ink/55">{{ __('Quick Access') }}</p>
 						<p class="mt-1 type-caption text-ink/65">
 							Jump to the next planning area without losing your place.
 						</p>
@@ -124,6 +124,7 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router';
 
+import { __ } from '@/lib/i18n';
 import type { Response as StaffCoursePlanSurfaceResponse } from '@/types/contracts/staff_teaching/get_staff_course_plan_surface';
 import type { StaffCoursePlanUnit } from '@/types/contracts/staff_teaching/get_staff_course_plan_surface';
 import {

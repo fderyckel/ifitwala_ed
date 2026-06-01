@@ -20,9 +20,11 @@
 		<div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
 			<div class="space-y-2">
 				<nav class="type-overline text-slate-token/70">
-					<RouterLink :to="{ name: 'staff-home' }" class="hover:text-ink">Staff</RouterLink>
+					<RouterLink :to="{ name: 'staff-home' }" class="hover:text-ink">{{
+						__('Staff')
+					}}</RouterLink>
 					<span class="mx-2 text-slate-token/40">/</span>
-					<span>Class Hub</span>
+					<span>{{ __('Class Hub') }}</span>
 				</nav>
 				<h1 class="type-h1 text-ink">
 					{{ header.title }}
@@ -94,6 +96,7 @@
 
 <script setup lang="ts">
 import { RouterLink } from 'vue-router';
+import { __ } from '@/lib/i18n';
 import type { ClassHubBundle } from '@/types/classHub';
 
 defineProps<{

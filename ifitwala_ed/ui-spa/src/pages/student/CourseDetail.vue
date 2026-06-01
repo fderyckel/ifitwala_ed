@@ -7,19 +7,19 @@
 				class="inline-flex items-center gap-2 type-body text-ink/70 transition hover:text-ink"
 			>
 				<span>←</span>
-				<span>Back to Courses</span>
+				<span>{{ __('Back to Courses') }}</span>
 			</RouterLink>
 		</div>
 
 		<section v-if="errorMessage" class="if-banner if-banner--danger">
 			<p class="if-banner__title type-body-strong text-flame">
-				Could not load this learning space.
+				Unable to load this learning space.
 			</p>
 			<p class="if-banner__body mt-1 type-caption">{{ errorMessage }}</p>
 		</section>
 
 		<section v-else-if="loading && !learningSpace" class="student-hub-section">
-			<p class="type-body text-ink/70">Loading learning space...</p>
+			<p class="type-body text-ink/70">{{ __('Loading learning space…') }}</p>
 		</section>
 
 		<template v-else-if="learningSpace">
@@ -888,7 +888,7 @@
 								</span>
 							</div>
 							<p v-if="selectedTaskSubmissionLoading" class="mt-3 type-body text-ink/70">
-								Loading your latest submission...
+								Loading your latest submission…
 							</p>
 							<p v-else-if="selectedTaskSubmissionError" class="mt-3 type-body text-flame">
 								{{ selectedTaskSubmissionError }}
@@ -1683,7 +1683,7 @@ const selectedTaskDirectCompletionBlocker = computed(() => {
 
 const selectedTaskReleasedResultMessage = computed(() => {
 	if (!selectedTaskWorkspace.value?.requires_submission) return '';
-	if (selectedTaskSubmissionLoading.value) return 'Loading released result...';
+	if (selectedTaskSubmissionLoading.value) return 'Loading released result…';
 	if (!selectedTaskSubmission.value) {
 		return __(
 			'Released scores and feedback appear here after you submit and your teacher publishes them.'
@@ -2433,7 +2433,7 @@ async function loadSelectedTaskSubmission() {
 		if (ticket !== selectedTaskSubmissionToken.value) return;
 		selectedTaskSubmission.value = null;
 		selectedTaskSubmissionError.value =
-			error instanceof Error ? error.message : 'Could not load your latest submission.';
+			error instanceof Error ? error.message : 'Unable to load your latest submission.';
 		if (!submissionDirty.value) {
 			seedSubmissionDraft(null);
 		}
@@ -2545,7 +2545,8 @@ async function submitSelectedTaskWorkspace() {
 		toast.success(isResubmission ? __('Task resubmitted.') : __('Task submitted.'));
 	} catch (error) {
 		submissionUploadProgress.value = null;
-		submissionError.value = error instanceof Error ? error.message : 'Could not submit this task.';
+		submissionError.value =
+			error instanceof Error ? error.message : __('Unable to submit this task.');
 		toast.error(submissionError.value);
 	} finally {
 		submissionSaving.value = false;

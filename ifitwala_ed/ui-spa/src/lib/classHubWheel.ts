@@ -1,4 +1,5 @@
 import type { ClassHubWheelStudent } from '@/types/classHub'
+import { __ } from '@/lib/i18n'
 
 export type ClassHubWheelPersistence = {
   persistent: boolean
@@ -70,7 +71,7 @@ export function filterAvailableWheelStudents(
 
 export function secureRandomIndex(count: number) {
   if (!Number.isFinite(count) || count < 1) {
-    throw new Error('count must be at least 1')
+    throw new Error(__('count must be at least 1'))
   }
 
   if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
@@ -94,7 +95,7 @@ export function buildWheelTargetRotation(
   fullTurns = 7
 ) {
   if (!Number.isFinite(segmentCount) || segmentCount < 1) {
-    throw new Error('segmentCount must be at least 1')
+    throw new Error(__('segmentCount must be at least 1'))
   }
 
   const segmentAngle = 360 / segmentCount

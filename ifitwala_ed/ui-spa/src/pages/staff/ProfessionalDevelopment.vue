@@ -53,12 +53,12 @@
 
 		<section v-if="loading" class="card-surface p-5">
 			<p class="type-body text-ink/70">
-				{{ __('Loading professional development board...') }}
+				{{ __('Loading professional development board…') }}
 			</p>
 		</section>
 		<section v-else-if="errorMessage" class="card-surface p-5">
 			<p class="type-body-strong text-flame">
-				{{ __('Could not load professional development.') }}
+				{{ __('Unable to load professional development.') }}
 			</p>
 			<p class="type-body text-ink/70">{{ errorMessage }}</p>
 		</section>

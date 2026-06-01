@@ -9,7 +9,7 @@
 		</div>
 
 		<p v-if="actionError" class="mb-3 type-caption text-flame">{{ actionError }}</p>
-		<p v-if="loading" class="type-body text-ink/70">{{ __('Loading activity updates...') }}</p>
+		<p v-if="loading" class="type-body text-ink/70">{{ __('Loading activity updates…') }}</p>
 		<p v-else-if="errorMessage" class="type-body text-flame">{{ errorMessage }}</p>
 		<p v-else-if="!feedItems.length" class="type-body text-ink/70">
 			{{ __('No updates for this activity yet.') }}
@@ -199,7 +199,7 @@ async function loadFeed() {
 		await loadSummaries(feedItems.value);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		errorMessage.value = message || __('Could not load activity updates.');
+		errorMessage.value = message || __('Unable to load activity updates.');
 	} finally {
 		loading.value = false;
 	}

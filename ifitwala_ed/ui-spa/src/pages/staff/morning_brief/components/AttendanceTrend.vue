@@ -2,7 +2,7 @@
 	<div class="paper-card p-4 sm:p-5">
 		<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 			<h3 class="section-header flex items-center gap-2 text-slate-500">
-				<FeatherIcon name="bar-chart-2" class="h-3 w-3" /> 30-Day Absence Trend
+				<FeatherIcon name="bar-chart-2" class="h-3 w-3" /> {{ __('30-Day Absence Trend') }}
 			</h3>
 		</div>
 		<div class="h-56 w-full sm:h-64">
@@ -14,6 +14,7 @@
 <script setup>
 import { computed } from 'vue';
 import { FeatherIcon } from 'frappe-ui';
+import { __ } from '@/lib/i18n';
 import AnalyticsChart from '@/components/analytics/AnalyticsChart.vue';
 
 const props = defineProps({

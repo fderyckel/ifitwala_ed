@@ -33,7 +33,7 @@
 						<header class="px-6 pt-6">
 							<div class="flex items-start justify-between gap-4">
 								<div>
-									<p class="type-overline text-ink/60">Guardian Portal</p>
+									<p class="type-overline text-ink/60">{{ __('Guardian Portal') }}</p>
 									<DialogTitle class="mt-1 type-h2 text-ink">
 										{{ studentName || 'Attendance detail' }}
 									</DialogTitle>
@@ -46,7 +46,7 @@
 									ref="closeBtnEl"
 									type="button"
 									class="if-overlay__icon-button"
-									aria-label="Close attendance detail"
+									:aria-label="__('Close attendance detail')"
 									@click="emitClose('programmatic')"
 								>
 									<FeatherIcon name="x" class="h-4 w-4" />
@@ -121,6 +121,7 @@ import {
 } from '@headlessui/vue';
 import { FeatherIcon } from 'frappe-ui';
 
+import { __ } from '@/lib/i18n';
 import type { GuardianAttendanceDay } from '@/types/contracts/guardian/get_guardian_attendance_snapshot';
 
 type CloseReason = 'backdrop' | 'esc' | 'programmatic';

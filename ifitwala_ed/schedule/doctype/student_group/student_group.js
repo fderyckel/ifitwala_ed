@@ -237,6 +237,92 @@ function applyDefaultInstructorToBlankScheduleRows(frm) {
 	});
 }
 
+function canCreateChargeBatch() {
+	return !frappe.model?.can_create || frappe.model.can_create("Charge Batch");
+}
+
+function openChargeBatchDialog(frm) {
+	const dialog = new frappe.ui.Dialog({
+		title: __("Create Charge Batch"),
+		fields: [
+			{
+				fieldname: "billable_offering",
+				fieldtype: "Link",
+				label: __("Billable Offering"),
+				options: "Billable Offering",
+				reqd: 1,
+			},
+			{
+				fieldname: "posting_date",
+				fieldtype: "Date",
+				label: __("Posting Date"),
+				default: frappe.datetime.get_today(),
+				reqd: 1,
+			},
+			{
+				fieldname: "due_date",
+				fieldtype: "Date",
+				label: __("Due Date"),
+			},
+			{
+				fieldname: "payment_terms_template",
+				fieldtype: "Link",
+				label: __("Payment Terms Template"),
+				options: "Payment Terms Template",
+			},
+			{ fieldtype: "Column Break" },
+			{
+				fieldname: "default_qty",
+				fieldtype: "Float",
+				label: __("Default Qty"),
+				default: 1,
+				reqd: 1,
+			},
+			{
+				fieldname: "default_rate",
+				fieldtype: "Currency",
+				label: __("Default Rate"),
+				reqd: 1,
+			},
+			{
+				fieldname: "description",
+				fieldtype: "Small Text",
+				label: __("Description"),
+				default: frm.doc.student_group_name || frm.doc.name,
+			},
+		],
+		primary_action_label: __("Create Charge Batch"),
+		primary_action: async values => {
+			if (!values.due_date && !values.payment_terms_template) {
+				frappe.msgprint(__("Choose a Due Date or Payment Terms Template."));
+				return;
+			}
+			const response = await frappe.call({
+				method: "ifitwala_ed.accounting.charges.source_context.create_charge_batch_from_context",
+				args: {
+					source_doctype: "Student Group",
+					source_name: frm.doc.name,
+					billable_offering: values.billable_offering,
+					posting_date: values.posting_date,
+					due_date: values.due_date,
+					payment_terms_template: values.payment_terms_template,
+					default_qty: values.default_qty,
+					default_rate: values.default_rate,
+					description: values.description,
+				},
+				freeze: true,
+				freeze_message: __("Creating Charge Batch..."),
+			});
+			const message = response.message || {};
+			dialog.hide();
+			if (message.charge_batch) {
+				frappe.set_route("Form", "Charge Batch", message.charge_batch);
+			}
+		},
+	});
+	dialog.show();
+}
+
 async function syncAcademicYearFromProgramOffering(frm) {
 	const programOffering = frm.doc.program_offering;
 	if (!programOffering) {
@@ -387,6 +473,15 @@ frappe.ui.form.on("Student Group", {
 							openClassDeliveryWorkspace(frm);
 						},
 						__("Teaching")
+					);
+				}
+				if (canCreateChargeBatch()) {
+					frm.add_custom_button(
+						__("Create Charge Batch"),
+						function () {
+							openChargeBatchDialog(frm);
+						},
+						__("Billing")
 					);
 				}
 			}

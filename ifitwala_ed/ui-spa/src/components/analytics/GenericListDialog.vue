@@ -48,7 +48,7 @@
 									ref="closeButtonRef"
 									type="button"
 									class="if-overlay__icon-button"
-									aria-label="Close"
+									:aria-label="__('Close')"
 									@click="closeDialog"
 								>
 									<FeatherIcon name="x" class="h-4 w-4" />

@@ -53,7 +53,7 @@
 							<button
 								type="button"
 								class="if-overlay__close"
-								aria-label="Close"
+								:aria-label="__('Close')"
 								@click="handleClose('programmatic')"
 							>
 								<FeatherIcon name="x" class="h-5 w-5" />
@@ -66,7 +66,7 @@
 								class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 shadow-soft"
 								role="alert"
 							>
-								<p class="type-body-strong text-rose-900">Action blocked</p>
+								<p class="type-body-strong text-rose-900">{{ __('Action blocked') }}</p>
 								<p class="mt-1 whitespace-pre-wrap type-caption text-rose-900/80">
 									{{ errorMessage }}
 								</p>
@@ -77,7 +77,7 @@
 								class="flex items-center gap-2 rounded-2xl border border-border/70 bg-white px-4 py-3 text-ink/70"
 							>
 								<Spinner class="h-4 w-4" />
-								<span class="type-caption">Loading communication options...</span>
+								<span class="type-caption">{{ __('Loading communication options…') }}</span>
 							</div>
 
 							<form v-else class="space-y-5" @submit.prevent="submit">
@@ -210,6 +210,7 @@ import {
 } from '@headlessui/vue';
 import { FeatherIcon, Spinner } from 'frappe-ui';
 
+import { __ } from '@/lib/i18n';
 import {
 	addOrgCommunicationLink,
 	createOrgCommunicationQuick,
@@ -694,7 +695,7 @@ const organizationHelpText = computed(
 	() => 'Organization is required and defaults from your user scope.'
 );
 const schoolHelpText = computed(() => {
-	if (!context.value) return 'Loading school scope...';
+	if (!context.value) return 'Loading school scope…';
 	if (isClassEventMode.value)
 		return 'Class event entry keeps the issuing school aligned to the selected class.';
 	if (attachmentContextLocked.value) {

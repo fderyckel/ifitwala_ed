@@ -10,8 +10,8 @@
 			@click="emit('toggle')"
 		>
 			<div>
-				<p class="type-overline text-ink/60">Curriculum Timeline</p>
-				<h2 class="mt-2 type-h2 text-ink">Year-at-a-glance pacing</h2>
+				<p class="type-overline text-ink/60">{{ __('Curriculum Timeline') }}</p>
+				<h2 class="mt-2 type-h2 text-ink">{{ __('Year-at-a-glance pacing') }}</h2>
 				<p class="mt-2 type-body text-ink/80">
 					{{
 						collapsed
@@ -39,6 +39,7 @@
 
 <script setup lang="ts">
 import CoursePlanTimelineCard from '@/components/planning/CoursePlanTimelineCard.vue';
+import { __ } from '@/lib/i18n';
 import { SECTION_IDS } from '@/lib/planning/coursePlanWorkspace';
 import type { Response as StaffCoursePlanSurfaceResponse } from '@/types/contracts/staff_teaching/get_staff_course_plan_surface';
 

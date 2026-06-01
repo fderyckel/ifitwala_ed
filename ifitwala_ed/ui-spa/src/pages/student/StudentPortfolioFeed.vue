@@ -2,11 +2,13 @@
 <template>
 	<div class="space-y-4">
 		<div class="flex items-center justify-between">
-			<RouterLink :to="{ name: 'student-home' }" class="if-action">Back to Home</RouterLink>
+			<RouterLink :to="{ name: 'student-home' }" class="if-action">
+				{{ __('Back to Home') }}
+			</RouterLink>
 		</div>
 		<PortfolioFeedSurface
 			actor="student"
-			title="My Portfolio + Reflections"
+			:title="__('My Portfolio + Reflections')"
 			subtitle="Curate annual evidence, journal continuously, and share approved showcase items with family."
 		/>
 	</div>
@@ -14,5 +16,6 @@
 
 <script setup lang="ts">
 import { RouterLink } from 'vue-router';
+import { __ } from '@/lib/i18n';
 import PortfolioFeedSurface from '@/components/portfolio/PortfolioFeedSurface.vue';
 </script>

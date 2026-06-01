@@ -525,7 +525,7 @@ async function reload() {
 		followUps.value = Array.isArray(ctx.follow_ups) ? ctx.follow_ups : [];
 		if (ctx.mode && ctx.mode !== modeState.value) modeState.value = ctx.mode;
 	} catch (e: any) {
-		setError(e, __('Could not load follow-up context. Please try again.'));
+		setError(e, __('Unable to load follow-up context. Please try again.'));
 	} finally {
 		loading.value = false;
 	}
@@ -573,12 +573,12 @@ async function submitFollowUp() {
 		};
 
 		const msg = await focusService.submitStudentLogFollowUp(payload);
-		if (!msg?.ok) throw new Error(__('Submit failed.'));
+		if (!msg?.ok) throw new Error(__('Unable to submit follow-up.'));
 
 		emitClose('programmatic');
 	} catch (e: any) {
 		submittedOnce.value = false;
-		setError(e, __('Could not submit follow-up. Please try again.'));
+		setError(e, __('Unable to submit follow-up. Please try again.'));
 	} finally {
 		busy.value = false;
 	}

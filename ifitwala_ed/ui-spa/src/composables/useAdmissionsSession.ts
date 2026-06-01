@@ -2,6 +2,7 @@
 
 import { computed, inject, provide, ref, watch, type Ref } from 'vue'
 import { useRoute, useRouter, type LocationQueryRaw, type RouteLocationNamedRaw } from 'vue-router'
+import { __ } from '@/lib/i18n'
 import { createAdmissionsService } from '@/lib/services/admissions/admissionsService'
 import type { Response as AdmissionsSession } from '@/types/contracts/admissions/get_admissions_session'
 
@@ -113,7 +114,7 @@ export function provideAdmissionsSession(): AdmissionsSessionContext {
 export function useAdmissionsSession(): AdmissionsSessionContext {
   const ctx = inject<AdmissionsSessionContext>(AdmissionsSessionSymbol)
   if (!ctx) {
-    throw new Error('Admissions session not provided')
+    throw new Error(__('Admissions session not provided'))
   }
   return ctx
 }

@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "hash",
  "creation": "2025-06-02 22:18:51.756020",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -166,10 +167,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-22 14:00:00.000000",
+ "modified": "2026-05-30 22:45:35.454237",
  "modified_by": "Administrator",
  "module": "Students",
  "name": "Student Attendance",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [
   {

@@ -585,7 +585,7 @@ function responseMetric(followUp: StudentLogFollowUpSummary) {
 						>
 							{{
 								recentLoading
-									? __('Loading...')
+									? __('Loading…')
 									: recentHasMore
 										? __('Load more')
 										: __('No more logs')

@@ -8,7 +8,7 @@
 -->
 <template>
 	<section class="space-y-3">
-		<p class="type-overline text-slate-token/70">Today</p>
+		<p class="type-overline text-slate-token/70">{{ __('Today') }}</p>
 		<div class="space-y-2">
 			<button
 				v-for="item in items"
@@ -23,7 +23,7 @@
 				v-if="!items.length"
 				class="rounded-xl border border-dashed border-slate-200 bg-white/80 px-4 py-3"
 			>
-				<p class="type-caption text-slate-token/70">Nothing queued for today yet.</p>
+				<p class="type-caption text-slate-token/70">{{ __('Nothing queued for today yet.') }}</p>
 			</div>
 		</div>
 	</section>
@@ -31,6 +31,7 @@
 
 <script setup lang="ts">
 import type { ClassHubBundle } from '@/types/classHub';
+import { __ } from '@/lib/i18n';
 
 defineProps<{
 	items: ClassHubBundle['today_items'];

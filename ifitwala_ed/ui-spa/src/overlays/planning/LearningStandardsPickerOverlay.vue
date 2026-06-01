@@ -171,7 +171,7 @@
 								v-if="loading && !pickerResponse"
 								class="rounded-2xl border border-line-soft bg-white px-5 py-8"
 							>
-								<p class="type-body text-ink/70">{{ __('Loading learning standards...') }}</p>
+								<p class="type-body text-ink/70">{{ __('Loading learning standards…') }}</p>
 							</section>
 
 							<section v-else class="space-y-4">

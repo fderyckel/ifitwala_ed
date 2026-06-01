@@ -292,7 +292,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Schools",
-   "link_count": 3,
+   "link_count": 4,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -326,9 +326,19 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Program Offering",
+   "link_count": 0,
+   "link_to": "Program Offering",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2026-04-28 09:03:00.000000",
+ "modified": "2026-05-31 20:39:58.332885",
  "modified_by": "Administrator",
  "module": "Admission",
  "name": "Admission",

@@ -43,12 +43,12 @@
 		</section>
 
 		<section v-if="loading" class="student-hub-section">
-			<p class="type-body text-ink/70">{{ __('Loading forms and signatures...') }}</p>
+			<p class="type-body text-ink/70">{{ __('Loading forms and signatures…') }}</p>
 		</section>
 
 		<section v-else-if="errorMessage" class="if-banner if-banner--danger">
 			<p class="if-banner__title type-body-strong text-flame">
-				{{ __('Could not load forms and signatures.') }}
+				{{ __('Unable to load forms and signatures.') }}
 			</p>
 			<p class="if-banner__body type-body">{{ errorMessage }}</p>
 		</section>

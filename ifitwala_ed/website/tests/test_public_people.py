@@ -130,7 +130,7 @@ class TestPublicPeopleService(FrappeTestCase):
         self.assertEqual(person["employee"], employee.name)
         self.assertEqual(person["full_bio"], employee.small_bio)
 
-    def test_public_people_disables_original_image_fallback_for_website_surfaces(self):
+    def test_public_people_does_not_pass_raw_employee_image_to_public_photo_builder(self):
         organization = make_organization(prefix="Public People Image Org")
         school = make_school(organization.name, prefix="Public People Image School")
         designation = _make_designation(
@@ -150,13 +150,8 @@ class TestPublicPeopleService(FrappeTestCase):
 
         captured_calls = []
 
-        def fake_build_public_employee_image_variants(employee_name, original_url=None):
-            captured_calls.append(
-                {
-                    "employee_name": employee_name,
-                    "original_url": original_url,
-                }
-            )
+        def fake_build_public_employee_image_variants(employee_name):
+            captured_calls.append({"employee_name": employee_name})
             return {
                 "original": None,
                 "card": "/files/employee/dana-card.webp",
@@ -188,7 +183,6 @@ class TestPublicPeopleService(FrappeTestCase):
             [
                 {
                     "employee_name": rows[0]["employee"],
-                    "original_url": "/private/files/ifitwala_drive/files/aa/bb/dana-original.png",
                 }
             ],
         )

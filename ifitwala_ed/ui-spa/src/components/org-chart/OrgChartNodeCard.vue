@@ -53,12 +53,16 @@
 			<p class="type-caption text-slate-500">Joined: {{ node.date_of_joining_label || '-' }}</p>
 		</div>
 
-		<div v-if="loading" class="org-chart-node__loading type-caption">Loading reports...</div>
+		<div v-if="loading" class="org-chart-node__loading type-caption">
+			{{ __('Loading reports…') }}
+		</div>
 	</button>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
+
+import { __ } from '@/lib/i18n';
 
 const props = defineProps<{
 	node: {

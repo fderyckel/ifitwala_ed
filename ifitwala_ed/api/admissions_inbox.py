@@ -3,6 +3,7 @@ from __future__ import annotations
 import frappe
 
 from ifitwala_ed.admission.api.communication.summaries import get_admissions_thread_summaries_for_applicants
+from ifitwala_ed.admission.api.inbox.assignees import search_admissions_inbox_assignees_impl
 from ifitwala_ed.admission.api.inbox.constants import DEFAULT_LIMIT, MAX_LIMIT, QUEUE_IDS, STALE_LEAD_DAYS
 from ifitwala_ed.admission.api.inbox.context import _bounded_limit, get_admissions_inbox_context_impl
 from ifitwala_ed.admission.api.inbox.dto import (
@@ -81,6 +82,7 @@ _INBOX_COMPAT_EXPORTS = (
     _active_first_contact_state,
     _build_queues,
     get_admissions_thread_summaries_for_applicants,
+    search_admissions_inbox_assignees_impl,
 )
 
 
@@ -94,5 +96,27 @@ def get_admissions_inbox_context(
     return get_admissions_inbox_context_impl(
         organization=organization,
         school=school,
+        limit=limit,
+    )
+
+
+@frappe.whitelist()
+def search_admissions_inbox_assignees(
+    *,
+    context_doctype: str | None = None,
+    context_name: str | None = None,
+    organization: str | None = None,
+    school: str | None = None,
+    assignment_lane: str | None = None,
+    query: str | None = None,
+    limit: int | str | None = None,
+) -> list[dict]:
+    return search_admissions_inbox_assignees_impl(
+        context_doctype=context_doctype,
+        context_name=context_name,
+        organization=organization,
+        school=school,
+        assignment_lane=assignment_lane,
+        query=query,
         limit=limit,
     )

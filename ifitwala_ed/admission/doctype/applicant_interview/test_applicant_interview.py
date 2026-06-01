@@ -6,10 +6,10 @@ from urllib.parse import parse_qs, urlparse
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
-from ifitwala_ed.admission.api.recommendation_intake import (
+from ifitwala_ed.admission.api.recommendation_intake.guest_intake import submit_recommendation
+from ifitwala_ed.admission.api.recommendation_intake.review_payload import get_recommendation_review_payload
+from ifitwala_ed.admission.api.recommendation_intake.staff_requests import (
     create_recommendation_request,
-    get_recommendation_review_payload,
-    submit_recommendation,
 )
 from ifitwala_ed.admission.doctype.applicant_interview.applicant_interview import (
     get_applicant_workspace,

@@ -127,7 +127,7 @@
 			</nav>
 
 			<div v-if="dashboardLoading" class="py-10 text-center text-sm text-slate-500">
-				Loading academic load analytics...
+				Loading academic load analytics…
 			</div>
 
 			<section
@@ -305,7 +305,7 @@
 						</span>
 					</div>
 					<div v-if="coverLoading" class="py-10 text-center text-sm text-slate-500">
-						Loading cover recommendations...
+						Loading cover recommendations…
 					</div>
 					<div v-else class="overflow-x-auto">
 						<table class="min-w-full divide-y divide-slate-200 text-sm">
@@ -388,7 +388,7 @@
 										<div>
 											<p class="type-overline text-ink/60">{{ __('Academic Load Detail') }}</p>
 											<DialogTitle class="type-h3 mt-2 text-ink">
-												{{ drawerDetail?.educator?.full_name || 'Loading...' }}
+												{{ drawerDetail?.educator?.full_name || 'Loading…' }}
 											</DialogTitle>
 										</div>
 										<button
@@ -421,7 +421,7 @@
 
 								<section class="if-overlay__body custom-scrollbar px-5 py-4">
 									<div v-if="detailLoading" class="py-10 text-center text-sm text-slate-500">
-										Loading educator detail...
+										Loading educator detail…
 									</div>
 									<div
 										v-else-if="detailError"

@@ -165,7 +165,7 @@ describe('GuardianStudentShell', () => {
 		await flushUi()
 
 		const text = document.body.textContent || ''
-		expect(text).toContain('Could not load the learning brief.')
+		expect(text).toContain('Unable to load the learning brief.')
 		expect(text).toContain('This student is not available in your guardian scope.')
 	})
 })

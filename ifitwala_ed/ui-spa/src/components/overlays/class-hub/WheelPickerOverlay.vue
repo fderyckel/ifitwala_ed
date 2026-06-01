@@ -69,7 +69,7 @@
 						<div class="if-overlay__body wheel-picker__body">
 							<section v-if="viewState === 'loading'" class="wheel-picker__state">
 								<p class="type-body-strong text-ink">
-									{{ __('Loading your class picker...') }}
+									{{ __('Loading your class picker…') }}
 								</p>
 								<p class="type-body text-slate-token/70">
 									{{ __('We are checking your live class and preparing the student list.') }}

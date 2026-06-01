@@ -155,7 +155,7 @@
 					:disabled="studentsLoading"
 					@click="loadMore"
 				>
-					{{ studentsLoading ? __('Loading...') : __('Load More') }}
+					{{ studentsLoading ? __('Loading…') : __('Load More') }}
 				</button>
 			</div>
 

@@ -7,10 +7,10 @@ from frappe import _
 from frappe.utils import formatdate, get_datetime, getdate, now_datetime, nowdate
 
 from ifitwala_ed.api import teaching_plans as teaching_plans_api
-from ifitwala_ed.api.calendar_core import _resolve_employee_for_user, _system_tzinfo, _to_system_datetime
 from ifitwala_ed.api.student_groups import _instructor_group_names
 from ifitwala_ed.api.student_log import _can_create_student_log_for_session_user
 from ifitwala_ed.curriculum import planning
+from ifitwala_ed.schedule.api.calendar.core import _resolve_employee_for_user, _system_tzinfo, _to_system_datetime
 
 
 def _class_hub_group_names(user: str) -> set[str]:

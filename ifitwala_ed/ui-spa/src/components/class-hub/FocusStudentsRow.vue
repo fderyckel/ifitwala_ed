@@ -8,7 +8,7 @@
 -->
 <template>
 	<section class="space-y-3">
-		<p class="type-overline text-slate-token/70">Students in Focus</p>
+		<p class="type-overline text-slate-token/70">{{ __('Students in Focus') }}</p>
 		<div class="flex flex-wrap gap-2">
 			<button
 				v-for="student in students"
@@ -28,6 +28,7 @@
 
 <script setup lang="ts">
 import type { ClassHubBundle } from '@/types/classHub';
+import { __ } from '@/lib/i18n';
 
 defineProps<{
 	students: ClassHubBundle['focus_students'];

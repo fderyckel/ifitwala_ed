@@ -387,17 +387,23 @@ def _resolve_public_employee_display_url(
     employee_name: str,
     *,
     file_name: str | None,
-    file_url: str | None,
-    derivative_role: str | None = None,
+    variant: str | None = None,
 ) -> str | None:
     from ifitwala_ed.api.file_access import resolve_public_employee_image_url
 
     return resolve_public_employee_image_url(
         employee=employee_name,
         file_name=file_name,
-        file_url=file_url,
-        derivative_role=derivative_role,
+        variant=variant,
     )
+
+
+def _public_employee_variant_from_slot(slot: str | None) -> str | None:
+    return {
+        "profile_image_thumb": "thumb",
+        "profile_image_card": "card",
+        "profile_image_medium": "medium",
+    }.get(str(slot or "").strip())
 
 
 def _resolve_public_employee_variant_url(
@@ -407,13 +413,15 @@ def _resolve_public_employee_variant_url(
     file_name: str | None,
     file_url: str | None,
     derivative_role: str | None = None,
+    variant_slot: str | None = None,
     **_kwargs,
 ) -> str | None:
+    del file_url, derivative_role
+
     return _resolve_public_employee_display_url(
         str(subject_name or "").strip(),
         file_name=file_name,
-        file_url=file_url,
-        derivative_role=derivative_role,
+        variant=_public_employee_variant_from_slot(variant_slot),
     )
 
 
@@ -582,15 +590,21 @@ def _get_governed_image_variants_map(
             derivative_role = PROFILE_IMAGE_VARIANT_ROLE_MAP.get(slot)
             if not derivative_role or derivative_role not in ready_roles:
                 continue
+            display_kwargs = {
+                "file_name": file_name,
+                "file_url": file_url,
+                "drive_file_id": drive_file_id or None,
+                "canonical_ref": canonical_ref,
+                "derivative_role": derivative_role,
+                "is_private": file_is_private,
+            }
+            if display_url_resolver is not None:
+                display_kwargs["variant_slot"] = slot
+
             display_url = url_resolver(
                 primary_subject_type,
                 subject_name,
-                file_name=file_name,
-                file_url=file_url,
-                drive_file_id=drive_file_id or None,
-                canonical_ref=canonical_ref,
-                derivative_role=derivative_role,
-                is_private=file_is_private,
+                **display_kwargs,
             )
             if display_url:
                 subject_variants[slot] = display_url
@@ -811,12 +825,10 @@ def build_employee_image_variants(
 
 def build_public_employee_image_variants(
     employee_name: str | None,
-    original_url: str | None = None,
 ) -> dict[str, str | None]:
     return _build_governed_image_variants(
         "Employee",
         employee_name,
-        original_url=original_url,
         slots=PUBLIC_EMPLOYEE_VARIANT_SLOTS,
         fallback_to_original=False,
         request_missing_derivatives=True,

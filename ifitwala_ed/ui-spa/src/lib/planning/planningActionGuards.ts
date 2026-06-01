@@ -16,5 +16,5 @@ export function normalizePlanningSurfaceError(error: unknown): string {
 		return MISSING_CLASS_COURSE_MESSAGE
 	}
 
-	return rawMessage || 'Could not load the class planning surface.'
+	return rawMessage || 'Unable to load the class planning surface.'
 }

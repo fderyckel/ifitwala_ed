@@ -3,6 +3,11 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import add_to_date, cstr, now_datetime, pretty_date
 
+from ifitwala_ed.utilities.employee_utils import get_descendant_organizations, get_user_base_org
+
+ACCOUNT_SCOPE_ROLES = {"Accounts Manager", "Accounts User"}
+ACCOUNT_READ_PTYPES = {"read", "report", "select"}
+
 
 class Account(Document):
     def autoname(self):
@@ -65,6 +70,25 @@ class Account(Document):
     def validate_group(self):
         # Posting rules enforced at transaction posting time.
         pass
+
+
+@frappe.whitelist()
+def get_account_name_number_update_preview(name, account_name, account_number=None):
+    name = cstr(name).strip()
+    account_name = cstr(account_name).strip()
+    account_number = cstr(account_number).strip()
+
+    account = frappe.get_doc("Account", name)
+    if not frappe.has_permission("Account", ptype="write", doc=account):
+        frappe.throw(_("You are not permitted to update this account."), frappe.PermissionError)
+
+    _validate_account_rename_role()
+    _validate_account_can_be_renamed(account)
+
+    if not account_name:
+        return {"name": ""}
+
+    return {"name": get_account_autoname(account_number, account_name, account.organization)}
 
 
 @frappe.whitelist()
@@ -231,12 +255,185 @@ def _get_account_title(account):
     return account_name
 
 
+def _is_unrestricted_account_user(user: str) -> bool:
+    if user == "Administrator":
+        return True
+    return "System Manager" in set(frappe.get_roles(user) or [])
+
+
+def _has_account_scope_role(user: str) -> bool:
+    return bool(set(frappe.get_roles(user) or []) & ACCOUNT_SCOPE_ROLES)
+
+
+def _get_account_base_organization(user: str) -> str | None:
+    return cstr(get_user_base_org(user)).strip() or None
+
+
+def _get_account_organization_scope_for_base(
+    user: str,
+    base_organization: str | None,
+) -> list[str] | None:
+    if _is_unrestricted_account_user(user):
+        return None
+    if not _has_account_scope_role(user):
+        return []
+
+    base_organization = cstr(base_organization).strip()
+    if not base_organization:
+        return []
+
+    return list(dict.fromkeys(get_descendant_organizations(base_organization) or [base_organization]))
+
+
+def _get_account_organization_scope(user: str) -> list[str] | None:
+    return _get_account_organization_scope_for_base(user, _get_account_base_organization(user))
+
+
+def _account_user_can_access_organization(user: str, organization: str) -> bool:
+    organization = cstr(organization).strip()
+    if not organization:
+        return False
+
+    scope = _get_account_organization_scope(user)
+    if scope is None:
+        return True
+
+    return organization in set(scope)
+
+
+def _get_account_permission_organization(doc, ptype: str | None = None) -> str | None:
+    if not doc:
+        return None
+
+    ptype = cstr(ptype or "read").strip().lower()
+    if hasattr(doc, "get"):
+        organization = cstr(doc.get("organization")).strip()
+    else:
+        organization = cstr(getattr(doc, "organization", "")).strip()
+    if organization:
+        return organization
+
+    parent_account = cstr(
+        doc.get("parent_account") if hasattr(doc, "get") else getattr(doc, "parent_account", "")
+    ).strip()
+    if ptype == "create" and parent_account:
+        parent_organization = frappe.db.get_value("Account", parent_account, "organization")
+        return cstr(parent_organization).strip() or None
+
+    account_name = cstr(doc if isinstance(doc, str) else getattr(doc, "name", "")).strip()
+    if account_name and frappe.db.exists("Account", account_name):
+        account_organization = frappe.db.get_value("Account", account_name, "organization")
+        return cstr(account_organization).strip() or None
+
+    return None
+
+
+def get_permission_query_conditions(user=None):
+    user = user or frappe.session.user
+    if not user or user == "Guest":
+        return "1=0"
+
+    scope = _get_account_organization_scope(user)
+    if scope is None:
+        return None
+    if not scope:
+        return "1=0"
+
+    values = ", ".join(frappe.db.escape(organization) for organization in sorted(set(scope)))
+    return f"`tabAccount`.`organization` IN ({values})"
+
+
+def has_permission(doc, ptype=None, user=None):
+    user = user or frappe.session.user
+    if not user or user == "Guest":
+        return False
+    if _is_unrestricted_account_user(user):
+        return True
+
+    ptype = cstr(ptype or "read").strip().lower()
+    roles = set(frappe.get_roles(user) or [])
+    if not roles & ACCOUNT_SCOPE_ROLES:
+        return False
+    if "Accounts Manager" not in roles and ptype not in ACCOUNT_READ_PTYPES:
+        return False
+
+    scope = _get_account_organization_scope(user)
+    if not scope:
+        return False
+    if not doc:
+        return True
+
+    organization = _get_account_permission_organization(doc, ptype=ptype)
+    if not organization:
+        return False
+
+    return organization in set(scope)
+
+
+@frappe.whitelist()
+def get_account_tree_context():
+    user = frappe.session.user
+    if not user or user == "Guest":
+        return {
+            "default_organization": None,
+            "allowed_organizations": [],
+            "unrestricted": False,
+            "has_scope": False,
+            "message": _("Sign in with an accounting user to view the Chart of Accounts."),
+        }
+
+    if not _is_unrestricted_account_user(user) and not _has_account_scope_role(user):
+        return {
+            "default_organization": None,
+            "allowed_organizations": [],
+            "unrestricted": False,
+            "has_scope": False,
+            "message": _(
+                "Ask an administrator for Accounts User or Accounts Manager access to view the Chart of Accounts."
+            ),
+        }
+
+    base_organization = _get_account_base_organization(user)
+    scope = _get_account_organization_scope_for_base(user, base_organization)
+    if scope is None:
+        return {
+            "default_organization": base_organization,
+            "allowed_organizations": [],
+            "unrestricted": True,
+            "has_scope": True,
+            "message": None,
+        }
+
+    if not scope:
+        return {
+            "default_organization": None,
+            "allowed_organizations": [],
+            "unrestricted": False,
+            "has_scope": False,
+            "message": _("Set an Organization on your active Employee record before opening the Chart of Accounts."),
+        }
+
+    return {
+        "default_organization": base_organization if base_organization in scope else scope[0],
+        "allowed_organizations": scope,
+        "unrestricted": False,
+        "has_scope": True,
+        "message": None,
+    }
+
+
 @frappe.whitelist()
 def get_children(doctype, parent=None, organization=None, is_root=False, **kwargs):
     filters = dict(kwargs.get("filters") or {})
     organization = cstr(organization or filters.get("organization")).strip()
     if not organization:
         return []
+
+    if not _account_user_can_access_organization(frappe.session.user, organization):
+        frappe.throw(
+            _("You can only view accounts for your Employee Organization and its child Organizations."),
+            frappe.PermissionError,
+        )
 
     if is_root or not parent:
         rows = frappe.get_all(

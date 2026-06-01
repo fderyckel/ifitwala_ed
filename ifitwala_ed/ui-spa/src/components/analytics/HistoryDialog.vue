@@ -56,7 +56,7 @@
 										ref="closeButtonRef"
 										type="button"
 										class="if-overlay__icon-button"
-										aria-label="Close history dialog"
+										:aria-label="__('Close history dialog')"
 										@click="closeDialog"
 									>
 										<FeatherIcon name="x" class="h-4 w-4" />
@@ -158,7 +158,7 @@
 
 											<div v-if="commentsLoading" class="history-dialog__comments-empty">
 												<FeatherIcon name="loader" class="h-4 w-4 animate-spin text-jacaranda" />
-												<span>{{ __('Loading conversation...') }}</span>
+												<span>{{ __('Loading conversation…') }}</span>
 											</div>
 											<div v-else-if="!hasComments" class="history-dialog__comments-empty">
 												<FeatherIcon name="message-circle" class="h-5 w-5 text-jacaranda" />
@@ -337,7 +337,7 @@ const schoolName = computed(() => {
 		'';
 	if (resolvedSchool) return resolvedSchool;
 	if (errorMessage.value) return __('Unavailable');
-	return __('Loading...');
+	return __('Loading…');
 });
 const totalPoints = computed(() => payload.value?.data?.length || 0);
 const totalCount = computed(() => {

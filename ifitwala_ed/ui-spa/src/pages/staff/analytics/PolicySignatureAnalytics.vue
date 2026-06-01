@@ -117,7 +117,7 @@
 		</div>
 
 		<div v-else-if="loadingDashboard" class="py-10 text-center text-sm text-slate-500">
-			{{ __('Loading policy signature analytics...') }}
+			{{ __('Loading policy signature analytics…') }}
 		</div>
 
 		<div v-else-if="dashboard" class="space-y-5">
@@ -531,7 +531,7 @@
 							v-else-if="getAudienceRegister(section.audience).loading"
 							class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500"
 						>
-							{{ __('Loading {0} register...', [section.audience_label.toLowerCase()]) }}
+							{{ __('Loading {0} register…', [section.audience_label.toLowerCase()]) }}
 						</div>
 
 						<div

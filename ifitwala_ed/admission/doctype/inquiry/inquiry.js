@@ -30,7 +30,7 @@ function with_admissions_timeline_desk(callback, unavailable_message) {
 	}
 
 	frappe.show_alert({
-		message: __("Loading admissions timeline actions..."),
+		message: __("Loading admissions timeline actions…"),
 		indicator: "blue",
 	});
 	frappe.require("/assets/ifitwala_ed/js/admissions_timeline_desk.js", () => {

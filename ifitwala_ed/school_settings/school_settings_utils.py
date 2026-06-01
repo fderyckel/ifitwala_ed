@@ -6,7 +6,10 @@
 import frappe
 from frappe.utils import getdate
 
-from ifitwala_ed.utilities.school_tree import get_descendant_schools
+from ifitwala_ed.utilities.employee_utils import get_user_base_school, get_user_visible_schools
+from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
+
+ADMISSIONS_BRANCH_SCOPE_ROLES = {"Admission Manager", "Admission Officer"}
 
 
 def get_allowed_schools(user=None, selected_school=None):
@@ -40,6 +43,48 @@ def get_user_allowed_schools():
         return []
 
     return list(dict.fromkeys(get_descendant_schools(root_school) or [root_school]))
+
+
+def user_has_admissions_branch_scope(user: str | None = None, *, roles: set[str] | None = None) -> bool:
+    user = user or frappe.session.user
+    resolved_roles = roles if roles is not None else set(frappe.get_roles(user))
+    return bool(resolved_roles & ADMISSIONS_BRANCH_SCOPE_ROLES)
+
+
+def _get_user_default_school(user: str) -> str | None:
+    defaults = getattr(frappe, "defaults", None)
+    if not defaults or not hasattr(defaults, "get_user_default"):
+        return None
+
+    try:
+        school = defaults.get_user_default("school", user=user)
+    except TypeError:
+        school = defaults.get_user_default("school", user)
+
+    school = (school or "").strip()
+    return school or None
+
+
+def get_user_branch_school_scope(user: str | None = None) -> list[str]:
+    """
+    Return a staff user's operational school branch: visible descendants plus
+    the base school's ancestors. Sibling branches remain outside the scope.
+    """
+    user = user or frappe.session.user
+    if not user or user == "Guest":
+        return []
+
+    visible_schools = list(dict.fromkeys(get_user_visible_schools(user) or []))
+    base_school = (get_user_base_school(user) or "").strip() or _get_user_default_school(user)
+
+    if not visible_schools and base_school:
+        visible_schools = list(dict.fromkeys(get_descendant_schools(base_school) or [base_school]))
+
+    scope = list(visible_schools)
+    if base_school:
+        scope.extend(get_ancestor_schools(base_school) or [base_school])
+
+    return list(dict.fromkeys(school for school in scope if school))
 
 
 # ---------------------------------------------------------------------

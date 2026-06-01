@@ -69,7 +69,7 @@ def _normalize_linked_school_event_note(current_note: str | None, event_name: st
 
 
 def _school_event_staff_cache_employee_names(event_doc) -> set[str]:
-    from ifitwala_ed.api.calendar_invalidation import (
+    from ifitwala_ed.schedule.api.calendar.invalidation import (
         STAFF_SCHOOL_EVENT_AUDIENCE_TYPES,
         active_employee_names_for_school_scope,
         active_employee_names_for_teams,
@@ -102,7 +102,7 @@ def _school_event_staff_cache_employee_names(event_doc) -> set[str]:
 
 
 def _invalidate_staff_calendar_caches_for_school_event(event_doc, *, include_previous: bool = False) -> None:
-    from ifitwala_ed.api.calendar_invalidation import invalidate_staff_calendar_for_employees
+    from ifitwala_ed.schedule.api.calendar.invalidation import invalidate_staff_calendar_for_employees
 
     employees = set(_school_event_staff_cache_employee_names(event_doc))
     if include_previous and hasattr(event_doc, "get_doc_before_save"):

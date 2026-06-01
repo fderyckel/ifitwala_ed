@@ -226,7 +226,7 @@ function renderLearningStandards(dialog, context) {
 		return;
 	}
 	if (context.loading) {
-		wrapper.html(`<div class="text-muted small">${frappe.utils.escape_html(__("Loading learning standards..."))}</div>`);
+		wrapper.html(`<div class="text-muted small">${frappe.utils.escape_html(__("Loading learning standards…"))}</div>`);
 		return;
 	}
 	if (context.error) {

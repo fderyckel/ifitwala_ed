@@ -8,7 +8,7 @@
 -->
 <template>
 	<section class="space-y-3">
-		<p class="type-overline text-slate-token/70">Class Pulse</p>
+		<p class="type-overline text-slate-token/70">{{ __('Class Pulse') }}</p>
 		<div class="space-y-2">
 			<div
 				v-for="item in items"
@@ -38,6 +38,7 @@
 
 <script setup lang="ts">
 import { RouterLink } from 'vue-router';
+import { __ } from '@/lib/i18n';
 import type { ClassHubBundle } from '@/types/classHub';
 
 defineProps<{

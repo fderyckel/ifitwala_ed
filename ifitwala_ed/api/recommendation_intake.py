@@ -4,25 +4,73 @@ from __future__ import annotations
 
 import frappe
 
-from ifitwala_ed.admission.api import recommendation_intake as _impl
+from ifitwala_ed.admission.api.recommendation_intake.guest_intake import (
+    get_recommendation_intake_payload as get_recommendation_intake_payload_impl,
+)
+from ifitwala_ed.admission.api.recommendation_intake.guest_intake import (
+    send_recommendation_otp as send_recommendation_otp_impl,
+)
+from ifitwala_ed.admission.api.recommendation_intake.guest_intake import (
+    submit_recommendation as submit_recommendation_impl,
+)
+from ifitwala_ed.admission.api.recommendation_intake.guest_intake import (
+    verify_recommendation_otp as verify_recommendation_otp_impl,
+)
+from ifitwala_ed.admission.api.recommendation_intake.review_payload import (
+    get_recommendation_review_payload as get_recommendation_review_payload_impl,
+)
+from ifitwala_ed.admission.api.recommendation_intake.staff_requests import (
+    create_recommendation_request as create_recommendation_request_impl,
+)
+from ifitwala_ed.admission.api.recommendation_intake.staff_requests import (
+    get_recommendation_request_summary as get_recommendation_request_summary_impl,
+)
+from ifitwala_ed.admission.api.recommendation_intake.staff_requests import (
+    list_recommendation_requests as list_recommendation_requests_impl,
+)
+from ifitwala_ed.admission.api.recommendation_intake.staff_requests import (
+    resend_recommendation_request as resend_recommendation_request_impl,
+)
+from ifitwala_ed.admission.api.recommendation_intake.staff_requests import (
+    revoke_recommendation_request as revoke_recommendation_request_impl,
+)
+from ifitwala_ed.admission.api.recommendation_intake.status import (
+    get_recommendation_status_batch_for_applicants,
+    get_recommendation_status_for_applicant,
+)
+from ifitwala_ed.admission.api.recommendation_intake.templates import (
+    get_recommendation_template_rows_for_applicant,
+)
+from ifitwala_ed.admission.api.recommendation_intake.templates import (
+    list_recommendation_templates as list_recommendation_templates_impl,
+)
 
-get_recommendation_template_rows_for_applicant = _impl.get_recommendation_template_rows_for_applicant
-get_recommendation_status_batch_for_applicants = _impl.get_recommendation_status_batch_for_applicants
-get_recommendation_status_for_applicant = _impl.get_recommendation_status_for_applicant
-
-
-def __getattr__(name: str):
-    return getattr(_impl, name)
+__all__ = [
+    "create_recommendation_request",
+    "get_recommendation_intake_payload",
+    "get_recommendation_request_summary",
+    "get_recommendation_review_payload",
+    "get_recommendation_status_batch_for_applicants",
+    "get_recommendation_status_for_applicant",
+    "get_recommendation_template_rows_for_applicant",
+    "list_recommendation_requests",
+    "list_recommendation_templates",
+    "resend_recommendation_request",
+    "revoke_recommendation_request",
+    "send_recommendation_otp",
+    "submit_recommendation",
+    "verify_recommendation_otp",
+]
 
 
 @frappe.whitelist()
 def list_recommendation_templates(*, student_applicant: str | None = None):
-    return _impl.list_recommendation_templates(student_applicant=student_applicant)
+    return list_recommendation_templates_impl(student_applicant=student_applicant)
 
 
 @frappe.whitelist()
 def create_recommendation_request(payload=None, **kwargs):
-    return _impl.create_recommendation_request(payload=payload, **kwargs)
+    return create_recommendation_request_impl(payload=payload, **kwargs)
 
 
 @frappe.whitelist()
@@ -31,7 +79,7 @@ def resend_recommendation_request(
     recommendation_request: str | None = None,
     expires_in_days: int | None = None,
 ):
-    return _impl.resend_recommendation_request(
+    return resend_recommendation_request_impl(
         recommendation_request=recommendation_request,
         expires_in_days=expires_in_days,
     )
@@ -39,17 +87,17 @@ def resend_recommendation_request(
 
 @frappe.whitelist()
 def revoke_recommendation_request(*, recommendation_request: str | None = None):
-    return _impl.revoke_recommendation_request(recommendation_request=recommendation_request)
+    return revoke_recommendation_request_impl(recommendation_request=recommendation_request)
 
 
 @frappe.whitelist()
 def list_recommendation_requests(*, student_applicant: str | None = None):
-    return _impl.list_recommendation_requests(student_applicant=student_applicant)
+    return list_recommendation_requests_impl(student_applicant=student_applicant)
 
 
 @frappe.whitelist()
 def get_recommendation_request_summary(*, student_applicant: str | None = None):
-    return _impl.get_recommendation_request_summary(student_applicant=student_applicant)
+    return get_recommendation_request_summary_impl(student_applicant=student_applicant)
 
 
 @frappe.whitelist()
@@ -60,7 +108,7 @@ def get_recommendation_review_payload(
     recommendation_submission: str | None = None,
     applicant_document_item: str | None = None,
 ):
-    return _impl.get_recommendation_review_payload(
+    return get_recommendation_review_payload_impl(
         student_applicant=student_applicant,
         recommendation_request=recommendation_request,
         recommendation_submission=recommendation_submission,
@@ -70,19 +118,19 @@ def get_recommendation_review_payload(
 
 @frappe.whitelist(allow_guest=True)
 def get_recommendation_intake_payload(*, token: str | None = None):
-    return _impl.get_recommendation_intake_payload(token=token)
+    return get_recommendation_intake_payload_impl(token=token)
 
 
 @frappe.whitelist(allow_guest=True)
 def send_recommendation_otp(*, token: str | None = None):
-    return _impl.send_recommendation_otp(token=token)
+    return send_recommendation_otp_impl(token=token)
 
 
 @frappe.whitelist(allow_guest=True)
 def verify_recommendation_otp(*, token: str | None = None, otp_code: str | None = None):
-    return _impl.verify_recommendation_otp(token=token, otp_code=otp_code)
+    return verify_recommendation_otp_impl(token=token, otp_code=otp_code)
 
 
 @frappe.whitelist(allow_guest=True)
 def submit_recommendation(payload=None, **kwargs):
-    return _impl.submit_recommendation(payload=payload, **kwargs)
+    return submit_recommendation_impl(payload=payload, **kwargs)

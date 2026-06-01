@@ -117,7 +117,9 @@
 			</div>
 		</FiltersBar>
 
-		<div v-if="loading" class="py-12 text-center text-slate-500">Loading inquiry queues...</div>
+		<div v-if="loading" class="py-12 text-center text-slate-500">
+			{{ __('Loading inquiry queues…') }}
+		</div>
 		<div v-else-if="error" class="analytics-card border-red-200 bg-red-50 text-red-700">
 			{{ error }}
 		</div>
@@ -521,7 +523,7 @@ async function refresh() {
 		activeView.value = res.command_center?.active_view || activeView.value;
 	} catch (e) {
 		console.error(e);
-		error.value = e instanceof Error ? e.message : 'Could not load inquiry queues.';
+		error.value = e instanceof Error ? e.message : 'Unable to load inquiry queues.';
 	} finally {
 		loading.value = false;
 	}

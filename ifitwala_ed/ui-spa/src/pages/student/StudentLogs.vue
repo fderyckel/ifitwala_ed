@@ -137,7 +137,7 @@
 										<hr class="my-4 border-[rgb(var(--border-rgb)/0.7)]" />
 
 										<div v-if="modalLoading" class="text-center py-8">
-											<p class="type-body text-ink/70">{{ __('Loading details...') }}</p>
+											<p class="type-body text-ink/70">{{ __('Loading details…') }}</p>
 										</div>
 										<div
 											v-else
@@ -299,7 +299,7 @@ async function openLogDetail(log) {
 		}
 	} catch (err) {
 		console.error('Failed to fetch log detail:', err);
-		toast.error(__('Could not load this log.'));
+		toast.error(__('Unable to load this log.'));
 		isModalOpen.value = false;
 	} finally {
 		modalLoading.value = false;

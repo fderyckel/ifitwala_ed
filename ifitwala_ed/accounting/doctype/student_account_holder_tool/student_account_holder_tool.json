@@ -1,0 +1,224 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "SAHT-.YYYY.-.#####",
+ "creation": "2026-05-30 11:18:15.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "status",
+  "source_program_billing_plan",
+  "filters_section",
+  "organization",
+  "school",
+  "column_break_filters",
+  "program_offering",
+  "academic_year",
+  "student_cohort",
+  "load_students",
+  "students_section",
+  "students",
+  "summary_section",
+  "loaded_count",
+  "selected_count",
+  "blocked_count",
+  "column_break_summary",
+  "created_count",
+  "linked_count",
+  "failed_count",
+  "create_account_holders",
+  "result_summary"
+ ],
+ "fields": [
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nLoaded\nProcessed"
+  },
+  {
+   "fieldname": "source_program_billing_plan",
+   "fieldtype": "Link",
+   "label": "Source Program Billing Plan",
+   "options": "Program Billing Plan",
+   "read_only": 1
+  },
+  {
+   "fieldname": "filters_section",
+   "fieldtype": "Section Break",
+   "label": "Filters"
+  },
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Organization",
+   "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "fieldname": "school",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "School",
+   "options": "School"
+  },
+  {
+   "fieldname": "column_break_filters",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "program_offering",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Program Offering",
+   "options": "Program Offering"
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Academic Year",
+   "options": "Academic Year"
+  },
+  {
+   "fieldname": "student_cohort",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Student Cohort",
+   "options": "Student Cohort"
+  },
+  {
+   "fieldname": "load_students",
+   "fieldtype": "Button",
+   "label": "Load Students",
+   "options": "load_students"
+  },
+  {
+   "fieldname": "students_section",
+   "fieldtype": "Section Break",
+   "label": "Students Without Account Holders"
+  },
+  {
+   "fieldname": "students",
+   "fieldtype": "Table",
+   "label": "Students",
+   "options": "Student Account Holder Tool Student"
+  },
+  {
+   "fieldname": "summary_section",
+   "fieldtype": "Section Break",
+   "label": "Summary"
+  },
+  {
+   "default": "0",
+   "fieldname": "loaded_count",
+   "fieldtype": "Int",
+   "label": "Loaded",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "selected_count",
+   "fieldtype": "Int",
+   "label": "Selected",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "blocked_count",
+   "fieldtype": "Int",
+   "label": "Blocked",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_summary",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "created_count",
+   "fieldtype": "Int",
+   "label": "Created",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "linked_count",
+   "fieldtype": "Int",
+   "label": "Linked",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "failed_count",
+   "fieldtype": "Int",
+   "label": "Failed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "create_account_holders",
+   "fieldtype": "Button",
+   "label": "Create / Link Account Holders",
+   "options": "create_account_holders"
+  },
+  {
+   "fieldname": "result_summary",
+   "fieldtype": "Small Text",
+   "label": "Result Summary",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-05-30 11:18:15.000000",
+ "modified_by": "Administrator",
+ "module": "Accounting",
+ "name": "Student Account Holder Tool",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

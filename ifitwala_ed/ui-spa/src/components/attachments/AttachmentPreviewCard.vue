@@ -416,10 +416,14 @@ const communicationPdfMessage = computed(() => {
 });
 const communicationPdfFallbackMessage = computed(() => {
 	if (props.attachment.preview_status === 'pending') {
-		return __('The first-page preview is still processing. Use Open PDF to review the full document now.');
+		return __(
+			'The first-page preview is still processing. Use Open PDF to review the full document now.'
+		);
 	}
 	if (props.attachment.preview_status === 'failed') {
-		return __('The first-page preview could not be generated. Use Open PDF to review the original file.');
+		return __(
+			'The first-page preview could not be generated. Use Open PDF to review the original file.'
+		);
 	}
 	return __('Use Open PDF to review the original file from this communication.');
 });

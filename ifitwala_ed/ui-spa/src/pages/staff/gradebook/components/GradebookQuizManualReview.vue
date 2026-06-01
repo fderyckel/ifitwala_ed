@@ -93,7 +93,7 @@
 			class="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border/70 bg-white/70 p-6 text-center"
 		>
 			<Spinner class="h-7 w-7 text-canopy" />
-			<p class="text-sm text-ink/50">{{ __('Loading open-ended quiz responses...') }}</p>
+			<p class="text-sm text-ink/50">{{ __('Loading open-ended quiz responses…') }}</p>
 		</div>
 
 		<div
@@ -313,7 +313,7 @@ async function loadReview() {
 	} catch (error) {
 		console.error('Failed to load quiz manual review', error);
 		if (loadVersion.value === version) {
-			showDangerToast(__('Could not load open-ended quiz review'));
+			showDangerToast(__('Unable to load open-ended quiz review'));
 			clearState();
 		}
 	} finally {

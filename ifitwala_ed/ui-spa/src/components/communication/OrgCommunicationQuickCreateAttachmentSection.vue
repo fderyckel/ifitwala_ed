@@ -19,8 +19,8 @@
 		/>
 
 		<div v-else class="space-y-1">
-			<p class="type-overline text-ink/55">Attachments</p>
-			<h3 class="type-h3 text-ink">Files and links</h3>
+			<p class="type-overline text-ink/55">{{ __('Attachments') }}</p>
+			<h3 class="type-h3 text-ink">{{ __('Files and links') }}</h3>
 			<p class="type-caption text-ink/65">
 				Review the files and links already attached to this communication.
 			</p>
@@ -72,6 +72,7 @@
 <script setup lang="ts">
 import type { OrgCommunicationAttachmentRow } from '@/types/contracts/org_communication_attachments/shared';
 import type { UploadProgressState } from '@/lib/uploadProgress';
+import { __ } from '@/lib/i18n';
 
 import OrgCommunicationQuickCreateAttachmentActions from './OrgCommunicationQuickCreateAttachmentActions.vue';
 import type { LinkDraftState } from './orgCommunicationQuickCreateTypes';

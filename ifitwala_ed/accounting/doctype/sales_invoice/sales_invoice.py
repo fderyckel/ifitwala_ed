@@ -93,6 +93,7 @@ class SalesInvoice(Document):
         offering_cache = {}
         program_org_cache = {}
         student_cache = {}
+        billable_charge_cache = {}
 
         for idx, row in enumerate(self.items, start=1):
             qty = flt(row.qty)
@@ -232,6 +233,9 @@ class SalesInvoice(Document):
                 if not row.school:
                     row.school = resolve_student_school(row.student)
 
+            if getattr(row, "billable_charge", None):
+                self._validate_billable_charge_link(row, idx, billable_charge_cache)
+
     def _get_program_offering_org(self, program_offering):
         school = frappe.db.get_value("Program Offering", program_offering, "school")
         if not school:
@@ -239,6 +243,45 @@ class SalesInvoice(Document):
                 _("Program Offering {program_offering} is missing School").format(program_offering=program_offering)
             )
         return get_school_organization(school)
+
+    def _validate_billable_charge_link(self, row, idx, billable_charge_cache):
+        charge_name = getattr(row, "billable_charge", None)
+        charge = billable_charge_cache.get(charge_name)
+        if not charge:
+            charge = frappe.db.get_value(
+                "Billable Charge",
+                charge_name,
+                ["organization", "account_holder", "student", "billable_offering", "status", "sales_invoice"],
+                as_dict=True,
+            )
+            if not charge:
+                frappe.throw(_("Row {row_number}: Billable Charge not found").format(row_number=idx))
+            billable_charge_cache[charge_name] = charge
+
+        if charge.organization != self.organization:
+            frappe.throw(
+                _("Row {row_number}: Billable Charge belongs to a different Organization").format(row_number=idx)
+            )
+        if charge.account_holder != self.account_holder:
+            frappe.throw(
+                _("Row {row_number}: Billable Charge Account Holder must match the invoice Account Holder").format(
+                    row_number=idx
+                )
+            )
+        if charge.student != row.student:
+            frappe.throw(
+                _("Row {row_number}: Billable Charge Student must match the invoice row").format(row_number=idx)
+            )
+        if charge.billable_offering != row.billable_offering:
+            frappe.throw(
+                _("Row {row_number}: Billable Charge Offering must match the invoice row").format(row_number=idx)
+            )
+        if charge.status == "Cancelled":
+            frappe.throw(_("Row {row_number}: Billable Charge is cancelled").format(row_number=idx))
+        if charge.sales_invoice and charge.sales_invoice != self.name:
+            frappe.throw(
+                _("Row {row_number}: Billable Charge is already linked to another Sales Invoice").format(row_number=idx)
+            )
 
     def set_item_amounts(self):
         for row in self.items:
@@ -442,6 +485,7 @@ class SalesInvoice(Document):
         self._validate_no_settlements_before_cancel()
         cancel_gl_entries("Sales Invoice", self.name)
         from ifitwala_ed.accounting.billing.invoice_generation import reset_billing_rows_for_invoice
+        from ifitwala_ed.accounting.charges.charge_generation import reset_billable_charges_for_invoice
 
         if self.adjustment_type == "Credit Note" and self.against_sales_invoice:
             source_outstanding = money(
@@ -462,13 +506,16 @@ class SalesInvoice(Document):
             update_modified=False,
         )
         reset_billing_rows_for_invoice(self.name)
+        reset_billable_charges_for_invoice(self.name)
         sync_payment_requests_for_invoice(self.name)
         sync_dunning_notices_for_invoice(self.name)
 
     def on_trash(self):
         from ifitwala_ed.accounting.billing.invoice_generation import reset_billing_rows_for_invoice
+        from ifitwala_ed.accounting.charges.charge_generation import reset_billable_charges_for_invoice
 
         reset_billing_rows_for_invoice(self.name)
+        reset_billable_charges_for_invoice(self.name)
 
     def _apply_credit_note_to_source(self):
         if not self.against_sales_invoice:

@@ -135,7 +135,8 @@ jobs:
             "ifitwala_ed.api.test_guardian_home"
             "ifitwala_ed.api.test_users"
             "ifitwala_ed.api.test_attendance"
-            "ifitwala_ed.api.test_calendar"
+            "ifitwala_ed.api.test_calendar_facade"
+            "ifitwala_ed.schedule.api.test_calendar"
             "ifitwala_ed.api.test_activity_booking"
           )
 

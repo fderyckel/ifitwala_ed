@@ -20,6 +20,7 @@ import {
 	assignInquiryFromInbox,
 	createAdmissionsIntake,
 	logAdmissionMessage,
+	searchAdmissionsInboxAssignees,
 	sendAdmissionsCaseMessageFromInbox,
 } from '@/lib/services/admissions/admissionsInboxService';
 
@@ -74,6 +75,30 @@ describe('admissionsInboxService', () => {
 			})
 		);
 		expect(emitMock).toHaveBeenCalledWith('admissions_inbox:invalidate');
+	});
+
+	it('searches Inbox assignees without emitting mutation invalidation', async () => {
+		apiMock.mockResolvedValue([{ value: 'staff@example.com', label: 'Staff User' }]);
+
+		await searchAdmissionsInboxAssignees({
+			context_doctype: 'Inquiry',
+			context_name: 'INQ-0001',
+			assignment_lane: 'Staff',
+			query: 'staff',
+			limit: 20,
+		});
+
+		expect(apiMock).toHaveBeenCalledWith(
+			'ifitwala_ed.api.admissions_inbox.search_admissions_inbox_assignees',
+			{
+				context_doctype: 'Inquiry',
+				context_name: 'INQ-0001',
+				assignment_lane: 'Staff',
+				query: 'staff',
+				limit: 20,
+			}
+		);
+		expect(emitMock).not.toHaveBeenCalled();
 	});
 
 	it('uses the intake endpoint with an intake idempotency prefix', async () => {

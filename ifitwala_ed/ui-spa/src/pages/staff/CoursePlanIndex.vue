@@ -35,7 +35,7 @@
 			v-if="errorMessage"
 			class="rounded-2xl border border-flame/30 bg-[var(--flame)]/5 px-5 py-4"
 		>
-			<p class="type-body-strong text-flame">{{ __('Could not load the course plans.') }}</p>
+			<p class="type-body-strong text-flame">{{ __('Unable to load the course plans.') }}</p>
 			<p class="mt-1 type-caption text-ink/70">{{ errorMessage }}</p>
 		</section>
 
@@ -43,7 +43,7 @@
 			v-else-if="loading && !surface"
 			class="rounded-2xl border border-line-soft bg-white px-5 py-8"
 		>
-			<p class="type-body text-ink/70">{{ __('Loading shared course plans...') }}</p>
+			<p class="type-body text-ink/70">{{ __('Loading shared course plans…') }}</p>
 		</section>
 
 		<section

@@ -1,7 +1,7 @@
 {
  "app": "ifitwala_ed",
  "charts": [],
- "content": "[{\"id\":\"acctHeader\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Accounting</span>\",\"col\":12}},{\"id\":\"acctSalesInvoice\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sales Invoice\",\"col\":3}},{\"id\":\"acctPaymentEntry\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Payment Entry\",\"col\":3}},{\"id\":\"acctAccountHolder\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Account Holder\",\"col\":3}},{\"id\":\"acctStatementRun\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Statement Of Accounts Run\",\"col\":3}},{\"id\":\"acctSpacer\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"acctBilling\",\"type\":\"card\",\"data\":{\"card_name\":\"Billing & Receipts\",\"col\":3}},{\"id\":\"acctProgramBilling\",\"type\":\"card\",\"data\":{\"card_name\":\"Program Billing\",\"col\":3}},{\"id\":\"acctSetup\",\"type\":\"card\",\"data\":{\"card_name\":\"Setup & Pricing\",\"col\":3}},{\"id\":\"acctCollections\",\"type\":\"card\",\"data\":{\"card_name\":\"Collections & Reconciliation\",\"col\":3}},{\"id\":\"acctReports\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports & Ledger\",\"col\":3}}]",
+ "content": "[{\"id\":\"acctHeader\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Accounting</span>\",\"col\":12}},{\"id\":\"acctSalesInvoice\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sales Invoice\",\"col\":3}},{\"id\":\"acctPaymentEntry\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Payment Entry\",\"col\":3}},{\"id\":\"acctAccountHolder\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Account Holder\",\"col\":3}},{\"id\":\"acctStudentAccountHolderTool\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Student Account Holder Tool\",\"col\":3}},{\"id\":\"acctStatementRun\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Statement Of Accounts Run\",\"col\":3}},{\"id\":\"acctSpacer\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"acctBilling\",\"type\":\"card\",\"data\":{\"card_name\":\"Billing & Receipts\",\"col\":3}},{\"id\":\"acctProgramBilling\",\"type\":\"card\",\"data\":{\"card_name\":\"Program Billing\",\"col\":3}},{\"id\":\"acctSetup\",\"type\":\"card\",\"data\":{\"card_name\":\"Setup & Pricing\",\"col\":3}},{\"id\":\"acctCollections\",\"type\":\"card\",\"data\":{\"card_name\":\"Collections & Reconciliation\",\"col\":3}},{\"id\":\"acctReports\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports & Ledger\",\"col\":3}}]",
  "creation": "2026-04-05 20:56:24.950416",
  "custom_blocks": [],
  "docstatus": 0,
@@ -18,7 +18,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Billing & Receipts",
-   "link_count": 4,
+   "link_count": 7,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -36,9 +36,39 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+   "label": "Student Account Holder Tool",
+   "link_count": 0,
+   "link_to": "Student Account Holder Tool",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "Sales Invoice",
    "link_count": 0,
    "link_to": "Sales Invoice",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Charge Batch",
+   "link_count": 0,
+   "link_to": "Charge Batch",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Billable Charge",
+   "link_count": 0,
+   "link_to": "Billable Charge",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -330,7 +360,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-05-29 00:00:00.000000",
+ "modified": "2026-05-30 18:44:55.000000",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Accounting",
@@ -360,6 +390,13 @@
    "type": "DocType"
   },
   {
+   "color": "Orange",
+   "doc_view": "List",
+   "label": "Charge Batch",
+   "link_to": "Charge Batch",
+   "type": "DocType"
+  },
+  {
    "color": "Blue",
    "doc_view": "List",
    "label": "Payment Entry",
@@ -371,6 +408,13 @@
    "doc_view": "List",
    "label": "Account Holder",
    "link_to": "Account Holder",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Student Account Holder Tool",
+   "link_to": "Student Account Holder Tool",
    "type": "DocType"
   },
   {

@@ -162,6 +162,7 @@ calendars = ["School Event", "School Calendar", "Leave Application"]
 # Permissions evaluated in scripted ways
 
 permission_query_conditions = {
+    "Account": "ifitwala_ed.accounting.doctype.account.account.get_permission_query_conditions",
     "Organization": "ifitwala_ed.setup.doctype.organization.organization.get_permission_query_conditions",
     "Contact": "ifitwala_ed.utilities.contact_utils.contact_permission_query_conditions",
     "Program Enrollment": "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.get_permission_query_conditions",
@@ -225,6 +226,7 @@ permission_query_conditions = {
 }
 
 has_permission = {
+    "Account": "ifitwala_ed.accounting.doctype.account.account.has_permission",
     "Organization": "ifitwala_ed.setup.doctype.organization.organization.has_permission",
     "Contact": "ifitwala_ed.utilities.contact_utils.contact_has_permission",
     "Program Enrollment": "ifitwala_ed.schedule.doctype.program_enrollment.program_enrollment.has_permission",

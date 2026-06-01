@@ -638,7 +638,7 @@
 												v-else-if="taskLibraryLoading && !reusableTasks.length"
 												class="rounded-xl border border-line-soft bg-surface-soft px-4 py-3 text-sm text-ink/70"
 											>
-												{{ __('Loading reusable tasks...') }}
+												{{ __('Loading reusable tasks…') }}
 											</div>
 
 											<div
@@ -942,7 +942,7 @@
 														v-else-if="criteriaLibraryLoading && !courseCriteriaLibrary.length"
 														class="rounded-xl border border-dashed border-border/80 bg-slate-50 px-4 py-3 text-sm text-ink/70"
 													>
-														{{ __('Loading course criteria...') }}
+														{{ __('Loading course criteria…') }}
 													</div>
 
 													<div
@@ -1127,7 +1127,7 @@
 												v-else-if="assessmentSetupLoading"
 												class="rounded-xl border border-line-soft bg-white px-4 py-3 text-sm text-ink/70"
 											>
-												{{ __('Loading reporting setup...') }}
+												{{ __('Loading reporting setup…') }}
 											</div>
 
 											<div class="grid gap-4 md:grid-cols-2">
@@ -1504,7 +1504,7 @@
 											v-if="materialsLoading"
 											class="rounded-xl border border-line-soft bg-surface-soft px-4 py-3 text-sm text-ink/70"
 										>
-											{{ __('Loading attachments...') }}
+											{{ __('Loading attachments…') }}
 										</div>
 
 										<div

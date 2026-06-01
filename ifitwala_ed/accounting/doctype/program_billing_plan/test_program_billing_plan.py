@@ -1,7 +1,9 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+from ifitwala_ed.accounting.billing.rate_policies import AMOUNT_BASIS_CUSTOM_PERCENTAGES
 from ifitwala_ed.accounting.doctype.program_billing_plan.program_billing_plan import (
+    generate_billing_schedules,
     get_program_offering_academic_years,
 )
 from ifitwala_ed.accounting.test_support import AccountingTestMixin
@@ -116,6 +118,90 @@ class TestProgramBillingPlan(AccountingTestMixin, FrappeTestCase):
                         "billable_offering": billable_offering.name,
                         "qty": 1,
                         "default_rate": 125,
+                        "requires_student": 1,
+                    }
+                ],
+            )
+
+    def test_generate_billing_schedules_returns_account_holder_tool_context(self):
+        org = self.make_organization("Plan Missing AH")
+        income = self.make_account(org.name, "Income", prefix="Income")
+        offering = self.make_program_offering(org.name)
+        academic_year = self.get_program_offering_academic_year(offering.name)
+        school = frappe.db.get_value("Program Offering", offering.name, "school")
+        student = self.make_student(org.name, "", school=school)
+        self.make_program_enrollment(
+            organization=org.name,
+            program_offering=offering.name,
+            student=student.name,
+            academic_year=academic_year,
+        )
+        billable_offering = self.make_billable_offering(
+            org.name,
+            income.name,
+            offering_type="Program",
+            pricing_mode="Per Term",
+        )
+        plan = self.make_program_billing_plan(
+            organization=org.name,
+            program_offering=offering.name,
+            academic_year=academic_year,
+            components=[self._program_component(billable_offering.name, 100)],
+        )
+
+        result = generate_billing_schedules(plan.name)
+
+        self.assertFalse(result["ok"])
+        self.assertTrue(result["requires_account_holder_setup"])
+        self.assertEqual(result["tool_doctype"], "Student Account Holder Tool")
+        self.assertEqual(result["organization"], org.name)
+        self.assertEqual(result["program_offering"], offering.name)
+        self.assertEqual(result["academic_year"], academic_year)
+        self.assertEqual(result["missing_students"][0]["student"], student.name)
+
+    def test_custom_term_split_percentages_must_total_full_annual_fee(self):
+        org = self.make_organization("Plan Split")
+        income = self.make_account(org.name, "Income", prefix="Income")
+        offering = self.make_program_offering(org.name)
+        academic_year = self.get_program_offering_academic_year(offering.name)
+        school = frappe.db.get_value("Program Offering", offering.name, "school")
+        first_term = self.make_term(
+            academic_year,
+            school=school,
+            term_name="Term 1",
+            start_date="2025-08-01",
+            end_date="2025-10-31",
+        )
+        second_term = self.make_term(
+            academic_year,
+            school=school,
+            term_name="Term 2",
+            start_date="2025-11-01",
+            end_date="2026-01-31",
+        )
+        billable_offering = self.make_billable_offering(
+            org.name,
+            income.name,
+            offering_type="Program",
+            pricing_mode="Per Term",
+        )
+
+        with self.assertRaisesRegex(frappe.ValidationError, "must total 100%"):
+            self.make_program_billing_plan(
+                organization=org.name,
+                program_offering=offering.name,
+                academic_year=academic_year,
+                billing_cadence="Term",
+                term_splits=[
+                    {"term": first_term.name, "term_label": "Term 1", "percentage": 40},
+                    {"term": second_term.name, "term_label": "Term 2", "percentage": 50},
+                ],
+                components=[
+                    {
+                        "billable_offering": billable_offering.name,
+                        "qty": 1,
+                        "default_rate": 12000,
+                        "amount_basis": AMOUNT_BASIS_CUSTOM_PERCENTAGES,
                         "requires_student": 1,
                     }
                 ],

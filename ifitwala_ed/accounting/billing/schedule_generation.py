@@ -7,6 +7,11 @@ import frappe
 from frappe import _
 from frappe.utils import flt, formatdate, getdate
 
+from ifitwala_ed.accounting.billing.rate_policies import (
+    AMOUNT_BASIS_CUSTOM_PERCENTAGES,
+    AMOUNT_BASIS_PER_PERIOD,
+    AMOUNT_BASIS_TERM_LENGTH,
+)
 from ifitwala_ed.accounting.receivables import money
 from ifitwala_ed.utilities.school_tree import get_school_lineage
 
@@ -14,17 +19,7 @@ from ifitwala_ed.utilities.school_tree import get_school_lineage
 def sync_billing_schedules_for_plan(program_billing_plan: str) -> dict:
     plan = frappe.get_doc("Program Billing Plan", program_billing_plan)
     periods = get_billing_periods(plan)
-    enrollments = frappe.get_all(
-        "Program Enrollment",
-        filters={
-            "program_offering": plan.program_offering,
-            "academic_year": plan.academic_year,
-            "archived": 0,
-        },
-        fields=["name", "student", "program_offering", "academic_year"],
-        order_by="student asc, name asc",
-        limit=5000,
-    )
+    enrollments = _get_plan_enrollments(plan)
     if not enrollments:
         frappe.throw(
             _("No active Program Enrollments were found for Program Offering {program_offering}.").format(
@@ -32,15 +27,7 @@ def sync_billing_schedules_for_plan(program_billing_plan: str) -> dict:
             )
         )
 
-    student_rows = frappe.get_all(
-        "Student",
-        filters={"name": ["in", [row.get("student") for row in enrollments]]},
-        fields=["name", "account_holder"],
-        limit=5000,
-    )
-    account_holders_by_student = {
-        (row.get("name") or "").strip(): (row.get("account_holder") or "").strip() or None for row in student_rows
-    }
+    account_holders_by_student = _get_account_holders_by_student(enrollments)
 
     created_count = 0
     updated_count = 0
@@ -76,6 +63,149 @@ def sync_billing_schedules_for_plan(program_billing_plan: str) -> dict:
     }
 
 
+def get_billing_schedule_generation_preview(program_billing_plan: str) -> dict:
+    plan = frappe.get_doc("Program Billing Plan", program_billing_plan)
+    periods = get_billing_periods(plan)
+    enrollments = _get_plan_enrollments(plan)
+    account_holders_by_student = _get_account_holders_by_student(enrollments)
+    missing_account_holder_count = sum(
+        1 for enrollment in enrollments if not account_holders_by_student.get((enrollment.get("student") or "").strip())
+    )
+    component_period_rows = _get_component_period_preview_rows(plan, periods)
+    period_totals = []
+    for period in periods:
+        period_key = period["period_key"]
+        per_student_total = money(
+            sum(row["expected_amount"] for row in component_period_rows if row["period_key"] == period_key)
+        )
+        period_totals.append(
+            {
+                "period_key": period_key,
+                "period_label": period["period_label"],
+                "coverage_start": period["coverage_start"],
+                "coverage_end": period["coverage_end"],
+                "due_date": period["due_date"],
+                "per_student_total": per_student_total,
+                "estimated_total": money(per_student_total * len(enrollments)),
+            }
+        )
+
+    return {
+        "program_billing_plan": plan.name,
+        "billing_cadence": plan.billing_cadence,
+        "enrollment_count": len(enrollments),
+        "missing_account_holder_count": missing_account_holder_count,
+        "blocked": missing_account_holder_count > 0 or not enrollments,
+        "component_rows": component_period_rows,
+        "period_totals": period_totals,
+        "per_student_total": money(sum(row["per_student_total"] for row in period_totals)),
+        "estimated_total": money(sum(row["estimated_total"] for row in period_totals)),
+    }
+
+
+def get_students_missing_account_holders_for_plan(program_billing_plan: str) -> list[dict]:
+    plan = frappe.get_doc("Program Billing Plan", program_billing_plan)
+    enrollments = _get_plan_enrollments(plan)
+    if not enrollments:
+        return []
+
+    student_names = sorted(
+        {(row.get("student") or "").strip() for row in enrollments if (row.get("student") or "").strip()}
+    )
+    if not student_names:
+        return []
+
+    rows = frappe.get_all(
+        "Student",
+        filters={"name": ["in", student_names]},
+        fields=["name", "student_full_name", "anchor_school", "cohort", "account_holder"],
+        order_by="student_full_name asc, name asc",
+        limit=len(student_names),
+    )
+    return [
+        {
+            "student": row.get("name"),
+            "student_name": row.get("student_full_name") or row.get("name"),
+            "anchor_school": row.get("anchor_school"),
+            "student_cohort": row.get("cohort"),
+        }
+        for row in rows
+        if not (row.get("account_holder") or "").strip()
+    ]
+
+
+def _get_component_period_preview_rows(plan, periods: list[dict]) -> list[dict]:
+    components = list(plan.components or [])
+    offering_names = sorted({row.billable_offering for row in components if row.billable_offering})
+    offering_labels = {}
+    if offering_names:
+        offering_labels = {
+            row.get("name"): row.get("offering_name") or row.get("name")
+            for row in frappe.get_all(
+                "Billable Offering",
+                filters={"name": ["in", offering_names]},
+                fields=["name", "offering_name"],
+                limit=len(offering_names),
+            )
+        }
+
+    rows = []
+    custom_term_percentages = _get_custom_term_percentages(plan)
+    for component in components:
+        period_rates = _get_component_period_rates(
+            component=component,
+            periods=periods,
+            custom_term_percentages=custom_term_percentages,
+        )
+        qty = flt(component.qty or 0)
+        for period in periods:
+            rate = period_rates[period["period_key"]]
+            rows.append(
+                {
+                    "period_key": period["period_key"],
+                    "period_label": period["period_label"],
+                    "billable_offering": component.billable_offering,
+                    "billable_offering_label": offering_labels.get(component.billable_offering)
+                    or component.billable_offering,
+                    "qty": qty,
+                    "rate": rate,
+                    "expected_amount": money(qty * rate),
+                    "amount_basis": component.amount_basis or AMOUNT_BASIS_PER_PERIOD,
+                }
+            )
+    return rows
+
+
+def _get_plan_enrollments(plan) -> list[dict]:
+    return frappe.get_all(
+        "Program Enrollment",
+        filters={
+            "program_offering": plan.program_offering,
+            "academic_year": plan.academic_year,
+            "archived": 0,
+        },
+        fields=["name", "student", "program_offering", "academic_year"],
+        order_by="student asc, name asc",
+        limit=5000,
+    )
+
+
+def _get_account_holders_by_student(enrollments: list[dict]) -> dict[str, str | None]:
+    student_names = sorted(
+        {(row.get("student") or "").strip() for row in enrollments if (row.get("student") or "").strip()}
+    )
+    if not student_names:
+        return {}
+
+    student_rows = frappe.get_all(
+        "Student",
+        filters={"name": ["in", student_names]},
+        fields=["name", "account_holder"],
+        limit=len(student_names),
+    )
+    return {(row.get("name") or "").strip(): (row.get("account_holder") or "").strip() or None for row in student_rows}
+
+
 def get_billing_periods(plan_doc) -> list[dict]:
     academic_year = frappe.get_cached_doc("Academic Year", plan_doc.academic_year)
     year_start = getdate(academic_year.year_start_date)
@@ -99,7 +229,7 @@ def get_billing_periods(plan_doc) -> list[dict]:
         ]
 
     if plan_doc.billing_cadence == "Term":
-        return _get_term_periods(plan_doc.academic_year, plan_doc.program_offering)
+        return get_term_billing_periods(plan_doc.academic_year, plan_doc.program_offering)
 
     if plan_doc.billing_cadence == "Monthly":
         return _get_monthly_periods(year_start, year_end)
@@ -131,7 +261,13 @@ def _upsert_schedule_for_enrollment(
     }
     desired_row_keys: set[str] = set()
 
+    custom_term_percentages = _get_custom_term_percentages(plan)
     for component in plan.components or []:
+        period_rates = _get_component_period_rates(
+            component=component,
+            periods=periods,
+            custom_term_percentages=custom_term_percentages,
+        )
         for period in periods:
             row_key = _compose_row_key(component.name, period["period_key"])
             desired_row_keys.add(row_key)
@@ -139,19 +275,20 @@ def _upsert_schedule_for_enrollment(
             if existing_row and existing_row.sales_invoice:
                 continue
 
+            rate = period_rates[period["period_key"]]
             values = {
                 "plan_component_id": component.name,
                 "period_key": period["period_key"],
                 "period_label": period["period_label"],
                 "billable_offering": component.billable_offering,
                 "qty": flt(component.qty or 0),
-                "rate": money(component.default_rate or 0),
+                "rate": rate,
                 "requires_student": 1 if component.requires_student else 0,
                 "description": component.description_override,
                 "due_date": period["due_date"],
                 "coverage_start": period["coverage_start"],
                 "coverage_end": period["coverage_end"],
-                "expected_amount": money(flt(component.qty or 0) * flt(component.default_rate or 0)),
+                "expected_amount": money(flt(component.qty or 0) * rate),
                 "status": "Pending",
             }
             if existing_row:
@@ -172,7 +309,7 @@ def _upsert_schedule_for_enrollment(
     return doc.name, created
 
 
-def _get_term_periods(academic_year: str, program_offering: str) -> list[dict]:
+def get_term_billing_periods(academic_year: str, program_offering: str) -> list[dict]:
     offering_school = frappe.db.get_value("Program Offering", program_offering, "school")
     if not offering_school:
         frappe.throw(
@@ -211,6 +348,12 @@ def _get_term_periods(academic_year: str, program_offering: str) -> list[dict]:
                     term=row.get("name")
                 )
             )
+        if term_start > term_end:
+            frappe.throw(
+                _("Term {term} must not end before it starts before term billing schedules can be generated.").format(
+                    term=row.get("name")
+                )
+            )
         periods.append(
             {
                 "period_key": row.get("name"),
@@ -221,6 +364,71 @@ def _get_term_periods(academic_year: str, program_offering: str) -> list[dict]:
             }
         )
     return periods
+
+
+def _get_component_period_rates(*, component, periods: list[dict], custom_term_percentages: dict[str, float]) -> dict:
+    amount_basis = component.amount_basis or AMOUNT_BASIS_PER_PERIOD
+    default_rate = money(component.default_rate or 0)
+    if amount_basis == AMOUNT_BASIS_PER_PERIOD:
+        return {period["period_key"]: default_rate for period in periods}
+
+    if amount_basis == AMOUNT_BASIS_TERM_LENGTH:
+        weights = _get_term_length_weights(periods)
+        return _split_rate_by_weights(default_rate, periods, weights)
+
+    if amount_basis == AMOUNT_BASIS_CUSTOM_PERCENTAGES:
+        weights = {}
+        for period in periods:
+            period_key = period["period_key"]
+            if period_key not in custom_term_percentages:
+                frappe.throw(
+                    _("Custom term split percentage is missing for {period}.").format(period=period["period_label"])
+                )
+            weights[period_key] = custom_term_percentages[period_key] / 100.0
+        return _split_rate_by_weights(default_rate, periods, weights)
+
+    frappe.throw(_("Unsupported amount basis {amount_basis}.").format(amount_basis=amount_basis))
+
+
+def _get_term_length_weights(periods: list[dict]) -> dict[str, float]:
+    day_counts = {period["period_key"]: _period_day_count(period) for period in periods}
+    invalid_periods = [period["period_label"] for period in periods if day_counts.get(period["period_key"], 0) <= 0]
+    if invalid_periods:
+        frappe.throw(
+            _("Academic Terms must have valid date ranges before annual amount splitting can be used: {terms}.").format(
+                terms=", ".join(invalid_periods)
+            )
+        )
+    total_days = sum(day_counts.values())
+    if total_days <= 0:
+        frappe.throw(_("Academic Terms must have valid date ranges before annual amount splitting can be used."))
+    return {period_key: day_count / total_days for period_key, day_count in day_counts.items()}
+
+
+def _split_rate_by_weights(default_rate: float, periods: list[dict], weights: dict[str, float]) -> dict[str, float]:
+    rates = {}
+    allocated = 0.0
+    for idx, period in enumerate(periods, start=1):
+        period_key = period["period_key"]
+        if idx == len(periods):
+            rate = money(default_rate - allocated)
+        else:
+            rate = money(default_rate * flt(weights.get(period_key) or 0))
+            allocated = money(allocated + rate)
+        rates[period_key] = rate
+    return rates
+
+
+def _get_custom_term_percentages(plan) -> dict[str, float]:
+    return {
+        (row.term or "").strip(): flt(row.percentage or 0)
+        for row in (plan.term_splits or [])
+        if (row.term or "").strip()
+    }
+
+
+def _period_day_count(period: dict) -> int:
+    return (period["coverage_end"] - period["coverage_start"]).days + 1
 
 
 def _get_monthly_periods(start_date: date, end_date: date) -> list[dict]:

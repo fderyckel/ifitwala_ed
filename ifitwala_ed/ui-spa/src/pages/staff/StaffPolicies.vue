@@ -63,7 +63,7 @@
 		</div>
 
 		<div v-else-if="loading && !rows.length" class="py-10 text-center text-sm text-slate-500">
-			{{ __('Loading policy library...') }}
+			{{ __('Loading policy library…') }}
 		</div>
 
 		<div

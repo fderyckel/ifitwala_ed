@@ -71,19 +71,19 @@
 										data-person-profile-url="{{ (person.profile_url or '') | e }}"
 										aria-label="{{ _('Open {0} biography').format(person.name | e) }}"
 									>
-										<div class="relative aspect-square overflow-hidden bg-slate-100">
+										<div class="site-people-photo-frame relative aspect-square overflow-hidden bg-slate-100" data-person-card-trigger>
 											{% if has_photo %}
 												{{ img_macro.smart_image(
 													thumb=person.photo.thumb,
 													card=person.photo.card,
 													medium=person.photo.medium,
 													alt=person.name ~ " - " ~ (person.title or ""),
-													class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]",
+													class="site-people-photo-image h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]",
 													fallback="card",
 													sizes="(min-width: 1024px) 208px, (min-width: 640px) 192px, 168px"
 												) }}
 											{% else %}
-												<div class="site-people-fallback flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(29,78,216,0.14),_transparent_58%),linear-gradient(135deg,_#eff6ff,_#f8fafc_55%,_#eef2ff)]">
+												<div class="site-people-fallback site-people-photo-fallback flex h-full w-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(29,78,216,0.14),_transparent_58%),linear-gradient(135deg,_#eff6ff,_#f8fafc_55%,_#eef2ff)]">
 													<span class="text-2xl font-semibold tracking-[0.12em] text-slate-500">{{ person.initials }}</span>
 												</div>
 											{% endif %}

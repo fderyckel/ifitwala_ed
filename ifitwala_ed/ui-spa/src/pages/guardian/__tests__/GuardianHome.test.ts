@@ -280,7 +280,7 @@ describe('GuardianHome', () => {
 		await flushUi()
 
 		const text = document.body.textContent || ''
-		expect(text).toContain('Could not load guardian home snapshot.')
+		expect(text).toContain('Unable to load guardian home snapshot.')
 		expect(text).toContain('Network failed')
 	})
 

@@ -22,7 +22,7 @@ function assertLatestSubmissionContract(
 	}
 	if (!payload || typeof payload !== 'object' || !Array.isArray(payload.attachments)) {
 		throw new Error(
-			'Could not load your latest submission because the submission evidence payload is incomplete.'
+			'Unable to load your latest submission because the submission evidence payload is incomplete.'
 		)
 	}
 	return payload

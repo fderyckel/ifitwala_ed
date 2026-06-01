@@ -22,9 +22,13 @@ codex.log
 AGENTS.md
 **/docs/
 
+# Ruff
+**/.ruff_cache/
+
 # Others
 /.pycache/
 /config/
+**/.pytest_cache/
 
 # --- SPA workspace (ui-spa)
 ifitwala_ed/ui-spa/node_modules/

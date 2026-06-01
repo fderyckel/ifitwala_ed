@@ -1184,7 +1184,7 @@ onBeforeUnmount(() => {
 							:disabled="contextLoading"
 							@click="loadContextSparkline"
 						>
-							{{ contextLoading ? 'Loading context...' : __('Load Context') }}
+							{{ contextLoading ? 'Loading context…' : __('Load Context') }}
 						</button>
 					</div>
 

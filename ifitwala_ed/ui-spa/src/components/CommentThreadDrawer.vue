@@ -74,7 +74,10 @@
 									:key="comment.name || comment.id || comment.creation"
 									class="flex gap-3"
 								>
-									<Avatar :label="comment.full_name || comment.user || fallbackUserLabel" size="md" />
+									<Avatar
+										:label="comment.full_name || comment.user || fallbackUserLabel"
+										size="md"
+									/>
 									<div class="flex-1 space-y-1">
 										<div class="flex items-center justify-between gap-2">
 											<span class="type-body-strong text-ink">

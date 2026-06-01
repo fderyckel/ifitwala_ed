@@ -50,10 +50,10 @@
 		</section>
 
 		<section v-if="loading" class="card-surface p-5">
-			<p class="type-body text-ink/70">{{ __('Loading course selection windows...') }}</p>
+			<p class="type-body text-ink/70">{{ __('Loading course selection windows…') }}</p>
 		</section>
 		<section v-else-if="errorMessage" class="card-surface p-5">
-			<p class="type-body-strong text-flame">{{ __('Could not load course selection.') }}</p>
+			<p class="type-body-strong text-flame">{{ __('Unable to load course selection.') }}</p>
 			<p class="type-body text-ink/70">{{ errorMessage }}</p>
 		</section>
 
@@ -191,7 +191,7 @@ async function loadBoard() {
 		board.value = await getSelfEnrollmentPortalBoard({});
 	} catch (error) {
 		errorMessage.value =
-			error instanceof Error ? error.message : __('Could not load course selection.');
+			error instanceof Error ? error.message : __('Unable to load course selection.');
 	} finally {
 		loading.value = false;
 	}

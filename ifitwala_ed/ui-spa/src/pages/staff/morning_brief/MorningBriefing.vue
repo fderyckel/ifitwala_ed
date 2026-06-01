@@ -1026,7 +1026,7 @@ async function loadAnnouncementDetail(name: string): Promise<void> {
 		const message =
 			err instanceof Error
 				? err.message
-				: __('Could not load attachments for this announcement. Close and reopen it to retry.');
+				: __('Unable to load attachments for this announcement. Close and reopen it to retry.');
 		announcementDetailError.value[resolvedName] = message;
 		toast({
 			title: __('Unable to load announcement detail'),

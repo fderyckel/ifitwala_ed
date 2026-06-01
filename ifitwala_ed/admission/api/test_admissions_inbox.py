@@ -6,9 +6,13 @@ from frappe.utils import add_days, nowdate
 
 from ifitwala_ed.admission.api.crm.intake import create_admissions_intake_impl as create_admissions_intake
 from ifitwala_ed.admission.api.crm.messages import log_admission_message_impl as log_admission_message
+from ifitwala_ed.admission.api.inbox.assignees import (
+    search_admissions_inbox_assignees_impl as search_admissions_inbox_assignees,
+)
 from ifitwala_ed.admission.api.inbox.context import (
     get_admissions_inbox_context_impl as get_admissions_inbox_context,
 )
+from ifitwala_ed.tests.factories.users import make_user
 
 
 class TestAdmissionsInbox(FrappeTestCase):
@@ -100,6 +104,47 @@ class TestAdmissionsInbox(FrappeTestCase):
         self.assertEqual(row["conversation"], intake["conversation"]["name"])
         self.assertEqual(row["next_action_on"], nowdate())
 
+    def test_manual_intake_staff_lane_assigns_inquiry_to_employee_without_moving_crm_owner(self):
+        organization = self._make_organization("Inbox Intake Staff Lane")
+        school = self._make_school(organization=organization)
+        staff_user = self._make_employee_user(organization=organization, school=school)
+
+        previous_user = frappe.session.user
+        try:
+            frappe.set_user("Administrator")
+            intake = create_admissions_intake(
+                organization=organization,
+                school=school,
+                type_of_inquiry="Admission",
+                source="Phone",
+                activity_channel="Phone",
+                first_name="Staff",
+                last_name="Lane",
+                message="Family needs academic staff follow-up.",
+                activity_type="Reached",
+                assigned_to=staff_user.name,
+                assignment_lane="Staff",
+                client_request_id=f"inbox-intake-staff-{frappe.generate_hash(length=8)}",
+            )
+        finally:
+            frappe.set_user(previous_user)
+
+        inquiry = frappe.db.get_value(
+            "Inquiry",
+            intake["inquiry"]["name"],
+            ["assigned_to", "assignment_lane"],
+            as_dict=True,
+        )
+        conversation_owner = frappe.db.get_value(
+            "Admission Conversation",
+            intake["conversation"]["name"],
+            "assigned_to",
+        )
+
+        self.assertEqual(inquiry.assigned_to, staff_user.name)
+        self.assertEqual(inquiry.assignment_lane, "Staff")
+        self.assertNotEqual(conversation_owner, staff_user.name)
+
     def test_context_returns_applicant_case_message_needing_reply(self):
         organization = self._make_organization("Inbox Applicant Message")
         school = self._make_school(organization=organization)
@@ -151,6 +196,105 @@ class TestAdmissionsInbox(FrappeTestCase):
         self.assertIn(included_inquiry.name, names)
         self.assertNotIn(excluded_inquiry.name, names)
 
+    def test_assignee_search_filters_staff_lane_to_employee_linked_staff_users(self):
+        organization = self._make_organization("Inbox Assignee Staff")
+        school = self._make_school(organization=organization)
+        inquiry = self._make_inquiry(organization=organization, school=school)
+        staff_user = self._make_employee_user(organization=organization, school=school)
+        admission_user = self._make_employee_user(
+            organization=organization,
+            school=school,
+            roles=["Admission Officer"],
+        )
+
+        previous_user = frappe.session.user
+        try:
+            frappe.set_user("Administrator")
+            rows = search_admissions_inbox_assignees(
+                context_doctype="Inquiry",
+                context_name=inquiry.name,
+                assignment_lane="Staff",
+                limit=20,
+            )
+        finally:
+            frappe.set_user(previous_user)
+
+        values = {row["value"] for row in rows}
+        self.assertIn(staff_user.name, values)
+        self.assertNotIn(admission_user.name, values)
+        self.assertTrue(all(row["lane"] == "Staff" for row in rows if row["value"] == staff_user.name))
+
+    def test_assignee_search_filters_conversation_assignment_to_admissions_users(self):
+        organization = self._make_organization("Inbox Assignee Conversation")
+        school = self._make_school(organization=organization)
+        staff_user = self._make_employee_user(organization=organization, school=school)
+        admission_user = self._make_employee_user(
+            organization=organization,
+            school=school,
+            roles=["Admission Officer"],
+        )
+
+        previous_user = frappe.session.user
+        try:
+            frappe.set_user("Administrator")
+            conversation = frappe.get_doc(
+                {
+                    "doctype": "Admission Conversation",
+                    "organization": organization,
+                    "school": school,
+                }
+            )
+            conversation.insert(ignore_permissions=True)
+
+            rows = search_admissions_inbox_assignees(
+                context_doctype="Admission Conversation",
+                context_name=conversation.name,
+                assignment_lane="Staff",
+                limit=20,
+            )
+        finally:
+            frappe.set_user(previous_user)
+
+        values = {row["value"] for row in rows}
+        self.assertIn(admission_user.name, values)
+        self.assertNotIn(staff_user.name, values)
+
+    def test_assignee_search_without_context_uses_resolved_user_scope(self):
+        captured: dict = {}
+
+        def fake_sql(query, params, as_dict=False):
+            captured["query"] = query
+            captured["params"] = dict(params)
+            captured["as_dict"] = as_dict
+            return []
+
+        with (
+            patch(
+                "ifitwala_ed.admission.api.inbox.assignees.ensure_admissions_crm_permission",
+                return_value="officer@example.com",
+            ),
+            patch(
+                "ifitwala_ed.admission.api.inbox.assignees._resolve_scope",
+                return_value={
+                    "bypass": False,
+                    "organization": None,
+                    "school": None,
+                    "org_scope": ["ORG-ALLOWED"],
+                    "school_scope": ["SCH-ALLOWED"],
+                },
+            ) as resolve_scope,
+            patch("ifitwala_ed.admission.api.inbox.assignees.frappe.db.sql", side_effect=fake_sql),
+        ):
+            rows = search_admissions_inbox_assignees(assignment_lane="Staff", limit=20)
+
+        self.assertEqual(rows, [])
+        resolve_scope.assert_called_once_with("officer@example.com", organization=None, school=None)
+        self.assertIn("e.organization IN %(org_scope)s", captured["query"])
+        self.assertIn("e.school IN %(school_scope)s", captured["query"])
+        self.assertEqual(captured["params"]["org_scope"], ("ORG-ALLOWED",))
+        self.assertEqual(captured["params"]["school_scope"], ("SCH-ALLOWED",))
+        self.assertTrue(captured["as_dict"])
+
     def _queue(self, context: dict, queue_id: str) -> dict:
         for queue in context["queues"]:
             if queue["id"] == queue_id:
@@ -199,7 +343,7 @@ class TestAdmissionsInbox(FrappeTestCase):
         doc.reload()
         return doc
 
-    def _make_inquiry(self, *, organization: str):
+    def _make_inquiry(self, *, organization: str, school: str | None = None):
         doc = frappe.get_doc(
             {
                 "doctype": "Inquiry",
@@ -210,7 +354,40 @@ class TestAdmissionsInbox(FrappeTestCase):
                 "source": "Website",
                 "message": "We would like to ask about admissions.",
                 "organization": organization,
+                "school": school,
             }
         )
         doc.insert(ignore_permissions=True)
         return doc
+
+    def _ensure_role(self, role: str) -> None:
+        if frappe.db.exists("Role", role):
+            return
+        frappe.get_doc({"doctype": "Role", "role_name": role}).insert(ignore_permissions=True)
+
+    def _make_employee_user(
+        self,
+        *,
+        organization: str,
+        school: str | None = None,
+        roles: list[str] | None = None,
+    ):
+        for role in roles or []:
+            self._ensure_role(role)
+
+        user = make_user(roles=roles)
+        frappe.get_doc(
+            {
+                "doctype": "Employee",
+                "employee_first_name": "Inbox",
+                "employee_last_name": f"Assignee-{frappe.generate_hash(length=6)}",
+                "employee_gender": "Prefer not to say",
+                "employee_professional_email": user.name,
+                "organization": organization,
+                "school": school,
+                "user_id": user.name,
+                "date_of_joining": frappe.utils.nowdate(),
+                "employment_status": "Active",
+            }
+        ).insert(ignore_permissions=True)
+        return user

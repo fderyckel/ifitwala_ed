@@ -436,7 +436,7 @@ async function loadSchoolContext() {
 		onSchoolsLoaded(payload);
 	} catch (error) {
 		console.error('Failed to load school context', error);
-		showDangerToast(__('Could not load schools'));
+		showDangerToast(__('Unable to load schools'));
 	} finally {
 		schoolsLoading.value = false;
 	}
@@ -457,7 +457,7 @@ async function loadGroups(options: { skipRouteGroupSync?: boolean } = {}) {
 		}
 	} catch (error) {
 		console.error('Failed to load student groups', error);
-		showDangerToast(__('Could not load student groups'));
+		showDangerToast(__('Unable to load student groups'));
 	} finally {
 		groupsLoading.value = false;
 	}
@@ -477,7 +477,7 @@ async function loadTasks(groupName: string) {
 		applyRouteTaskFromQuery(taskSummaries.value);
 	} catch (error) {
 		console.error('Failed to load tasks', error);
-		showDangerToast(__('Could not load tasks'));
+		showDangerToast(__('Unable to load tasks'));
 	} finally {
 		tasksLoading.value = false;
 	}
@@ -589,7 +589,7 @@ const taskRailSummary = computed(() => {
 	}
 
 	if (tasksLoading.value) {
-		return __('Loading deliveries for this class.');
+		return __('Loading deliveries for this class…');
 	}
 
 	const totalTasks = taskSummaries.value.length;
@@ -777,7 +777,7 @@ async function applyRouteGroupFromQuery() {
 		pendingRouteGroup.value = null;
 	} catch (error) {
 		console.error('Failed to resolve linked student group', error);
-		showDangerToast(__('Could not load the linked student group'));
+		showDangerToast(__('Unable to load the linked student group'));
 	} finally {
 		routeGroupResolving.value = false;
 	}

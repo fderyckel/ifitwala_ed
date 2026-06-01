@@ -50,6 +50,7 @@ except ModuleNotFoundError:
     frappe_document.Document = _Document
 
     frappe_utils = types.ModuleType("frappe.utils")
+    frappe_utils.cstr = lambda value="": str(value)
     frappe_utils.get_link_to_form = lambda *args, **kwargs: ""
     frappe_utils.getdate = lambda value=None: value
     frappe_utils.nowdate = lambda: "2026-03-25"
@@ -64,6 +65,7 @@ except ModuleNotFoundError:
         pass
 
     school_tree_stub.ParentRuleViolation = _ParentRuleViolation
+    school_tree_stub.get_ancestor_schools = lambda *args, **kwargs: []
     school_tree_stub.get_descendant_schools = lambda *args, **kwargs: []
 
     sys.modules.setdefault("frappe", frappe_stub)
@@ -77,6 +79,48 @@ from ifitwala_ed.school_settings.doctype.term import term
 
 
 class TestTermPermissions(TestCase):
+    @patch("ifitwala_ed.school_settings.doctype.term.term.frappe.get_roles", return_value=["Admission Officer"])
+    @patch(
+        "ifitwala_ed.school_settings.doctype.term.term.get_user_branch_school_scope",
+        return_value=["SCH-ROOT", "SCH-BRANCH", "SCH-CHILD"],
+    )
+    @patch("ifitwala_ed.school_settings.doctype.term.term.frappe.db.escape", side_effect=lambda value: f"'{value}'")
+    def test_admission_officer_query_conditions_use_full_branch_scope_without_nearest_only_fallback(
+        self,
+        _mock_escape,
+        _mock_scope,
+        _mock_roles,
+    ):
+        condition = term.get_permission_query_conditions("admissions@example.com")
+
+        self.assertEqual(condition, "`tabTerm`.`school` IN ('SCH-ROOT', 'SCH-BRANCH', 'SCH-CHILD')")
+        self.assertNotIn("academic_year", condition)
+
+    @patch("ifitwala_ed.school_settings.doctype.term.term.frappe.get_roles", return_value=["Admission Manager"])
+    @patch(
+        "ifitwala_ed.school_settings.doctype.term.term.get_user_branch_school_scope",
+        return_value=["SCH-ROOT", "SCH-BRANCH", "SCH-CHILD"],
+    )
+    def test_admission_manager_has_permission_for_terms_up_and_down_branch(self, _mock_scope, _mock_roles):
+        self.assertTrue(
+            term.has_permission(
+                SimpleNamespace(school="SCH-ROOT", academic_year="AY-2026"),
+                user="admissions@example.com",
+            )
+        )
+        self.assertTrue(
+            term.has_permission(
+                SimpleNamespace(school="SCH-CHILD", academic_year="AY-2026"),
+                user="admissions@example.com",
+            )
+        )
+        self.assertFalse(
+            term.has_permission(
+                SimpleNamespace(school="SCH-SIBLING", academic_year="AY-2026"),
+                user="admissions@example.com",
+            )
+        )
+
     @patch(
         "ifitwala_ed.school_settings.doctype.term.term.get_ancestors_of",
         return_value=["SCH-ROOT", "SCH-GRAND"],

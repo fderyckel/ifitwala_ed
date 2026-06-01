@@ -144,7 +144,7 @@
 								class="flex items-center gap-2 rounded-2xl border border-border/70 bg-white px-4 py-3 text-ink/70"
 							>
 								<Spinner class="h-4 w-4" />
-								<span class="type-caption">Loading event options...</span>
+								<span class="type-caption">{{ __('Loading event options…') }}</span>
 							</div>
 
 							<form v-else class="space-y-4" @submit.prevent="submit">

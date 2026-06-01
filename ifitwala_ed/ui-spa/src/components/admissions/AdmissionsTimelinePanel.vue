@@ -27,7 +27,7 @@
 					:disabled="loading"
 					@click="emit('refresh')"
 				>
-					{{ loading ? __('Loading') : __('Refresh') }}
+					{{ loading ? __('Loading…') : __('Refresh') }}
 				</button>
 			</div>
 		</header>
@@ -37,7 +37,7 @@
 		</div>
 
 		<div v-if="loading && !timeline" class="admissions-timeline-panel__empty">
-			{{ __('Loading admissions timeline...') }}
+			{{ __('Loading admissions timeline…') }}
 		</div>
 
 		<template v-else-if="timeline">

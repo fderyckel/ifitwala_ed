@@ -11,6 +11,10 @@ from frappe.model.document import Document
 from frappe.utils import get_link_to_form, getdate, nowdate
 from frappe.utils.nestedset import get_ancestors_of
 
+from ifitwala_ed.school_settings.school_settings_utils import (
+    get_user_branch_school_scope,
+    user_has_admissions_branch_scope,
+)
 from ifitwala_ed.utilities.school_tree import ParentRuleViolation, get_descendant_schools
 
 
@@ -305,8 +309,12 @@ def get_current_term(school: str, academic_year: str) -> frappe._dict | None:
 
 
 def get_permission_query_conditions(user):
-    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+    roles = set(frappe.get_roles(user))
+    if user == "Administrator" or "System Manager" in roles:
         return None
+
+    if user_has_admissions_branch_scope(user, roles=roles):
+        return _build_term_permission_query_conditions(get_user_branch_school_scope(user), [])
 
     user_school = frappe.defaults.get_user_default("school", user)
     if not user_school:
@@ -321,7 +329,8 @@ def has_permission(doc, ptype=None, user=None):
         user = frappe.session.user
 
     # superusers
-    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+    roles = set(frappe.get_roles(user))
+    if user == "Administrator" or "System Manager" in roles:
         return True
 
     # --- ADDED: allow CREATE when user's school is within AY hierarchy ---
@@ -338,6 +347,9 @@ def has_permission(doc, ptype=None, user=None):
         ancestors = [user_school] + get_ancestors_of("School", user_school)
         return ay_school in ancestors
     # --- END ADDED ---
+
+    if user_has_admissions_branch_scope(user, roles=roles):
+        return getattr(doc, "school", None) in get_user_branch_school_scope(user)
 
     user_school = frappe.defaults.get_user_default("school", user)
     if not user_school:

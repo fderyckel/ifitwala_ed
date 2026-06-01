@@ -5,13 +5,20 @@ from unittest.mock import patch
 
 import frappe
 
+from ifitwala_ed.admission.api.recommendation_intake.status import (
+    get_recommendation_status_batch_for_applicants,
+    get_recommendation_status_for_applicant,
+)
+from ifitwala_ed.admission.api.recommendation_intake.templates import (
+    get_recommendation_template_rows_for_applicant,
+)
 from ifitwala_ed.api import recommendation_intake
 
 
 class TestRecommendationIntakeFacade(TestCase):
     def test_facade_preserves_public_method_delegation(self):
         with patch(
-            "ifitwala_ed.admission.api.recommendation_intake.list_recommendation_templates",
+            "ifitwala_ed.api.recommendation_intake.list_recommendation_templates_impl",
             return_value={"templates": []},
         ) as impl:
             self.assertEqual(
@@ -20,6 +27,20 @@ class TestRecommendationIntakeFacade(TestCase):
             )
 
         impl.assert_called_once_with(student_applicant="APP-0001")
+
+    def test_facade_preserves_compatibility_helper_exports(self):
+        self.assertIs(
+            recommendation_intake.get_recommendation_template_rows_for_applicant,
+            get_recommendation_template_rows_for_applicant,
+        )
+        self.assertIs(
+            recommendation_intake.get_recommendation_status_batch_for_applicants,
+            get_recommendation_status_batch_for_applicants,
+        )
+        self.assertIs(
+            recommendation_intake.get_recommendation_status_for_applicant,
+            get_recommendation_status_for_applicant,
+        )
 
     def test_public_guest_intake_methods_remain_whitelisted(self):
         self.assertIn(recommendation_intake.get_recommendation_intake_payload, frappe.whitelisted)

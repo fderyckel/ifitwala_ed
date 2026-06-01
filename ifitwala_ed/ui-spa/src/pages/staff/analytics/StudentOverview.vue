@@ -645,7 +645,7 @@ function viewModeLabel(mode: ViewMode) {
 					v-if="loadingSnapshot"
 					class="rounded-xl border border-slate-200 bg-white/70 px-4 py-6 text-sm text-slate-500 shadow-sm"
 				>
-					{{ __('Loading snapshot...') }}
+					{{ __('Loading snapshot…') }}
 				</div>
 
 				<div

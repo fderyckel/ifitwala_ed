@@ -78,12 +78,12 @@
 			v-if="errorMessage"
 			class="student-hub-section border border-flame/30 bg-[var(--flame)]/5"
 		>
-			<p class="type-body-strong text-flame">{{ __('Could not load communications.') }}</p>
+			<p class="type-body-strong text-flame">{{ __('Unable to load communications.') }}</p>
 			<p class="mt-2 type-caption text-ink/70">{{ errorMessage }}</p>
 		</section>
 
 		<section v-else-if="loading && !items.length" class="student-hub-section">
-			<p class="type-body text-ink/70">{{ __('Loading student communications...') }}</p>
+			<p class="type-body text-ink/70">{{ __('Loading student communications…') }}</p>
 		</section>
 
 		<section v-else-if="!items.length" class="student-hub-empty">
@@ -164,7 +164,7 @@
 						class="mt-5 student-hub-card student-hub-card--warm"
 					>
 						<p v-if="detailLoading[item.org_communication.name]" class="type-body text-ink/70">
-							{{ __('Loading full update...') }}
+							{{ __('Loading full update…') }}
 						</p>
 						<p v-else-if="detailError[item.org_communication.name]" class="type-body text-flame">
 							{{ detailError[item.org_communication.name] }}
@@ -526,7 +526,7 @@ async function loadFeed(reset = true) {
 		await loadSummaries();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		errorMessage.value = message || __('Could not load communications.');
+		errorMessage.value = message || __('Unable to load communications.');
 	} finally {
 		loading.value = false;
 		loadingMore.value = false;
@@ -574,7 +574,7 @@ async function loadCommunicationDetail(name: string) {
 		detailMap.value[name] = await archiveService.getOrgCommunicationItem({ name });
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		detailError.value[name] = message || __('Could not load this update.');
+		detailError.value[name] = message || __('Unable to load this update.');
 	} finally {
 		detailLoading.value[name] = false;
 	}

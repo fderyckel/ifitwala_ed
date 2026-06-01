@@ -13,14 +13,14 @@ def _student_groups_stub_modules(resolve_employee=None):
     attendance_utils = types.ModuleType("ifitwala_ed.schedule.attendance_utils")
     attendance_utils.get_student_group_students = lambda *args, **kwargs: []
 
-    calendar_core = types.ModuleType("ifitwala_ed.api.calendar_core")
+    calendar_core = types.ModuleType("ifitwala_ed.schedule.api.calendar.core")
     calendar_core._resolve_employee_for_user = resolve_employee or (
         lambda user, fields=None, employment_status_filter=None: None
     )
 
     return {
         "ifitwala_ed.schedule.attendance_utils": attendance_utils,
-        "ifitwala_ed.api.calendar_core": calendar_core,
+        "ifitwala_ed.schedule.api.calendar.core": calendar_core,
     }
 
 

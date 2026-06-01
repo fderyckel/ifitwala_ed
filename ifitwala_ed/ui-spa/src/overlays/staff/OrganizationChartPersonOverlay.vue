@@ -33,12 +33,12 @@
 							tabindex="0"
 							@click="emitClose('programmatic')"
 						>
-							Close
+							{{ __('Close') }}
 						</button>
 
 						<div class="flex items-start justify-between gap-3 px-5 pt-5">
 							<div>
-								<p class="type-overline">Organization Chart</p>
+								<p class="type-overline">{{ __('Organization Chart') }}</p>
 								<DialogTitle class="type-h2 text-ink mt-1">
 									{{ person.name || 'Staff member' }}
 								</DialogTitle>
@@ -50,7 +50,7 @@
 							<button
 								type="button"
 								class="if-overlay__icon-button"
-								aria-label="Close"
+								:aria-label="__('Close')"
 								@click="emitClose('programmatic')"
 							>
 								<FeatherIcon name="x" class="h-4 w-4" />
@@ -101,6 +101,8 @@ import {
 	TransitionRoot,
 } from '@headlessui/vue';
 import { FeatherIcon } from 'frappe-ui';
+
+import { __ } from '@/lib/i18n';
 
 const props = defineProps<{
 	open: boolean;

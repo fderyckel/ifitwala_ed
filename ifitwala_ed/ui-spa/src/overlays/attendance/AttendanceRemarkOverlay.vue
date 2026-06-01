@@ -41,7 +41,7 @@
 									type="button"
 									class="if-overlay__icon-button"
 									@click="emitClose('programmatic')"
-									aria-label="Close"
+									:aria-label="__('Close')"
 								>
 									<FeatherIcon name="x" class="h-4 w-4" />
 								</button>

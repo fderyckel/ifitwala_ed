@@ -1,0 +1,213 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "BCHG-.#####",
+ "creation": "2026-05-30 18:44:55.000000",
+ "doctype": "DocType",
+ "document_type": "Transaction",
+ "engine": "InnoDB",
+ "field_order": [
+  "organization",
+  "charge_batch",
+  "source_type",
+  "source_doctype",
+  "source_name",
+  "billable_offering",
+  "student",
+  "account_holder",
+  "posting_date",
+  "due_date",
+  "payment_terms_template",
+  "qty",
+  "rate",
+  "amount",
+  "coverage_start",
+  "coverage_end",
+  "description",
+  "status",
+  "sales_invoice"
+ ],
+ "fields": [
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Organization",
+   "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "fieldname": "charge_batch",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Charge Batch",
+   "options": "Charge Batch"
+  },
+  {
+   "default": "Manual",
+   "fieldname": "source_type",
+   "fieldtype": "Select",
+   "label": "Source Type",
+   "options": "Manual\nTrip\nLunch\nActivity\nStudent Group\nProgram Offering\nOther",
+   "reqd": 1
+  },
+  {
+   "fieldname": "source_doctype",
+   "fieldtype": "Data",
+   "label": "Source DocType"
+  },
+  {
+   "fieldname": "source_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Source Record",
+   "options": "source_doctype"
+  },
+  {
+   "fieldname": "billable_offering",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Billable Offering",
+   "options": "Billable Offering",
+   "reqd": 1
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Student",
+   "options": "Student",
+   "reqd": 1
+  },
+  {
+   "fieldname": "account_holder",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Account Holder",
+   "options": "Account Holder",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "due_date",
+   "fieldtype": "Date",
+   "label": "Due Date"
+  },
+  {
+   "fieldname": "payment_terms_template",
+   "fieldtype": "Link",
+   "label": "Payment Terms Template",
+   "options": "Payment Terms Template"
+  },
+  {
+   "default": "1",
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Qty",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Rate",
+   "reqd": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "coverage_start",
+   "fieldtype": "Date",
+   "label": "Coverage Start"
+  },
+  {
+   "fieldname": "coverage_end",
+   "fieldtype": "Date",
+   "label": "Coverage End"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Pending\nOn Hold\nInvoiced\nCancelled",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sales_invoice",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Sales Invoice",
+   "options": "Sales Invoice",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-05-30 18:44:55.000000",
+ "modified_by": "Administrator",
+ "module": "Accounting",
+ "name": "Billable Charge",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

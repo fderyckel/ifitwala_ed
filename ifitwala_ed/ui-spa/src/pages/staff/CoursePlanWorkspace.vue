@@ -18,7 +18,9 @@
 			v-if="errorMessage"
 			class="rounded-2xl border border-flame/30 bg-[var(--flame)]/5 px-5 py-4"
 		>
-			<p class="type-body-strong text-flame">Could not load the shared course plan.</p>
+			<p class="type-body-strong text-flame">
+				{{ __('Unable to load the shared course plan.') }}
+			</p>
 			<p class="mt-1 type-caption text-ink/70">{{ errorMessage }}</p>
 		</section>
 
@@ -26,7 +28,7 @@
 			v-else-if="loading && !surface"
 			class="rounded-2xl border border-line-soft bg-white px-5 py-8"
 		>
-			<p class="type-body text-ink/70">Loading shared course plan...</p>
+			<p class="type-body text-ink/70">{{ __('Loading shared course plan…') }}</p>
 		</section>
 
 		<template v-else-if="surface">
@@ -141,6 +143,7 @@ import CoursePlanUnitEditor from '@/components/planning/course-plan-workspace/Co
 import CoursePlanUnitSidebar from '@/components/planning/course-plan-workspace/CoursePlanUnitSidebar.vue';
 import CoursePlanWorkspaceHeader from '@/components/planning/course-plan-workspace/CoursePlanWorkspaceHeader.vue';
 import { useOverlayStack } from '@/composables/useOverlayStack';
+import { __ } from '@/lib/i18n';
 import {
 	getStaffCoursePlanSurface,
 	saveCoursePlan,

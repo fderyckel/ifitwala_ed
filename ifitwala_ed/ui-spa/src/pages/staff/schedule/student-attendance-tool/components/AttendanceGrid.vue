@@ -185,7 +185,7 @@
 				type="button"
 				class="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-full text-ink/40 hover:bg-[rgb(var(--surface-strong-rgb))] hover:text-ink"
 				@click="closePopover"
-				aria-label="Close"
+				:aria-label="__('Close')"
 			>
 				<FeatherIcon name="x" class="h-4 w-4" />
 			</button>

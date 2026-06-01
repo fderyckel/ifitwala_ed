@@ -260,6 +260,7 @@ class AccountingTestMixin:
         program_offering,
         academic_year=None,
         components=None,
+        term_splits=None,
         billing_cadence="Annual",
         is_active=1,
     ):
@@ -270,6 +271,7 @@ class AccountingTestMixin:
                 "program_offering": program_offering,
                 "academic_year": academic_year,
                 "billing_cadence": billing_cadence,
+                "term_splits": term_splits or [],
                 "invoice_grouping_policy": "One invoice per Account Holder per period",
                 "is_active": is_active,
                 "components": components or [],

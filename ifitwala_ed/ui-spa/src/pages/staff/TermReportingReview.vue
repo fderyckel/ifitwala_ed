@@ -119,7 +119,7 @@
 		</section>
 
 		<section v-if="loading && !surface" class="card-surface p-5">
-			<p class="type-body text-slate-token/75">{{ __('Loading term reporting review...') }}</p>
+			<p class="type-body text-slate-token/75">{{ __('Loading term reporting review…') }}</p>
 		</section>
 
 		<template v-else-if="surface">

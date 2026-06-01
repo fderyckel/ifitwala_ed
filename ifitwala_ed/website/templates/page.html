@@ -97,8 +97,8 @@
 						<a
 							href="{{ site_shell.schools_url }}"
 							class="site-organization-logo-link inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200/80 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
-							title="{{ site_shell.organization_name or 'Organization' }}"
-							aria-label="{{ site_shell.organization_name or 'Organization' }}"
+							title="{{ site_shell.organization_name or _('Organization') }}"
+							aria-label="{{ site_shell.organization_name or _('Organization') }}"
 						>
 							<img
 								src="{{ site_shell.organization_logo }}"
@@ -112,27 +112,27 @@
 						href="{{ site_shell.schools_url }}"
 						class="site-header-link inline-flex rounded-full px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
 					>
-						All Schools
+						{{ _("All Schools") }}
 					</a>
 					{% if site_shell.is_guest_user %}
 						<a
 							href="{{ site_shell.login_url }}"
 							class="site-header-link inline-flex rounded-full px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
 						>
-							Login
+							{{ _("Login") }}
 						</a>
 					{% else %}
 						<a
 							href="{{ site_shell.hub_url }}"
 							class="site-header-link inline-flex rounded-full px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
 						>
-							Hub
+							{{ _("Hub") }}
 						</a>
 						<a
 							href="{{ site_shell.logout_url }}"
 							class="site-header-link inline-flex rounded-full px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
 						>
-							Logout
+							{{ _("Logout") }}
 						</a>
 					{% endif %}
 				</div>
@@ -145,7 +145,7 @@
 							aria-expanded="false"
 							aria-controls="ifitwala-site-nav"
 						>
-							Menu
+							{{ _("Menu") }}
 						</button>
 					</div>
 				</div>
@@ -171,27 +171,27 @@
 							href="{{ site_shell.schools_url }}"
 							class="site-header-link inline-flex w-full rounded-2xl px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
 						>
-							All Schools
+							{{ _("All Schools") }}
 						</a>
 						{% if site_shell.is_guest_user %}
 							<a
 								href="{{ site_shell.login_url }}"
 								class="site-header-link inline-flex w-full rounded-2xl px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
 							>
-								Login
+								{{ _("Login") }}
 							</a>
 						{% else %}
 							<a
 								href="{{ site_shell.hub_url }}"
 								class="site-header-link inline-flex w-full rounded-2xl px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
 							>
-								Hub
+								{{ _("Hub") }}
 							</a>
 							<a
 								href="{{ site_shell.logout_url }}"
 								class="site-header-link inline-flex w-full rounded-2xl px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
 							>
-								Logout
+								{{ _("Logout") }}
 							</a>
 						{% endif %}
 					</div>
@@ -281,6 +281,7 @@
 	</div>
 
 	<script src="/assets/ifitwala_ed/website/image_fallback.js" defer></script>
+	<script src="/assets/ifitwala_ed/website/people_profiles.js" defer></script>
 	<script
 		src="{{ website_js_url or '/assets/ifitwala_ed/js/ifitwala_site.bundle.js' }}"
 		defer

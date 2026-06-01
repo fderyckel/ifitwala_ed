@@ -37,7 +37,7 @@
 					type="button"
 					class="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-full text-red-600 hover:bg-red-100"
 					@click="errorBanner = null"
-					aria-label="Close"
+					:aria-label="__('Close')"
 				>
 					<FeatherIcon name="x" class="h-4 w-4" />
 				</button>

@@ -56,6 +56,11 @@ GUARDIAN_PROFILE_IMAGE_PURPOSE = "guardian_profile_display"
 PROFILE_IMAGE_SLOT = "profile_image"
 EMPLOYEE_PROFILE_IMAGE_SLOT = PROFILE_IMAGE_SLOT
 EMPLOYEE_USER_AVATAR_DERIVATIVE_ROLES = ("thumb", "card", "viewer_preview")
+PUBLIC_EMPLOYEE_IMAGE_VARIANT_DERIVATIVE_ROLES = {
+    "thumb": "thumb",
+    "card": "card",
+    "medium": "viewer_preview",
+}
 CARD_IMAGE_DERIVATIVE_ROLE = "viewer_preview"
 CARD_PDF_DERIVATIVE_ROLE = "pdf_card"
 PDF_MIME_TYPE = "application/pdf"
@@ -743,18 +748,22 @@ def build_public_employee_image_url(
     *,
     employee: str,
     file_name: str,
-    derivative_role: str | None = None,
+    variant: str | None = None,
 ) -> str:
     resolved_employee = (employee or "").strip()
     resolved_file = (file_name or "").strip()
-    resolved_derivative_role = (derivative_role or "").strip()
-    if not resolved_employee or not resolved_file or not resolved_derivative_role:
+    resolved_variant = (variant or "").strip()
+    if (
+        not resolved_employee
+        or not resolved_file
+        or resolved_variant not in PUBLIC_EMPLOYEE_IMAGE_VARIANT_DERIVATIVE_ROLES
+    ):
         return ""
     return "/api/method/ifitwala_ed.api.file_access.open_public_employee_image?" + urlencode(
         {
             "employee": resolved_employee,
             "file": resolved_file,
-            "derivative_role": resolved_derivative_role,
+            "variant": resolved_variant,
         }
     )
 
@@ -763,19 +772,22 @@ def resolve_public_employee_image_url(
     *,
     employee: str | None,
     file_name: str | None,
-    file_url: str | None,
-    derivative_role: str | None = None,
+    variant: str | None = None,
 ) -> str | None:
     resolved_employee = (employee or "").strip()
     resolved_file_name = (file_name or "").strip()
-    resolved_derivative_role = (derivative_role or "").strip()
-    if not resolved_employee or not resolved_file_name or not resolved_derivative_role:
+    resolved_variant = (variant or "").strip()
+    if (
+        not resolved_employee
+        or not resolved_file_name
+        or resolved_variant not in PUBLIC_EMPLOYEE_IMAGE_VARIANT_DERIVATIVE_ROLES
+    ):
         return None
 
     open_url = build_public_employee_image_url(
         employee=resolved_employee,
         file_name=resolved_file_name,
-        derivative_role=resolved_derivative_role,
+        variant=resolved_variant,
     )
     return open_url or None
 
@@ -3647,17 +3659,18 @@ def thumbnail_student_log_evidence_attachment(
 def open_public_employee_image(
     employee: str | None = None,
     file: str | None = None,
-    derivative_role: str | None = None,
+    variant: str | None = None,
 ):
     resolved_employee = (employee or "").strip()
     file_name = (file or "").strip()
-    resolved_derivative_role = (derivative_role or "").strip()
+    resolved_variant = (variant or "").strip()
+    resolved_derivative_role = PUBLIC_EMPLOYEE_IMAGE_VARIANT_DERIVATIVE_ROLES.get(resolved_variant)
     if not resolved_employee:
         frappe.throw(_("Employee is required."), frappe.ValidationError)
     if not file_name:
         frappe.throw(_("File is required."), frappe.ValidationError)
     if not resolved_derivative_role:
-        frappe.throw(_("Derivative role is required for public employee photos."), frappe.ValidationError)
+        frappe.throw(_("Public employee photo variant is required."), frappe.ValidationError)
 
     file_row = _resolve_public_employee_image_row(employee=resolved_employee, file_name=file_name)
     resolved_drive_file_id = str(file_row.get("drive_file_id") or "").strip()

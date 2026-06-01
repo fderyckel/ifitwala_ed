@@ -9,7 +9,7 @@
 				{% endif %}
 			</div>
 			<a href="{{ data.index_url }}" class="inline-flex rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:text-slate-900">
-				View all stories
+				{{ _("View all stories") }}
 			</a>
 		</div>
 
@@ -38,7 +38,7 @@
 			</div>
 		{% else %}
 			<div class="mt-8 rounded-[1.6rem] border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
-				<p class="text-sm text-slate-600">No stories have been published yet.</p>
+				<p class="text-sm text-slate-600">{{ _("No stories have been published yet.") }}</p>
 			</div>
 		{% endif %}
 	</div>

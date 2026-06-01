@@ -39,7 +39,7 @@
 							<button
 								type="button"
 								class="if-overlay__close"
-								aria-label="Close"
+								:aria-label="__('Close')"
 								@click="emitClose('programmatic')"
 							>
 								<FeatherIcon name="x" class="h-5 w-5" />
@@ -67,7 +67,7 @@
 
 							<div v-if="loadingOptions" class="flex items-center gap-2 type-caption text-ink/60">
 								<Spinner class="h-4 w-4" />
-								<span>{{ __('Loading visit options...') }}</span>
+								<span>{{ __('Loading visit options…') }}</span>
 							</div>
 
 							<div v-else class="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)]">
@@ -756,7 +756,7 @@ async function loadOptions() {
 		optionsPayload.value = options;
 		applyOptions(options);
 	} catch (err: any) {
-		errorMessage.value = err?.message || __('Could not load visit options.');
+		errorMessage.value = err?.message || __('Unable to load visit options.');
 	} finally {
 		loadingOptions.value = false;
 	}

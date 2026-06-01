@@ -3,7 +3,7 @@
 import frappe
 from frappe import _
 
-from ifitwala_ed.api.calendar_core import _resolve_employee_for_user
+from ifitwala_ed.schedule.api.calendar.core import _resolve_employee_for_user
 from ifitwala_ed.schedule.attendance_utils import get_student_group_students
 
 TRIAGE_ROLES = {

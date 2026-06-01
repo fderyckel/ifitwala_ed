@@ -39,7 +39,7 @@
 				class="flex h-full flex-col items-center justify-center gap-3 pt-20"
 			>
 				<Spinner class="h-8 w-8 text-canopy" />
-				<p class="text-sm text-ink/50">{{ __('Loading gradebook...') }}</p>
+				<p class="text-sm text-ink/50">{{ __('Loading gradebook…') }}</p>
 			</div>
 
 			<div
@@ -591,7 +591,7 @@ async function loadGradebook(taskName: string) {
 	} catch (error) {
 		console.error('Failed to load gradebook', error);
 		if (gradebookLoadVersion.value === version) {
-			showDangerToast(__('Could not load gradebook'));
+			showDangerToast(__('Unable to load gradebook'));
 		}
 	} finally {
 		if (gradebookLoadVersion.value === version) {
@@ -624,7 +624,7 @@ async function loadDrawer(
 		console.error('Failed to load drawer', error);
 		if (drawerLoadVersion.value === version) {
 			drawer.value = null;
-			drawerErrorMessage.value = __('Could not load grading details for this student.');
+			drawerErrorMessage.value = __('Unable to load grading details for this student.');
 		}
 	} finally {
 		if (drawerLoadVersion.value === version) {

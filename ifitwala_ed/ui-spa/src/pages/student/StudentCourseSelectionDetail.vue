@@ -21,6 +21,7 @@ import { toast } from 'frappe-ui';
 import { useRoute } from 'vue-router';
 
 import SelfEnrollmentEditor from '@/components/self_enrollment/SelfEnrollmentEditor.vue';
+import { __ } from '@/lib/i18n';
 import {
 	getSelfEnrollmentChoiceState,
 	saveSelfEnrollmentChoices,
@@ -49,7 +50,7 @@ async function loadDetail() {
 		});
 	} catch (error) {
 		errorMessage.value =
-			error instanceof Error ? error.message : 'Could not load course selection.';
+			error instanceof Error ? error.message : 'Unable to load course selection.';
 	} finally {
 		loading.value = false;
 	}
@@ -81,7 +82,7 @@ async function submitSelection(submitPayload: SelfEnrollmentSubmitPayload) {
 		});
 		toast.success('Course selection response submitted.');
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : 'Could not submit course selection.');
+		toast.error(error instanceof Error ? error.message : __('Unable to submit course selection.'));
 	} finally {
 		submitting.value = false;
 	}

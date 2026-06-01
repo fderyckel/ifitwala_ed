@@ -9,6 +9,7 @@
   "billable_offering",
   "qty",
   "default_rate",
+  "amount_basis",
   "requires_student",
   "description_override"
  ],
@@ -30,10 +31,21 @@
   },
   {
    "default": "0",
+   "description": "Amount per unit before quantity is applied. For Per Billing Period, this is the unit amount charged each generated period. For annual split modes, enter the full-year unit amount to allocate across terms.",
    "fieldname": "default_rate",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Default Rate",
+   "label": "Unit Billing Amount",
+   "reqd": 1
+  },
+  {
+   "default": "Per Billing Period",
+   "description": "Choose whether the Unit Billing Amount is charged every billing period or treated as a full-year unit amount split across academic terms.",
+   "fieldname": "amount_basis",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Amount Basis",
+   "options": "Per Billing Period\nAnnual Amount Split by Term Length\nAnnual Amount Split by Custom Percentages",
    "reqd": 1
   },
   {
@@ -51,7 +63,7 @@
  "index_web_pages_for_search": 0,
  "istable": 1,
  "links": [],
- "modified": "2026-04-11 12:00:00.000000",
+ "modified": "2026-05-30 23:00:43.000000",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Program Billing Plan Component",

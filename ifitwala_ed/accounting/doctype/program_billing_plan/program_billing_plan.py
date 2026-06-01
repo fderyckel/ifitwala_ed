@@ -6,6 +6,12 @@ from frappe.model.document import Document
 from frappe.utils import flt
 
 from ifitwala_ed.accounting.account_holder_utils import get_school_organization
+from ifitwala_ed.accounting.billing.rate_policies import (
+    AMOUNT_BASIS_CUSTOM_PERCENTAGES,
+    AMOUNT_BASIS_OPTIONS,
+    AMOUNT_BASIS_PER_PERIOD,
+    TERM_SPLIT_PERCENT_TOLERANCE,
+)
 
 MAX_LIST_TITLE_LOOKUP = 100
 
@@ -15,6 +21,7 @@ class ProgramBillingPlan(Document):
         self._validate_program_offering_scope()
         self._validate_academic_year_membership()
         self._validate_components()
+        self._validate_term_splits()
         self._validate_active_uniqueness()
 
     def _validate_program_offering_scope(self):
@@ -58,6 +65,22 @@ class ProgramBillingPlan(Document):
         seen_billable_offerings: set[str] = set()
         offering_cache = {}
         for idx, row in enumerate(self.components, start=1):
+            amount_basis = row.amount_basis or AMOUNT_BASIS_PER_PERIOD
+            if amount_basis not in AMOUNT_BASIS_OPTIONS:
+                frappe.throw(
+                    _("Row {row_number}: Amount Basis {amount_basis} is not supported.").format(
+                        row_number=idx,
+                        amount_basis=amount_basis,
+                    )
+                )
+            row.amount_basis = amount_basis
+            if amount_basis != AMOUNT_BASIS_PER_PERIOD and self.billing_cadence != "Term":
+                frappe.throw(
+                    _("Row {row_number}: Annual amount splitting is only available for Term billing plans.").format(
+                        row_number=idx
+                    )
+                )
+
             if not row.billable_offering:
                 frappe.throw(_("Row {row_number}: Billable Offering is required.").format(row_number=idx))
             if row.billable_offering in seen_billable_offerings:
@@ -72,10 +95,10 @@ class ProgramBillingPlan(Document):
             if flt(row.qty) <= 0:
                 frappe.throw(_("Row {row_number}: Qty must be greater than zero.").format(row_number=idx))
             if flt(row.default_rate) < 0:
-                frappe.throw(_("Row {row_number}: Default Rate cannot be negative.").format(row_number=idx))
+                frappe.throw(_("Row {row_number}: Unit Billing Amount cannot be negative.").format(row_number=idx))
             if flt(row.default_rate) == 0 and not (row.description_override or "").strip():
                 frappe.throw(
-                    _("Row {row_number}: Description Override is required for zero-rate components.").format(
+                    _("Row {row_number}: Description Override is required for zero-amount components.").format(
                         row_number=idx
                     )
                 )
@@ -106,6 +129,63 @@ class ProgramBillingPlan(Document):
                         row_number=idx
                     )
                 )
+
+    def _validate_term_splits(self):
+        uses_custom_percentages = any(
+            (row.amount_basis or AMOUNT_BASIS_PER_PERIOD) == AMOUNT_BASIS_CUSTOM_PERCENTAGES
+            for row in (self.components or [])
+        )
+        if not uses_custom_percentages:
+            return
+
+        periods = _get_term_periods_for_plan(self)
+        expected_terms = {period["period_key"]: period for period in periods}
+        if not expected_terms:
+            frappe.throw(_("Custom term split percentages require Academic Terms for this billing plan."))
+        if not self.term_splits:
+            frappe.throw(_("Set custom term split percentages before saving this billing plan."))
+
+        seen_terms: set[str] = set()
+        total_percentage = 0.0
+        for idx, row in enumerate(self.term_splits, start=1):
+            term = (row.term or "").strip()
+            if not term:
+                frappe.throw(_("Term Split row {row_number}: Term is required.").format(row_number=idx))
+            if term in seen_terms:
+                frappe.throw(
+                    _("Term Split row {row_number}: Term {term} is duplicated.").format(
+                        row_number=idx,
+                        term=term,
+                    )
+                )
+            if term not in expected_terms:
+                frappe.throw(
+                    _("Term Split row {row_number}: Term {term} is not part of this billing plan.").format(
+                        row_number=idx,
+                        term=term,
+                    )
+                )
+
+            percentage = flt(row.percentage or 0)
+            if percentage < 0:
+                frappe.throw(_("Term Split row {row_number}: Percentage cannot be negative.").format(row_number=idx))
+
+            row.term_label = expected_terms[term]["period_label"]
+            seen_terms.add(term)
+            total_percentage += percentage
+
+        missing_terms = [period["period_label"] for period in periods if period["period_key"] not in seen_terms]
+        if missing_terms:
+            frappe.throw(
+                _("Custom term split percentages are missing for: {terms}.").format(terms=", ".join(missing_terms))
+            )
+
+        if abs(total_percentage - 100.0) > TERM_SPLIT_PERCENT_TOLERANCE:
+            frappe.throw(
+                _("Custom term split percentages must total 100%. Current total is {total}.").format(
+                    total=flt(total_percentage, 4)
+                )
+            )
 
     def _validate_active_uniqueness(self):
         if not self.is_active:
@@ -175,6 +255,20 @@ def _get_program_offering_academic_year_rows(program_offering: str | None) -> li
             }
         )
     return out
+
+
+def _get_term_periods_for_plan(plan_doc) -> list[dict]:
+    from ifitwala_ed.accounting.billing.schedule_generation import get_billing_periods
+
+    return get_billing_periods(
+        frappe._dict(
+            {
+                "academic_year": plan_doc.academic_year,
+                "program_offering": plan_doc.program_offering,
+                "billing_cadence": "Term",
+            }
+        )
+    )
 
 
 def _can_read_offering_academic_years_for_billing(program_offering: str, organization: str | None) -> bool:
@@ -268,10 +362,86 @@ def get_program_offering_academic_years(program_offering: str | None, organizati
 
 
 @frappe.whitelist()
+def get_term_split_terms(
+    program_offering: str | None,
+    academic_year: str | None,
+    organization: str | None = None,
+) -> list[dict]:
+    if not program_offering:
+        frappe.throw(_("Select Program Offering before editing term split percentages."))
+    if not academic_year:
+        frappe.throw(_("Select Academic Year before editing term split percentages."))
+
+    if not _can_read_offering_academic_years_for_billing(program_offering, organization):
+        frappe.throw(_("Not permitted to read Program Offering Academic Years."), frappe.PermissionError)
+
+    academic_years = _get_program_offering_academic_year_names(program_offering)
+    if academic_year not in academic_years:
+        frappe.throw(_("Academic Year must be part of the selected Program Offering."))
+
+    periods = _get_term_periods_for_plan(
+        frappe._dict(
+            {
+                "academic_year": academic_year,
+                "program_offering": program_offering,
+            }
+        )
+    )
+    total_days = sum(_period_day_count(period) for period in periods)
+    if total_days <= 0:
+        frappe.throw(_("Academic Terms must have valid date ranges before term split percentages can be edited."))
+
+    return [
+        {
+            "term": period["period_key"],
+            "term_label": period["period_label"],
+            "coverage_start": period["coverage_start"],
+            "coverage_end": period["coverage_end"],
+            "day_count": _period_day_count(period),
+            "length_percentage": flt((_period_day_count(period) / total_days) * 100.0, 4),
+        }
+        for period in periods
+    ]
+
+
+def _period_day_count(period: dict) -> int:
+    return (period["coverage_end"] - period["coverage_start"]).days + 1
+
+
+@frappe.whitelist()
 def generate_billing_schedules(program_billing_plan: str) -> dict:
     doc = frappe.get_doc("Program Billing Plan", program_billing_plan)
     doc.check_permission("read")
 
-    from ifitwala_ed.accounting.billing.schedule_generation import sync_billing_schedules_for_plan
+    from ifitwala_ed.accounting.billing.schedule_generation import (
+        get_students_missing_account_holders_for_plan,
+        sync_billing_schedules_for_plan,
+    )
 
-    return sync_billing_schedules_for_plan(program_billing_plan)
+    missing_students = get_students_missing_account_holders_for_plan(program_billing_plan)
+    if missing_students:
+        return {
+            "ok": False,
+            "requires_account_holder_setup": True,
+            "program_billing_plan": doc.name,
+            "organization": doc.organization,
+            "program_offering": doc.program_offering,
+            "academic_year": doc.academic_year,
+            "missing_students": missing_students,
+            "missing_count": len(missing_students),
+            "tool_doctype": "Student Account Holder Tool",
+        }
+
+    result = sync_billing_schedules_for_plan(program_billing_plan)
+    result["ok"] = True
+    return result
+
+
+@frappe.whitelist()
+def preview_billing_schedule_generation(program_billing_plan: str) -> dict:
+    doc = frappe.get_doc("Program Billing Plan", program_billing_plan)
+    doc.check_permission("read")
+
+    from ifitwala_ed.accounting.billing.schedule_generation import get_billing_schedule_generation_preview
+
+    return get_billing_schedule_generation_preview(program_billing_plan)

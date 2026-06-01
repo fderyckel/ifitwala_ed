@@ -5,7 +5,11 @@ from __future__ import annotations
 import frappe
 from frappe import _
 
-from ifitwala_ed.admission.admission_utils import assign_inquiry
+from ifitwala_ed.admission.admission_utils import (
+    _resolve_inquiry_assignment_lane_for_user,
+    _validate_inquiry_assignee_scope,
+    assign_inquiry,
+)
 from ifitwala_ed.admission.admissions_crm_domain import clean
 from ifitwala_ed.admission.admissions_crm_permissions import ensure_admissions_crm_permission
 from ifitwala_ed.admission.api.crm.guards import (
@@ -185,8 +189,29 @@ def create_admissions_intake_impl(
 
     _assert_scope_allowed(user, organization=scope_organization, school=school_name)
     assignee = clean(assigned_to)
+    resolved_assignment_lane = None
     if assignee:
-        _validate_crm_assignee(user=user, assigned_to=assignee, organization=scope_organization, school=school_name)
+        resolved_assignment_lane = _resolve_inquiry_assignment_lane_for_user(
+            user=assignee,
+            requested_lane=assignment_lane,
+        )
+        if resolved_assignment_lane == "Admission":
+            _validate_crm_assignee(
+                user=user,
+                assigned_to=assignee,
+                organization=scope_organization,
+                school=school_name,
+            )
+        else:
+            _validate_inquiry_assignee_scope(
+                assignee,
+                frappe._dict(
+                    {
+                        "organization": scope_organization,
+                        "school": school_name,
+                    }
+                ),
+            )
 
     def action():
         inquiry_doc = frappe.get_doc(
@@ -236,14 +261,15 @@ def create_admissions_intake_impl(
 
         assignment_result = None
         if assignee:
-            conversation_doc.reload()
-            conversation_doc.assigned_to = assignee
-            conversation_doc.save(ignore_permissions=True)
+            if resolved_assignment_lane == "Admission":
+                conversation_doc.reload()
+                conversation_doc.assigned_to = assignee
+                conversation_doc.save(ignore_permissions=True)
             assignment_result = assign_inquiry(
                 "Inquiry",
                 inquiry_doc.name,
                 assignee,
-                assignment_lane=assignment_lane,
+                assignment_lane=resolved_assignment_lane,
             )
 
         return {

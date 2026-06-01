@@ -347,7 +347,7 @@ async function submit() {
 	} catch (err) {
 		console.error(err);
 		toast({
-			title: __('Could not submit'),
+			title: __('Unable to submit'),
 			text: __(
 				'Please review your entries and try again. If the problem persists, contact the school counselor.'
 			),

@@ -14,7 +14,7 @@ from ifitwala_ed.admission.admission_utils import (
 )
 from ifitwala_ed.admission.api.common.request_payload import _request_form_value
 from ifitwala_ed.admission.api.portal.access import _as_text, _ensure_applicant_match, _require_admissions_applicant
-from ifitwala_ed.admission.api.recommendation_intake import get_recommendation_template_rows_for_applicant
+from ifitwala_ed.admission.api.recommendation_intake.templates import get_recommendation_template_rows_for_applicant
 from ifitwala_ed.api.attachment_previews import extract_file_extension
 from ifitwala_ed.api.attachment_rows import build_governed_attachment_row
 from ifitwala_ed.api.file_access import (

@@ -329,8 +329,7 @@ class TestFileAccessUnit(TestCase):
             url = file_access.resolve_public_employee_image_url(
                 employee="EMP-0001",
                 file_name="FILE-EMP-1",
-                file_url="https://cdn.invalid/employee.png",
-                derivative_role="card",
+                variant="card",
             )
 
         parsed = urlparse(url or "")
@@ -338,7 +337,8 @@ class TestFileAccessUnit(TestCase):
         self.assertEqual(parsed.path, "/api/method/ifitwala_ed.api.file_access.open_public_employee_image")
         self.assertEqual((query.get("employee") or [None])[0], "EMP-0001")
         self.assertEqual((query.get("file") or [None])[0], "FILE-EMP-1")
-        self.assertEqual((query.get("derivative_role") or [None])[0], "card")
+        self.assertEqual((query.get("variant") or [None])[0], "card")
+        self.assertNotIn("derivative_role", query)
 
     def test_resolve_drive_file_grant_target_url_strict_derivative_returns_none_without_safe_grant(self):
         with _file_access_module() as (file_access, frappe):
@@ -1499,7 +1499,7 @@ class TestFileAccessUnit(TestCase):
             file_access.open_public_employee_image(
                 employee="EMP-0001",
                 file="FILE-EMP-1",
-                derivative_role="card",
+                variant="card",
             )
 
         self.assertEqual(

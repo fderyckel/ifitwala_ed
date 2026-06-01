@@ -138,7 +138,7 @@
  "icon": "fa fa-calendar",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-26 12:50:28.809062",
+ "modified": "2026-05-30 10:48:18.851722",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Academic Year",
@@ -172,6 +172,17 @@
   },
   {
    "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
    "delete": 1,
    "email": 1,
    "export": 1,
@@ -195,6 +206,17 @@
    "write": 1
   },
   {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Curriculum Coordinator",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  },
+  {
    "email": 1,
    "export": 1,
    "print": 1,
@@ -203,15 +225,6 @@
    "role": "Admission Officer",
    "share": 1,
    "write": 1
-  },
-  {
-   "email": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Curriculum Coordinator",
-   "select": 1,
-   "share": 1
   },
   {
    "email": 1,
@@ -237,15 +250,6 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Admission Manager",
-   "share": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
    "role": "HR Manager",
    "share": 1
   },
@@ -256,6 +260,24 @@
    "read": 1,
    "report": 1,
    "role": "HR User",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
    "share": 1
   },
   {

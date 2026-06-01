@@ -32,7 +32,7 @@
 		</header>
 
 		<section v-if="loading" class="student-hub-section">
-			<p class="type-body text-ink/70">{{ __('Loading courses...') }}</p>
+			<p class="type-body text-ink/70">{{ __('Loading courses…') }}</p>
 		</section>
 
 		<section

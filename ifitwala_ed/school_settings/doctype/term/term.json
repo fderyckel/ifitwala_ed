@@ -136,7 +136,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-25 09:22:25.626181",
+ "modified": "2026-05-31 08:39:40.180244",
  "modified_by": "Administrator",
  "module": "School Settings",
  "name": "Term",
@@ -232,6 +232,15 @@
    "role": "Admission Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Officer",
+   "share": 1
   }
  ],
  "row_format": "Dynamic",

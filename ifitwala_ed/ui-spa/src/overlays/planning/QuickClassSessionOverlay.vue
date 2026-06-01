@@ -100,7 +100,7 @@
 								class="rounded-2xl border border-line-soft bg-white px-5 py-8"
 							>
 								<p class="type-body text-ink/70">
-									{{ __('Loading class planning surface...') }}
+									{{ __('Loading class planning surface…') }}
 								</p>
 							</section>
 

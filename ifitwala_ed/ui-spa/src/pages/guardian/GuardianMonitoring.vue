@@ -87,11 +87,11 @@
 		</section>
 
 		<section v-if="loading" class="card-surface p-5">
-			<p class="type-body text-ink/70">{{ __('Loading family monitoring...') }}</p>
+			<p class="type-body text-ink/70">{{ __('Loading family monitoring…') }}</p>
 		</section>
 
 		<section v-else-if="errorMessage" class="card-surface p-5">
-			<p class="type-body-strong text-flame">{{ __('Could not load family monitoring.') }}</p>
+			<p class="type-body-strong text-flame">{{ __('Unable to load family monitoring.') }}</p>
 			<p class="type-body text-ink/70">{{ errorMessage }}</p>
 		</section>
 
@@ -361,7 +361,7 @@ async function loadMoreStudentLogs() {
 		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		toast.error(message || __('Could not load more student logs.'));
+		toast.error(message || __('Unable to load more student logs.'));
 	} finally {
 		studentLogsLoadingMore.value = false;
 	}
@@ -384,7 +384,7 @@ async function loadMorePublishedResults() {
 		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		toast.error(message || __('Could not load more published results.'));
+		toast.error(message || __('Unable to load more published results.'));
 	} finally {
 		publishedResultsLoadingMore.value = false;
 	}

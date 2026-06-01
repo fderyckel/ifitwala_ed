@@ -18,7 +18,7 @@
 		</section>
 
 		<section v-else-if="loading" class="student-hub-section">
-			<p class="type-body text-ink/70">{{ __('Loading quiz...') }}</p>
+			<p class="type-body text-ink/70">{{ __('Loading quiz…') }}</p>
 		</section>
 
 		<template v-else-if="sessionPayload">
@@ -511,7 +511,7 @@ async function submitQuiz() {
 		stopTimer();
 	} catch (error: unknown) {
 		actionMessage.value =
-			error instanceof Error && error.message ? error.message : __('Could not submit this quiz.');
+			error instanceof Error && error.message ? error.message : __('Unable to submit this quiz.');
 	} finally {
 		submitting.value = false;
 	}

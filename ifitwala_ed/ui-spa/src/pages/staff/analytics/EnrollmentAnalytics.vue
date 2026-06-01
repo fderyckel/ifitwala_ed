@@ -129,7 +129,7 @@
 
 		<div v-else>
 			<div v-if="dashboardResource.loading" class="py-10 text-center text-sm text-slate-500">
-				{{ __('Loading enrollment analytics...') }}
+				{{ __('Loading enrollment analytics…') }}
 			</div>
 
 			<div v-else class="space-y-6">

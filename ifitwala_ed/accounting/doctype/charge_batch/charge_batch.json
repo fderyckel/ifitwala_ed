@@ -1,0 +1,276 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "CBAT-.#####",
+ "creation": "2026-05-30 18:44:55.000000",
+ "doctype": "DocType",
+ "document_type": "Transaction",
+ "engine": "InnoDB",
+ "field_order": [
+  "organization",
+  "batch_title",
+  "source_type",
+  "source_doctype",
+  "source_name",
+  "column_break_main",
+  "billable_offering",
+  "posting_date",
+  "due_date",
+  "payment_terms_template",
+  "default_qty",
+  "default_rate",
+  "coverage_start",
+  "coverage_end",
+  "description",
+  "status",
+  "processed_on",
+  "invoice_generation_status",
+  "invoice_generation_progress",
+  "invoice_generation_error",
+  "students_section",
+  "students",
+  "invoices_section",
+  "invoices",
+  "totals_section",
+  "total_charges",
+  "total_invoices",
+  "total_amount",
+  "note"
+ ],
+ "fields": [
+  {
+   "fieldname": "organization",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Organization",
+   "options": "Organization",
+   "reqd": 1
+  },
+  {
+   "fieldname": "batch_title",
+   "fieldtype": "Data",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "label": "Batch Title",
+   "reqd": 1
+  },
+  {
+   "default": "Manual",
+   "fieldname": "source_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Source Type",
+   "options": "Manual\nTrip\nLunch\nActivity\nStudent Group\nProgram Offering\nOther",
+   "reqd": 1
+  },
+  {
+   "fieldname": "source_doctype",
+   "fieldtype": "Data",
+   "label": "Source DocType"
+  },
+  {
+   "fieldname": "source_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Source Record",
+   "options": "source_doctype"
+  },
+  {
+   "fieldname": "column_break_main",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "billable_offering",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Billable Offering",
+   "options": "Billable Offering",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Posting Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "due_date",
+   "fieldtype": "Date",
+   "label": "Due Date"
+  },
+  {
+   "fieldname": "payment_terms_template",
+   "fieldtype": "Link",
+   "label": "Payment Terms Template",
+   "options": "Payment Terms Template"
+  },
+  {
+   "default": "1",
+   "fieldname": "default_qty",
+   "fieldtype": "Float",
+   "label": "Default Qty",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "default_rate",
+   "fieldtype": "Currency",
+   "label": "Default Rate",
+   "reqd": 1
+  },
+  {
+   "fieldname": "coverage_start",
+   "fieldtype": "Date",
+   "label": "Coverage Start"
+  },
+  {
+   "fieldname": "coverage_end",
+   "fieldtype": "Date",
+   "label": "Coverage End"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nCharges Created\nInvoiced\nCancelled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "processed_on",
+   "fieldtype": "Datetime",
+   "label": "Processed On",
+   "read_only": 1
+  },
+  {
+   "default": "Not Queued",
+   "fieldname": "invoice_generation_status",
+   "fieldtype": "Select",
+   "label": "Invoice Generation Status",
+   "options": "Not Queued\nQueued\nProcessing\nCompleted\nFailed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "invoice_generation_progress",
+   "fieldtype": "Data",
+   "label": "Invoice Generation Progress",
+   "read_only": 1
+  },
+  {
+   "fieldname": "invoice_generation_error",
+   "fieldtype": "Small Text",
+   "label": "Invoice Generation Error",
+   "read_only": 1
+  },
+  {
+   "fieldname": "students_section",
+   "fieldtype": "Section Break",
+   "label": "Students"
+  },
+  {
+   "fieldname": "students",
+   "fieldtype": "Table",
+   "label": "Students",
+   "options": "Charge Batch Student",
+   "reqd": 1
+  },
+  {
+   "fieldname": "invoices_section",
+   "fieldtype": "Section Break",
+   "label": "Generated Invoices"
+  },
+  {
+   "fieldname": "invoices",
+   "fieldtype": "Table",
+   "label": "Generated Invoices",
+   "options": "Charge Batch Invoice",
+   "read_only": 1
+  },
+  {
+   "fieldname": "totals_section",
+   "fieldtype": "Section Break",
+   "label": "Totals"
+  },
+  {
+   "fieldname": "total_charges",
+   "fieldtype": "Int",
+   "label": "Total Charges",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_invoices",
+   "fieldtype": "Int",
+   "label": "Total Invoices",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_amount",
+   "fieldtype": "Currency",
+   "label": "Total Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "note",
+   "fieldtype": "Small Text",
+   "label": "Note"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-05-30 21:38:15.000000",
+ "modified_by": "Administrator",
+ "module": "Accounting",
+ "name": "Charge Batch",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "batch_title"
+}

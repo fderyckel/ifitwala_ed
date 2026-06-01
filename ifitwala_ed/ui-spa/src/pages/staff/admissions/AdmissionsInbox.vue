@@ -92,7 +92,7 @@
 				</header>
 
 				<div v-if="initialLoading" class="queue-panel__empty">
-					{{ __('Loading admissions inbox...') }}
+					{{ __('Loading admissions inbox…') }}
 				</div>
 
 				<div v-else-if="!activeRows.length" class="queue-panel__empty">
@@ -396,15 +396,6 @@
 						/>
 					</label>
 					<label class="action-field">
-						<span>{{ __('Assigned To') }}</span>
-						<input
-							v-model="intakeForm.assigned_to"
-							data-testid="intake-assigned-to"
-							type="text"
-							:placeholder="__('Optional admissions user email')"
-						/>
-					</label>
-					<label class="action-field">
 						<span>{{ __('Assignment Lane') }}</span>
 						<select v-model="intakeForm.assignment_lane" data-testid="intake-assignment-lane">
 							<option v-for="lane in assignmentLanes" :key="lane || 'default'" :value="lane">
@@ -412,6 +403,24 @@
 							</option>
 						</select>
 					</label>
+					<AdmissionsAssigneeSearchField
+						v-model="intakeForm.assigned_to"
+						:label="__('Assigned To')"
+						:placeholder="intakeAssigneePlaceholder"
+						:loading="intakeAssigneeSearchLoading"
+						:candidates="intakeAssigneeCandidates"
+						:no-matches="showIntakeAssigneeNoMatches"
+						:no-matches-message="
+							__(
+								'No matching staff found for this intake scope. Check the Employee profile and user role, or enter a full user email.'
+							)
+						"
+						input-test-id="intake-assigned-to"
+						candidates-test-id="intake-assignee-candidates"
+						candidate-test-id="intake-assignee-candidate"
+						@input="handleIntakeAssigneeInput"
+						@select="selectIntakeAssigneeCandidate"
+					/>
 				</div>
 
 				<p v-if="intakeError" data-testid="admissions-intake-error" class="action-error">
@@ -560,16 +569,7 @@
 					</template>
 
 					<template v-else-if="isAssignAction(activeActionId)">
-						<label class="action-field">
-							<span>{{ __('Assigned To') }}</span>
-							<input
-								v-model="actionForm.assigned_to"
-								data-testid="action-assigned-to"
-								type="text"
-								:placeholder="__('Admissions user email')"
-							/>
-						</label>
-						<label v-if="selectedRow?.inquiry" class="action-field">
+						<label v-if="assignmentLaneApplies(selectedRow)" class="action-field">
 							<span>{{ __('Assignment Lane') }}</span>
 							<select v-model="actionForm.assignment_lane" data-testid="action-assignment-lane">
 								<option v-for="lane in assignmentLanes" :key="lane || 'default'" :value="lane">
@@ -577,6 +577,24 @@
 								</option>
 							</select>
 						</label>
+						<AdmissionsAssigneeSearchField
+							v-model="actionForm.assigned_to"
+							:label="__('Assigned To')"
+							:placeholder="assigneePlaceholder"
+							:loading="assigneeSearchLoading"
+							:candidates="assigneeCandidates"
+							:no-matches="showAssigneeNoMatches"
+							:no-matches-message="
+								__(
+									'No matching staff found for this lane and context. Check the Employee profile and user role, or enter a full user email.'
+								)
+							"
+							input-test-id="action-assigned-to"
+							candidates-test-id="action-assignee-candidates"
+							candidate-test-id="action-assignee-candidate"
+							@input="handleAssigneeInput"
+							@select="selectAssigneeCandidate"
+						/>
 					</template>
 
 					<template v-else-if="activeActionId === 'create_inquiry'">
@@ -736,10 +754,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { FeatherIcon } from 'frappe-ui';
 
+import AdmissionsAssigneeSearchField from '@/components/admissions/AdmissionsAssigneeSearchField.vue';
 import AdmissionsTimelinePanel from '@/components/admissions/AdmissionsTimelinePanel.vue';
+import { useAdmissionsInboxAssigneeSearch } from '@/composables/useAdmissionsInboxAssigneeSearch';
 import { useOverlayStack } from '@/composables/useOverlayStack';
 import {
 	archiveInquiryFromInbox,
@@ -770,6 +790,7 @@ import type {
 	AdmissionCrmActivityChannel,
 	AdmissionCrmActivityType,
 	AdmissionExternalIdentityMatchStatus,
+	AdmissionsInboxAssigneeOption,
 	AdmissionsInboxContext,
 	AdmissionsInboxQueue,
 	AdmissionsInboxRow,
@@ -1033,6 +1054,53 @@ const activeQueue = computed<AdmissionsInboxQueue | null>(() => {
 });
 const activeRows = computed<AdmissionsInboxRow[]>(() => activeQueue.value?.rows || []);
 const initialLoading = computed(() => loading.value && !context.value);
+const assigneePlaceholder = computed(() => {
+	if (selectedRow.value?.kind === 'conversation') {
+		return __('Search admissions CRM user');
+	}
+	if (actionForm.value.assignment_lane === 'Staff') {
+		return __('Search active employee user');
+	}
+	return __('Search scoped staff user email');
+});
+const intakeAssigneePlaceholder = computed(() => {
+	if (intakeForm.value.assignment_lane === 'Staff') {
+		return __('Search active employee user');
+	}
+	return __('Optional scoped staff user email');
+});
+const {
+	candidates: assigneeCandidates,
+	loading: assigneeSearchLoading,
+	showNoMatches: showAssigneeNoMatches,
+	reset: resetAssigneeSearch,
+	load: loadAssigneeCandidates,
+	handleInput: handleAssigneeInput,
+	selectCandidate: selectedAssigneeValue,
+} = useAdmissionsInboxAssigneeSearch({
+	getPayload: assigneeSearchPayload,
+	getQuery: () => actionForm.value.assigned_to,
+	onError: message => {
+		actionError.value = message;
+	},
+	errorMessage: __('Could not search staff for this admissions context.'),
+});
+const {
+	candidates: intakeAssigneeCandidates,
+	loading: intakeAssigneeSearchLoading,
+	showNoMatches: showIntakeAssigneeNoMatches,
+	reset: resetIntakeAssigneeSearch,
+	load: loadIntakeAssigneeCandidates,
+	handleInput: handleIntakeAssigneeInput,
+	selectCandidate: selectedIntakeAssigneeValue,
+} = useAdmissionsInboxAssigneeSearch({
+	getPayload: intakeAssigneeSearchPayload,
+	getQuery: () => intakeForm.value.assigned_to,
+	onError: message => {
+		intakeError.value = message;
+	},
+	errorMessage: __('Could not search staff for this intake scope.'),
+});
 const totalVisibleRows = computed(() =>
 	queues.value.reduce((total, queue) => total + queue.rows.length, 0)
 );
@@ -1220,6 +1288,7 @@ function openActionDrawer(row: AdmissionsInboxRow) {
 	intakeSuccess.value = null;
 	selectedRow.value = row;
 	actionForm.value = createActionForm(row);
+	resetAssigneeSearch();
 	actionError.value = null;
 	actionSuccess.value = null;
 	activeActionId.value = rowActionStates(row).find(action => action.enabled)?.id || '';
@@ -1233,6 +1302,7 @@ function closeActionDrawer() {
 	actionError.value = null;
 	actionSuccess.value = null;
 	actionSaving.value = false;
+	resetAssigneeSearch();
 	selectedTimeline.value = null;
 	timelineError.value = null;
 	timelineLoading.value = false;
@@ -1243,6 +1313,7 @@ function openIntakeDrawer() {
 	intakeDrawerOpen.value = true;
 	intakeError.value = null;
 	intakeSuccess.value = null;
+	resetIntakeAssigneeSearch();
 }
 
 function closeIntakeDrawer() {
@@ -1250,6 +1321,7 @@ function closeIntakeDrawer() {
 	intakeError.value = null;
 	intakeSuccess.value = null;
 	intakeSaving.value = false;
+	resetIntakeAssigneeSearch();
 }
 
 function selectAction(actionId: SupportedActionId) {
@@ -1258,7 +1330,130 @@ function selectAction(actionId: SupportedActionId) {
 	activeActionId.value = actionId;
 	actionError.value = null;
 	actionSuccess.value = null;
+	resetAssigneeSearch();
 }
+
+function assignmentLaneApplies(row: AdmissionsInboxRow | null) {
+	return row?.kind === 'inquiry';
+}
+
+function assigneeSearchPayload(query: string) {
+	const row = selectedRow.value;
+	if (!row || !isAssignAction(activeActionId.value)) return null;
+
+	if (row.kind === 'conversation' && row.conversation) {
+		return {
+			context_doctype: 'Admission Conversation',
+			context_name: row.conversation,
+			assignment_lane: 'Admission' as const,
+			query,
+			limit: 20,
+		};
+	}
+
+	const inquiry = blankToNull(String(row.inquiry || ''));
+	if (inquiry) {
+		return {
+			context_doctype: 'Inquiry',
+			context_name: inquiry,
+			assignment_lane: actionForm.value.assignment_lane || null,
+			query,
+			limit: 20,
+		};
+	}
+
+	return {
+		organization: blankToNull(String(row.organization || '')),
+		school: blankToNull(String(row.school || '')),
+		assignment_lane: actionForm.value.assignment_lane || null,
+		query,
+		limit: 20,
+	};
+}
+
+function intakeAssigneeSearchPayload(query: string) {
+	if (!intakeDrawerOpen.value) return null;
+	const organization = blankToNull(intakeForm.value.organization);
+	if (!organization) return null;
+
+	return {
+		organization,
+		school: blankToNull(intakeForm.value.school),
+		assignment_lane: intakeForm.value.assignment_lane || null,
+		query,
+		limit: 20,
+	};
+}
+
+function selectAssigneeCandidate(candidate: AdmissionsInboxAssigneeOption) {
+	actionError.value = null;
+	actionForm.value.assigned_to = selectedAssigneeValue(candidate);
+}
+
+function selectIntakeAssigneeCandidate(candidate: AdmissionsInboxAssigneeOption) {
+	intakeError.value = null;
+	intakeForm.value.assigned_to = selectedIntakeAssigneeValue(candidate);
+}
+
+watch(
+	() =>
+		[activeActionId.value, selectedRow.value?.id || '', actionForm.value.assignment_lane] as const,
+	([actionId, rowId, lane], previous) => {
+		if (!isAssignAction(actionId) || !rowId) {
+			resetAssigneeSearch();
+			return;
+		}
+
+		const previousAction = previous?.[0] || '';
+		const previousRow = previous?.[1] || '';
+		const previousLane = previous?.[2] || '';
+		if (
+			assignmentLaneApplies(selectedRow.value) &&
+			previousAction === actionId &&
+			previousRow === rowId &&
+			previousLane !== lane
+		) {
+			actionForm.value.assigned_to = '';
+		}
+		void loadAssigneeCandidates('');
+	}
+);
+
+watch(
+	() => [intakeDrawerOpen.value ? 'open' : 'closed', intakeForm.value.assignment_lane] as const,
+	([state, lane], previous) => {
+		if (state !== 'open') {
+			resetIntakeAssigneeSearch();
+			return;
+		}
+
+		if (!blankToNull(intakeForm.value.organization)) {
+			resetIntakeAssigneeSearch();
+			return;
+		}
+
+		const previousState = previous?.[0] || '';
+		const previousLane = previous?.[1] || '';
+		if (previousState === state && previousLane !== lane) {
+			intakeForm.value.assigned_to = '';
+		}
+		void loadIntakeAssigneeCandidates('');
+	}
+);
+
+watch(
+	() => [intakeForm.value.organization, intakeForm.value.school] as const,
+	([organization, school], previous) => {
+		if (!intakeDrawerOpen.value) return;
+		if (previous && (previous[0] !== organization || previous[1] !== school)) {
+			intakeForm.value.assigned_to = '';
+		}
+		resetIntakeAssigneeSearch();
+		if (blankToNull(organization)) {
+			void loadIntakeAssigneeCandidates('');
+		}
+	}
+);
 
 function timelineRequestForRow(row: AdmissionsInboxRow): AdmissionsTimelineRequest | null {
 	const studentApplicant = blankToNull(String(row.student_applicant || ''));
@@ -1313,7 +1508,7 @@ async function loadTimelineForRow(row: AdmissionsInboxRow) {
 		timelineError.value =
 			err instanceof Error
 				? err.message
-				: String(err || __('Could not load admissions timeline.'));
+				: String(err || __('Unable to load admissions timeline.'));
 	} finally {
 		if (sequence === timelineSequence) {
 			timelineLoading.value = false;

@@ -1,0 +1,13 @@
+from __future__ import annotations
+
+AMOUNT_BASIS_PER_PERIOD = "Per Billing Period"
+AMOUNT_BASIS_TERM_LENGTH = "Annual Amount Split by Term Length"
+AMOUNT_BASIS_CUSTOM_PERCENTAGES = "Annual Amount Split by Custom Percentages"
+
+AMOUNT_BASIS_OPTIONS = {
+    AMOUNT_BASIS_PER_PERIOD,
+    AMOUNT_BASIS_TERM_LENGTH,
+    AMOUNT_BASIS_CUSTOM_PERCENTAGES,
+}
+
+TERM_SPLIT_PERCENT_TOLERANCE = 0.0001

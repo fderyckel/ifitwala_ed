@@ -35,7 +35,7 @@ function with_admissions_timeline_desk(callback, unavailable_message) {
 	}
 
 	frappe.show_alert({
-		message: __("Loading admissions timeline actions..."),
+		message: __("Loading admissions timeline actions…"),
 		indicator: "blue",
 	});
 	frappe.require("/assets/ifitwala_ed/js/admissions_timeline_desk.js", () => {
@@ -468,7 +468,7 @@ function open_schedule_interview_dialog(frm) {
 		method: "ifitwala_ed.admission.doctype.applicant_interview.applicant_interview.get_interview_schedule_options",
 		args: { student_applicant: frm.doc.name },
 		freeze: true,
-		freeze_message: __("Loading schedule options..."),
+		freeze_message: __("Loading schedule options…"),
 	}).then((res) => {
 		render_schedule_interview_dialog(frm, res?.message || {});
 	}).catch((err) => {
@@ -1374,7 +1374,7 @@ function open_recommendation_requests_dialog(frm) {
 	});
 
 	const loadRows = () => {
-		dialog.fields_dict.body.$wrapper.html(`<div class="text-muted">${escape_html(__("Loading recommendation requests..."))}</div>`);
+		dialog.fields_dict.body.$wrapper.html(`<div class="text-muted">${escape_html(__("Loading recommendation requests…"))}</div>`);
 		return frappe.call({
 			method: "ifitwala_ed.api.recommendation_intake.list_recommendation_requests",
 			args: { student_applicant: frm.doc.name },
@@ -2318,7 +2318,7 @@ function open_recommendation_review_dialog(frm, anchor) {
 	let currentAnchor = normalize_recommendation_review_anchor(anchor);
 
 	const renderLoading = () => {
-		dialog.fields_dict.body.$wrapper.html(`<div class="text-muted">${escape_html(__("Loading recommendation review..."))}</div>`);
+		dialog.fields_dict.body.$wrapper.html(`<div class="text-muted">${escape_html(__("Loading recommendation review…"))}</div>`);
 	};
 
 	const loadPayload = () => {

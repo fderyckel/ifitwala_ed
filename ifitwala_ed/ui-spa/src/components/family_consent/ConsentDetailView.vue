@@ -20,11 +20,11 @@
 		</header>
 
 		<section v-if="loading" class="card-surface p-5">
-			<p class="type-body text-ink/70">{{ __('Loading form details...') }}</p>
+			<p class="type-body text-ink/70">{{ __('Loading form details…') }}</p>
 		</section>
 
 		<section v-else-if="errorMessage" class="card-surface p-5">
-			<p class="type-body-strong text-flame">{{ __('Could not load this form request.') }}</p>
+			<p class="type-body-strong text-flame">{{ __('Unable to load this form request.') }}</p>
 			<p class="type-body text-ink/70">{{ errorMessage }}</p>
 		</section>
 

@@ -83,7 +83,7 @@
 										ref="closeButtonRef"
 										type="button"
 										class="if-overlay__icon-button"
-										aria-label="Close"
+										:aria-label="__('Close')"
 										@click="closeDialog"
 									>
 										<FeatherIcon name="x" class="h-4 w-4" />
@@ -124,7 +124,7 @@
 										v-if="attachmentsLoading"
 										class="mt-4 rounded-2xl border border-dashed border-border/70 bg-surface-soft/70 px-4 py-3 text-sm text-slate-token/80"
 									>
-										{{ __('Loading attachments...') }}
+										{{ __('Loading attachments…') }}
 									</p>
 									<p
 										v-else-if="attachmentsError"

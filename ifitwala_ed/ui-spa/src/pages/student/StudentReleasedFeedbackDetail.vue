@@ -6,17 +6,19 @@
 				class="inline-flex items-center gap-2 type-body text-ink/70 transition hover:text-ink"
 			>
 				<span>←</span>
-				<span>Back to Course</span>
+				<span>{{ __('Back to Course') }}</span>
 			</RouterLink>
 		</div>
 
 		<section v-if="errorMessage" class="if-banner if-banner--danger">
-			<p class="if-banner__title type-body-strong text-flame">Could not load released feedback.</p>
+			<p class="if-banner__title type-body-strong text-flame">
+				{{ __('Unable to load released feedback.') }}
+			</p>
 			<p class="if-banner__body mt-2 type-caption">{{ errorMessage }}</p>
 		</section>
 
 		<section v-else-if="loading" class="student-hub-section">
-			<p class="type-body text-ink/70">Loading released feedback...</p>
+			<p class="type-body text-ink/70">{{ __('Loading released feedback…') }}</p>
 		</section>
 
 		<ReleasedFeedbackNavigator
@@ -38,6 +40,7 @@ import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { toast } from 'frappe-ui';
 
+import { __ } from '@/lib/i18n';
 import ReleasedFeedbackNavigator from '@/components/assessment/ReleasedFeedbackNavigator.vue';
 import {
 	exportStudentReleasedFeedbackPdf,
@@ -159,7 +162,7 @@ async function handleExportFeedbackPdf() {
 		const response = await exportStudentReleasedFeedbackPdf({ outcome_id: props.task_outcome });
 		const targetUrl = response.artifact?.open_url || response.artifact?.preview_url;
 		if (!targetUrl) {
-			throw new Error('Missing feedback artifact URL');
+			throw new Error(__('Missing feedback artifact URL'));
 		}
 		if (detail.value) {
 			detail.value.released_feedback_artifact = response.artifact;

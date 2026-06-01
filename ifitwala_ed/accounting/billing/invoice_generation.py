@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import frappe
 from frappe import _
-from frappe.utils import get_datetime, getdate, now_datetime, today
+from frappe.utils import formatdate, get_datetime, getdate, now_datetime, today
 
 from ifitwala_ed.accounting.receivables import money
 
@@ -36,6 +36,8 @@ def generate_draft_invoice_for_schedule(billing_schedule: str, row_ids: list[str
 
 
 def generate_draft_invoices_for_run(billing_run: str) -> dict:
+    _require_sales_invoice_create_permission()
+    _lock_billing_run(billing_run)
     run = frappe.get_doc("Billing Run", billing_run)
     if run.status == "Cancelled":
         frappe.throw(_("Cancelled Billing Runs cannot generate invoices."))
@@ -44,7 +46,7 @@ def generate_draft_invoices_for_run(billing_run: str) -> dict:
 
     row_groups = _get_run_target_groups(run)
     if not row_groups:
-        frappe.throw(_("No pending Billing Schedule rows matched this Billing Run."))
+        _throw_no_run_rows_matched(run)
 
     generated_items = []
     invoice_names = []
@@ -149,18 +151,7 @@ def _get_schedule_target_rows(schedule_doc, row_ids: list[str] | None = None):
 
 
 def _get_run_target_groups(run_doc) -> dict[tuple[str, str], list[dict]]:
-    schedule_headers = frappe.get_all(
-        "Billing Schedule",
-        filters={
-            "organization": run_doc.organization,
-            "program_offering": run_doc.program_offering,
-            "academic_year": run_doc.academic_year,
-            "billing_plan": run_doc.billing_plan,
-        },
-        fields=["name", "account_holder", "student", "program_offering"],
-        order_by="account_holder asc, student asc, name asc",
-        limit=5000,
-    )
+    schedule_headers = _get_run_schedule_headers(run_doc)
     if not schedule_headers:
         return {}
 
@@ -212,6 +203,96 @@ def _get_run_target_groups(run_doc) -> dict[tuple[str, str], list[dict]]:
     return groups
 
 
+def _get_run_schedule_headers(run_doc) -> list[dict]:
+    return frappe.get_all(
+        "Billing Schedule",
+        filters={
+            "organization": run_doc.organization,
+            "program_offering": run_doc.program_offering,
+            "academic_year": run_doc.academic_year,
+            "billing_plan": run_doc.billing_plan,
+        },
+        fields=["name", "account_holder", "student", "program_offering"],
+        order_by="account_holder asc, student asc, name asc",
+        limit=5000,
+    )
+
+
+def _throw_no_run_rows_matched(run_doc) -> None:
+    schedule_headers = _get_run_schedule_headers(run_doc)
+    if not schedule_headers:
+        frappe.throw(
+            _(
+                "No Billing Schedules match this Billing Run. Generate Billing Schedules from the selected Program Billing Plan, then generate invoices again."
+            )
+        )
+
+    schedule_names = [row.get("name") for row in schedule_headers]
+    row_records = frappe.get_all(
+        "Billing Schedule Row",
+        filters={"parent": ["in", schedule_names], "parenttype": "Billing Schedule"},
+        fields=["name", "status", "sales_invoice", "due_date"],
+        order_by="due_date asc, parent asc, idx asc",
+        limit=50000,
+    )
+    if not row_records:
+        frappe.throw(
+            _(
+                "Billing Schedules were found, but they have no rows. Refresh Billing Schedules from the Program Billing Plan, then generate invoices again."
+            )
+        )
+
+    pending_rows = [
+        row for row in row_records if row.get("status") == "Pending" and not (row.get("sales_invoice") or "").strip()
+    ]
+    if not pending_rows:
+        frappe.throw(
+            _(
+                "Billing Schedules were found, but no pending rows remain. Review the linked Sales Invoices or refresh Billing Schedules before generating again."
+            )
+        )
+
+    in_window_rows = [row for row in pending_rows if _row_matches_run_due_window(row, run_doc)]
+    if not in_window_rows:
+        start_date, end_date = _pending_due_date_range(pending_rows)
+        frappe.throw(
+            _(
+                "Pending Billing Schedule rows exist, but their due dates are outside this Billing Run due-date window. Adjust Due Date From / To to include {start_date} through {end_date}, then generate invoices again."
+            ).format(
+                start_date=_format_operator_date(start_date),
+                end_date=_format_operator_date(end_date),
+            )
+        )
+
+    frappe.throw(
+        _(
+            "Pending Billing Schedule rows were found, but they could not be loaded for invoice generation. Refresh Billing Schedules from the Program Billing Plan, then generate invoices again."
+        )
+    )
+
+
+def _row_matches_run_due_window(row: dict, run_doc) -> bool:
+    due_date = getdate(row.get("due_date")) if row.get("due_date") else None
+    if run_doc.due_date_from and due_date and due_date < getdate(run_doc.due_date_from):
+        return False
+    if run_doc.due_date_to and due_date and due_date > getdate(run_doc.due_date_to):
+        return False
+    return True
+
+
+def _pending_due_date_range(rows: list[dict]):
+    due_dates = sorted(getdate(row.get("due_date")) for row in rows if row.get("due_date"))
+    if not due_dates:
+        return None, None
+    return due_dates[0], due_dates[-1]
+
+
+def _format_operator_date(value) -> str:
+    if not value:
+        return _("an open due date")
+    return formatdate(value)
+
+
 def _create_invoice_from_row_refs(
     *,
     row_refs: list[dict],
@@ -256,6 +337,15 @@ def _create_invoice_from_row_refs(
 
     invoice.insert()
     return invoice
+
+
+def _require_sales_invoice_create_permission() -> None:
+    if not frappe.has_permission("Sales Invoice", ptype="create"):
+        frappe.throw(_("You do not have permission to create Sales Invoices."), frappe.PermissionError)
+
+
+def _lock_billing_run(billing_run: str) -> None:
+    frappe.db.sql("select name from `tabBilling Run` where name = %s for update", (billing_run,))
 
 
 def _link_rows_to_invoice(*, row_refs: list[dict], sales_invoice: str, billing_run: str | None) -> None:

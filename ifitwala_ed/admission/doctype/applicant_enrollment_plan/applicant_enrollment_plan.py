@@ -115,6 +115,50 @@ def _normalize_plan_rows(rows) -> list[dict]:
     return normalized
 
 
+def _required_course_default_rows_for_offering(program_offering: str) -> list[dict]:
+    if not program_offering:
+        return []
+
+    rows = []
+    for course, semantics in get_offering_course_semantics(program_offering).items():
+        if not int((semantics or {}).get("required") or 0):
+            continue
+
+        basket_groups = [group for group in (semantics or {}).get("basket_groups") or [] if group]
+        rows.append(
+            {
+                "course": course,
+                "required": 1,
+                "applied_basket_group": basket_groups[0] if len(basket_groups) == 1 else "",
+                "choice_rank": None,
+            }
+        )
+
+    return rows
+
+
+def _merge_required_offering_course_defaults(program_offering: str, rows) -> list[dict]:
+    normalized = _normalize_plan_rows(rows or [])
+    rows_by_course = {row["course"]: row for row in normalized if row.get("course")}
+
+    for default_row in _required_course_default_rows_for_offering(program_offering):
+        course = default_row.get("course")
+        if not course:
+            continue
+
+        existing_row = rows_by_course.get(course)
+        if existing_row:
+            existing_row["required"] = 1
+            if not existing_row.get("applied_basket_group") and default_row.get("applied_basket_group"):
+                existing_row["applied_basket_group"] = default_row.get("applied_basket_group")
+            continue
+
+        normalized.append(default_row)
+        rows_by_course[course] = default_row
+
+    return normalized
+
+
 def _rows_to_store_for_offering(program_offering: str, courses: list[dict] | None) -> list[dict]:
     if not program_offering:
         frappe.throw(_("Program Offering is required before course choices can be updated."))
@@ -666,6 +710,7 @@ class ApplicantEnrollmentPlan(Document):
         applicant_row = self._get_applicant_row()
         self._sync_from_applicant(applicant_row)
         self._normalize_courses()
+        self._apply_required_offering_course_defaults()
         self._sync_course_semantics_from_offering()
         self._validate_course_rows()
         self._validate_status()
@@ -753,6 +798,17 @@ class ApplicantEnrollmentPlan(Document):
         if normalized == current_normalized:
             return
         self.set("courses", normalized)
+
+    def _apply_required_offering_course_defaults(self):
+        if not self.program_offering:
+            return
+
+        current_rows = _normalize_plan_rows(self.get("courses") or [])
+        merged_rows = _merge_required_offering_course_defaults(self.program_offering, current_rows)
+        if merged_rows == current_rows:
+            return
+
+        self.set("courses", merged_rows)
 
     def _sync_course_semantics_from_offering(self):
         if not self.program_offering or not getattr(self, "courses", None):
@@ -1100,6 +1156,25 @@ class ApplicantEnrollmentPlan(Document):
         return hydrate_program_enrollment_request_from_applicant_plan(self.name)
 
     @frappe.whitelist()
+    def refresh_offering_course_defaults(self):
+        self._ensure_staff_role()
+        if not self.program_offering:
+            frappe.throw(_("Program Offering is required before refreshing course defaults."))
+
+        before_courses = {row.get("course") for row in _normalize_plan_rows(self.get("courses") or [])}
+        self._apply_required_offering_course_defaults()
+        self._sync_course_semantics_from_offering()
+        after_rows = _normalize_plan_rows(self.get("courses") or [])
+        added_courses = [row.get("course") for row in after_rows if row.get("course") not in before_courses]
+        self.save(ignore_permissions=True)
+
+        return {
+            "ok": True,
+            "added_courses": added_courses,
+            "course_count": len(after_rows),
+        }
+
+    @frappe.whitelist()
     def approve_deposit_academic_override(self):
         self._ensure_deposit_approval_role(
             DEPOSIT_ACADEMIC_APPROVER_ROLES,
@@ -1191,6 +1266,52 @@ def _get_required_offering_courses(program_offering: str) -> list[str]:
             order_by="idx asc",
         )
     )
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def program_offering_course_link_query(doctype, txt, searchfield, start, page_len, filters):
+    filters = filters or {}
+    program_offering = ((filters or {}).get("program_offering") or "").strip()
+    if not program_offering or not frappe.db.exists("Program Offering", program_offering):
+        return []
+
+    try:
+        frappe.get_doc("Program Offering", program_offering).check_permission("read")
+    except frappe.PermissionError:
+        return []
+
+    search_txt = (txt or "").strip()
+    or_filters = None
+    if search_txt:
+        like_txt = f"%{search_txt}%"
+        or_filters = [
+            ["Program Offering Course", "course", "like", like_txt],
+            ["Program Offering Course", "course_name", "like", like_txt],
+        ]
+
+    rows = frappe.get_all(
+        "Program Offering Course",
+        filters={
+            "parent": program_offering,
+            "parenttype": "Program Offering",
+        },
+        or_filters=or_filters,
+        fields=["course", "course_name"],
+        order_by="idx asc",
+        start=int(start or 0),
+        limit=int(page_len or 20),
+    )
+
+    seen = set()
+    output = []
+    for row in rows:
+        course = (row.get("course") or "").strip()
+        if not course or course in seen:
+            continue
+        seen.add(course)
+        output.append([course, (row.get("course_name") or course)])
+    return output
 
 
 def get_active_applicant_enrollment_plan(student_applicant: str) -> ApplicantEnrollmentPlan | None:

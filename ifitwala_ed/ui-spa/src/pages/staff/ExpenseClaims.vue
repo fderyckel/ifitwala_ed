@@ -37,7 +37,7 @@
 		</section>
 
 		<section v-if="loading" class="card-surface p-5">
-			<p class="type-body text-slate-token">{{ __('Loading expense claims...') }}</p>
+			<p class="type-body text-slate-token">{{ __('Loading expense claims…') }}</p>
 		</section>
 
 		<section v-else-if="errorMessage" class="card-surface p-5">
@@ -739,9 +739,9 @@ async function submitDraft() {
 		resetDraft();
 		toast.create({ title: __('Expense claim submitted'), icon: 'check' });
 	} catch (error: any) {
-		formError.value = error?.message || __('Could not submit this claim.');
+		formError.value = error?.message || __('Unable to submit this claim.');
 		toast.create({
-			title: __('Could not submit claim'),
+			title: __('Unable to submit claim'),
 			text: formError.value,
 			icon: 'alert-circle',
 		});

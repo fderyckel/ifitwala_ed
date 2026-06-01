@@ -19,6 +19,7 @@ BILLING_CONTACT_PURPOSE = "billing"
 BILLING_CONTACT_SYNC_WORKFLOW = "account_holder_billing_contact_sync"
 BILLING_CONTACT_RAW_WORKFLOW = "account_holder_billing_follow_up"
 BILLING_CONTACT_RAW_ROLES = {"Accounts Manager", "Accounts User", "System Manager", "Administrator"}
+MAX_ACCOUNT_HOLDER_SIBLING_EXPANSION = 10000
 
 
 def _clean_data(value: Any) -> str:
@@ -571,6 +572,237 @@ def create_account_holder_from_student_guardians(student_name: str, guardians=No
         "student": student.name,
         "account_holder": _account_holder_summary(account_holder_doc.name),
     }
+
+
+def create_account_holder_for_student_group(
+    student_names,
+    account_holder: str | None = None,
+) -> dict[str, Any]:
+    """Create or reuse one Account Holder for a reviewed finance student group.
+
+    This is intentionally not whitelisted. Desk callers should go through the
+    Student Account Holder Tool, which owns scoped candidate discovery and row
+    review. The mutation path still locks Student rows and revalidates every
+    current Account Holder before writing.
+    """
+    names = sorted(_parse_name_list(student_names))
+    if not names:
+        frappe.throw(_("At least one Student is required."))
+
+    _lock_students_for_account_holder_group(names)
+    students = [_load_student_for_account_holder_group(student_name) for student_name in names]
+
+    organizations = sorted({_student_organization(student) for student in students})
+    if len(organizations) != 1:
+        frappe.throw(_("Selected students must belong to the same Organization."))
+    organization = organizations[0]
+
+    selected_account_holders = sorted(
+        {
+            _clean_data(student.account_holder)
+            for student in students
+            if _clean_data(getattr(student, "account_holder", ""))
+        }
+    )
+    sibling_account_holders = _sibling_account_holders_for_student_group(names, organization)
+    existing_account_holders = sorted(set(selected_account_holders) | set(sibling_account_holders))
+    if len(existing_account_holders) > 1:
+        frappe.throw(_("Selected students already use multiple Account Holders. Resolve the family manually."))
+
+    requested_account_holder = _clean_data(account_holder)
+    if requested_account_holder:
+        _validate_account_holder_scope(requested_account_holder, organization)
+        if requested_account_holder not in existing_account_holders:
+            frappe.throw(_("Sibling Account Holder selection is stale. Refresh and try again."))
+        account_holder_doc = _require_account_holder_access(requested_account_holder, ptype="write")
+        created = False
+    else:
+        account_holder_doc = None
+        created = False
+
+    selected_by_student = _selected_group_candidates_by_student(students)
+    selected_candidates = [
+        candidate
+        for student in students
+        for candidate in selected_by_student.get(student.name, [])
+        if _clean_data(candidate.get("guardian"))
+    ]
+
+    if not account_holder_doc:
+        if existing_account_holders:
+            account_holder_name = existing_account_holders[0]
+            _validate_account_holder_scope(account_holder_name, organization)
+            account_holder_doc = _require_account_holder_access(account_holder_name, ptype="write")
+            created = False
+        else:
+            if not selected_candidates:
+                frappe.throw(
+                    _("Selected students have no linked Guardians to use for Account Holder billing contacts.")
+                )
+            _require_account_holder_doctype_permission(ptype="create")
+            account_holder_doc = _create_account_holder(students[0], organization, selected_candidates)
+            created = True
+
+    linked_students: list[str] = []
+    for student in students:
+        previous_account_holder = _clean_data(student.account_holder)
+        _link_student_to_account_holder(student, account_holder_doc.name)
+        if previous_account_holder != account_holder_doc.name:
+            linked_students.append(student.name)
+
+    billing_contacts_added = 0
+    for student in students:
+        student_candidates = selected_by_student.get(student.name, [])
+        if student_candidates:
+            billing_contacts_added += _ensure_account_holder_billing_contacts(
+                account_holder_doc,
+                student,
+                student_candidates,
+            )
+
+    return {
+        "ok": True,
+        "created": created,
+        "linked_students": linked_students,
+        "billing_contacts_added": billing_contacts_added,
+        "account_holder": _account_holder_summary(account_holder_doc.name),
+    }
+
+
+def _lock_students_for_account_holder_group(student_names: list[str]) -> None:
+    placeholders = ", ".join(["%s"] * len(student_names))
+    rows = frappe.db.sql(
+        f"select name from `tabStudent` where name in ({placeholders}) for update",
+        tuple(student_names),
+        as_dict=True,
+    )
+    locked_names = {_clean_data(row.get("name")) for row in rows}
+    missing = [student_name for student_name in student_names if student_name not in locked_names]
+    if missing:
+        frappe.throw(_("Invalid Student: {student}.").format(student=missing[0]))
+
+
+def _load_student_for_account_holder_group(student_name: str):
+    student = frappe.get_doc("Student", student_name)
+    if _clean_data(getattr(student, "account_holder", "")):
+        _validate_account_holder_scope(student.account_holder, _student_organization(student))
+    return student
+
+
+def _sibling_account_holders_for_student_group(student_names: list[str], organization: str) -> list[str]:
+    component_names = _collect_sibling_names_for_account_holder_group(student_names)
+    if not component_names:
+        return []
+
+    rows = frappe.get_all(
+        "Student",
+        filters={"name": ["in", component_names]},
+        fields=["name", "anchor_school", "account_holder", "enabled"],
+        limit=0,
+    )
+    schools = sorted({_clean_data(row.get("anchor_school")) for row in rows if _clean_data(row.get("anchor_school"))})
+    school_rows = (
+        frappe.get_all(
+            "School",
+            filters={"name": ["in", schools]},
+            fields=["name", "organization"],
+            limit=0,
+        )
+        if schools
+        else []
+    )
+    organizations_by_school = {
+        _clean_data(row.get("name")): _clean_data(row.get("organization")) for row in school_rows
+    }
+
+    selected_names = set(student_names)
+    sibling_organizations: set[str] = set()
+    account_holders: set[str] = set()
+    unselected_missing_siblings: list[str] = []
+    for row in rows:
+        if not _as_int(row.get("enabled", 1)):
+            continue
+
+        school = _clean_data(row.get("anchor_school"))
+        sibling_organization = organizations_by_school.get(school)
+        if not sibling_organization:
+            frappe.throw(_("Sibling group contains a Student without a valid Anchor School. Resolve manually."))
+        sibling_organizations.add(sibling_organization)
+
+        account_holder = _clean_data(row.get("account_holder"))
+        if account_holder:
+            account_holders.add(account_holder)
+        elif _clean_data(row.get("name")) not in selected_names and sibling_organization == organization:
+            unselected_missing_siblings.append(_clean_data(row.get("name")))
+
+    if len(sibling_organizations) > 1:
+        frappe.throw(_("Sibling group crosses Organizations. Resolve the family links manually."))
+    if unselected_missing_siblings:
+        frappe.throw(_("Refresh and process the full sibling group before creating Account Holders."))
+
+    return sorted(account_holders)
+
+
+def _collect_sibling_names_for_account_holder_group(seed_students: list[str]) -> list[str]:
+    known = set(seed_students)
+    frontier = set(seed_students)
+    while frontier and len(known) < MAX_ACCOUNT_HOLDER_SIBLING_EXPANSION:
+        rows = frappe.db.sql(
+            """
+            SELECT parent, student
+            FROM `tabStudent Sibling`
+            WHERE parenttype = 'Student'
+                AND parentfield = 'siblings'
+                AND (parent IN %(frontier)s OR student IN %(frontier)s)
+            """,
+            {"frontier": tuple(frontier)},
+            as_dict=True,
+        )
+        next_frontier: set[str] = set()
+        for row in rows:
+            for value in (row.get("parent"), row.get("student")):
+                student = _clean_data(value)
+                if student and student not in known:
+                    known.add(student)
+                    next_frontier.add(student)
+        frontier = next_frontier
+    return sorted(known)
+
+
+def _selected_group_candidates_by_student(students: list[Any]) -> dict[str, list[dict[str, Any]]]:
+    candidates_by_student: dict[str, list[dict[str, Any]]] = {}
+    all_candidates: list[dict[str, Any]] = []
+    for student in students:
+        student_candidates = []
+        for candidate in _guardian_candidates_for_student(student):
+            candidate = {**candidate, "source_student": student.name}
+            student_candidates.append(candidate)
+            all_candidates.append(candidate)
+        candidates_by_student[student.name] = student_candidates
+
+    if not all_candidates:
+        return {}
+
+    selected_by_student: dict[str, list[dict[str, Any]]] = {student.name: [] for student in students}
+    financial_candidates = [
+        candidate for candidate in all_candidates if _as_int(candidate.get("is_financial_guardian"))
+    ]
+    selected_candidates = financial_candidates or [sorted(all_candidates, key=_group_candidate_priority)[0]]
+
+    seen_guardians: set[str] = set()
+    for candidate in sorted(selected_candidates, key=_group_candidate_priority):
+        guardian = _clean_data(candidate.get("guardian"))
+        source_student = _clean_data(candidate.get("source_student"))
+        if not guardian or guardian in seen_guardians or not source_student:
+            continue
+        seen_guardians.add(guardian)
+        selected_by_student.setdefault(source_student, []).append(candidate)
+
+    return selected_by_student
+
+
+def _group_candidate_priority(candidate: dict[str, Any]) -> tuple:
+    return (*_candidate_priority(candidate), _clean_data(candidate.get("source_student")))
 
 
 def _account_holder_summary(account_holder: str) -> dict[str, Any]:

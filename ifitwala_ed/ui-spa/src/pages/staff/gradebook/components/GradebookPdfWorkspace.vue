@@ -730,14 +730,14 @@ const viewerSurfaceLabel = computed(() => {
 	if (viewerError.value) {
 		return showInlinePreviewFallback.value ? __('Preview fallback') : __('Source PDF fallback');
 	}
-	if (isDocumentLoading.value) return __('Loading PDF');
+	if (isDocumentLoading.value) return __('Loading PDF…');
 	if (draftAnnotations.value.length) return __('Draft overlay active');
 	if (hasRenderedPage.value) return __('Read-only pdf.js viewer');
 	return __('Governed PDF viewer');
 });
 
 const viewerLoadingLabel = computed(() => {
-	if (isDocumentLoading.value) return __('Loading governed source PDF...');
+	if (isDocumentLoading.value) return __('Loading governed source PDF…');
 	return __('Rendering PDF page...');
 });
 

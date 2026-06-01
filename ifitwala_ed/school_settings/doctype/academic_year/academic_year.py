@@ -8,6 +8,10 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cstr, get_link_to_form, getdate
 
+from ifitwala_ed.school_settings.school_settings_utils import (
+    get_user_branch_school_scope,
+    user_has_admissions_branch_scope,
+)
 from ifitwala_ed.utilities.school_tree import get_ancestor_schools, get_descendant_schools
 
 
@@ -26,6 +30,17 @@ def _get_branch_school_scope(user_school) -> list[str]:
     descendants = get_descendant_schools(user_school) or [user_school]
     ancestors = get_ancestor_schools(user_school) or [user_school]
     return list(dict.fromkeys([*descendants, *ancestors]))
+
+
+def _get_permission_school_scope(user: str, roles: set[str]) -> list[str]:
+    if user_has_admissions_branch_scope(user, roles=roles):
+        return get_user_branch_school_scope(user)
+
+    user_school = frappe.defaults.get_user_default("school", user)
+    if not user_school:
+        return []
+
+    return _get_branch_school_scope(user_school)
 
 
 class AcademicYear(Document):
@@ -165,30 +180,24 @@ class AcademicYear(Document):
 
 
 def get_permission_query_conditions(user):
-    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+    roles = set(frappe.get_roles(user))
+    if user == "Administrator" or "System Manager" in roles:
         return None
 
-    user_school = frappe.defaults.get_user_default("school", user)
-    if not user_school:
-        return "1=0"
-
-    schools = _get_branch_school_scope(user_school)
+    schools = _get_permission_school_scope(user, roles)
     if not schools:
         return "1=0"
-    schools_list = "', '".join(schools)
-    return f"`tabAcademic Year`.`school` IN ('{schools_list}')"
+    schools_list = ", ".join(frappe.db.escape(school) for school in schools)
+    return f"`tabAcademic Year`.`school` IN ({schools_list})"
 
 
 def has_permission(doc, ptype=None, user=None):
     if not user:
         user = frappe.session.user
 
-    if user == "Administrator" or "System Manager" in frappe.get_roles(user):
+    roles = set(frappe.get_roles(user))
+    if user == "Administrator" or "System Manager" in roles:
         return True
 
-    user_school = frappe.defaults.get_user_default("school", user)
-    if not user_school:
-        return False
-
-    schools = _get_branch_school_scope(user_school)
-    return doc.school in schools
+    schools = _get_permission_school_scope(user, roles)
+    return getattr(doc, "school", None) in schools

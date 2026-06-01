@@ -547,7 +547,7 @@
 								class="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-canopy"
 							></div>
 							<span class="text-sm font-medium text-slate-500">
-								{{ __('Loading location calendar...') }}
+								{{ __('Loading location calendar…') }}
 							</span>
 						</div>
 					</div>

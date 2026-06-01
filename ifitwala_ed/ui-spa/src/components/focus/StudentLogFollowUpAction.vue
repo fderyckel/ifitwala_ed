@@ -558,7 +558,7 @@ async function submitFollowUp() {
 		};
 
 		const msg = await focusService.submitStudentLogFollowUp(payload);
-		if (!msg?.ok) throw new Error(__('Submit failed.'));
+		if (!msg?.ok) throw new Error(__('Unable to submit follow-up.'));
 
 		// A+ success: overlay closes immediately (via router)
 		aPlusSuccessDoneOnly();

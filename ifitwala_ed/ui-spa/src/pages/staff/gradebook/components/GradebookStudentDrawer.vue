@@ -7,7 +7,7 @@
 			class="flex min-h-[520px] flex-1 flex-col items-center justify-center gap-3 p-8"
 		>
 			<Spinner class="h-8 w-8 text-canopy" />
-			<p class="text-sm text-ink/55">{{ __('Loading grading drawer...') }}</p>
+			<p class="text-sm text-ink/55">{{ __('Loading grading drawer…') }}</p>
 		</div>
 
 		<div

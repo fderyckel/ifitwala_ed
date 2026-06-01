@@ -20,6 +20,8 @@ import type {
 	MarkInquiryContactedFromInboxRequest,
 	QualifyInquiryFromInboxRequest,
 	RecordAdmissionCrmActivityRequest,
+	SearchAdmissionsInboxAssigneesRequest,
+	SearchAdmissionsInboxAssigneesResponse,
 	SendAdmissionsCaseMessageFromInboxRequest,
 	UpdateAdmissionConversationStatusRequest,
 } from '@/types/contracts/admissions_inbox/get_admissions_inbox_context';
@@ -31,6 +33,15 @@ export async function getAdmissionsInboxContext(
 		'ifitwala_ed.api.admissions_inbox.get_admissions_inbox_context',
 		payload
 	) as Promise<AdmissionsInboxContext>;
+}
+
+export async function searchAdmissionsInboxAssignees(
+	payload: SearchAdmissionsInboxAssigneesRequest
+): Promise<SearchAdmissionsInboxAssigneesResponse> {
+	return api(
+		'ifitwala_ed.api.admissions_inbox.search_admissions_inbox_assignees',
+		payload
+	) as Promise<SearchAdmissionsInboxAssigneesResponse>;
 }
 
 function clientRequestId(prefix: string) {

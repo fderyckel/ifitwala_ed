@@ -153,7 +153,7 @@ frappe.ui.form.on('Student', {
 			method: "ifitwala_ed.accounting.account_holder_contacts.get_student_account_holder_guardian_proposal",
 			args: { student_name: frm.doc.name },
 			freeze: true,
-			freeze_message: __("Loading guardian contacts..."),
+			freeze_message: __("Loading guardian contacts…"),
 		}).then((res) => {
 			const proposal = res?.message || {};
 			const candidates = Array.isArray(proposal.guardian_candidates) ? proposal.guardian_candidates : [];
@@ -805,7 +805,7 @@ function bindStudentGuardianContactRevealActions(frm, wrapper) {
 				channel_type: channelType,
 			},
 			freeze: true,
-			freeze_message: __("Loading guardian contact..."),
+			freeze_message: __("Loading guardian contact…"),
 		}).then((res) => {
 			const payload = res?.message || {};
 			const title = channelType === "email" ? __("Guardian Email") : __("Guardian Phone");

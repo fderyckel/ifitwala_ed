@@ -23,7 +23,7 @@ from ifitwala_ed.admission.admission_utils import (
     has_scoped_staff_access_to_student_applicant,
     is_admissions_file_staff_user,
 )
-from ifitwala_ed.admission.api.recommendation_intake import get_recommendation_status_for_applicant
+from ifitwala_ed.admission.api.recommendation_intake.status import get_recommendation_status_for_applicant
 from ifitwala_ed.api.file_access import resolve_admissions_file_open_url
 from ifitwala_ed.utilities.employee_booking import find_employee_conflicts
 from ifitwala_ed.utilities.location_utils import (

@@ -215,7 +215,7 @@ class PolicyAcknowledgement(Document):
         if self.context_doctype not in {"Student Applicant", "Guardian"}:
             return
         try:
-            from ifitwala_ed.api.admission_cockpit import invalidate_admissions_cockpit_cache
+            from ifitwala_ed.admission.api.cockpit.actions import invalidate_admissions_cockpit_cache
 
             invalidate_admissions_cockpit_cache()
         except Exception:

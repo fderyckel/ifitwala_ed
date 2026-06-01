@@ -59,7 +59,7 @@
 
 			<div v-if="loadingRoots" class="org-chart-empty">
 				<div class="org-chart-empty__spinner"></div>
-				<p class="type-body">{{ __('Loading organization chart...') }}</p>
+				<p class="type-body">{{ __('Loading organization chart…') }}</p>
 			</div>
 			<div v-else-if="errorMessage" class="org-chart-empty">
 				<p class="type-body">{{ errorMessage }}</p>

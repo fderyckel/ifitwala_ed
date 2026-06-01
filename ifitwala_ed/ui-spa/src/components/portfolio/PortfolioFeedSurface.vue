@@ -353,9 +353,9 @@
 				</p>
 			</div>
 
-			<p v-if="loading" class="type-body text-ink/70">{{ __('Loading feed...') }}</p>
+			<p v-if="loading" class="type-body text-ink/70">{{ __('Loading feed…') }}</p>
 			<div v-else-if="loadError" class="rounded-lg border border-line-soft bg-white p-3">
-				<p class="type-body-strong text-flame">{{ __('Could not load portfolio feed.') }}</p>
+				<p class="type-body-strong text-flame">{{ __('Unable to load portfolio feed.') }}</p>
 				<p class="type-caption text-ink/70">{{ loadError }}</p>
 			</div>
 			<div
@@ -835,7 +835,7 @@ async function loadGuardianChildren() {
 		guardianChildren.value = snapshot.family.children || [];
 	} catch (error) {
 		guardianChildren.value = [];
-		toast.error(messageForError(error, __('Could not load linked children for filters.')));
+		toast.error(messageForError(error, __('Unable to load linked children for filters.')));
 	}
 }
 

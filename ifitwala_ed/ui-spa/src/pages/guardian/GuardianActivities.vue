@@ -50,11 +50,11 @@
 		</section>
 
 		<section v-if="loading" class="card-surface p-5">
-			<p class="type-body text-ink/70">{{ __('Loading family board...') }}</p>
+			<p class="type-body text-ink/70">{{ __('Loading family board…') }}</p>
 		</section>
 		<section v-else-if="errorMessage" class="card-surface p-5">
 			<p class="type-body-strong text-flame">
-				{{ __('Could not load family activity board.') }}
+				{{ __('Unable to load family activity board.') }}
 			</p>
 			<p class="type-body text-ink/70">{{ errorMessage }}</p>
 		</section>
@@ -456,7 +456,7 @@ async function loadBoard() {
 		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		errorMessage.value = message || __('Could not load activities.');
+		errorMessage.value = message || __('Unable to load activities.');
 	} finally {
 		loading.value = false;
 	}
@@ -507,12 +507,12 @@ async function submitFamilyBooking(programOffering: string) {
 		if (response.ok) {
 			toast.success(__('Bookings submitted for selected children.'));
 		} else {
-			toast.error(__('Some bookings could not be submitted. Review results below.'));
+			toast.error(__('Unable to submit some bookings. Review results below.'));
 		}
 		await loadBoard();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		submitError.value[programOffering] = message || __('Could not submit family booking.');
+		submitError.value[programOffering] = message || __('Unable to submit family booking.');
 	} finally {
 		submitLoading.value[programOffering] = false;
 	}

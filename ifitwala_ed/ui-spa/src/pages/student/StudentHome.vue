@@ -45,7 +45,7 @@
 			v-if="homeError"
 			class="student-hub-section border border-flame/30 bg-[var(--flame)]/5"
 		>
-			<p class="type-body-strong text-flame">{{ __('Could not load your Hub.') }}</p>
+			<p class="type-body-strong text-flame">{{ __('Unable to load your Hub.') }}</p>
 			<p class="mt-2 type-caption text-ink/70">{{ homeError }}</p>
 		</section>
 
@@ -147,7 +147,7 @@
 			<p v-if="daySummary" class="mt-4 type-caption text-ink/60">{{ daySummary }}</p>
 
 			<div v-if="loadingHome" class="mt-5 type-body text-ink/70">
-				{{ __("Loading today's learning plan...") }}
+				{{ __("Loading today's learning plan…") }}
 			</div>
 
 			<div
@@ -231,7 +231,7 @@
 			</div>
 
 			<div v-if="loadingHome" class="student-hub-section type-body text-ink/70">
-				{{ __('Loading work board...') }}
+				{{ __('Loading work board…') }}
 			</div>
 
 			<div v-else class="grid gap-4 xl:grid-cols-4">
@@ -341,7 +341,7 @@
 			</div>
 
 			<div v-if="loadingHome" class="student-hub-section type-body text-ink/70">
-				{{ __('Loading timeline...') }}
+				{{ __('Loading timeline…') }}
 			</div>
 
 			<div v-else-if="!timelineDays.length" class="student-hub-empty">

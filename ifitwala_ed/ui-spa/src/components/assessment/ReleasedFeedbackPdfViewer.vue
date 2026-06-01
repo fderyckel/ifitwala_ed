@@ -328,7 +328,7 @@ const showViewerLoadingBanner = computed(
 	() => isDocumentLoading.value || (isPageRendering.value && hasRenderedPage.value)
 );
 const viewerLoadingLabel = computed(() =>
-	isDocumentLoading.value ? __('Loading source PDF...') : __('Rendering page...')
+	isDocumentLoading.value ? __('Loading source PDF…') : __('Rendering page…')
 );
 const viewerEmptyTitle = computed(() =>
 	viewerError.value ? __('Document viewer unavailable') : __('Document viewer not available')

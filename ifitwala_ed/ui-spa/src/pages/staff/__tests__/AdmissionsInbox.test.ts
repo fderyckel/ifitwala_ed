@@ -19,6 +19,7 @@ const {
 	updateAdmissionConversationStatusMock,
 	createInquiryFromAdmissionConversationMock,
 	assignInquiryFromInboxMock,
+	searchAdmissionsInboxAssigneesMock,
 	archiveInquiryFromInboxMock,
 	markInquiryContactedFromInboxMock,
 	qualifyInquiryFromInboxMock,
@@ -40,6 +41,7 @@ const {
 	updateAdmissionConversationStatusMock: vi.fn(),
 	createInquiryFromAdmissionConversationMock: vi.fn(),
 	assignInquiryFromInboxMock: vi.fn(),
+	searchAdmissionsInboxAssigneesMock: vi.fn(),
 	archiveInquiryFromInboxMock: vi.fn(),
 	markInquiryContactedFromInboxMock: vi.fn(),
 	qualifyInquiryFromInboxMock: vi.fn(),
@@ -74,6 +76,7 @@ vi.mock('@/lib/services/admissions/admissionsInboxService', () => ({
 	updateAdmissionConversationStatus: updateAdmissionConversationStatusMock,
 	createInquiryFromAdmissionConversation: createInquiryFromAdmissionConversationMock,
 	assignInquiryFromInbox: assignInquiryFromInboxMock,
+	searchAdmissionsInboxAssignees: searchAdmissionsInboxAssigneesMock,
 	archiveInquiryFromInbox: archiveInquiryFromInboxMock,
 	markInquiryContactedFromInbox: markInquiryContactedFromInboxMock,
 	qualifyInquiryFromInbox: qualifyInquiryFromInboxMock,
@@ -361,6 +364,7 @@ function setControlValue(testId: string, value: string) {
 
 beforeEach(() => {
 	getAdmissionsTimelineContextMock.mockResolvedValue(timelineContext());
+	searchAdmissionsInboxAssigneesMock.mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -374,6 +378,7 @@ afterEach(() => {
 	updateAdmissionConversationStatusMock.mockReset();
 	createInquiryFromAdmissionConversationMock.mockReset();
 	assignInquiryFromInboxMock.mockReset();
+	searchAdmissionsInboxAssigneesMock.mockReset();
 	archiveInquiryFromInboxMock.mockReset();
 	markInquiryContactedFromInboxMock.mockReset();
 	qualifyInquiryFromInboxMock.mockReset();
@@ -776,6 +781,53 @@ describe('AdmissionsInbox', () => {
 		expect(document.body.textContent || '').toContain('Intake recorded. Refreshing queue.');
 	});
 
+	it('searches Employee-linked staff candidates for Staff-lane manual intake assignment', async () => {
+		getAdmissionsInboxContextMock.mockResolvedValue(context());
+		searchAdmissionsInboxAssigneesMock.mockResolvedValue([
+			{
+				value: 'teacher@example.com',
+				label: 'Teacher One',
+				meta: 'SCH-1',
+				lane: 'Staff',
+			},
+		]);
+		createAdmissionsIntakeMock.mockResolvedValue({ ok: true });
+
+		mountAdmissionsInbox();
+		await flushUi();
+
+		clickByTestId('admissions-inbox-record-intake');
+		await flushUi();
+		setControlValue('intake-organization', 'ORG-1');
+		setControlValue('intake-school', 'SCH-1');
+		setControlValue('intake-assignment-lane', 'Staff');
+		await flushUi();
+
+		expect(searchAdmissionsInboxAssigneesMock).toHaveBeenCalledWith({
+			organization: 'ORG-1',
+			school: 'SCH-1',
+			assignment_lane: 'Staff',
+			query: '',
+			limit: 20,
+		});
+
+		clickByTestId('intake-assignee-candidate');
+		await flushUi();
+		setControlValue('intake-first-name', 'Phone');
+		setControlValue('intake-phone', '+66000000000');
+		clickByTestId('intake-submit');
+		await flushUi();
+
+		expect(createAdmissionsIntakeMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				organization: 'ORG-1',
+				school: 'SCH-1',
+				assigned_to: 'teacher@example.com',
+				assignment_lane: 'Staff',
+			})
+		);
+	});
+
 	it('submits conversation ownership changes through the CRM assignment endpoint', async () => {
 		getAdmissionsInboxContextMock.mockResolvedValue(context());
 		assignAdmissionConversationMock.mockResolvedValue({ ok: true });
@@ -836,8 +888,9 @@ describe('AdmissionsInbox', () => {
 		await flushUi();
 		clickByTestId('inbox-action-assign_owner');
 		await flushUi();
-		setControlValue('action-assigned-to', 'admissions.owner@example.com');
 		setControlValue('action-assignment-lane', 'Admission');
+		await flushUi();
+		setControlValue('action-assigned-to', 'admissions.owner@example.com');
 		clickByTestId('action-submit');
 		await flushUi();
 
@@ -855,6 +908,75 @@ describe('AdmissionsInbox', () => {
 		expect(markInquiryContactedFromInboxMock).toHaveBeenCalledWith({
 			inquiry: 'INQ-0001',
 			complete_todo: 0,
+		});
+	});
+
+	it('searches scoped Employee-linked users when assigning an Inquiry to the Staff lane', async () => {
+		getAdmissionsInboxContextMock.mockResolvedValue(context());
+		searchAdmissionsInboxAssigneesMock.mockResolvedValue([
+			{
+				value: 'staff.teacher@example.com',
+				label: 'Staff Teacher',
+				meta: 'SCH-1',
+				lane: 'Staff',
+			},
+		]);
+		assignInquiryFromInboxMock.mockResolvedValue({ ok: true });
+
+		mountAdmissionsInbox();
+		await flushUi();
+
+		clickByTestId('queue-unassigned');
+		await flushUi();
+		clickByTestId('inbox-actions-inquiry:INQ-0001');
+		await flushUi();
+		clickByTestId('inbox-action-assign_owner');
+		await flushUi();
+		setControlValue('action-assignment-lane', 'Staff');
+		await flushUi();
+
+		expect(searchAdmissionsInboxAssigneesMock).toHaveBeenCalledWith({
+			context_doctype: 'Inquiry',
+			context_name: 'INQ-0001',
+			assignment_lane: 'Staff',
+			query: '',
+			limit: 20,
+		});
+
+		clickByTestId('action-assignee-candidate');
+		await flushUi();
+		clickByTestId('action-submit');
+		await flushUi();
+
+		expect(assignInquiryFromInboxMock).toHaveBeenCalledWith({
+			inquiry: 'INQ-0001',
+			assigned_to: 'staff.teacher@example.com',
+			assignment_lane: 'Staff',
+		});
+	});
+
+	it('does not show the Inquiry lane selector for conversation ownership', async () => {
+		getAdmissionsInboxContextMock.mockResolvedValue(
+			context({
+				queues: [queue({ rows: [row({ inquiry: 'INQ-0001' })] })],
+			})
+		);
+
+		mountAdmissionsInbox();
+		await flushUi();
+
+		clickByTestId('inbox-actions-conversation:AC-0001');
+		await flushUi();
+		clickByTestId('inbox-action-reassign_owner');
+		await flushUi();
+
+		expect(document.querySelector('[data-testid="action-assignment-lane"]')).toBeFalsy();
+		expect(searchAdmissionsInboxAssigneesMock).toHaveBeenCalledWith({
+			context_doctype: 'Admission Conversation',
+			context_name: 'AC-0001',
+			assignment_lane: 'Admission',
+			query: '',
+			limit: 20,
 		});
 	});
 

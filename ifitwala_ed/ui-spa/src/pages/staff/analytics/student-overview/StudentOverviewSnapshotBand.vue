@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { __ } from '@/lib/i18n';
 import type { AttendanceKpiSource, KpiTile, Snapshot } from './types';
 
 const props = defineProps<{
@@ -25,7 +26,7 @@ const emit = defineEmits<{
 					<img
 						v-if="props.snapshot.identity.photo && !props.avatarLoadFailed"
 						:src="props.snapshot.identity.photo"
-						alt="Student avatar"
+						:alt="__('Student avatar')"
 						class="h-full w-full object-cover"
 						@error="emit('avatar-error')"
 					/>

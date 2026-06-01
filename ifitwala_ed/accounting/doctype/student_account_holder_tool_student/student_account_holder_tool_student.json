@@ -1,0 +1,127 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-05-30 11:18:15.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "selected",
+  "action",
+  "student",
+  "student_name",
+  "anchor_school",
+  "student_cohort",
+  "family_group_key",
+  "family_group_label",
+  "existing_account_holder",
+  "created_account_holder",
+  "proposed_account_holder_name",
+  "guardian_summary",
+  "issue"
+ ],
+ "fields": [
+  {
+   "default": "1",
+   "fieldname": "selected",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Selected"
+  },
+  {
+   "fieldname": "action",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Action",
+   "options": "Create New Account Holder\nLink Existing Account Holder\nBlocked\nProcessed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "student",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Student",
+   "options": "Student",
+   "read_only": 1
+  },
+  {
+   "fieldname": "student_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Student Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "anchor_school",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Anchor School",
+   "options": "School",
+   "read_only": 1
+  },
+  {
+   "fieldname": "student_cohort",
+   "fieldtype": "Link",
+   "label": "Student Cohort",
+   "options": "Student Cohort",
+   "read_only": 1
+  },
+  {
+   "fieldname": "family_group_key",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Family Group Key",
+   "read_only": 1
+  },
+  {
+   "fieldname": "family_group_label",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Family Group",
+   "read_only": 1
+  },
+  {
+   "fieldname": "existing_account_holder",
+   "fieldtype": "Link",
+   "label": "Existing Account Holder",
+   "options": "Account Holder",
+   "read_only": 1
+  },
+  {
+   "fieldname": "created_account_holder",
+   "fieldtype": "Link",
+   "label": "Created / Linked Account Holder",
+   "options": "Account Holder",
+   "read_only": 1
+  },
+  {
+   "fieldname": "proposed_account_holder_name",
+   "fieldtype": "Data",
+   "label": "Proposed Account Holder Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "guardian_summary",
+   "fieldtype": "Small Text",
+   "label": "Guardian Summary",
+   "read_only": 1
+  },
+  {
+   "fieldname": "issue",
+   "fieldtype": "Small Text",
+   "label": "Issue",
+   "read_only": 1
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-05-30 11:18:15.000000",
+ "modified_by": "Administrator",
+ "module": "Accounting",
+ "name": "Student Account Holder Tool Student",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

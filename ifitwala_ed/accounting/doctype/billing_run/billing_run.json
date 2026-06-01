@@ -3,7 +3,7 @@
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "BRUN-.#####",
- "creation": "2026-04-11 12:00:00.000000",
+ "creation": "2026-04-11 12:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -11,15 +11,19 @@
   "program_offering",
   "academic_year",
   "billing_plan",
+  "payment_terms_template",
+  "column_break_dbgz",
   "posting_date",
   "due_date_from",
   "due_date_to",
-  "payment_terms_template",
-  "status",
   "processed_on",
+  "status",
+  "section_break_gt2i",
   "items",
+  "section_break_uma5",
   "total_invoices",
   "total_rows",
+  "column_break_2lu6",
   "total_amount",
   "note"
  ],
@@ -119,11 +123,27 @@
    "fieldname": "note",
    "fieldtype": "Small Text",
    "label": "Note"
+  },
+  {
+   "fieldname": "section_break_gt2i",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_uma5",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_2lu6",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_dbgz",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-11 12:00:00.000000",
+ "modified": "2026-05-30 22:39:44.979952",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Billing Run",
@@ -156,6 +176,7 @@
   },
   {
    "create": 1,
+   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
@@ -166,6 +187,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

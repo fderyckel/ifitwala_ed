@@ -1,6 +1,7 @@
 {
  "actions": [],
- "creation": "2025-02-01 00:00:00.000000",
+ "autoname": "naming_series:",
+ "creation": "2025-02-01 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -10,15 +11,16 @@
   "school",
   "program",
   "posting_date",
-  "allocations"
+  "allocations",
+  "amended_from"
  ],
  "fields": [
   {
+   "default": "PR-.#####",
    "fieldname": "naming_series",
    "fieldtype": "Select",
    "label": "Naming Series",
-   "options": "PR-.#####",
-   "default": "PR-.#####"
+   "options": "PR-.#####"
   },
   {
    "fieldname": "organization",
@@ -61,20 +63,30 @@
    "label": "Allocations",
    "options": "Payment Reconciliation Allocation",
    "reqd": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Payment Reconciliation",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-03 00:00:11",
+ "modified": "2026-05-30 22:43:29.809304",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Payment Reconciliation",
  "naming_rule": "Expression",
- "autoname": "naming_series:",
  "owner": "Administrator",
  "permissions": [
   {
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -82,10 +94,23 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "submit": 1,
-   "cancel": 1,
    "role": "System Manager",
    "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
@@ -96,13 +121,12 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "submit": 1,
-   "cancel": 1,
-   "role": "Accounts Manager",
+   "role": "Accounts User",
    "share": 1,
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

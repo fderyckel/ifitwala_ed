@@ -66,7 +66,7 @@
 		</div>
 
 		<div v-if="loading" class="py-10 text-center text-slate-500">
-			{{ __('Loading cockpit...') }}
+			{{ __('Loading cockpit…') }}
 		</div>
 
 		<template v-else>
@@ -669,7 +669,7 @@
 
 				<div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
 					<p v-if="threadLoading" class="text-sm text-slate-500">
-						{{ __('Loading messages...') }}
+						{{ __('Loading messages…') }}
 					</p>
 					<div
 						v-else-if="threadError"
@@ -1361,7 +1361,7 @@ async function loadTimeline(card: CockpitCard) {
 		if (token !== timelineRequestToken) {
 			return;
 		}
-		timelineError.value = err?.message || __('Could not load admissions timeline.');
+		timelineError.value = err?.message || __('Unable to load admissions timeline.');
 	} finally {
 		if (token === timelineRequestToken) {
 			timelineLoading.value = false;
@@ -1716,7 +1716,7 @@ async function loadThread(card: CockpitCard, markRead: boolean = true) {
 			queueRefresh();
 		}
 	} catch (err: any) {
-		threadError.value = err?.message || 'Could not load case communication.';
+		threadError.value = err?.message || 'Unable to load case communication.';
 	} finally {
 		threadLoading.value = false;
 	}
@@ -1794,7 +1794,7 @@ async function refreshNow() {
 		if (token !== requestToken) {
 			return;
 		}
-		error.value = err?.message || 'Could not load admissions cockpit.';
+		error.value = err?.message || 'Unable to load admissions cockpit.';
 	} finally {
 		if (token === requestToken) {
 			loading.value = false;

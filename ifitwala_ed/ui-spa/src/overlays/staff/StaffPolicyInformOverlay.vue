@@ -74,7 +74,7 @@
 							</div>
 
 							<div v-else-if="errorText" class="card-panel p-5">
-								<p class="type-body-strong text-ink">{{ __("Couldn't open this policy") }}</p>
+								<p class="type-body-strong text-ink">{{ __('Unable to open this policy.') }}</p>
 								<p class="mt-2 type-body text-ink/70">{{ errorText }}</p>
 							</div>
 

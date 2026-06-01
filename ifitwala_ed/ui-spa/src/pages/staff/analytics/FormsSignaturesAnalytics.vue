@@ -145,7 +145,7 @@
 		</div>
 
 		<div v-else-if="loadingContext && !dashboard" class="py-10 text-center text-sm text-slate-500">
-			{{ __('Loading forms and signatures analytics...') }}
+			{{ __('Loading forms and signatures analytics…') }}
 		</div>
 
 		<div v-else class="space-y-5">

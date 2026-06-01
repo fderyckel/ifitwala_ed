@@ -73,7 +73,7 @@
 				class="flex h-full flex-col items-center justify-center gap-3 pt-20"
 			>
 				<Spinner class="h-8 w-8 text-canopy" />
-				<p class="text-sm text-ink/50">{{ __('Loading overview...') }}</p>
+				<p class="text-sm text-ink/50">{{ __('Loading overview…') }}</p>
 			</div>
 
 			<div
@@ -363,7 +363,7 @@ async function loadGrid() {
 		if (loadVersion.value === version) {
 			clearResponse();
 			errorMessage.value = __('The overview could not be loaded right now.');
-			showToast(__('Could not load the gradebook overview'));
+			showToast(__('Unable to load the gradebook overview'));
 		}
 	} finally {
 		if (loadVersion.value === version) {

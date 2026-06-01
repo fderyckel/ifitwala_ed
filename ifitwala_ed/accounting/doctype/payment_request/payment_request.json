@@ -125,7 +125,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-02 13:19:49.265950",
+ "modified": "2026-05-30 22:43:18.029297",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Payment Request",
@@ -158,6 +158,7 @@
   },
   {
    "create": 1,
+   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,

@@ -7,13 +7,13 @@ from unittest.mock import patch
 import frappe
 import pytz
 
-from ifitwala_ed.api.calendar_core import CalendarEvent
 from ifitwala_ed.api.student_calendar import (
     STUDENT_CALENDAR_INVALIDATE_EVENT,
     get_student_calendar,
     invalidate_student_calendar_cache,
     refresh_student_calendar_views,
 )
+from ifitwala_ed.schedule.api.calendar.core import CalendarEvent
 
 
 class _DummyCache:

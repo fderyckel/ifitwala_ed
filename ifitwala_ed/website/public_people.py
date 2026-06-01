@@ -22,7 +22,6 @@ def _get_employee_public_fields() -> list[str]:
     ]
     optional_fields = [
         "employee_preferred_name",
-        "employee_image",
         "small_bio",
         "show_public_profile_page",
         "public_profile_slug",
@@ -123,10 +122,7 @@ def _build_public_person(row: dict, designation_row: dict | None, school_row: di
             if has_profile_page
             else None
         ),
-        "photo": build_public_employee_image_variants(
-            row.get("name"),
-            original_url=row.get("employee_image"),
-        ),
+        "photo": build_public_employee_image_variants(row.get("name")),
     }
 
 

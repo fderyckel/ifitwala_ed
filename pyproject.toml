@@ -26,7 +26,7 @@ frappe = ">=16.0.0-dev,<=17.0.0-dev"
 
 # --- RUFF CONFIGURATION ---
 [tool.ruff]
-line-length = 120   # <--- This solves your "Line too long" errors
+line-length = 120   # <--- T0 solve the "Line too long" errors
 indent-width = 4
 target-version = "py310"
 

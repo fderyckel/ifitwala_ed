@@ -394,7 +394,7 @@ function build_linked_announcement_loading_html() {
 		<div style="border:1px solid #d1d8dd; border-radius:10px; background:#ffffff; padding:14px 16px;">
 			<div class="text-muted small">${frappe.utils.escape_html(__('Linked Announcement'))}</div>
 			<div style="margin-top:6px; font-size:13px; color:#64748b;">
-				${frappe.utils.escape_html(__('Loading linked announcement details...'))}
+				${frappe.utils.escape_html(__('Loading linked announcement details…'))}
 			</div>
 		</div>
 	`;

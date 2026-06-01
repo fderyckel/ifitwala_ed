@@ -95,6 +95,20 @@ class TestAccountHolderContactsUnit(TestCase):
         for permission in metadata["permissions"]:
             self.assertNotEqual(permission.get("export"), 1, permission.get("role"))
 
+    def test_accounts_roles_get_scoped_student_read_without_write_or_export(self):
+        metadata_path = Path(__file__).parents[1] / "students" / "doctype" / "student" / "student.json"
+        metadata = json.loads(metadata_path.read_text())
+        permissions = {permission["role"]: permission for permission in metadata["permissions"]}
+
+        for role in ("Accounts Manager", "Accounts User"):
+            permission = permissions[role]
+            self.assertEqual(permission.get("read"), 1)
+            self.assertEqual(permission.get("select"), 1)
+            self.assertNotEqual(permission.get("write"), 1)
+            self.assertNotEqual(permission.get("create"), 1)
+            self.assertNotEqual(permission.get("import"), 1)
+            self.assertNotEqual(permission.get("export"), 1)
+
     def test_account_holder_summary_shows_raw_values_only_to_finance_actor(self):
         contact_privacy = ModuleType("ifitwala_ed.contacts.contact_privacy")
         contact_privacy.mask_email = lambda value: "m****@example.com" if value else ""

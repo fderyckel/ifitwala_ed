@@ -7,13 +7,36 @@ from frappe.model.document import Document
 from ifitwala_ed.accounting.account_holder_utils import get_school_organization
 from ifitwala_ed.accounting.receivables import money
 
+MAX_LIST_TITLE_LOOKUP = 100
+
 
 class BillingRun(Document):
+    def before_validate(self):
+        self._hydrate_scope_from_billing_plan()
+
     def validate(self):
+        self._hydrate_scope_from_billing_plan()
         self._resolve_billing_plan()
         self._validate_scope()
         self._validate_payment_terms_template()
         self._set_runtime_fields()
+
+    def _hydrate_scope_from_billing_plan(self):
+        if not self.billing_plan:
+            return
+
+        billing_plan = _get_billing_plan_context(self.billing_plan)
+        if not billing_plan:
+            frappe.throw(_("Program Billing Plan {billing_plan} was not found.").format(billing_plan=self.billing_plan))
+        if not billing_plan.is_active:
+            frappe.throw(_("Billing Run must use an active Program Billing Plan."))
+
+        if not self.organization:
+            self.organization = billing_plan.organization
+        if not self.program_offering:
+            self.program_offering = billing_plan.program_offering
+        if not self.academic_year:
+            self.academic_year = billing_plan.academic_year
 
     def _resolve_billing_plan(self):
         filters = {
@@ -84,11 +107,101 @@ class BillingRun(Document):
         self.status = "Processed" if self.processed_on else "Draft"
 
 
+def _get_billing_plan_context(billing_plan: str | None):
+    if not billing_plan:
+        return None
+
+    return frappe.db.get_value(
+        "Program Billing Plan",
+        billing_plan,
+        ["organization", "program_offering", "academic_year", "is_active"],
+        as_dict=True,
+    )
+
+
 @frappe.whitelist()
 def generate_draft_invoices(billing_run: str) -> dict:
     doc = frappe.get_doc("Billing Run", billing_run)
     doc.check_permission("write")
+    doc.save()
 
     from ifitwala_ed.accounting.billing.invoice_generation import generate_draft_invoices_for_run
 
-    return generate_draft_invoices_for_run(billing_run)
+    return generate_draft_invoices_for_run(doc.name)
+
+
+@frappe.whitelist()
+def get_billing_plan_context(billing_plan: str) -> dict:
+    doc = frappe.get_doc("Program Billing Plan", billing_plan)
+    doc.check_permission("read")
+    return {
+        "organization": doc.organization,
+        "program_offering": doc.program_offering,
+        "academic_year": doc.academic_year,
+        "is_active": doc.is_active,
+    }
+
+
+def _parse_name_list(value) -> list[str]:
+    if not value:
+        return []
+
+    parsed = frappe.parse_json(value) if isinstance(value, str) else value
+    if isinstance(parsed, str):
+        parsed = [parsed]
+
+    names = []
+    seen = set()
+    for raw_name in parsed or []:
+        name = (raw_name or "").strip()
+        if not name or name in seen:
+            continue
+        names.append(name)
+        seen.add(name)
+        if len(names) >= MAX_LIST_TITLE_LOOKUP:
+            break
+    return names
+
+
+def _row_value(row, fieldname: str):
+    if isinstance(row, dict):
+        return row.get(fieldname)
+    return getattr(row, fieldname, None)
+
+
+@frappe.whitelist()
+def get_program_offering_title_map_for_billing_runs(billing_runs=None) -> dict:
+    run_names = _parse_name_list(billing_runs)
+    if not run_names:
+        return {}
+
+    run_rows = frappe.get_list(
+        "Billing Run",
+        filters={"name": ["in", run_names]},
+        fields=["name", "program_offering"],
+        limit=len(run_names),
+    )
+    offering_names = sorted(
+        {_row_value(row, "program_offering") for row in run_rows if _row_value(row, "program_offering")}
+    )
+    offering_titles = {}
+    if offering_names:
+        offering_titles = {
+            _row_value(row, "name"): _row_value(row, "offering_title")
+            for row in frappe.get_all(
+                "Program Offering",
+                filters={"name": ["in", offering_names]},
+                fields=["name", "offering_title"],
+                limit=len(offering_names),
+            )
+        }
+
+    return {
+        _row_value(row, "name"): {
+            "program_offering": _row_value(row, "program_offering"),
+            "offering_title": offering_titles.get(_row_value(row, "program_offering"))
+            or _row_value(row, "program_offering"),
+        }
+        for row in run_rows
+        if _row_value(row, "name") and _row_value(row, "program_offering")
+    }

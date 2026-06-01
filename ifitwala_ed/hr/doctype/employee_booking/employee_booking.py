@@ -16,7 +16,7 @@ def _invalidate_staff_calendar_for_booking(doc, *, include_previous: bool = Fals
         if previous:
             employees.add((getattr(previous, "employee", None) or "").strip())
 
-    from ifitwala_ed.api.calendar_invalidation import invalidate_staff_calendar_for_employees
+    from ifitwala_ed.schedule.api.calendar.invalidation import invalidate_staff_calendar_for_employees
 
     invalidate_staff_calendar_for_employees(employees)
 

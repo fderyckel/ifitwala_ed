@@ -312,7 +312,7 @@ class SchoolCalendar(Document):
 
 
 def _invalidate_staff_calendar_fallback_cache(doc, *, include_previous: bool = False) -> None:
-    from ifitwala_ed.api.calendar_invalidation import invalidate_staff_calendar_for_school_scope
+    from ifitwala_ed.schedule.api.calendar.invalidation import invalidate_staff_calendar_for_school_scope
 
     schools = {(getattr(doc, "school", None) or "").strip()}
     if include_previous and hasattr(doc, "get_doc_before_save"):

@@ -134,7 +134,7 @@ def _invalidate_staff_calendar_caches_for_participants(doc, *, include_previous:
     if not participant_users and not participant_employees:
         return
 
-    from ifitwala_ed.api.calendar_invalidation import (
+    from ifitwala_ed.schedule.api.calendar.invalidation import (
         active_employee_names_for_users,
         invalidate_staff_calendar_for_employees,
     )

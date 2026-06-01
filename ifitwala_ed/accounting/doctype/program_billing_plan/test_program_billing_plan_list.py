@@ -38,6 +38,17 @@ def _program_billing_plan_module(*, plan_rows=None, offering_rows=None):
 
 
 class TestProgramBillingPlanListView(TestCase):
+    def test_form_can_create_prefilled_billing_run_from_plan(self):
+        script = Path(__file__).with_name("program_billing_plan.js").read_text()
+
+        self.assertIn("Create Billing Run", script)
+        self.assertIn("create_billing_run_from_plan(frm)", script)
+        self.assertIn("frappe.new_doc('Billing Run'", script)
+        self.assertIn("billing_plan: frm.doc.name", script)
+        self.assertIn("organization: frm.doc.organization", script)
+        self.assertIn("program_offering: frm.doc.program_offering", script)
+        self.assertIn("academic_year: frm.doc.academic_year", script)
+
     def test_list_view_strips_generated_program_offering_title_join(self):
         script = Path(__file__).with_name("program_billing_plan_list.js").read_text()
 

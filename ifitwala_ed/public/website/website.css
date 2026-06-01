@@ -317,6 +317,39 @@
 		color: inherit;
 	}
 
+	.site-people-photo-frame,
+	#ifitwala-page-root .site-people-photo-frame {
+		position: relative;
+		width: 100%;
+		aspect-ratio: 1 / 1;
+		flex: 0 0 auto;
+		overflow: hidden;
+		background:
+			radial-gradient(
+				circle at top,
+				color-mix(in srgb, var(--if-theme-primary) 13%, #fff),
+				transparent 58%
+			),
+			linear-gradient(135deg, #eff6ff, #f8fafc 55%, #eef2ff);
+	}
+
+	.site-people-photo-frame > img,
+	.site-people-photo-image,
+	#ifitwala-page-root .site-people-photo-frame > img,
+	#ifitwala-page-root .site-people-photo-image {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		pointer-events: none;
+	}
+
+	.site-people-photo-fallback,
+	#ifitwala-page-root .site-people-photo-fallback {
+		width: 100%;
+		height: 100%;
+	}
+
 	#ifitwala-page-root .site-people-name,
 	#ifitwala-page-root .site-people-role {
 		display: -webkit-box;

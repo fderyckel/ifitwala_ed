@@ -148,13 +148,13 @@
 								class="guardian-calendar-overlay__status guardian-calendar-overlay__status--error"
 							>
 								<p class="type-body-strong text-flame">
-									{{ __('Could not load the school calendar.') }}
+									{{ __('Unable to load the school calendar.') }}
 								</p>
 								<p class="mt-2 type-body text-ink/70">{{ errorMessage }}</p>
 							</section>
 
 							<section v-else-if="loading && !snapshot" class="guardian-calendar-overlay__status">
-								<p class="type-body text-ink/70">{{ __('Loading school calendar...') }}</p>
+								<p class="type-body text-ink/70">{{ __('Loading school calendar…') }}</p>
 							</section>
 
 							<section v-else class="guardian-calendar-overlay__workspace">

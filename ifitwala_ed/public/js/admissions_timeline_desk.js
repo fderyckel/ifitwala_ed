@@ -150,7 +150,7 @@
 				method: TIMELINE_METHOD,
 				args: timelineRequest(contextDoctype, contextName, limit),
 				freeze: true,
-				freeze_message: __('Loading admissions timeline...'),
+				freeze_message: __('Loading admissions timeline…'),
 			})
 			.then(res => res?.message || {});
 	}
@@ -369,7 +369,7 @@
 		dialog.show();
 		dialog
 			.get_field('timeline_html')
-			.$wrapper.html(`<div class="text-muted">${__('Loading admissions timeline...')}</div>`);
+			.$wrapper.html(`<div class="text-muted">${__('Loading admissions timeline…')}</div>`);
 		refreshTimelineDialog(dialog, state);
 	}
 
@@ -384,7 +384,7 @@
 				const field = dialog.get_field('timeline_html');
 				field?.$wrapper?.html(`
 					<div class="alert alert-danger">
-						${escapeHtml(err?.message || __('Could not load admissions timeline.'))}
+						${escapeHtml(err?.message || __('Unable to load admissions timeline.'))}
 					</div>
 				`);
 			})
@@ -415,7 +415,7 @@
 				});
 			})
 			.catch(err => {
-				frappe.msgprint(err?.message || __('Could not load admissions timeline.'));
+				frappe.msgprint(err?.message || __('Unable to load admissions timeline.'));
 			});
 	}
 
@@ -597,7 +597,7 @@
 				method: VISIT_OPTIONS_METHOD,
 				args: visitContextArgs(context),
 				freeze: true,
-				freeze_message: __('Loading visit options...'),
+				freeze_message: __('Loading visit options…'),
 			})
 			.then(res => {
 				renderVisitDialog(state, res?.message || {});

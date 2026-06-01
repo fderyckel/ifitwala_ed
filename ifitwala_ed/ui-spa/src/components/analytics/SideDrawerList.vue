@@ -60,7 +60,7 @@
 							<section class="if-overlay__body custom-scrollbar px-4 py-3">
 								<slot name="filters" />
 								<div v-if="loading" class="py-6 text-center type-caption text-ink/60">
-									{{ __('Loading...') }}
+									{{ __('Loading…') }}
 								</div>
 								<div v-else-if="!rows.length" class="py-6 text-center type-body text-ink/55">
 									{{ __('No records for this slice.') }}

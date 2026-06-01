@@ -48,11 +48,11 @@
 		</section>
 
 		<section v-if="loading" class="card-surface p-5">
-			<p class="type-body text-ink/70">{{ __('Loading activity board...') }}</p>
+			<p class="type-body text-ink/70">{{ __('Loading activity board…') }}</p>
 		</section>
 		<section v-else-if="errorMessage" class="if-banner if-banner--danger">
 			<p class="if-banner__title type-body-strong text-flame">
-				{{ __('Could not load activity board.') }}
+				{{ __('Unable to load activity board.') }}
 			</p>
 			<p class="if-banner__body type-body">{{ errorMessage }}</p>
 		</section>
@@ -395,7 +395,7 @@ async function loadBoard() {
 		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		errorMessage.value = message || __('Could not load activities.');
+		errorMessage.value = message || __('Unable to load activities.');
 	} finally {
 		loading.value = false;
 	}
@@ -433,7 +433,7 @@ async function submitBooking(programOffering: string) {
 		await loadBoard();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error || '');
-		submitError.value[programOffering] = message || __('Could not submit booking.');
+		submitError.value[programOffering] = message || __('Unable to submit booking.');
 	} finally {
 		submitLoading.value[programOffering] = false;
 	}

@@ -416,7 +416,7 @@ async function submitDecision() {
 
 		const response = await focusService.submitApplicantReviewAssignment(payload);
 		if (!response?.ok) {
-			throw new Error(__('Could not submit review decision.'));
+			throw new Error(__('Unable to submit review decision.'));
 		}
 
 		emit('done');

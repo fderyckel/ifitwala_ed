@@ -56,14 +56,14 @@
 
 						<div class="if-overlay__body px-6 pb-6 space-y-5">
 							<div v-if="loading" class="type-body text-ink/70">
-								{{ __('Loading request context...') }}
+								{{ __('Loading request context…') }}
 							</div>
 							<div
 								v-else-if="errorMessage"
 								class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
 							>
 								<p class="type-body-strong text-rose-900">
-									{{ __('Could not load request context.') }}
+									{{ __('Unable to load request context.') }}
 								</p>
 								<p class="mt-1 type-caption text-rose-900/80">{{ errorMessage }}</p>
 							</div>
@@ -74,7 +74,7 @@
 									class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3"
 								>
 									<p class="type-body-strong text-rose-900">
-										{{ __('Request could not be submitted.') }}
+										{{ __('Unable to submit request.') }}
 									</p>
 									<p class="mt-1 type-caption text-rose-900/80 whitespace-pre-wrap">
 										{{ submitError }}
@@ -485,7 +485,7 @@ async function submitForm() {
 		uiSignals.emit(SIGNAL_PROFESSIONAL_DEVELOPMENT_INVALIDATE);
 		emitClose('programmatic');
 	} catch (error: any) {
-		submitError.value = error?.message || __('Could not submit request.');
+		submitError.value = error?.message || __('Unable to submit request.');
 	} finally {
 		submitting.value = false;
 	}

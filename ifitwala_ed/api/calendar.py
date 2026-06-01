@@ -5,11 +5,7 @@ Calendar API public RPC boundary.
 
 Public Frappe method paths remain locked on this module (for example,
 `ifitwala_ed.api.calendar.get_staff_calendar`) while implementations live in
-owner modules:
-- calendar_staff_feed.py
-- calendar_details.py
-- calendar_quick_create.py
-- calendar_prefs.py
+schedule-owned modules under `ifitwala_ed.schedule.api.calendar`.
 
 Internal Python code should import helpers from those owner modules directly
 instead of importing through this boundary module.
@@ -17,14 +13,12 @@ instead of importing through this boundary module.
 
 import frappe
 
-from ifitwala_ed.api import (
-    calendar_details,
-    calendar_export,
-    calendar_prefs,
-    calendar_quick_create,
-    calendar_staff_feed,
-    calendar_subscription,
-)
+from ifitwala_ed.schedule.api.calendar import details as calendar_details
+from ifitwala_ed.schedule.api.calendar import export as calendar_export
+from ifitwala_ed.schedule.api.calendar import prefs as calendar_prefs
+from ifitwala_ed.schedule.api.calendar import quick_create as calendar_quick_create
+from ifitwala_ed.schedule.api.calendar import staff_feed as calendar_staff_feed
+from ifitwala_ed.schedule.api.calendar import subscription as calendar_subscription
 
 
 @frappe.whitelist()

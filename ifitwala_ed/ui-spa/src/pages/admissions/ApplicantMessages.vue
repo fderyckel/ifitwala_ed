@@ -12,7 +12,7 @@
 		</header>
 
 		<div v-if="loading" class="card-panel px-4 py-4">
-			<p class="type-caption text-ink/65">{{ __('Loading messages...') }}</p>
+			<p class="type-caption text-ink/65">{{ __('Loading messages…') }}</p>
 		</div>
 
 		<div v-else-if="error" class="if-banner if-banner--danger">

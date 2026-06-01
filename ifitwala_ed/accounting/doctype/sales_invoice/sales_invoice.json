@@ -1,43 +1,51 @@
 {
  "actions": [],
  "allow_import": 1,
- "creation": "2025-02-01 00:00:00.000000",
+ "autoname": "naming_series:",
+ "creation": "2025-02-01 00:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "naming_series",
+  "posting_date",
+  "due_date",
   "status",
+  "source_program_enrollment",
+  "column_break_camo",
   "account_holder",
   "organization",
   "school",
   "program",
   "program_offering",
-  "source_program_enrollment",
-  "initial_enrollment_billing_package",
-  "adjustment_type",
+  "column_break_gzpb",
   "against_sales_invoice",
-  "posting_date",
-  "due_date",
+  "adjustment_type",
   "payment_terms_template",
   "taxes_and_charges",
+  "initial_enrollment_billing_package",
+  "section_break_cxuq",
   "items",
+  "section_break_5gxi",
   "payment_schedule",
+  "section_break_yvrp",
   "taxes",
+  "section_break_ataz",
   "total",
   "total_taxes",
   "grand_total",
   "paid_amount",
   "outstanding_amount",
   "credit_note_total",
-  "remarks"
+  "remarks",
+  "amended_from"
  ],
  "fields": [
   {
+   "default": "SINV-.#####",
    "fieldname": "naming_series",
    "fieldtype": "Select",
    "label": "Naming Series",
-   "options": "SINV-.#####",
-   "default": "SINV-.#####"
+   "options": "SINV-.#####"
   },
   {
    "default": "Draft",
@@ -193,20 +201,54 @@
    "fieldname": "remarks",
    "fieldtype": "Small Text",
    "label": "Remarks"
+  },
+  {
+   "fieldname": "section_break_cxuq",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_5gxi",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_yvrp",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_ataz",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Sales Invoice",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_camo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_gzpb",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-05-29 00:00:00.000000",
+ "modified": "2026-05-31 08:03:56.130928",
  "modified_by": "Administrator",
  "module": "Accounting",
  "name": "Sales Invoice",
  "naming_rule": "Expression",
- "autoname": "naming_series:",
  "owner": "Administrator",
  "permissions": [
   {
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -214,13 +256,13 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "submit": 1,
-   "cancel": 1,
    "role": "System Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -228,10 +270,9 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "submit": 1,
-   "cancel": 1,
    "role": "Accounts Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
@@ -247,6 +288,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

@@ -1106,7 +1106,7 @@ function loadFormOptions(studentId: string) {
 			optionsData.value = data;
 		})
 		.catch((err: any) => {
-			setError(err, __('Could not load options'));
+			setError(err, __('Unable to load options'));
 			optionsData.value = null;
 		})
 		.finally(() => {
@@ -1291,7 +1291,7 @@ async function submit() {
 		emitClose('programmatic');
 	} catch (err: any) {
 		console.error('[StudentLogCreateOverlay] submit:error', err);
-		setError(err, __('Could not submit'));
+		setError(err, __('Unable to submit'));
 	} finally {
 		submitting.value = false;
 	}

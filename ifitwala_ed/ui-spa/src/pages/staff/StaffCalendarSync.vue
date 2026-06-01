@@ -21,7 +21,7 @@
 		</header>
 
 		<section v-if="loading" class="card-surface p-5">
-			<p class="type-body text-ink/70">{{ __('Loading calendar sync...') }}</p>
+			<p class="type-body text-ink/70">{{ __('Loading calendar sync…') }}</p>
 		</section>
 
 		<section v-else-if="errorMessage" class="card-surface p-5">

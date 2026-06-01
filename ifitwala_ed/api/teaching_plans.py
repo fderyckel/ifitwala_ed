@@ -503,6 +503,7 @@ def _attach_resources_and_work(
     course_plan: str | None = None,
     class_teaching_plan: str | None = None,
     assigned_work: list[dict[str, Any]] | None = None,
+    attachment_surface: str | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     return _read_models_impl.attach_resources_and_work(
         _module(),
@@ -510,6 +511,7 @@ def _attach_resources_and_work(
         course_plan=course_plan,
         class_teaching_plan=class_teaching_plan,
         assigned_work=assigned_work,
+        attachment_surface=attachment_surface,
     )
 
 

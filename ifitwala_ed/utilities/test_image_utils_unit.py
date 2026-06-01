@@ -31,7 +31,7 @@ def _image_utils_module():
     file_access.resolve_public_employee_image_url = lambda **kwargs: (
         "/api/method/ifitwala_ed.api.file_access.open_public_employee_image"
         f"?employee={kwargs.get('employee')}&file={kwargs.get('file_name')}"
-        f"&derivative_role={kwargs.get('derivative_role')}"
+        f"&variant={kwargs.get('variant')}"
     )
     file_access.build_employee_user_avatar_url = lambda employee: (
         f"/api/method/ifitwala_ed.api.file_access.open_employee_user_avatar?employee={employee}"
@@ -778,14 +778,16 @@ class TestImageUtilsUnit(TestCase):
 
             variants = image_utils.build_public_employee_image_variants(
                 "EMP-0001",
-                original_url="/private/files/employee-source.png",
             )
 
         self.assertEqual(variants["original"], None)
         self.assertIn("open_public_employee_image", variants["thumb"])
-        self.assertIn("derivative_role=thumb", variants["thumb"])
-        self.assertIn("derivative_role=card", variants["card"])
-        self.assertIn("derivative_role=viewer_preview", variants["medium"])
+        self.assertIn("variant=thumb", variants["thumb"])
+        self.assertIn("variant=card", variants["card"])
+        self.assertIn("variant=medium", variants["medium"])
+        self.assertNotIn("derivative_role", variants["thumb"])
+        self.assertNotIn("derivative_role", variants["card"])
+        self.assertNotIn("derivative_role", variants["medium"])
 
     def test_build_public_employee_image_variants_requests_missing_derivatives_without_original_fallback(self):
         with _image_utils_module() as (image_utils, frappe):
@@ -835,7 +837,6 @@ class TestImageUtilsUnit(TestCase):
             ):
                 variants = image_utils.build_public_employee_image_variants(
                     "EMP-0001",
-                    original_url="/private/files/employee-source.png",
                 )
 
         resolve_original.assert_not_called()

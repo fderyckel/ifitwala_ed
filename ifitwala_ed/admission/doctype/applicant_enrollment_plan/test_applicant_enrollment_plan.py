@@ -10,8 +10,189 @@ from ifitwala_ed.accounting.fiscal_year_utils import clear_fiscal_year_cache
 from ifitwala_ed.admission.doctype.applicant_enrollment_plan.applicant_enrollment_plan import (
     create_account_holder_for_applicant,
     generate_deposit_invoice_from_offer,
+    program_offering_course_link_query,
 )
 from ifitwala_ed.tests.base import IfitwalaEdTestSuite
+
+
+class TestApplicantEnrollmentPlanCourseDefaults(IfitwalaEdTestSuite):
+    def setUp(self):
+        super().setUp()
+        frappe.set_user("Administrator")
+
+    def test_plan_defaults_required_offering_courses_without_selecting_optional_rows(self):
+        context = self._make_course_default_context()
+
+        plan = frappe.get_doc(
+            {
+                "doctype": "Applicant Enrollment Plan",
+                "student_applicant": context["applicant"].name,
+                "academic_year": self.bootstrap.academic_year,
+                "program": context["program"].name,
+                "program_offering": context["offering"].name,
+                "status": "Draft",
+            }
+        ).insert(ignore_permissions=True)
+
+        plan.reload()
+        rows_by_course = {row.course: row for row in plan.get("courses") or []}
+        self.assertIn(context["required_course"].name, rows_by_course)
+        self.assertNotIn(context["optional_course"].name, rows_by_course)
+        self.assertEqual(int(rows_by_course[context["required_course"].name].required or 0), 1)
+        self.assertEqual(
+            (rows_by_course[context["required_course"].name].applied_basket_group or "").strip(),
+            context["basket_group"].name,
+        )
+
+    def test_refresh_course_defaults_merges_missing_required_rows(self):
+        context = self._make_course_default_context()
+        plan = frappe.get_doc(
+            {
+                "doctype": "Applicant Enrollment Plan",
+                "student_applicant": context["applicant"].name,
+                "academic_year": self.bootstrap.academic_year,
+                "program": context["program"].name,
+                "program_offering": context["offering"].name,
+                "status": "Draft",
+                "courses": [{"course": context["optional_course"].name}],
+            }
+        ).insert(ignore_permissions=True)
+
+        plan.set("courses", [{"course": context["optional_course"].name}])
+        result = plan.refresh_offering_course_defaults()
+
+        self.assertEqual(result.get("added_courses"), [context["required_course"].name])
+        plan.reload()
+        self.assertEqual(
+            [row.course for row in plan.get("courses") or []],
+            [context["optional_course"].name, context["required_course"].name],
+        )
+
+    def test_program_offering_course_link_query_is_scoped_to_offering_courses(self):
+        context = self._make_course_default_context()
+        unrelated_course = self._make_course("Unrelated")
+
+        rows = program_offering_course_link_query(
+            "Course",
+            "",
+            "name",
+            0,
+            20,
+            {"program_offering": context["offering"].name},
+        )
+
+        course_names = [row[0] for row in rows]
+        self.assertIn(context["required_course"].name, course_names)
+        self.assertIn(context["optional_course"].name, course_names)
+        self.assertNotIn(unrelated_course.name, course_names)
+
+    def _make_course_default_context(self) -> dict:
+        required_course = self._make_course("Required")
+        optional_course = self._make_course("Optional")
+        basket_group = self._make_basket_group("Core")
+        program = self._make_program(required_course, optional_course, basket_group)
+        offering = self._make_program_offering(program, required_course, optional_course, basket_group)
+        applicant = self._make_applicant(program, offering)
+
+        return {
+            "required_course": required_course,
+            "optional_course": optional_course,
+            "basket_group": basket_group,
+            "program": program,
+            "offering": offering,
+            "applicant": applicant,
+        }
+
+    def _make_course(self, label: str):
+        course = frappe.get_doc(
+            {
+                "doctype": "Course",
+                "course_name": f"AEP {label} Course {frappe.generate_hash(length=8)}",
+                "school": self.bootstrap.child_school,
+            }
+        )
+        course.insert(ignore_permissions=True)
+        return course
+
+    def _make_basket_group(self, label: str):
+        basket_group = frappe.get_doc(
+            {
+                "doctype": "Basket Group",
+                "basket_group_name": f"AEP {label} Basket {frappe.generate_hash(length=8)}",
+            }
+        )
+        basket_group.insert(ignore_permissions=True)
+        return basket_group
+
+    def _make_program(self, required_course, optional_course, basket_group):
+        program = frappe.get_doc(
+            {
+                "doctype": "Program",
+                "program_name": f"AEP Program {frappe.generate_hash(length=8)}",
+                "program_slug": f"aep-program-{frappe.generate_hash(length=8)}",
+                "courses": [
+                    {"course": required_course.name, "required": 1},
+                    {"course": optional_course.name, "required": 0},
+                ],
+                "course_basket_groups": [
+                    {"course": required_course.name, "basket_group": basket_group.name},
+                ],
+            }
+        )
+        program.insert(ignore_permissions=True)
+        return program
+
+    def _make_program_offering(self, program, required_course, optional_course, basket_group):
+        offering = frappe.get_doc(
+            {
+                "doctype": "Program Offering",
+                "program": program.name,
+                "school": self.bootstrap.child_school,
+                "offering_title": f"AEP Offering {frappe.generate_hash(length=8)}",
+                "offering_academic_years": [{"academic_year": self.bootstrap.academic_year}],
+                "offering_courses": [
+                    {
+                        "course": required_course.name,
+                        "course_name": required_course.course_name,
+                        "required": 1,
+                        "start_academic_year": self.bootstrap.academic_year,
+                        "end_academic_year": self.bootstrap.academic_year,
+                    },
+                    {
+                        "course": optional_course.name,
+                        "course_name": optional_course.course_name,
+                        "required": 0,
+                        "start_academic_year": self.bootstrap.academic_year,
+                        "end_academic_year": self.bootstrap.academic_year,
+                    },
+                ],
+                "offering_course_basket_groups": [
+                    {"course": required_course.name, "basket_group": basket_group.name},
+                ],
+            }
+        )
+        offering.insert(ignore_permissions=True)
+        return offering
+
+    def _make_applicant(self, program, offering):
+        applicant = frappe.get_doc(
+            {
+                "doctype": "Student Applicant",
+                "first_name": "Course",
+                "last_name": f"Defaults {frappe.generate_hash(length=6)}",
+                "organization": self.bootstrap.organization,
+                "school": self.bootstrap.child_school,
+                "academic_year": self.bootstrap.academic_year,
+                "program": program.name,
+                "program_offering": offering.name,
+                "application_status": "Draft",
+                "student_joining_date": "2026-08-15",
+            }
+        )
+        applicant.insert(ignore_permissions=True)
+        applicant.db_set("application_status", "Approved", update_modified=False)
+        applicant.reload()
+        return applicant
 
 
 class TestApplicantEnrollmentPlanDepositBridge(IfitwalaEdTestSuite):
